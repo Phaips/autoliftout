@@ -38,17 +38,18 @@ def main():
     # User interaction
     print('Please move the needle manually')
     while True:    # infinite loop
-        user_input = input("Have you finished moving the needle manually? yes/no")
+        user_input = input("Have you finished moving the needle manually? yes/no\n")
         if user_input == "yes":
             retract_properly(microscope, park_position)
             retract_position = microscope.specimen.manipulator.current_position
             print('Original retracted position: {}'.format(retract_position_original))
             print('Current retracted position: {}'.format(retract_position))
+            print('Finished.')
             break  # stops the loop
 
 
 if __name__ == "__main__":
-    user_input = input("Is the needle in the park position? yes/no")
+    user_input = input("Is the needle calibrated and in the park position? yes/no\n")
     if user_input == 'yes':
         main()
     else:
