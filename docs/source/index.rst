@@ -10,6 +10,7 @@ liftout Documentation
    :maxdepth: 2
 
    installation
+   procedure
    usage
    release-history
    min_versions
