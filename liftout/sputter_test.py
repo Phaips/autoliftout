@@ -1,5 +1,5 @@
 import time
-
+from tqdm import tqdm
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 
@@ -17,7 +17,7 @@ class MyMicroscope(SdbMicroscopeClient):
 
         Parameters
         ----------
-        sputter_time : float, optional
+        sputter_time : int, optional
             Time in seconds for platinum sputtering. Default is 20 seconds.
         """
         # Setup
@@ -26,22 +26,33 @@ class MyMicroscope(SdbMicroscopeClient):
         self.patterning.clear_patterns()
         self.patterning.set_default_application_file(sputter_application_file)
         # Run sputtering
-        self.patterning.create_line()  # 1um, at zero in the FOV
+        start_x = 0
+        start_y = 0
+        end_x = 1e-6
+        end_y = 1e-6
+        depth = 2e-6
+        self.patterning.create_line(start_x, start_y, end_x, end_y, depth)  # 1um, at zero in the FOV
         self.beams.electron_beam.blank()
         if self.patterning.state == "Idle":
             print('Sputtering with platinum for {} seconds...'.format(sputter_time))
             self.patterning.start()  # asynchronous patterning
-            time.sleep(sputter_time)
-            self.patterning.stop()
         else:
             raise RuntimeError(
                 "Can't sputter platinum, patterning state is not ready."
             )
+        for i in tqdm(range(int(sputter_time))):
+            time.sleep(1)  # update progress bar every second
+        if self.patterning.state == "Running":
+            self.patterning.stop()
+        else:
+            logging.warning("Patterning state is {}".format(self.patterning.state))
+            loggging.warning("Consider adjusting the patterning line depth.")
         # Cleanup
         self.patterning.clear_patterns()
         self.beams.electron_beam.unblank()
         self.patterning.set_default_application_file(default_application_file)
         self.imaging.set_active_view(original_active_view)
+        logging.info("Finished.")
 
 
 if __name__ == "__main__":
