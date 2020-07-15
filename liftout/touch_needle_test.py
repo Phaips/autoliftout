@@ -195,7 +195,7 @@ def sputter_platinum(microscope, sputter_time=20, *,
     logging.info("Sputtering finished.")
 
 
-def actual_angle(stage, pretilt_degrees):
+def actual_angle(stage, pretilt_degrees=27):
     """The actual angle of the sample surface, relative to the electron beam.
 
     Parameters
@@ -203,7 +203,7 @@ def actual_angle(stage, pretilt_degrees):
     stage : microscope.specimen.stage
         AutoScript sample stage.
     pretilt_degrees : float
-        Pre-tilt of sample holder, in degrees.
+        Pre-tilt of sample holder, in degrees. Default is 27 degrees.
 
     Returns
     -------
@@ -215,7 +215,7 @@ def actual_angle(stage, pretilt_degrees):
     return actual_angle
 
 
-def tilt(stage, target_angle, pretilt_degrees):
+def tilt(stage, target_angle, pretilt_degrees=27):
     """Tilt sample stage, taking into account any stage pre-tilt.
 
     Parameters
@@ -225,7 +225,7 @@ def tilt(stage, target_angle, pretilt_degrees):
     target_angle : float
         Target angle for sample surface after stage tilt, in degrees.
     pretilt_degrees : float
-        Pre-tilt of sample holder, in degrees.
+        Pre-tilt of sample holder, in degrees. Default is 27 degrees.
 
     Returns
     -------
