@@ -374,7 +374,7 @@ def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle))
     expected_lamella_depth = 5e-6  # in microns
     jcut_trench_width = 1e-6  # in meters
-    jcut_milling_depth = 5e-6  # in meters
+    jcut_milling_depth = 3e-6  # in meters
     jcut_top_length = 12e-6
     ion_beam_field_of_view = 59.2e-6  # in meters
     # Setup
