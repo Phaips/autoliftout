@@ -300,6 +300,126 @@ def y_height_adjusted_electron_beam(y_pixels, pixelsize_y, stage):
 def y_height_adjusted_ion_beam():
     pass
 
+def flat_to_electron_beam(stage, pretilt_degrees=27):
+    """Make the sample surface flat to the electron beam."""
+    rotation = np.deg2rad(290)
+    tilt = np.deg2rad(pretilt_degrees)
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(r=rotation), stage_settings)
+    stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    return stage.current_position
+
+
+def flat_to_ion_beam(stage, pretilt_degrees=27):
+    """Make the sample surface flat to the ion beam."""
+    rotation = np.deg2rad(290 - 180)
+    tilt = np.deg2rad(52 - pretilt_degrees)
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(r=rotation), stage_settings)
+    stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    return stage.current_position
+
+
+def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
+    # INPUT PARAMETERS
+    imaging_current = microscope.beams.ion_beam.beam_current.value
+    milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
+    ion_beam_field_of_view = 59.2e-6  # in meters
+    milling_depth = 10e-6  # in meters
+    trench_width = 20e-6  # in meters
+    trench_height = 15e-6  # in meters
+    lamella_thickness = 2e-6  # intended thickness of finished lamella
+    buffer = 0.5e-6  # the edges of the trenches are usually not exactly precise
+    # Setup
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_application_file(application_file)
+    microscope.patterning.mode = "Serial"
+    microscope.patterning.clear_patterns()  # clear any existing patterns
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
+    # Add upper trench
+    center_x = 0
+    center_y = +(lamella_thickness / 2) + buffer + (trench_height / 2)
+    width = trench_width
+    height = trench_height
+    depth = milling_depth
+    milling_pattern_1 = microscope.patterning.create_cleaning_cross_section(
+        center_x, center_y, width, height, depth)
+    milling_pattern_1.scan_direction = "TopToBottom"
+    # Add lower trench
+    center_x = 0
+    center_y = -((lamella_thickness / 2) + buffer + (trench_height / 2))
+    width = trench_width
+    height = trench_height
+    depth = milling_depth
+    milling_pattern_2 = microscope.patterning.create_cleaning_cross_section(
+        center_x, center_y, width, height, depth)
+    milling_pattern_2.scan_direction = "BottomToTop"
+    # # Confirm before milling
+    # user_input = input("")
+    # if user_input == 'yes':
+    #     microscope.beams.ion_beam.beam_current.value = milling_current
+    #     microscope.patterning.run()
+    #     microscope.beams.ion_beam.beam_current.value = imaging_current
+    # else:
+    #     "User did not confirm milling job, continue without milling."
+    # # Cleanup
+    # microscope.patterning.clear_patterns()
+    return (milling_pattern_1, milling_pattern_2)
+
+
+def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
+    # USER INPUT PARAMETERS
+    milling_current = 2e-9  # smaller milling current for J-cut
+    jcut_angle = 6  # in degrees
+    angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle))
+    expected_lamella_depth = 5e-6  # in microns
+    jcut_trench_width = 1e-6  # in meters
+    jcut_milling_depth = 3e-6  # in meters
+    jcut_top_length = 12e-6
+    ion_beam_field_of_view = 59.2e-6  # in meters
+    # Setup
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_application_file(application_file)
+    microscope.patterning.mode = "Parallel"
+    microscope.patterning.clear_patterns()  # clear any existing patterns
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
+    # Create milling patterns
+    # Top bar of J-cut
+    center_x = 0
+    center_y = expected_lamella_depth * angle_correction_factor
+    width = jcut_top_length
+    height = jcut_trench_width
+    depth = jcut_milling_depth
+    jcut_top_pattern = microscope.patterning.create_rectangle(center_x, center_y, width, height, depth)
+    # Left hand side of J-cut (long side)
+    extra_bit = 3e-6
+    center_x = -((jcut_top_length - jcut_trench_width) / 2)
+    center_y = ((expected_lamella_depth - (extra_bit / 2)) / 2) * angle_correction_factor
+    width = jcut_trench_width
+    height =  (expected_lamella_depth + extra_bit) * angle_correction_factor
+    depth = jcut_milling_depth
+    jcut_lhs_pattern = microscope.patterning.create_rectangle(center_x, center_y, width, height, depth)
+    # Right hand side of J-cut (short side)
+    jcut_rightside_remaining = 1.5e-6  # in microns
+    width = jcut_trench_width
+    height = (expected_lamella_depth - jcut_rightside_remaining) * angle_correction_factor
+    center_x = +((jcut_top_length - jcut_trench_width) / 2)
+    center_y = jcut_rightside_remaining + (height / 2)
+    depth = jcut_milling_depth
+    jcut_rhs_pattern = microscope.patterning.create_rectangle(center_x, center_y, width, height, depth)
+
+    # # Confirm before milling
+    # user_input = input("")
+    # if user_input == 'yes':
+    #     microscope.beams.ion_beam.beam_current.value = milling_current
+    #     microscope.patterning.run()
+    #     microscope.beams.ion_beam.beam_current.value = imaging_current
+    # else:
+    #     "User did not confirm milling job, continue without milling."
+    # # Cleanup
+    # microscope.patterning.clear_patterns()
+    # microscope.patterning.mode = "Serial"
+
 
 def main():
     # ASSUME
@@ -316,6 +436,7 @@ def main():
     x_safety_buffer = ???  # in meters (needle safety buffer distance)
     y_safety_buffer = ???  # in meters (needle safety buffer distance)
     z_safety_buffer = ???
+
     ideal_z_gap = 50e-9  # ideally we want the needletip 50nm (almost touching)
     jcut_tilt_degrees = 6  # sample surface should be at this angle (6 degrees)
 
@@ -330,11 +451,16 @@ def main():
     assert np.isclose(0, microscope.beams.ion_beam.scanning.rotation.value)
 
     # Begin test
-    # lamella is cut, flat to ion beam
-    # cut lamella
-    # move flat to electron beam
+    flat_to_electron_beam(stage)
+    flat_to_ion_beam(stage)
+    mill_lamella_trenches(microscope)
+    flat_to_ion_beam(stage)
+
     # Tilt sample so we are at the right angle for liftout/jcut
+    # make flat to electron beam, then tilt to J-cut angle
     tilt(stage, jcut_tilt_degrees, pretilt_degrees)
+    # Adjust the lamella position (eucentric height isn't perfect, we need to do a correlation)
+
     # Insert needle (park position already calibrated by the user)
     needle.insert()
     park_position = needle.current_position
