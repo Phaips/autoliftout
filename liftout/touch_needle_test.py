@@ -368,17 +368,15 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
 
 
 def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
+    # USER INPUT PARAMETERS
+    milling_current = 2e-9  # smaller milling current for J-cut
     jcut_angle = 6  # in degrees
     angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle))
     expected_lamella_depth = 5e-6  # in microns
     jcut_trench_width = 1e-6  # in meters
     jcut_milling_depth = 5e-6  # in meters
     jcut_top_length = 12e-6
-    # jcut_leftside_length = (expected_lamella_depth + 3e-6) * angle_correction_factor
-    jcut_rightside_remaining = 2e-6 # in microns
-    jcut_rightside_length = (expected_lamella_depth - jcut_rightside_remaining) * angle_correction_factor
     ion_beam_field_of_view = 59.2e-6  # in meters
-
     # Setup
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.set_default_application_file(application_file)
@@ -402,10 +400,11 @@ def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     depth = jcut_milling_depth
     jcut_lhs_pattern = microscope.patterning.create_rectangle(center_x, center_y, width, height, depth)
     # Right hand side of J-cut (short side)
-    center_x = +(jcut_trench_width / 2)
-    center_y =
+    jcut_rightside_remaining = 1.5e-6  # in microns
     width = jcut_trench_width
-    height = jcut_rightside_length
+    height = (expected_lamella_depth - jcut_rightside_remaining) * angle_correction_factor
+    center_x = +((jcut_top_length - jcut_trench_width) / 2)
+    center_y = jcut_rightside_remaining + (height / 2)
     depth = jcut_milling_depth
     jcut_rhs_pattern = microscope.patterning.create_rectangle(center_x, center_y, width, height, depth)
 
