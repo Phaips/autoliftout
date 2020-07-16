@@ -300,6 +300,68 @@ def y_height_adjusted_electron_beam(y_pixels, pixelsize_y, stage):
 def y_height_adjusted_ion_beam():
     pass
 
+def flat_to_electron_beam(stage, pretilt_degrees=27):
+    """Make the sample surface flat to the electron beam."""
+    rotation = np.deg2rad(70)
+    tilt = np.deg2rad(pretilt_degrees)
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(r=rotation), stage_settings)
+    stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    return stage.current_position
+
+
+def flat_to_ion_beam(stage, pretilt_degrees=27):
+    """Make the sample surface flat to the ion beam."""
+    rotation = np.deg2rad(70 - 180)
+    tilt = np.deg2rad(52 - pretilt_degrees)
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(r=rotation), stage_settings)
+    stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    return stage.current_position
+
+
+def mill_lamella_trenches(microscope):
+    # INPUT PARAMETERS
+    imaging_current = microscope.beams.ion_beam.beam_current.value
+    milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
+    ion_beam_field_of_view = 592e-6  # in meters
+    millling_depth = 5e-6  # in meters
+    trench_width = 20e-6  # in meters
+    trench_height = 15e-6  # in meters
+    lamella_thickness = 2e-6  # intended thickness of finished lamella
+    buffer = 1e-6  # the edges of the trenches are usually not exactly precise
+    # Setup
+    microscope.patterning.clear_patterns()  # clear any existing patterns
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
+    # Add upper trench
+    center_x = 0
+    center_y = +(lamella_thickness / 2) + buffer + (trench_height / 2)
+    width = trench_width
+    height = trench_height
+    depth = millling_depth
+    milling_pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x, center_y, width, height, depth)
+    milling_pattern.scan_direction = "TopToBottom"
+    # Add lower trench
+    center_x = 0
+    center_y = -((lamella_thickness / 2) + buffer + (trench_height / 2))
+    width = trench_width
+    height = trench_height
+    depth = milling_depth
+    milling_pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x, center_y, width, height, depth)
+    milling_pattern.scan_direction = "BottomToTop"
+    # Confirm before milling
+    user_input = input("")
+    if user_input == 'yes':
+        microscope.beams.ion_beam.beam_current.value = milling_current
+        microscope.patterning.run()
+        microscope.beams.ion_beam.beam_current.value = imaging_current
+    else:
+        "User did not confirm milling job, continue without milling."
+    # Cleanup
+    microscope.patterning.clear_patterns()
+
 
 def main():
     # ASSUME
@@ -312,13 +374,12 @@ def main():
     # We start with the sample flat to the ion beam and the lamella already cut
 
     # USER INPUTS
-    pretilt_degrees = ???
-    x_safety_buffer = ???  # in meters (needle safety buffer distance)
-    y_safety_buffer = ???  # in meters (needle safety buffer distance)
-    z_safety_buffer = ???
+    pretilt_degrees = 27
+    # x_safety_buffer = ???  # in meters (needle safety buffer distance)
+    # y_safety_buffer = ???  # in meters (needle safety buffer distance)
+    # z_safety_buffer = ???
     ideal_z_gap = 50e-9  # ideally we want the needletip 50nm (almost touching)
     jcut_tilt_degrees = 6  # sample surface should be at this angle (6 degrees)
-    needle_closest_distance = 50e-9  # ideally we want to leave a ~50nm gap
 
     # Setup
     microscope = initialize()
@@ -331,8 +392,15 @@ def main():
     assert np.isclose(0, microscope.beams.ion_beam.scanning.rotation.value)
 
     # Begin test
+    flat_to_electron_beam(stage)
+    flat_to_ion_beam(stage)
+    mill_lamella_trenches(microscope)
+    flat_to_ion_beam(stage)
     # Tilt sample so we are at the right angle for liftout/jcut
+    # make flat to electron beam, then tilt to J-cut angle
     tilt(stage, jcut_tilt_degrees, pretilt_degrees)
+    # Adjust the lamella position (eucentric height isn't perfect, we need to do a correlation)
+
     # Insert needle (park position already calibrated by the user)
     needle.insert()
     park_position = needle.current_position
