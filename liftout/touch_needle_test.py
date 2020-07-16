@@ -302,7 +302,7 @@ def y_height_adjusted_ion_beam():
 
 def flat_to_electron_beam(stage, pretilt_degrees=27):
     """Make the sample surface flat to the electron beam."""
-    rotation = np.deg2rad(70)
+    rotation = np.deg2rad(290)
     tilt = np.deg2rad(pretilt_degrees)
     stage_settings = MoveSettings(rotate_compucentric=True)
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
@@ -312,7 +312,7 @@ def flat_to_electron_beam(stage, pretilt_degrees=27):
 
 def flat_to_ion_beam(stage, pretilt_degrees=27):
     """Make the sample surface flat to the ion beam."""
-    rotation = np.deg2rad(70 - 180)
+    rotation = np.deg2rad(290 - 180)
     tilt = np.deg2rad(52 - pretilt_degrees)
     stage_settings = MoveSettings(rotate_compucentric=True)
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
@@ -361,6 +361,10 @@ def mill_lamella_trenches(microscope):
         "User did not confirm milling job, continue without milling."
     # Cleanup
     microscope.patterning.clear_patterns()
+
+
+def mill_jcut(pretilt_degrees=27):
+    pass
 
 
 def main():
