@@ -90,7 +90,7 @@ def select_point(image):
     coords = []
 
     def on_click(event):
-        print(event.ydata, event.xdata)
+        print(event.xdata, event.ydata)
         coords.append(event.ydata)
         coords.append(event.xdata)
 
@@ -433,9 +433,10 @@ def main():
 
     # USER INPUTS
     pretilt_degrees = 27
-    # x_safety_buffer = ???  # in meters (needle safety buffer distance)
-    # y_safety_buffer = ???  # in meters (needle safety buffer distance)
-    # z_safety_buffer = ???
+    x_safety_buffer = ???  # in meters (needle safety buffer distance)
+    y_safety_buffer = ???  # in meters (needle safety buffer distance)
+    z_safety_buffer = ???
+
     ideal_z_gap = 50e-9  # ideally we want the needletip 50nm (almost touching)
     jcut_tilt_degrees = 6  # sample surface should be at this angle (6 degrees)
 
@@ -454,6 +455,7 @@ def main():
     flat_to_ion_beam(stage)
     mill_lamella_trenches(microscope)
     flat_to_ion_beam(stage)
+
     # Tilt sample so we are at the right angle for liftout/jcut
     # make flat to electron beam, then tilt to J-cut angle
     tilt(stage, jcut_tilt_degrees, pretilt_degrees)
@@ -462,11 +464,12 @@ def main():
     # Insert needle (park position already calibrated by the user)
     needle.insert()
     park_position = needle.current_position
+    # First step is to move -160 microns in z (blind moving)
+    # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
+
     # Take a picture
     print("New electron beam image")
     electron_image = new_electron_image(microscope, settings=None)
-    pixelsize_x = electron_image.metadata.binary_result.pixel_size.x
-    pixelsize_y = electron_image.metadata.binary_result.pixel_size.y
     print("Electron beam pixelsize:", pixelsize_x)
     # USER INPUT - Click to mark needle tip and target position in the electron beam image.
     print("Please click the needle tip position")
@@ -480,8 +483,8 @@ def main():
     print("Needletip location:", needletip_location)
     print("Target location:", target_location)
     # Calculate the distance between the needle tip and the target.
-    x_distance = pixelsize_x * (x_target_location - x_needletip_location)
-    y_distance = pixelsize_y * (y_target_location - y_needletip_location)
+    x_distance = (x_target_location - x_needletip_location)
+    y_distance = (y_target_location - y_needletip_location)
     print("Estimated movement in X:", x_distance)
     print("Estimated movement in Y:", y_distance)
 
@@ -489,30 +492,27 @@ def main():
     # Take an ion beam image
     print("Taking a new ion beam image")
     ion_image = new_ion_image(microscope, settings=None)
-    pixelsize_x = ion_image.metadata.binary_result.pixel_size.x
-    pixelsize_y = ion_image.metadata.binary_result.pixel_size.y
     print("Pixelsize of ion beam image:", pixelsize_x)
     print("Please click the needle tip position")
-    ion_needletip_location = select_point(ion_image)
+    ion_needletip = select_point(ion_image)
     print("Please click the target position")
-    ion_target_location = select_point(ion_image)
-    print("Needletip location (ion beam):", ion_needletip_location)
-    print("Target location (ion beam):", ion_target_location)
+    ion_target = select_point(ion_image)
+    print("Needletip location (ion beam):", ion_needletip)
+    print("Target location (ion beam):", ion_target)
     # compare with results from electron image
-    x_ion_distance = pixelsize_x * (ion_target_location[0] - ion_needletip_location[0])
+    x_ion_distance = (ion_target[0] - ion_needletip[0])
     print("COMPARING CALCULATIONS")
     print("X")
     print("Electon image, calculated x distance:", x_distance)
     print("Ion beam image, calculated x distance:", x_ion_distance)
-    n_pixels_in_y = ion_target_location[1] - ion_needletip_location[1]
-    y_ion_distance = pixelsize_y * (n_pixels_in_y * np.cos(np.deg2rad(52)))
+    n_pixels_in_y = ion_target[1] - ion_needletip[1]
+    y_ion_distance = (n_pixels_in_y * np.cos(np.deg2rad(52)))
     print("Y")
     print("Electon image, calculated y distance:", y_distance)
     print("Ion beam image, calculated y distance:", y_ion_distance)
 
     # calculating Z
-    n_pixels_in_y = ion_target_location[1] - ion_needletip_location[1]
-    z_distance = pixelsize_y * (n_pixels_in_y * np.sin(np.deg2rad(52)))
+    z_distance = (ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52)))
     print("Z")
     print("Ion beam image, calculated z distance:", z_distance)
 
@@ -550,6 +550,9 @@ def main():
     # Run the platinum sputtering to weld the needle to the target. (May simulate this step during the test, if working at room temperature instead of cryo.)
     import pdb; pdb.set_trace()
     sputter_platinum(microscope, sputter_time=20)
+    # Cut the lamella free on the right hand side
+    # Retract the needle
+    # Move sample stage to landing grid
 
 
 if __name__ == "__main__":
