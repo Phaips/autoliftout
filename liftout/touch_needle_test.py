@@ -159,6 +159,8 @@ def sputter_platinum(microscope, sputter_time=20, *,
     sputter_time : int, optional
         Time in seconds for platinum sputtering. Default is 20 seconds.
     """
+    # TODO: Find the exact right time. 20 seconds is too short, 1 minute welds
+    # TODO: Maybe try 40 seconds next time.
     # Setup
     original_active_view = microscope.imaging.get_active_view()
     microscope.imaging.set_active_view(1)  # the electron beam view
@@ -337,12 +339,13 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
     # INPUT PARAMETERS
     imaging_current = microscope.beams.ion_beam.beam_current.value  # ~20 pico-Amps for cryo yeast
     # milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
-    milling_current = 1e-9  # in Amps (cryo-yeast sample)
+    milling_current = 7.6e-9  # in Amps (cryo-yeast sample)
     ion_beam_field_of_view = 59.2e-6  # in meters
-    milling_depth = 10e-6  # in meters
-    trench_width = 20e-6  # in meters
+    milling_depth = 3e-6  # in meters
+    trench_width = 15e-6  # in meters
     trench_height = 15e-6  # in meters
     lamella_thickness = 2e-6  # intended thickness of finished lamella
+    # TODO: we need a bigger buffer size, exact value to be determined
     buffer = 0.5e-6  # the edges of the trenches are usually not exactly precise
     # Setup
     microscope.imaging.set_active_view(2)  # the ion beam view
@@ -488,7 +491,14 @@ def main():
 
     # First step is to move -160 microns in z (blind moving)
     # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
+    stage_tilt = np.rad2deg(stage.current_position.t)
+    z_move = z_corrected_needle(-160e-6, stage_tilt)
+    needle.relative_move(z_move)
 
+    # Insert the Multichem
+    multichem = microscope.gas.get_multichem()
+    # multichem.insert()  # TODO: check this! - goes only to the elctron beam position :(
+    # TODO: How to set the gas for the multichem (we want "Pt cryo" gas)
 
     # Take a picture
     print("New electron beam image")
