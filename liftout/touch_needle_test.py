@@ -148,7 +148,6 @@ def new_electron_image(microscope, settings=None):
         image = microscope.imaging.grab_frame()
     return image
 
-
 def sputter_platinum(microscope, sputter_time=20, *,
                      default_application_file="autolamella",
                      sputter_application_file="cryo_Pt_dep",
@@ -165,8 +164,12 @@ def sputter_platinum(microscope, sputter_time=20, *,
     microscope.imaging.set_active_view(1)  # the electron beam view
     microscope.patterning.clear_patterns()
     microscope.patterning.set_default_application_file(sputter_application_file)
+    microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
     # Run sputtering
-    start_x = 0
+    # TODO: Must move line AWAY from the sample (Heidi pixks a corner of the image)
+    # TODO: Line must be longer, a 1 micron long line will only sputter for 3 seconds
+    # A 5 micron long line will sputter for 10 seconds.
+    start_x = 0  # TODO: must move sample
     start_y = 0
     end_x = 1e-6
     end_y = 1e-6
@@ -180,7 +183,7 @@ def sputter_platinum(microscope, sputter_time=20, *,
         raise RuntimeError(
             "Can't sputter platinum, patterning state is not ready."
         )
-    for i in tqdm(range(int(sputter_time))):
+    for i in tqdm.tqdm(range(int(sputter_time))):
         time.sleep(1)  # update progress bar every second
     if microscope.patterning.state == "Running":
         microscope.patterning.stop()
@@ -192,6 +195,7 @@ def sputter_platinum(microscope, sputter_time=20, *,
     microscope.beams.electron_beam.unblank()
     microscope.patterning.set_default_application_file(default_application_file)
     microscope.imaging.set_active_view(original_active_view)
+    microscope.patterning.set_default_beam_type(2)  # set ion beam
     logging.info("Sputtering finished.")
 
 
@@ -215,27 +219,36 @@ def actual_angle(stage, pretilt_degrees=27):
     return actual_angle
 
 
-def tilt(stage, target_angle, pretilt_degrees=27):
-    """Tilt sample stage, taking into account any stage pre-tilt.
+# def tilt(stage, target_angle, pretilt_degrees=27):
+#     """Tilt sample stage, taking into account any stage pre-tilt.
 
-    Parameters
-    ----------
-    stage : microscope.specimen.stage
-        Autoscript sample stage.
-    target_angle : float
-        Target angle for sample surface after stage tilt, in degrees.
-    pretilt_degrees : float
-        Pre-tilt of sample holder, in degrees. Default is 27 degrees.
+#     Parameters
+#     ----------
+#     stage : microscope.specimen.stage
+#         Autoscript sample stage.
+#     target_angle : float
+#         Target angle for sample surface after stage tilt, in degrees.
+#     pretilt_degrees : float
+#         Pre-tilt of sample holder, in degrees. Default is 27 degrees.
 
-    Returns
-    -------
-    angle_to_move : float
-        In degrees.
-        angle_to_move = target_angle - pretilt_degrees
-    """
-    angle_to_move = (target_angle - pretilt_degrees)
-    stage.absolute_move(StagePosition(t=np.deg2rad(angle_to_move)))
-    return angle_to_move
+#     Returns
+#     -------
+#     angle_to_move : float
+#         In degrees.
+#         angle_to_move = target_angle - pretilt_degrees
+#     """
+# ONLY WORKS FOR ION BEAM TILTING!!
+# FOR ELECTON BEAM TILTING WE NEED TO ADD pretilt_degrees
+# THIS IS BECAUSE WE ROTATE BY 180 degrees between electron & ion beam views
+#     angle_to_move = (target_angle - pretilt_degrees)
+#     stage.absolute_move(StagePosition(t=np.deg2rad(angle_to_move)))
+#     return angle_to_move
+
+
+def tilt_to_jcut_angle(stage, *, jcut_angle_degrees=6, pretilt_degrees=27):
+    flat_to_electron_beam(stage, pretilt_degrees=pretilt_degrees)
+    stage.relative_move(StagePosition(t=np.deg2rad(jcut_angle_degrees)))
+    return stage.current_position
 
 
 def x_corrected_needle(expected_x):
@@ -322,8 +335,9 @@ def flat_to_ion_beam(stage, pretilt_degrees=27):
 
 def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
     # INPUT PARAMETERS
-    imaging_current = microscope.beams.ion_beam.beam_current.value
-    milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
+    imaging_current = microscope.beams.ion_beam.beam_current.value  # ~20 pico-Amps for cryo yeast
+    # milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
+    milling_current = 1e-9  # in Amps (cryo-yeast sample)
     ion_beam_field_of_view = 59.2e-6  # in meters
     milling_depth = 10e-6  # in meters
     trench_width = 20e-6  # in meters
@@ -369,7 +383,8 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
 
 def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     # USER INPUT PARAMETERS
-    milling_current = 2e-9  # smaller milling current for J-cut
+    # milling_current = 2e-9  # ROOM TEMP copper sample, smaller milling current for J-cut
+    milling_current = 0.74e-9 # CRYO YEAST sample
     jcut_angle = 6  # in degrees
     angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle))
     expected_lamella_depth = 5e-6  # in microns
@@ -421,6 +436,10 @@ def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     # microscope.patterning.mode = "Serial"
 
 
+
+# 130 micron field of view - better to fit lamella trench and fiducial in.
+
+
 def main():
     # ASSUME
     # * The scan rotation of the microscope is zero
@@ -456,12 +475,19 @@ def main():
     flat_to_ion_beam(stage)
     # Tilt sample so we are at the right angle for liftout/jcut
     # make flat to electron beam, then tilt to J-cut angle
-    tilt(stage, jcut_tilt_degrees, pretilt_degrees)
+    mill_jcut(stage, jcut_tilt_degrees, pretilt_degrees)
     # Adjust the lamella position (eucentric height isn't perfect, we need to do a correlation)
+
+    # Move stage so the sample is flat to the electron beam
 
     # Insert needle (park position already calibrated by the user)
     needle.insert()
     park_position = needle.current_position
+    # Move needle blind in z by -160 microns (towards sample surface)
+    # Heidi says this is always safe to do
+    # BUT WAIT! THIS IS NOT ALWAYS SAFE AT ALL (right now it's only 10 microns away)
+
+
     # Take a picture
     print("New electron beam image")
     electron_image = new_electron_image(microscope, settings=None)
@@ -480,8 +506,8 @@ def main():
     print("Needletip location:", needletip_location)
     print("Target location:", target_location)
     # Calculate the distance between the needle tip and the target.
-    x_distance = pixelsize_x * (x_target_location - x_needletip_location)
-    y_distance = pixelsize_y * (y_target_location - y_needletip_location)
+    x_distance = x_target_location - x_needletip_location
+    y_distance = y_target_location - y_needletip_location
     print("Estimated movement in X:", x_distance)
     print("Estimated movement in Y:", y_distance)
 
@@ -499,12 +525,13 @@ def main():
     print("Needletip location (ion beam):", ion_needletip_location)
     print("Target location (ion beam):", ion_target_location)
     # compare with results from electron image
-    x_ion_distance = pixelsize_x * (ion_target_location[0] - ion_needletip_location[0])
+    x_ion_distance = ion_target_location[0] - ion_needletip_location[0]
     print("COMPARING CALCULATIONS")
     print("X")
     print("Electon image, calculated x distance:", x_distance)
     print("Ion beam image, calculated x distance:", x_ion_distance)
-    n_pixels_in_y = ion_target_location[1] - ion_needletip_location[1]
+    # n_pixels_in_y = ion_target_location[1] - ion_needletip_location[1]
+    y_ion_distance = np.cos(np.deg2rad(52)) * (ion_target_location[1] - ion_needletip_location[1])
     y_ion_distance = pixelsize_y * (n_pixels_in_y * np.cos(np.deg2rad(52)))
     print("Y")
     print("Electon image, calculated y distance:", y_distance)
