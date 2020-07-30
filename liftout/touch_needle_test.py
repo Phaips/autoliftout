@@ -148,7 +148,7 @@ def new_electron_image(microscope, settings=None):
         image = microscope.imaging.grab_frame()
     return image
 
-def sputter_platinum(microscope, sputter_time=20, *,
+def sputter_platinum(microscope, sputter_time=60, *,
                      default_application_file="autolamella",
                      sputter_application_file="cryo_Pt_dep",
     ):
@@ -157,26 +157,23 @@ def sputter_platinum(microscope, sputter_time=20, *,
     Parameters
     ----------
     sputter_time : int, optional
-        Time in seconds for platinum sputtering. Default is 20 seconds.
+        Time in seconds for platinum sputtering. Default is 60 seconds.
     """
-    # TODO: Find the exact right time. 20 seconds is too short, 1 minute welds
-    # TODO: Maybe try 40 seconds next time.
     # Setup
     original_active_view = microscope.imaging.get_active_view()
     microscope.imaging.set_active_view(1)  # the electron beam view
     microscope.patterning.clear_patterns()
     microscope.patterning.set_default_application_file(sputter_application_file)
     microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
-    # Run sputtering
-    # TODO: Must move line AWAY from the sample (Heidi pixks a corner of the image)
-    # TODO: Line must be longer, a 1 micron long line will only sputter for 3 seconds
-    # A 5 micron long line will sputter for 10 seconds.
-    start_x = 0  # TODO: must move sample
-    start_y = 0
-    end_x = 1e-6
-    end_y = 1e-6
+    # Create sputtering pattern
+    start_x = -15e-6
+    start_y = +15e-6
+    end_x = +15e-6
+    end_y = +15e-6
     depth = 2e-6
-    microscope.patterning.create_line(start_x, start_y, end_x, end_y, depth)  # 1um, at zero in the FOV
+    pattern = microscope.patterning.create_line(start_x, start_y, end_x, end_y, depth)  # 1um, at zero in the FOV
+    pattern.time = sputter_time + 0.1
+    # Run sputtering with progress bar
     microscope.beams.electron_beam.blank()
     if microscope.patterning.state == "Idle":
         print('Sputtering with platinum for {} seconds...'.format(sputter_time))
@@ -336,6 +333,8 @@ def flat_to_ion_beam(stage, pretilt_degrees=27):
 
 
 def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_beam_type(2)  # ion beam default
     # INPUT PARAMETERS
     imaging_current = microscope.beams.ion_beam.beam_current.value  # ~20 pico-Amps for cryo yeast
     # milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
@@ -386,6 +385,8 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
 
 def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     # USER INPUT PARAMETERS
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_beam_type(2)  # ion beam default
     # milling_current = 2e-9  # ROOM TEMP copper sample, smaller milling current for J-cut
     milling_current = 0.74e-9 # CRYO YEAST sample
     jcut_angle = 6  # in degrees
@@ -455,9 +456,9 @@ def main():
 
     # USER INPUTS
     pretilt_degrees = 27
-    x_safety_buffer = ???  # in meters (needle safety buffer distance)
-    y_safety_buffer = ???  # in meters (needle safety buffer distance)
-    z_safety_buffer = ???
+    # x_safety_buffer = ???  # in meters (needle safety buffer distance)
+    # y_safety_buffer = ???  # in meters (needle safety buffer distance)
+    # z_safety_buffer = ???
 
     ideal_z_gap = 50e-9  # ideally we want the needletip 50nm (almost touching)
     jcut_tilt_degrees = 6  # sample surface should be at this angle (6 degrees)
@@ -501,25 +502,23 @@ def main():
     # TODO: How to set the gas for the multichem (we want "Pt cryo" gas)
 
     # Take a picture
-    print("New electron beam image")
     electron_image = new_electron_image(microscope, settings=None)
-    print("Electron beam pixelsize:", pixelsize_x)
     # USER INPUT - Click to mark needle tip and target position in the electron beam image.
     print("Please click the needle tip position")
     needletip_location = select_point(electron_image)
-    x_needletip_location = needletip_location[0]  # coordinates in x-y format
-    y_needletip_location = needletip_location[1]  # coordinates in x-y format
     print("Please click the lamella target position")
     target_location = select_point(electron_image)
+
+    x_needletip_location = needletip_location[0]  # coordinates in x-y format
+    y_needletip_location = needletip_location[1]  # coordinates in x-y format
     x_target_location = target_location[0]  # pixels, coordinates in x-y format
     y_target_location = target_location[1]  # pixels, coordinates in x-y format
-    print("Needletip location:", needletip_location)
-    print("Target location:", target_location)
+
     # Calculate the distance between the needle tip and the target.
     x_distance = x_target_location - x_needletip_location
     y_distance = y_target_location - y_needletip_location
-    print("Estimated movement in X:", x_distance)
-    print("Estimated movement in Y:", y_distance)
+    x_move = x_corrected_needle(x_distance)
+    y_move = y_corrected_needle(y_distance, stage_tilt)
 
     # MOVEMENT IN Z
     # Take an ion beam image
@@ -532,20 +531,8 @@ def main():
     ion_target = select_point(ion_image)
     print("Needletip location (ion beam):", ion_needletip)
     print("Target location (ion beam):", ion_target)
-    # compare with results from electron image
-    x_ion_distance = (ion_target[0] - ion_needletip[0])
-    print("COMPARING CALCULATIONS")
-    print("X")
-    print("Electon image, calculated x distance:", x_distance)
-    print("Ion beam image, calculated x distance:", x_ion_distance)
-    n_pixels_in_y = ion_target[1] - ion_needletip[1]
-    y_ion_distance = (n_pixels_in_y * np.cos(np.deg2rad(52)))
-    print("Y")
-    print("Electon image, calculated y distance:", y_distance)
-    print("Ion beam image, calculated y distance:", y_ion_distance)
-
     # calculating Z
-    z_distance = (ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52)))
+    z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52)))
     print("Z")
     print("Ion beam image, calculated z distance:", z_distance)
 
