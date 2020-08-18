@@ -545,10 +545,10 @@ def main():
     needle.insert()
     park_position = needle.current_position
 
-    # First step is to move -160 microns in z (blind moving)
+    # First step is to move -180 microns in z (blind moving)
     # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
     stage_tilt = np.rad2deg(stage.current_position.t)
-    z_move = z_corrected_needle(-160e-6, stage_tilt)
+    z_move = z_corrected_needle(-180e-6, stage_tilt)
     needle.relative_move(z_move)
     # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
     x_move = x_corrected_needle(-10e-6)
@@ -560,7 +560,7 @@ def main():
     # TODO: How to set the gas for the multichem (we want "Pt cryo" gas)
 
     # Take a picture
-    electron_image = new_electron_image(microscope, settings=None)
+    electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
     # USER INPUT - Click to mark needle tip and target position in the electron beam image.
     print("Please click the needle tip position")
     needletip_location = select_point(electron_image)
@@ -578,9 +578,13 @@ def main():
     x_move = x_corrected_needle(x_distance)
     y_move = y_corrected_needle(y_distance, stage_tilt)
 
+    needle.relative_move(x_move)
+    needle.relative_move(y_move)
+
     # MOVEMENT IN Z
     # Take an ion beam image
     print("Taking a new ion beam image")
+    # Set the magnification to something reasonable!!
     ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
     print("Pixelsize of ion beam image:", pixelsize_x)
     print("Please click the needle tip position")
@@ -590,41 +594,15 @@ def main():
     print("Needletip location (ion beam):", ion_needletip)
     print("Target location (ion beam):", ion_target)
     # calculating Z
-    z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52)))
+    z_safety_buffer = 400e-9  # in meters
+    z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
+    z_move = z_corrected_needle(z_distance, stage_tilt)
     print("Z")
     print("Ion beam image, calculated z distance:", z_distance)
 
     # Move needle most of the way, minus some "safety buffer" distance
     import pdb; pdb.set_trace()
-    x_move = x_corrected_needle(x_distance - x_safety_buffer)
-    needle.relative_move(x_move)
-
-    y_move = y_corrected_needle(y_distance - y_safety_buffer)
-    needle.relative_move(y_move)
-
-    z_safety_buffer = 500e-9
-    z_move = z_corrected_needle(z_distance - z_safety_buffer)
     needle.relative_move(z_move)
-
-    import pdb; pdb.set_trace()
-    x_move2 = x_corrected_needle(x_safety_buffer)
-    needle.relative_move(x_move2)
-
-    y_move2 = y_corrected_needle(y_safety_buffer)
-    needle.relative_move(y_move2)
-
-    z_move2 = z_corrected_needle(z_safety_buffer - ideal_z_gap)
-    needle.relative_move(z_move2)
-
-    # Adjust the magnification of the electron beam image (we can increase this now the needle tip is closer)
-
-    # Take a new electron beam image.
-
-    # USER INPUT - Click to mark needle tip and target position in the electron beam image. (We may try and automate this step later on)
-
-    # Calculate the remaining distance between the needle tip and the target.
-
-    # Move the needle the remaining distance to the target, leaving some predefined gap in Z between the needle & target.
 
     # Run the platinum sputtering to weld the needle to the target. (May simulate this step during the test, if working at room temperature instead of cryo.)
     import pdb; pdb.set_trace()
