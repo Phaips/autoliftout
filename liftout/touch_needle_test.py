@@ -148,6 +148,30 @@ def new_electron_image(microscope, settings=None):
         image = microscope.imaging.grab_frame()
     return image
 
+
+def retract_properly(microscope, park_position):
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    needle = microscope.specimen.manipulator
+    multichem = microscope.gas.get_multichem()
+    multichem.retract()
+    current_position = needle.current_position
+    # First retract in z, then y, then x
+    needle.relative_move(ManipulatorPosition(z=park_position.z - current_position.z))
+    needle.relative_move(ManipulatorPosition(y=park_position.y - current_position.y))
+    needle.relative_move(ManipulatorPosition(x=park_position.x - current_position.x))
+    time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
+    needle.retract()
+    retracted_position = needle.current_position
+    return retracted_position
+
+
+def insert_properly(microscope):
+    needle = microscope.specimen.manipulator
+    needle.insert()
+    park_position = needle.current_position
+    return park_position
+
+
 def sputter_platinum(microscope, sputter_time=60, *,
                      default_application_file="autolamella",
                      sputter_application_file="cryo_Pt_dep",
@@ -557,7 +581,7 @@ def main():
     # MOVEMENT IN Z
     # Take an ion beam image
     print("Taking a new ion beam image")
-    ion_image = new_ion_image(microscope, settings=None)
+    ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
     print("Pixelsize of ion beam image:", pixelsize_x)
     print("Please click the needle tip position")
     ion_needletip = select_point(ion_image)
@@ -578,6 +602,7 @@ def main():
     y_move = y_corrected_needle(y_distance - y_safety_buffer)
     needle.relative_move(y_move)
 
+    z_safety_buffer = 500e-9
     z_move = z_corrected_needle(z_distance - z_safety_buffer)
     needle.relative_move(z_move)
 
