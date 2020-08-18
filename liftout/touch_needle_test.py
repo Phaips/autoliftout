@@ -356,6 +356,13 @@ def flat_to_ion_beam(stage, pretilt_degrees=27):
     return stage.current_position
 
 
+def landing_stage_position(stage, *, landing_angle=43, pretilt_degrees=27):
+    """Move the sample stage to the landing post position."""
+    flat_to_ion_beam(stage, pretilt_degrees=pretilt_degrees)
+    stage.relative_move(StagePosition(t=np.deg2rad(landing_angle - pretilt_degrees)))
+    return stage.current_position
+
+
 def mill_jcut_edge(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     # USER INPUT PARAMETERS
     microscope.imaging.set_active_view(2)  # the ion beam view
