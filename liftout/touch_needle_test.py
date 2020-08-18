@@ -369,13 +369,13 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
     # INPUT PARAMETERS
     imaging_current = microscope.beams.ion_beam.beam_current.value  # ~20 pico-Amps for cryo yeast
     # milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
-    milling_current = 7.6e-9  # in Amps (cryo-yeast sample)
+    milling_current = 7.4e-9  # in Amps (cryo-yeast sample)
     ion_beam_field_of_view = 59.2e-6  # in meters
     milling_depth = 3e-6  # in meters
     trench_width = 15e-6  # in meters
-    trench_height = 15e-6  # in meters
+    trench_height = 10e-6  # in meters
     lamella_thickness = 2e-6  # intended thickness of finished lamella
-    # TODO: we need a bigger buffer size, exact value to be determined
+    # TODO: we may need a bigger buffer size, exact value to be determined
     buffer = 0.5e-6  # the edges of the trenches are usually not exactly precise
     # Setup
     microscope.imaging.set_active_view(2)  # the ion beam view
