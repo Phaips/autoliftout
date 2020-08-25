@@ -14,7 +14,6 @@ __all__ = [
 ]
 
 
-
 def sputter_platinum(microscope, sputter_time=60, *,
                      sputter_application_file="cryo_Pt_dep",
                      default_application_file="autolamella"):
@@ -110,6 +109,32 @@ def retract_needle(microscope, park_position):
     needle.retract()
     retracted_position = needle.current_position
     return retracted_position
+
+
+def move_needle_closer(needle, *, x_shift=-20e-6, z_shift=-180e-6):
+    """Move the needle closer to the sample surface, after inserting.
+
+    Parameters
+    ----------
+    needle : autoscript_sdb_microscope_client.sdb_microscope.specimen._manipulator.Manipulator
+        Autoscript manipulator needle object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    # Needle starts from the parking position (after inserting it)
+    # Move the needle back a bit in x, so the needle is not overlapping target
+    x_move = x_corrected_needle_movement(x_shift)
+    needle.relative_move(x_move)
+    # Then move the needle towards the sample surface.
+    stage_tilt = np.rad2deg(stage.current_position.t)
+    z_move = z_corrected_needle(z_shift, stage_tilt)
+    needle.relative_move(z_move)
+    # The park position is always the same,
+    # so the needletip will end up about 20 microns from the surface.
+    return needle.current_position
 
 
 def x_corrected_needle_movement(expected_x):
