@@ -74,9 +74,9 @@ def _liftout_fiducial_pattern(microscope, *,
     fiducial_center_x = 0.75 * microscope.beams.ion_beam.horizontal_field_width.value
     setup_ion_milling(microscope)
     pattern_1 = microscope.patterning.create_rectangle(
-        fiducial_center_x, fiducial_center_y, )
+        fiducial_center_x, fiducial_center_y, fiducial_length, fiducial_thickness)
     pattern_2 = microscope.patterning.create_rectangle(
-        fiducial_center_x, fiducial_center_y, )
+        fiducial_center_x, fiducial_center_y, fiducial_thickness, fiducial_length)
     return pattern_2, pattern_2
 
 
@@ -279,4 +279,50 @@ def mill_to_sever_jcut(microscope, *, milling_current=0.74e-9):
         The ion beam milling current, in Amps.
     """
     jcut_severing_pattern(microscope)
+    confirm_and_run_milling(microscope, milling_current)
+
+
+def _create_welding_pattern(microscope, *,
+                            center_x=0,
+                            center_y=0,
+                            width=3.5e-6,
+                            height=5e-6,
+                            depth=5e-9):
+    """Create milling pattern for welding liftout sample to the landing post.
+
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    center_x : float
+        Center position of the milling pattern along x-axis, in meters.
+        Zero coordinate is at the centerpoint of the image field of view.
+    center_y : float
+        Center position of the milling pattern along x-axis, in meters.
+        Zero coordinate is at the centerpoint of the image field of view.
+    width : float
+        Width of the milling pattern, in meters.
+    height: float
+        Height of the milling pattern, in meters.
+    depth : float
+        Depth of the milling pattern, in meters.
+    """
+    setup_ion_milling(microscope)
+    setup_ion_milling(microscope)
+    pattern = microscope.patterning.create_rectangle(
+        center_x, center_y, width, height, depth)
+    return pattern
+
+
+def weld_to_landing_post(microscope, *, milling_current=20e-12):
+    """Create and mill the sample to the landing post.
+
+    Parmaters
+    ---------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    milling_current : float, optional
+        The ion beam milling current, in Amps.
+    """
+    pattern = _create_welding_pattern(microscope)
     confirm_and_run_milling(microscope, milling_current)
