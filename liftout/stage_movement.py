@@ -51,8 +51,11 @@ def move_to_trenching_position(stage, *, pretilt_angle=PRETILT_DEGREES):
     return stage.current_position
 
 
-def move_to_liftout_position(stage, *, pretilt_angle=PRETILT_DEGREES):
-    flat_to_ion_beam(stage, pretilt_angle=pretilt_angle)
+def move_to_liftout_position(stage, *, liftout_angle=10, pretilt_angle=PRETILT_DEGREES):
+    from autoscript_sdb_microscope_client.structures import StagePosition
+
+    flat_to_electron_beam(stage, pretilt_angle=pretilt_angle)
+    stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle)))
     return stage.current_position
 
 
