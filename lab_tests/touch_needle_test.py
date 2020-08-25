@@ -552,14 +552,15 @@ def main():
     needle.insert()
     park_position = needle.current_position
 
-    # First step is to move -180 microns in z (blind moving)
+    # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
+    x_move = x_corrected_needle(-20e-6)
+    needle.relative_move(x_move)
+    # Then move -180 microns in z (blind moving)
     # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
     stage_tilt = np.rad2deg(stage.current_position.t)
     z_move = z_corrected_needle(-180e-6, stage_tilt)
     needle.relative_move(z_move)
-    # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
-    x_move = x_corrected_needle(-10e-6)
-    needle.relative_move(x_move)
+
 
     # Insert the Multichem
     multichem = microscope.gas.get_multichem()
