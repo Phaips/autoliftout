@@ -18,6 +18,7 @@ def configure_logging(log_filename='logfile.log', log_level=logging.DEBUG):
 def initialize(ip_address='10.0.0.1'):
     """Initialize connection to FIBSEM microscope with Autoscript."""
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
+
     microscope = SdbMicroscopeClient()
     microscope.connect(ip_address)
     return microscope
