@@ -7,7 +7,7 @@ import numpy as np
 from autoscript_sdb_microscope_client.structures import *
 from autoscript_sdb_microscope_client.enumerations import *
 
-from acquire import grab_ion_image, create_camera_settings
+from acquire import new_ion_image, new_electron_image, create_camera_settings
 from jcut import (
     mill_fiducial_marker,
     mill_trenches,
@@ -25,7 +25,19 @@ from stage_movement import (
     move_to_liftout_position)
 
 
+def zero_beam_shift(microscope, *,
+                    zero_electron_beam=True,
+                    zero_ion_beam=True):
+    from autoscript_sdb_microscope_client.structures import Point
+
+    if zero_electron_beam:
+        microscope.beams.electron_beam.beam_shift.value = Point(0, 0)
+    if zero_ion_beam:
+        microscope.beams.ion_beam.beam_shift.value = Point(0, 0)
+
+
 def setup_imaging_parameters(microscope):
+    zero_beam_shift(microscope)
     # set resolution  - "1536x1024"
     # set magnification -
     # set field of view
@@ -61,19 +73,32 @@ def main():
     assert microscope.specimen.stage.is_linked
     assert np.isclose(0, microscope.beams.electron_beam.scanning.rotation.value)
     assert np.isclose(0, microscope.beams.ion_beam.scanning.rotation.value)
+    zero_beam_shift(microscope)
+    assert microscope.beams.electron_beam.beam_shift.value == Point(0, 0)
+    assert microscope.beams.ion_beam.beam_shift.value == Point(0, 0)
+
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
     multichem = microscope.gas.get_multichem()
 
-    # Fiducial marker
-    jcut_milling_current = 0.74e-9  # in Amps
-    microscope.beams.ion_beam.beam_current.value = jcut_milling_current
-    move_to_jcut_position(stage)
-    ask_user("Have you centered the lamella position? yes/no")
-    mill_fiducial_marker(microsope, milling_current=jcut_milling_current)
+    # Set the correct magnification / field of view for the ion beam
+    ion_beam_field_of_view = 82.9e-6  # in meters
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
 
     # Move to trench position
-    trench_milling_current = 7.4e-9  # in Amps
+    # trench_milling_current = 7.4e-9  # in Amps, for cryo
+    trench_milling_current = 2e-9  # in Amps, at room temperature
+    move_to_trenching_position(stage)
+    ask_user("Have you centered the lamella position? yes/no")
+    mill_fiducial_marker(microscope, milling_current=trench_milling_current)
+
+    # jcut_milling_current = 0.74e-9  # in Amps, for cryo
+    jcut_milling_current = 2e-9  # in Amps, at room temperature (same as trench current)
+    microscope.beams.ion_beam.beam_current.value = jcut_milling_current
+    move_to_jcut_position(stage)
+
+
+    # Move to trench position
     move_to_trenching_position(stage)
     realign_fiducial_for_trenches(microscope, milling_current=trench_milling_current)
     mill_trenches(microscope, milling_current=trench_milling_current)
