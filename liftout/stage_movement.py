@@ -16,7 +16,8 @@ PRETILT_DEGREES = 27
 
 def flat_to_electron_beam(stage, *, pretilt_angle=PRETILT_DEGREES):
     """Make the sample surface flat to the electron beam."""
-    from autoscript_sdb_microscope_client.structures import StagePosition
+    from autoscript_sdb_microscope_client.structures import (StagePosition,
+                                                             MoveSettings)
 
     rotation = np.deg2rad(290)
     tilt = np.deg2rad(pretilt_angle)
@@ -28,7 +29,8 @@ def flat_to_electron_beam(stage, *, pretilt_angle=PRETILT_DEGREES):
 
 def flat_to_ion_beam(stage, *, pretilt_angle=PRETILT_DEGREES):
     """Make the sample surface flat to the ion beam."""
-    from autoscript_sdb_microscope_client.structures import StagePosition
+    from autoscript_sdb_microscope_client.structures import (StagePosition,
+                                                             MoveSettings)
 
     rotation = np.deg2rad(290 - 180)
     tilt = np.deg2rad(52 - pretilt_angle)
