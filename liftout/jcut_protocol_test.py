@@ -18,6 +18,7 @@ from needle_movement import (
     retract_needle,
     sputter_platinum)
 from stage_movement import (
+    PRETILT_DEGREES,
     flat_to_electron_beam,
     flat_to_ion_beam,
     move_to_jcut_position,
