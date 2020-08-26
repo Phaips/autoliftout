@@ -85,6 +85,33 @@ def _liftout_fiducial_pattern(microscope, *,
     return pattern_2, pattern_2
 
 
+def _create_synthetic_cross(pattern_1, pattern_2, pixelsize, gap_at_edge=25):
+    max_size_pixels = int(pixelsize * max(pattern_1.width, pattern_1.height,
+                                          pattern_2.width, pattern_2.height))
+    image_shape = (max_size_pixels + (2 * gap_at_edge),
+                   max_size_pixels + (2 * gap_at_edge))
+    synthetic_image = np.full((image_shape), 255, dtype=np.uint8)
+    # pattern_1
+    x_start = int(pattern_1.center_x - (pattern_1.width / 2))
+    x_stop = int(pattern_1.center_x + (pattern_1.width / 2))
+    y_start = int(pattern_1.center_y - (pattern_1.height / 2))
+    y_stop = int(pattern_1.center_y - (pattern_1.height / 2))
+    synthetic_image[x_start:x_stop, y_start:y_stop] = 0
+    # pattern_2
+    x_start = int(pattern_2.center_x - (pattern_2.width / 2))
+    x_stop = int(pattern_2.center_x + (pattern_2.width / 2))
+    y_start = int(pattern_2.center_y - (pattern_2.height / 2))
+    y_stop = int(pattern_2.center_y - (pattern_2.height / 2))
+    synthetic_image[x_start:x_stop, y_start:y_stop] = 0
+    return synthetic_image
+
+def _crop_fiducial_image(image, coordinate_center, image_shape):
+    cropped_image = copy(image)
+    raw_data_crop =
+    cropped_image.data = raw_data_crop
+    return cropped_image
+
+
 def mill_fiducial_marker(microscope, *, milling_current=0.74e-9):
     """Create and mill the fiducial cross shaped marker.
 
@@ -95,8 +122,17 @@ def mill_fiducial_marker(microscope, *, milling_current=0.74e-9):
     milling_current : float, optional
         The ion beam milling current, in Amps.
     """
-    _liftout_fiducial_pattern(microscope)
+    original_location_xy = (int(pattern_1.center_x * pixelsize),
+                            int(pattern_1.center_y * pixelsize))  # in pixels
+
+    pattern_1, pattern_2 = _liftout_fiducial_pattern(microscope)
     confirm_and_run_milling(microscope, milling_current)
+    ion_image = new_ion_beam_image(microscope)
+    pixelsize = ion_image.metadata.binary_result.pixel_size.x
+    synthetic_image = _create_synthetic_cross(pattern_1, pattern_2, pixelsize)
+    expected_location_xy = ()  # after rotating to J-cut position, in pixels
+    cropped_fiducial_image = _crop_fiducial_image(???)
+    return synthetic_image, original_fiducial_location, expected_fiducial_location
 
 
 def _trench_milling_patterns(microscope, *,
