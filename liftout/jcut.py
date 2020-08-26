@@ -1,7 +1,10 @@
 """J-cut milling for liftout sample preparation."""
 import numpy as np
 
-__all__ [
+from user_input import ask_user
+
+
+__all__ = [
     "setup_ion_milling",
     "confirm_and_run_milling",
     "mill_fiducial_marker",
@@ -14,7 +17,7 @@ __all__ [
 def setup_ion_milling(microscope, *,
                       application_file="Si_Alex",
                       patterning_mode="Parallel",
-                      ion_beam_field_of_view=59.2e-6):
+                      ion_beam_field_of_view=82.9e-6):
     """Setup for rectangle ion beam milling patterns.
 
     Parameters
@@ -39,6 +42,7 @@ def setup_ion_milling(microscope, *,
 
 def confirm_and_run_milling(microscope, milling_current, *,
                             imaging_current=20e-12):
+    # TODO: maybe display to the user how long milling will take
     if ask_user("Do you want to run the ion beam milling?"):
         print("Ok, running ion beam milling now...")
         microscope.beams.ion_beam.beam_current.value = milling_current
@@ -50,7 +54,8 @@ def confirm_and_run_milling(microscope, milling_current, *,
 
 def _liftout_fiducial_pattern(microscope, *,
                               fiducial_length=5e-6,
-                              fiducial_thickness=0.5e-6):
+                              fiducial_thickness=0.5e-6,
+                              fiducial_depth=0.5e-6):
     """Create milling cross pattern for liftout fiducial marker.
 
     Parmaters
@@ -71,12 +76,12 @@ def _liftout_fiducial_pattern(microscope, *,
     # Place the fiducial center at the midpoint hight in y,
     # and three quarters of the way across the image along the x-axis.
     fiducial_center_y = 0
-    fiducial_center_x = 0.75 * microscope.beams.ion_beam.horizontal_field_width.value
+    fiducial_center_x = 0.6 * (microscope.beams.ion_beam.horizontal_field_width.value / 2)
     setup_ion_milling(microscope)
     pattern_1 = microscope.patterning.create_rectangle(
-        fiducial_center_x, fiducial_center_y, fiducial_length, fiducial_thickness)
+        fiducial_center_x, fiducial_center_y, fiducial_length, fiducial_thickness, fiducial_depth)
     pattern_2 = microscope.patterning.create_rectangle(
-        fiducial_center_x, fiducial_center_y, fiducial_thickness, fiducial_length)
+        fiducial_center_x, fiducial_center_y, fiducial_thickness, fiducial_length, fiducial_depth)
     return pattern_2, pattern_2
 
 
@@ -123,7 +128,7 @@ def _trench_milling_patterns(microscope, *,
      autoscript_sdb_microscope_client.structures.RectanglePattern)
         Tuple containing the two lamella trench milling patterns.
     """
-    setup_ion_milling(application_file="Si_Heidi", patterning_mode="Serial")
+    setup_ion_milling(microscope, application_file="Si_Heidi", patterning_mode="Serial")
     center_y = +(lamella_thickness / 2) + lamella_buffer + (trench_height / 2)
     upper_trench = microscope.patterning.create_cleaning_cross_section(
         0, +center_y, trench_width, trench_height, milling_depth)
