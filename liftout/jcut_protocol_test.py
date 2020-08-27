@@ -59,7 +59,7 @@ def realign_fiducial_for_trenches(microscope):
     ion_image = grab_ion_image(settings)
 
     # Take sub-section of image where we expect fiducial marker to be
-    microscope.imaging.match_template(image, template_image)
+    match = microscope.imaging.match_template(image, template_image)
     # Realign with fiducial marker
 
 
@@ -67,6 +67,7 @@ def realign_fiducial_for_jcut(microscope):
     # Change back to jcut ion beam current
     # Take sub-section of image where we expect fiducial marker to be
     # Realign with fiducial marker
+    pass
 
 
 def main():
@@ -83,21 +84,41 @@ def main():
     multichem = microscope.gas.get_multichem()
 
     # Set the correct magnification / field of view for the ion beam
-    ion_beam_field_of_view = 82.9e-6  # in meters
+    ion_beam_field_of_view = 104e-6  # 82.9e-6  # in meters
     microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
 
     # Move to trench position
-    # trench_milling_current = 7.4e-9  # in Amps, for cryo
-    trench_milling_current = 2e-9  # in Amps, at room temperature
+    trench_milling_current = 7.4e-9  # in Amps, for cryo
+    # trench_milling_current = 2e-9  # in Amps, at room temperature
     move_to_trenching_position(stage)
     ask_user("Have you centered the lamella position? yes/no")
-    mill_fiducial_marker(microscope, milling_current=trench_milling_current)
+    synthetic_image, original_location_xy = mill_fiducial_marker(microscope, milling_current=trench_milling_current)
 
-    # jcut_milling_current = 0.74e-9  # in Amps, for cryo
-    jcut_milling_current = 2e-9  # in Amps, at room temperature (same as trench current)
+    jcut_milling_current = 0.74e-9  # in Amps, for cryo
+    # jcut_milling_current = 2e-9  # in Amps, at room temperature (same as trench current)
     microscope.beams.ion_beam.beam_current.value = jcut_milling_current
     move_to_jcut_position(stage)
 
+    ib = new_ion_image(microscope)
+    match = microscope.imaging.match_template(ib, synthetic)
+    expected_location_x = ib.width - original_location_x
+    expected_location_y = ib.height - original_location_y
+    pixelsize = original_image.metadata.binary_result.pixel_size.x
+    x_pixel_difference = expected_location_x - match.center.x
+    shift_in_x = pixelsize * x_pixel_difference  # real space, in meters
+    x_move = StagePosition(x=-shift_in_x)
+    stage.relative_move(x_move)
+
+    sample_surface_angle_to_sem = 6  # in degrees
+    sample_surface_angle = 52 - sample_surface_angle_to_sem
+
+    y_pixel_difference = expected_location_y - match.center.y
+    shift_in_y = (pixelsize * y_pixel_difference *
+                np.cos(np.deg2rad(sample_surface_angle)))
+    shift_in_z = (pixelsize * y_pixel_difference *
+                np.sin(np.deg2rad(sample_surface_angle)))
+    y_move = StagePosition(x=0, y=+shift_in_y, z=-shift_in_z)
+    # stage.relative_move(y_move)
 
     # Move to trench position
     move_to_trenching_position(stage)
