@@ -375,7 +375,7 @@ def mill_jcut_edge(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     jcut_trench_width = 1e-6  # in meters
     jcut_milling_depth = 3e-6  # in meters
     jcut_top_length = 12e-6
-    ion_beam_field_of_view = 59.2e-6  # in meters
+    ion_beam_field_of_view = 82.9e-6  # in meters
     # Setup
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.set_default_application_file(application_file)
@@ -401,7 +401,7 @@ def mill_lamella_trenches(microscope, application_file="Si_Heidi"):
     imaging_current = microscope.beams.ion_beam.beam_current.value  # ~20 pico-Amps for cryo yeast
     # milling_current = 7.6e-9  # in Amps (copper sample, milled with Argon)
     milling_current = 7.4e-9  # in Amps (cryo-yeast sample)
-    ion_beam_field_of_view = 59.2e-6  # in meters
+    ion_beam_field_of_view = 82.9e-6   # in meters
     milling_depth = 3e-6  # in meters
     trench_width = 15e-6  # in meters
     trench_height = 10e-6  # in meters
@@ -457,7 +457,7 @@ def mill_jcut(microscope, pretilt_degrees=27, application_file="Si_Alex"):
     jcut_trench_width = 1e-6  # in meters
     jcut_milling_depth = 3e-6  # in meters
     jcut_top_length = 12e-6
-    ion_beam_field_of_view = 59.2e-6  # in meters
+    ion_beam_field_of_view = 82.9e-6  # in meters
     # Setup
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.set_default_application_file(application_file)
@@ -552,14 +552,15 @@ def main():
     needle.insert()
     park_position = needle.current_position
 
-    # First step is to move -180 microns in z (blind moving)
+    # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
+    x_move = x_corrected_needle(-20e-6)
+    needle.relative_move(x_move)
+    # Then move -180 microns in z (blind moving)
     # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
     stage_tilt = np.rad2deg(stage.current_position.t)
     z_move = z_corrected_needle(-180e-6, stage_tilt)
     needle.relative_move(z_move)
-    # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
-    x_move = x_corrected_needle(-10e-6)
-    needle.relative_move(x_move)
+
 
     # Insert the Multichem
     multichem = microscope.gas.get_multichem()
