@@ -1,6 +1,8 @@
 import os
 import logging
 
+from .calibration import setup
+
 
 def configure_logging(log_filename='logfile.log', log_level=logging.DEBUG):
     """Log to the terminal and to file simultaneously."""
@@ -28,6 +30,7 @@ def main():
     data_directory = "D:\SharedData\MyData\genevieve.buckley@monash.edu\\200316_liftout\data\\"
     output_log_filename = os.path.join(data_directory, 'logfile.log')
     configure_logging(log_filename=output_log_filename)
+    setup(microscope)
     # code here
 
 
