@@ -1,7 +1,9 @@
+from enum import Enum
 import logging
 import os
 
 __all__ = [
+    "BeamType",
     "autocontrast",
     "autofocus",
     "autocontrast_autofocus",
@@ -9,6 +11,37 @@ __all__ = [
     "new_electron_image",
     "new_ion_image",
 ]
+
+
+class BeamType(Enum):
+    ION = 'ION'
+    ELECTRON = 'ELECTRON'
+
+
+def beamtype_from_image(image):
+    """Find the beam type used to acquire an AdornedImage.
+
+    Parameters
+    ----------
+    image : AdornedImage
+
+    Returns
+    -------
+    BeamType
+        Enumeration of beam types. BeamType.ELECTRON & BeamType.ION
+
+    Raises
+    ------
+    RuntimeError
+        If beam type cannot be found in metadata_ini, raise exception.
+    """
+    metadata_string = image.metadata.metadata_ini
+    if "EBeam" in metadata_string:
+        return BeamType.ELECTRON
+    elif "IBeam" in metadata_string:
+        return BeamType.ION
+    else:
+        raise RuntimeError("Beam type not recorded in image metadata!")
 
 
 def autocontrast(microscope):

@@ -137,7 +137,7 @@ def move_needle_closer(needle, *, x_shift=-20e-6, z_shift=-180e-6):
     return needle.current_position
 
 
-def x_corrected_needle_movement(expected_x):
+def x_corrected_needle_movement(expected_x, stage_tilt=None):
     """Needle movement in X, XTGui coordinates (Electron coordinate).
 
     Parameters
