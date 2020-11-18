@@ -1,16 +1,18 @@
+from datetime import datetime
 import os
 import logging
 
 
-def configure_logging(log_filename='logfile.log', log_level=logging.DEBUG):
+def configure_logging(log_filename='logfile', log_level=logging.DEBUG):
     """Log to the terminal and to file simultaneously."""
+    timestamp = datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(message)s",
         level=log_level,
         # Multiple handlers can be added to your logging configuration.
         # By default log messages are appended to the file if it exists already
         handlers=[
-            logging.FileHandler(log_filename),
+            logging.FileHandler(log_filename+timestamp+'.log'),
             logging.StreamHandler(),
         ])
 

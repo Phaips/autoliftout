@@ -5,10 +5,13 @@ import scipy.ndimage as ndi
 import skimage.draw
 import skimage.io
 
-__all__ = ["realign"]
+__all__ = [
+    "realign_beam_shift",
+    "realign_sample_stage",
+]
 
 
-def realign(microscope, new_image, reference_image):
+def realign_beam_shift(microscope, new_image, reference_image):
     """Realign to reference image using beam shift.
 
     Parameters
@@ -18,6 +21,7 @@ def realign(microscope, new_image, reference_image):
         Must have the same dimensions and relative position as the reference.
     reference_image : The reference image to align with.
         Muast have the same dimensions and relative position as the new image
+
     Returns
     -------
     microscope.beams.ion_beam.beam_shift.value
@@ -34,6 +38,74 @@ def realign(microscope, new_image, reference_image):
             "will continue with no beam shift applied."
         )
     return microscope.beams.ion_beam.beam_shift.value
+
+
+def realign_sample_stage(microscope, new_image, reference_image):
+    """Realign to reference image using sample stage motors.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object
+    new_image : The most recent image acquired.
+        Must have the same dimensions and relative position as the reference.
+    reference_image : The reference image to align with.
+        Muast have the same dimensions and relative position as the new image
+
+    Returns
+    -------
+    microscope.specimen.stage.current_position
+        The current sample stage position (after any realignment)
+    """
+    from autoscript_core.common import ApplicationServerException
+    from autoscript_sdb_microscope_client.structures import StagePosition
+
+    shift_in_meters = _calculate_beam_shift(new_image, reference_image)
+    x_shift, y_shift = shift_in_meters
+    y_shift, z_shift = _correct_y_stage_shift(microscope, new_image)
+    try:
+        microscope.specimen.stage.relative_move(StagePosition(x=x_shift,
+                                                              y=y_shift,
+                                                              z=z_shift))
+    except ApplicationServerException:
+        logging.warning(
+            "Cannot move sample stage due to ApplicationServerException, "
+            "will continue with no sample stage shift applied."
+        )
+    return microscope.specimen.stage.current_position
+
+
+def _correct_y_stage_shift(microscope, image, y_shift):
+    """Correct y stage movement, relative to the SEM detector.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object
+    image : AdornedImage
+        The most recent image acquired, that we are aligning with the stage.
+    y_shift : float
+        The uncorrected y-shift, in meters.
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    from .acquire import beamtype_from_image
+    from .stage_movement import PRETILT_DEGREES
+
+    beam_type = beamtype_from_image(image)
+    if beam_type == BeamType.ELECTRON:
+        angle = PRETILT_DEGREES + microscope.specimen.stage.current_position.t
+        y_shift_corrected = np.cos(np.deg2rad(angle)) * y_shift
+        z_shift_corrected = np.sin(np.deg2rad(angle)) * y_shift
+    elif beam_type == BeamType.ION:
+        angle = (52 - PRETILT_DEGREES) + microscope.specimen.stage.current_position.t
+        y_shift_corrected = np.cos(np.deg2rad(angle)) * y_shift
+        z_shift_corrected = np.sin(np.deg2rad(angle)) * y_shift
+    #
+    if y_shift < 0:
+        z_shift_corrected = -z_shift_corrected
+    return y_shift_corrected, z_shift_corrected
 
 
 def _calculate_beam_shift(image_1, image_2):
