@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 
-from .acquire import autofocus
 from .stage_movement import PRETILT_DEGREES
 
 __all__ = [
@@ -119,6 +118,7 @@ def auto_link_stage(microscope, expected_z=4e-3, tolerance=1e-4):
         in meters, by default 1e-4
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
+    from .acquire import autofocus
 
     counter = 0
     while not linked_within_z_tolerance(microscope):

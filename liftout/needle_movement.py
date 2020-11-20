@@ -2,6 +2,7 @@
 import logging
 import time
 
+import numpy as np
 import tqdm
 
 __all__ = [

@@ -156,7 +156,7 @@ def y_corrected_stage_movement(expected_y, stage_tilt,
         tilt_adjustment = 52 - PRETILT_DEGREES
     tilt_radians = np.deg2rad(stage_tilt + tilt_adjustment)
     y_move = +np.cos(tilt_radians) * expected_y
-    z_move = +np.sin(tilt_radians) * expected_y
+    z_move = -np.sin(tilt_radians) * expected_y
     return StagePosition(x=0, y=y_move, z=z_move)
 
 

@@ -5,8 +5,6 @@ import os
 __all__ = [
     "BeamType",
     "autocontrast",
-    "autofocus",
-    "autocontrast_autofocus",
     "create_camera_settings",
     "new_electron_image",
     "new_ion_image",
@@ -68,39 +66,44 @@ def autocontrast(microscope):
     return autocontrast_settings
 
 
-def autofocus(microscope, reduced_area_coords=(0, 0, 1, 1)):
-    """Run autofocus function."""
-    from autoscript_sdb_microscope_client.structures import (
-        Rectangle,
-        RunAutoFocusSettings,
-    )
+# WARNING: the autofocus doesn't work well using AutoScript
+# If seems to just take over the computer/microscope entirely
+# and you can't kill it or shut it down
+# def autofocus(microscope, reduced_area_coords=(0, 0, 1, 1)):
+#     """Run autofocus function."""
+#     from autoscript_sdb_microscope_client.structures import (
+#         Rectangle,
+#         RunAutoFocusSettings,
+#     )
 
-    left, top, width, height = reduced_area_coords
-    reduced_area = Rectangle(left, top, width, height)
-    focus_settings = RunAutoFocusSettings(
-        method="Volumescope",
-        resolution="1536x1024",
-        reduced_area=reduced_area,
-        number_of_frames=5,
-        working_distance_step=1e-6,
-    )
-    logging.info("Automatically focusing...")
-    microscope.auto_functions.run_auto_focus(focus_settings)
-    return focus_settings
+#     left, top, width, height = reduced_area_coords
+#     reduced_area = Rectangle(left, top, width, height)
+#     focus_settings = RunAutoFocusSettings(
+#         method="Volumescope",
+#         resolution="1536x1024",
+#         reduced_area=reduced_area,
+#         number_of_frames=1,
+#         working_distance_step=1e-6,
+#         line_integration=1,
+#         dwell_time=500e-9,
+#     )
+#     logging.info("Automatically focusing...")
+#     microscope.auto_functions.run_auto_focus(focus_settings)
+#     return focus_settings
 
 
 
-def autocontrast_autofocus(
-    microscope,
-    run_autocontrast=False,
-    run_autofocus=False,
-    reduced_area_focus_coords=(0, 0, 1, 1),
-):
-    """Optionally run autocontrast and autofocus functions."""
-    if run_autocontrast:
-        autocontrast(microscope)
-    if run_autofocus:
-        autofocus(microscope, reduced_area_focus_coords)
+# def autocontrast_autofocus(
+#     microscope,
+#     run_autocontrast=False,
+#     run_autofocus=False,
+#     reduced_area_focus_coords=(0, 0, 1, 1),
+# ):
+#     """Optionally run autocontrast and autofocus functions."""
+#     if run_autocontrast:
+#         autocontrast(microscope)
+#     if run_autofocus:
+#         autofocus(microscope, reduced_area_focus_coords)
 
 
 def _reduced_area_rectangle(reduced_area_coords):
