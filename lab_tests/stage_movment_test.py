@@ -16,7 +16,8 @@ from autoscript_sdb_microscope_client.structures import StagePosition
 
 def check_stage_movement_functions(microscope):
     logging.info("Start check_stage_movement_functions")
-    flat_to_ion_beam(microscope)
+    stage = microscope.specimen.stage
+    flat_to_ion_beam(stage)
     eb = new_electron_image(microscope)
     eb.save('EB-stage-movement-test-original-image.tif')
     ib = new_ion_image(microscope)
@@ -26,7 +27,7 @@ def check_stage_movement_functions(microscope):
     stage_tilt = microscope.specimen.stage.current_position.t
 
     # Move +500 pixels in y
-    pixelsize = eb.metadata.binary_image.pixelsize.x
+    pixelsize = eb.metadata.binary_result.pixel_size.x
     move_amount = pixelsize * 500
 
     move = y_corrected_stage_movement(move_amount, stage_tilt)
@@ -44,7 +45,8 @@ def check_stage_movement_functions(microscope):
 
 def check_stage_alignment_functions(microscope):
     logging.info("Start check_stage_alignment_functions")
-    flat_to_ion_beam(microscope)
+    stage = microscope.specimen.stage
+    flat_to_ion_beam(stage)
     reference_image = new_electron_image(microscope)
     new_image.save('EB-stage-alignment-test-original.tif')
     # Move the stage a known amount

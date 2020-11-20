@@ -1,0 +1,84 @@
+
+
+Differences when we get to the landing grid:
+* No inserting the multichem
+* When we move the needle, first move z with ion beam view, then move x & y
+* No safety buffer in z (or y or x) when you stick the landing
+* The curve of the landing posts is annoying, we can get around that by
+milling a flat edge on the landing post when we set up the position.
+
+
+MOVING THE STAGE OUT OF THE WAY SO WE CAN SEE THE NEEDLE WITH NO BACKGROUND
+In [6]: microscope = initialize()
+Client connecting to [10.0.0.1:7520]...
+Client connected to [10.0.0.1:7520]
+
+In [7]: stage_down_position = microscope.specimen.stage.current_position
+
+In [8]: stage_down_position
+Out[8]: StagePosition(x=0.0012380833,y=0.016882333,z=0.0039667293,t=-5.0732825e-
+06,r=5.0615304)
+
+Needle image from 19th November 2020 are copied to:
+Y:\ADM-LAB\Genevieve\Projects\liftout\data\Auto_lamella_cryo_8_with alex\
+
+AUTO-FOCUS SEEMS TO RUN FOREVER
+Here's a traceback message, but we think this happened because Alex or Heidi
+
+In [58]: left, top, width, height = (0, 0, 1, 1)
+
+In [59]: reduced_area = Rectangle(left, top, width, height)
+
+In [60]:     focus_settings = RunAutoFocusSettings(
+    ...:         method="Volumescope",
+    ...:         resolution="1536x1024",
+    ...:         reduced_area=reduced_area,
+    ...:         number_of_frames=1,
+    ...:         working_distance_step=1e-6,
+    ...:         line_integration=1,
+    ...:         dwell_time=500e-9,
+    ...:     )
+
+In [65]: microscope.auto_functions.run_auto_focus(focus_settings)
+---------------------------------------------------------------------------
+ApplicationServerException                Traceback (most recent call last)
+<ipython-input-65-286cebb1814d> in <module>
+----> 1 microscope.auto_functions.run_auto_focus(focus_settings)
+
+c:\users\admin\anaconda3\envs\fibsem\lib\site-packages\autoscript_sdb_microscope
+_client\sdb_microscope\_auto_functions.py in run_auto_focus(self, settings)
+     76             call_request.parameters.data_types = [DataTypeDefinition(Dat
+aType.STRUCTURE_PRIMARY_ID, secondary_id="RunAutoFocusSettings")]
+     77             call_request.parameters.values = [settings]
+---> 78             call_response = self.__application_client._perform_call(call
+_request)
+     79         else:
+     80             raise Exception("Cannot execute method with the given parame
+ters combination. Read the documentation for details of how to call this method.
+")
+
+c:\users\admin\anaconda3\envs\fibsem\lib\site-packages\autoscript_sdb_microscope
+_client\sdb_microscope_client.py in _perform_call(self, call_request)
+    164
+    165         try:
+--> 166             call_response = self.__endpoint.perform_call(call_request)
+    167         except ApiException as api_exception:
+    168             ApplicationClientLoggingHelper.log_call_error(call_request.w
+ide_call_id, api_exception)
+
+c:\users\admin\anaconda3\envs\fibsem\lib\site-packages\autoscript_core\orc\engin
+es.py in perform_call(self, call_request)
+    190
+    191                         Logging.loggers[LogDomain.ORC].log_call_error(ca
+ll_request.wide_call_id, CommunicationSide.CLIENT, api_exception)
+--> 192                         raise api_exception
+    193
+    194                     Logging.loggers[LogDomain.ORC].log_call_notification
+(call_request.wide_call_id, CallOperationCode.LEAVE, CommunicationSide.CLIENT, "
+Call left client ORC")
+
+ApplicationServerException: An unexpected error occurred in the application serv
+er.
+Focus cycling error
+
+In [66]:
