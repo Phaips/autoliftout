@@ -134,6 +134,7 @@ def _calculate_beam_shift(image_1, image_2, radius=None):
     mask_image_2 = _mask_rectangular(image_2.data.shape)
     norm_image_1 = _normalize_image(image_1.data) * mask_image_1
     norm_image_2 = _normalize_image(image_2.data) * mask_image_2
+    # TODO - consider adding a bandpass, pass a donut in
     pixel_shift = _simple_register_translation(norm_image_2, norm_image_1)
     # Autoscript y-axis has an inverted positive direction
     pixel_shift[1] = -pixel_shift[1]
