@@ -1,0 +1,23 @@
+
+
+Differences when we get to the landing grid:
+* No inserting the multichem
+* When we move the needle, first move z with ion beam view, then move x & y
+* No safety buffer in z (or y or x) when you stick the landing
+* The curve of the landing posts is annoying, we can get around that by
+milling a flat edge on the landing post when we set up the position.
+
+
+MOVING THE STAGE OUT OF THE WAY SO WE CAN SEE THE NEEDLE WITH NO BACKGROUND
+In [6]: microscope = initialize()
+Client connecting to [10.0.0.1:7520]...
+Client connected to [10.0.0.1:7520]
+
+In [7]: stage_down_position = microscope.specimen.stage.current_position
+
+In [8]: stage_down_position
+Out[8]: StagePosition(x=0.0012380833,y=0.016882333,z=0.0039667293,t=-5.0732825e-
+06,r=5.0615304)
+
+Needle image from 19th November 2020 are copied to:
+Y:\ADM-LAB\Genevieve\Projects\liftout\data\Auto_lamella_cryo_8_with alex\

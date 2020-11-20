@@ -108,7 +108,7 @@ def _correct_y_stage_shift(microscope, image, y_shift):
     return y_shift_corrected, z_shift_corrected
 
 
-def _calculate_beam_shift(image_1, image_2):
+def _calculate_beam_shift(image_1, image_2, radius=None):
     """Cross correlation to find shift between two images.
 
     Parameters
@@ -130,7 +130,7 @@ def _calculate_beam_shift(image_1, image_2):
     """
     if image_1.data.shape != image_2.data.shape:
         raise ValueError("Images must be the same shape for cross correlation.")
-    mask_image_1 = _mask_circular(image_1.data.shape)
+    mask_image_1 = _mask_circular(image_1.data.shape, radius=radius)
     mask_image_2 = _mask_rectangular(image_2.data.shape)
     norm_image_1 = _normalize_image(image_1.data) * mask_image_1
     norm_image_2 = _normalize_image(image_2.data) * mask_image_2

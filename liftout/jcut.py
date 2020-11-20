@@ -241,7 +241,7 @@ def _jcut_milling_patterns(microscope, *,
         jcut_trench_thickness,             # height
         jcut_milling_depth)                # depth
     # Left hand side of J-cut (long side)
-    extra_bit = 3e-6  # this cut should extend out a little past the lamella
+    extra_bit = 8e-6  # this cut should extend out a little past the lamella
     jcut_lhs = microscope.patterning.create_rectangle(
         -((jcut_length - jcut_trench_thickness) / 2),                # center_x
         ((lamella_depth - (extra_bit / 2)) / 2) * angle_correction,  # center_y
@@ -253,7 +253,7 @@ def _jcut_milling_patterns(microscope, *,
     height = (lamella_depth - jcut_rightside_remaining) * angle_correction
     center_y = jcut_rightside_remaining + (height / 2)
     jcut_rhs = microscope.patterning.create_rectangle(
-        +((jcut_top_length - jcut_trench_width) / 2),  # center_x
+        +((jcut_length - jcut_trench_thickness) / 2),  # center_x
         center_y,                                      # center_y
         jcut_trench_thickness,                         # width
         height,                                        # height

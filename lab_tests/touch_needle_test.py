@@ -546,26 +546,25 @@ def main():
     mill_jcut(stage, jcut_tilt_degrees, pretilt_degrees)
     # Adjust the lamella position (eucentric height isn't perfect, we need to do a correlation)
 
-    # Move stage so the sample is flat to the electron beam
+    # Move stage so the sample is at the liftout angle move_to_liftout_angle()
 
     # Insert needle (park position already calibrated by the user)
     needle.insert()
     park_position = needle.current_position
 
     # And we also move back a bit in x, just so the needle is never overlapping our target on the lamella
-    x_move = x_corrected_needle(-20e-6)
+    x_move = x_corrected_needle_movement(-20e-6)
     needle.relative_move(x_move)
     # Then move -180 microns in z (blind moving)
     # The park position is always the same, we'll wind up with the needletip about 20 microns from the surface.
     stage_tilt = np.rad2deg(stage.current_position.t)
-    z_move = z_corrected_needle(-180e-6, stage_tilt)
+    z_move = z_corrected_needle_movement(-180e-6, stage_tilt)
     needle.relative_move(z_move)
 
 
     # Insert the Multichem
     multichem = microscope.gas.get_multichem()
-    # multichem.insert()  # TODO: check this! - goes only to the elctron beam position :(
-    # TODO: How to set the gas for the multichem (we want "Pt cryo" gas)
+    multichem.insert()  # NOTE: Alex
 
     # Take a picture
     electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
