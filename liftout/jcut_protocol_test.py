@@ -21,9 +21,9 @@ from stage_movement import (
     PRETILT_DEGREES,
     flat_to_electron_beam,
     flat_to_ion_beam,
-    move_to_jcut_position,
-    move_to_trenching_position,
-    move_to_liftout_position)
+    move_to_jcut_angle,
+    move_to_trenching_angle,
+    move_to_liftout_angle)
 
 
 def zero_beam_shift(microscope, *,
@@ -90,14 +90,14 @@ def main():
     # Move to trench position
     trench_milling_current = 7.4e-9  # in Amps, for cryo
     # trench_milling_current = 2e-9  # in Amps, at room temperature
-    move_to_trenching_position(stage)
+    move_to_trenching_angle(stage)
     ask_user("Have you centered the lamella position? yes/no")
     synthetic_image, original_location_xy = mill_fiducial_marker(microscope, milling_current=trench_milling_current)
 
     jcut_milling_current = 0.74e-9  # in Amps, for cryo
     # jcut_milling_current = 2e-9  # in Amps, at room temperature (same as trench current)
     microscope.beams.ion_beam.beam_current.value = jcut_milling_current
-    move_to_jcut_position(stage)
+    move_to_jcut_angle(stage)
 
     ib = new_ion_image(microscope)
     match = microscope.imaging.match_template(ib, synthetic)
@@ -121,17 +121,17 @@ def main():
     # stage.relative_move(y_move)
 
     # Move to trench position
-    move_to_trenching_position(stage)
+    move_to_trenching_angle(stage)
     realign_fiducial_for_trenches(microscope, milling_current=trench_milling_current)
     mill_trenches(microscope, milling_current=trench_milling_current)
 
     # Return to jcut angle
-    move_to_jcut_position(stage)
+    move_to_jcut_angle(stage)
     realign_fiducial_for_jcut(microscope, milling_current=jcut_milling_current)
     mill_jcut(microscope, milling_current=jcut_milling_current)
 
     # Tilt stage flat to electron beam, so we are ready for liftout
-    move_to_liftout_position(stage)
+    move_to_liftout_angle(stage)
     print("Done, ready for liftout!")
 
 

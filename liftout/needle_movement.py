@@ -1,4 +1,4 @@
-""""""
+"""Module controlling needle manipulator movements."""
 import logging
 import time
 
