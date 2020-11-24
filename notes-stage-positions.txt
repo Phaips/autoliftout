@@ -2,12 +2,12 @@ THIS IS THE ABSOLUTE
 # remember to record the current position, so you can move back to the sample/landing grid afterwards
 sample_stage_out = StagePosition(x=-0.00060541666,y=0.014089917,z=0.0039562348,t=-7.80505e-07,r=5.0614624)
 microscope.specimen.stage.absolute_move(sample_stage_out)
-# Take your needle pictures without a background 
+# Take your needle pictures without a background
 
 LANDING POST POSITION
-# Includes a rotation and tilt, see move_to_landing_position
+# Includes a rotation and tilt, see move_to_landing_angle
 # But the x-y coordinates are very useful to have!
-landing_post_position = tagePosition(x=-0.0034580609,y=-0.0032461667,z=0.0039338733,t=0.75047585,r=1.9198357)
+landing_post_position = StagePosition(x=-0.0034580609,y=-0.0032461667,z=0.0039338733,t=0.75047585,r=1.9198357)
 microscope.specimen.stage.absolute_move(landing_post_position)
 # Make sure to zoom out so you can see the whole landing grid
 microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
