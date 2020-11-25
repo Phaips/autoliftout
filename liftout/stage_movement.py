@@ -12,6 +12,7 @@ __all__ = [
     "move_to_landing_angle",
     "move_to_landing_grid",
     "move_to_sample_grid",
+    "move_sample_stage_out",
     "x_corrected_stage_movement",
     "y_corrected_stage_movement",
     "z_corrected_stage_movement",
@@ -162,10 +163,9 @@ def move_to_landing_angle(microscope, *, landing_angle=18, pretilt_angle=PRETILT
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    stage = microscope.specimen.stage
-    flat_to_ion_beam(stage, pretilt_angle=pretilt_angle)
-    stage.relative_move(StagePosition(t=np.deg2rad(landing_angle)))
-    return stage.current_position
+    flat_to_ion_beam(microscope, pretilt_angle=pretilt_angle)
+    microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(landing_angle)))
+    return microscope.specimen.stage.current_position
 
 
 def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
@@ -227,7 +227,7 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
     microscope.beams.electron_beam.horizontal_field_width.value = 0.0025979381443298967
-    return stage.current_position
+    return microscope.specimen.stage.current_position
 
 
 def move_sample_stage_out(microscope):
