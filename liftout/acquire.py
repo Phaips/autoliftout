@@ -10,6 +10,12 @@ __all__ = [
     "new_ion_image",
 ]
 
+# NOTE: You should never try to autofocus with the ion beam,
+# Heidi says we only ever adjust the focus with the electron beam
+# (Then you adjust the eucentric height, which fixes any ion beam focus issues)
+# The default autofocus method works well for the electron beam:
+# microscope.auto_functions.run_auto_focus()
+
 
 class BeamType(Enum):
     ION = 'ION'
@@ -64,46 +70,6 @@ def autocontrast(microscope):
     logging.info("Automatically adjusting contrast...")
     microscope.auto_functions.run_auto_cb()
     return autocontrast_settings
-
-
-# WARNING: the autofocus doesn't work well using AutoScript
-# If seems to just take over the computer/microscope entirely
-# and you can't kill it or shut it down
-# def autofocus(microscope, reduced_area_coords=(0, 0, 1, 1)):
-#     """Run autofocus function."""
-#     from autoscript_sdb_microscope_client.structures import (
-#         Rectangle,
-#         RunAutoFocusSettings,
-#     )
-
-#     left, top, width, height = reduced_area_coords
-#     reduced_area = Rectangle(left, top, width, height)
-#     focus_settings = RunAutoFocusSettings(
-#         method="Volumescope",
-#         resolution="1536x1024",
-#         reduced_area=reduced_area,
-#         number_of_frames=1,
-#         working_distance_step=1e-6,
-#         line_integration=1,
-#         dwell_time=500e-9,
-#     )
-#     logging.info("Automatically focusing...")
-#     microscope.auto_functions.run_auto_focus(focus_settings)
-#     return focus_settings
-
-
-
-# def autocontrast_autofocus(
-#     microscope,
-#     run_autocontrast=False,
-#     run_autofocus=False,
-#     reduced_area_focus_coords=(0, 0, 1, 1),
-# ):
-#     """Optionally run autocontrast and autofocus functions."""
-#     if run_autocontrast:
-#         autocontrast(microscope)
-#     if run_autofocus:
-#         autofocus(microscope, reduced_area_focus_coords)
 
 
 def _reduced_area_rectangle(reduced_area_coords):
