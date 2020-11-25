@@ -1,3 +1,40 @@
+Returning to the landing post position
+--------------------------------------
+Must keep track of the horizontal_field_width for the landing post images (EB & IB)
+
+Must do stage movements in order:
+* first tilt back to zero,
+* then rotate to where you want to go
+* then move x/y/z to where you want to go
+* then tilt to where you want to go
+To align the posts, we want the horizontal_field_width = 0.0002072 meters
+* microscope.beams.electron_beam.horizontal_field_width.value = 0.0002072
+* microscope.beams.ion_beam.horizontal_field_width.value = 0.0002072
+Realign posts at this high magnification, then zoom out the magnification of the ion beam
+* microscope.beams.electron_beam.horizontal_field_width.value = 0.0002072
+* microscope.beams.ion_beam.horizontal_field_width.value = 0.000319  # THIS HAS CHANGED!
+
+
+How much to mill a flat edge on the landing posts
+-------------------------------------------------
+width = 5 microns
+height = 12 microns
+z_milling_depth = 5 microns (this is probably overkill)
+ion_beam_current = 28 nano-Amps
+
+Heidi eucentricity calibration on the sample
+---------------------------------------------
+Stage is already focused/linked for electron beam
+Center SEM image, full grid view
+Zoom in on SEM image - microscope.beams.electron_beam.horizontal_field_width.value = 0.000104
+Make a reduced area in the top left corner of the SEM, focus, relink stage (z=3.95 or 3.98mm)
+Zoom in on SEM image AGAIN - microscope.beams.electron_beam.horizontal_field_width.value = 0.000592
+Double click SEM image to center the feature of interest you will use to do the eucentric height adjustment
+Take another SEM image (with the same magnification) now the feature is centered
+(Heidi tends to zoom in to 259um in SEM just to check the centering has worked well & she doesn't need to adjust it again)
+Zoom in on ion beam image - microscope.beams.ion_beam.horizontal_field_width.value = 0.000259 # 0.0004144
+Take new ion beam image
+User selects the same feature in the ion beam image.
 
 
 Differences when we get to the landing grid:
