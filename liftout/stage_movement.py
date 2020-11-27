@@ -1,7 +1,7 @@
 """Sample stage movement functions."""
 import numpy as np
 
-from .acquire import BeamType, beamtype_from_image
+from .acquire import BeamType, beamtype_from_image, new_electron_image
 
 __all__ = [
     "flat_to_electron_beam",
@@ -43,6 +43,9 @@ def flat_to_electron_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     rotation = np.deg2rad(290)
     tilt = np.deg2rad(pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
+    # If we rotating by a lot, tilt to zero so stage doesn't hit anything
+    if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
+        stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
     return stage.current_position
@@ -70,6 +73,9 @@ def flat_to_ion_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     rotation = np.deg2rad(290 - 180)
     tilt = np.deg2rad(52 - pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
+    # If we rotating by a lot, tilt to zero so stage doesn't hit anything
+    if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
+        stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
     return stage.current_position
@@ -168,7 +174,8 @@ def move_to_landing_angle(microscope, *, landing_angle=18, pretilt_angle=PRETILT
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
+def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES,
+                         flat_to_sem=True):
     """Move stage and zoom out to see the whole landing post grid.
 
     Assumes the landing grid is mounted on the right hand side of the holder.
@@ -179,6 +186,8 @@ def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
         The AutoScript microscope object instance.
     pretilt_angle : float, optional
         The pre-tilt angle of the sample holder, in degrees.
+    flat_to_sem : bool, optional
+        Whether to keep the landing post grid surface flat to the SEM.
 
     Returns
     -------
@@ -187,15 +196,21 @@ def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    landing_grid_position = StagePosition(x=-0.0034580609,
-                                          y=-0.0032461667,
-                                          z=0.0039338733,
-                                          r=1.9198357)
+    if flat_to_sem:
+        flat_to_electron_beam(microscope)
+        landing_grid_position = StagePosition(x=+0.0034580609,
+                                              y=+0.0032461667,
+                                              z=0.0039338733)
+    else:
+        move_to_landing_angle(microscope, pretilt_angle=pretilt_angle)
+        landing_grid_position = StagePosition(x=-0.0034580609,
+                                              y=-0.0032461667,
+                                              z=0.0039338733)
     microscope.specimen.stage.absolute_move(landing_grid_position)
-    move_to_landing_angle(microscope, pretilt_angle=pretilt_angle)
     # Zoom out so you can see the whole landing grid
     microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.0017266666666666667
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.0017266667
+    new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 
 
@@ -218,15 +233,15 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
 
+    flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
     sample_grid_center = StagePosition(x=-0.0025868173,
                                        y=0.0031794167,
-                                       z=0.0039457213,
-                                       r=5.0614964)
+                                       z=0.0039457213)
     microscope.specimen.stage.absolute_move(sample_grid_center)
-    flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
     microscope.beams.electron_beam.horizontal_field_width.value = 0.0025979381443298967
+    new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 
 

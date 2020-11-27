@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from .stage_movement import PRETILT_DEGREES
+from .stage_movement import PRETILT_DEGREES, flat_to_electron_beam
 
 __all__ = [
     'setup',
@@ -114,21 +114,40 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
         Must be within this absolute tolerance of expected stage z height,
         in meters, by default 1e-4
     """
+    # SAMPLE GRID expected_z = 3.9e-3
+    # LANDING GRID expected_z = 4.05e-3
+    # How to auto-link z for the landing posts
+    #    1. Make landing grid flat to SEM
+    #    2. Zoom really far in on a flat part that isn't part of the posts
+    #    3. Auto-link z, using a DIFFERENT expected_z height (4.05 mm)
     from autoscript_sdb_microscope_client.structures import StagePosition
 
+    print("auto_link_stage")
+    print(microscope.specimen.stage.current_position.z)
+    microscope.imaging.set_active_view(1)  # the electron beam view
+    original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.000207
+    print('Automatically focussing and linking stage z-height.')
+    microscope.auto_functions.run_auto_focus()
+    microscope.specimen.stage.link()
+    microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
+    print(microscope.specimen.stage.current_position.z)
+    # iteration if need be
     counter = 0
     while not linked_within_z_tolerance(microscope,
                                         expected_z=expected_z,
                                         tolerance=tolerance):
-        print(counter)
         if counter > 3:
             raise(UserWarning("Could not auto-link z stage height."))
             break
         # Focus and re-link z stage height
+        print('Automatically focussing and linking stage z-height.')
         microscope.auto_functions.run_auto_focus()
         microscope.specimen.stage.link()
         microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
-        print(microscope.specimen.stage.current_position)
+        print(microscope.specimen.stage.current_position.z)
+    # Restore original settings
+    microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
 
 
 def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
@@ -144,9 +163,10 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
     from autoscript_sdb_microscope_client.structures import StagePosition
 
     validate_scanning_rotation(microscope)  # ensure scan rotation is zero
-    flat_to_electron_beam(microscope, pretilt)
+    flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
     microscope.beams.electron_beam.horizontal_field_width.value = 0.000104
     logging.info("Please click a feature to center in the electron beam image")
+    # TODO: hook up center_sem_location function
     center_sem_location(microscope)
     logging.info("Please click the same location in the ion beam image")
     ion_image = new_ion_image(microscope)

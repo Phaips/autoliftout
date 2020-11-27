@@ -564,9 +564,11 @@ def main():
 
     # Insert the Multichem
     multichem = microscope.gas.get_multichem()
-    multichem.insert()  # NOTE: Alex
+    multichem.insert()
+    time.sleep(1)  # Give the multichem a second to become available
 
     # Take a picture
+    microscope.beams.electron_beam.horizontal_field_width.value = 82.9e-6
     electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
     # USER INPUT - Click to mark needle tip and target position in the electron beam image.
     print("Please click the needle tip position")
@@ -582,8 +584,9 @@ def main():
     # Calculate the distance between the needle tip and the target.
     x_distance = x_target_location - x_needletip_location
     y_distance = y_target_location - y_needletip_location
-    x_move = x_corrected_needle(x_distance)
-    y_move = y_corrected_needle(y_distance, stage_tilt)
+    x_move = x_corrected_needle_movement(x_distance)
+    stage_tilt = np.rad2deg(stage.current_position.t)
+    y_move = y_corrected_needle_movement(y_distance, stage_tilt)
 
     needle.relative_move(x_move)
     needle.relative_move(y_move)
@@ -592,6 +595,7 @@ def main():
     # Take an ion beam image
     print("Taking a new ion beam image")
     # Set the magnification to something reasonable!!
+    microscope.beams.ion_beam.horizontal_field_width.value = 173e-6
     ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
     print("Pixelsize of ion beam image:", pixelsize_x)
     print("Please click the needle tip position")
@@ -603,7 +607,7 @@ def main():
     # calculating Z
     z_safety_buffer = 400e-9  # in meters
     z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
-    z_move = z_corrected_needle(z_distance, stage_tilt)
+    z_move = z_corrected_needle_movement(z_distance, stage_tilt)
     print("Z")
     print("Ion beam image, calculated z distance:", z_distance)
 
@@ -630,6 +634,61 @@ def main():
     # Take a really nice, high res electron beam image, so you can see where to move the needle
     # Electron beam image with 500ns dwell time is just ok not great, 2us dwell time is really nice (but very slow ~1 minute to acquire)
 
+    # ===========================================================================
+    # LANDING POSTS
+    # NOTE the increased resolution adn dwell time, it's much harder to see the lamellla than to see the bare needletip
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.00035
+    electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=1e-6, resolution="3072x2048"))
+    needletip_location = select_point(electron_image)
+    target_location = select_point(electron_image)
+
+    x_needletip_location = needletip_location[0]  # coordinates in x-y format
+    y_needletip_location = needletip_location[1]  # coordinates in x-y format
+    x_target_location = target_location[0]  # pixels, coordinates in x-y format
+    y_target_location = target_location[1]  # pixels, coordinates in x-y format
+
+    # Calculate the distance between the needle tip and the target.
+    x_distance = x_target_location - x_needletip_location
+    y_distance = y_target_location - y_needletip_location
+    x_move = x_corrected_needle_movement(x_distance)
+    stage_tilt = np.rad2deg(stage.current_position.t)
+    y_move = y_corrected_needle_movement(y_distance, stage_tilt)
+
+    needle.relative_move(x_move)
+    needle.relative_move(y_move)
+
+    microscope.beams.ion_beam.horizontal_field_width.value = 0.0002072
+    ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=1e-6, resolution="3072x2048"))
+    ion_needletip = select_point(ion_image)
+    ion_target = select_point(ion_image)
+    z_safety_buffer = 400e-9  # in meters
+    z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
+    z_move = z_corrected_needle_movement(z_distance, stage_tilt)
+    needle.relative_move(z_move)
+    # zoom in more
+    microscope.beams.ion_beam.horizontal_field_width.value = 0.0001
+    ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=1e-6, resolution="3072x2048"))
+
+    # final adjustment for the electron beam
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.0002
+    electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=1e-6, resolution="3072x2048"))
+    needletip_location = select_point(electron_image)
+    target_location = select_point(electron_image)
+
+    x_needletip_location = needletip_location[0]  # coordinates in x-y format
+    y_needletip_location = needletip_location[1]  # coordinates in x-y format
+    x_target_location = target_location[0]  # pixels, coordinates in x-y format
+    y_target_location = target_location[1]  # pixels, coordinates in x-y format
+
+    # Calculate the distance between the needle tip and the target.
+    x_distance = x_target_location - x_needletip_location
+    y_distance = y_target_location - y_needletip_location
+    x_move = x_corrected_needle_movement(x_distance)
+    stage_tilt = np.rad2deg(stage.current_position.t)
+    y_move = y_corrected_needle_movement(y_distance, stage_tilt)
+
+    needle.relative_move(x_move)
+    needle.relative_move(y_move)
 
 if __name__ == "__main__":
     message = """

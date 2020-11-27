@@ -1,3 +1,61 @@
+TODO
+- [ ] Heidi will do the rotation alignment
+- [ ] Heidi will look at the landing posts at room temperature and see about the eucentric height
+- [ ] Gen will try and figure out ion-SEM alignment for j-cut
+- [ ] Gen will also work more on the needle identification
+
+Plan for next FIBSEM session
+- [ ] Landing post eucentric height check
+- [ ] Do more liftouts
+
+
+PROBLEM:
+Heidi wants to move the needle in this order:
+* y movement (electron beam image)
+* z movement  (ion beam image)
+* x movement (electron beam image)
+Otherwise it's too risky that we'll hit something (this has happened to us)
+
+
+Cutting the needle off, milling pattern
+* 5 microns width
+* 1 micron height
+* 3 micron milling depth
+* 30 degree rotation
+* milling current = 0.2 nano-Amps
+
+milling pattern to glue the lamella to the landing post
+* 3 microns width
+* 5 microns height
+* 5 nano-meters milling depth
+* milling current = imaging current, 20 pico-Amps
+
+magnification for liftout
+* trench view is 82.29e-6 horizontal_field_width for both electron & ion beams
+
+magnification for landing posts
+* when you insert the needle for LANDING, use 0.000500 horizontal_field_width
+
+Landing post stage tip from Alex
+--------------------------------
+We should mount the landing post grid upside down, so the flatter part is the
+bit that we see. Then it's easier to focus on the flat surface.
+
+Alex says:
+Try autofocus at low magnification flat to SEM
+Zoom in on the post
+Do the autofocus again (on the edge of the post)
+
+Ion-SEM alignment
+Alex says:
+* Brute force alignment search, which method works best
+* edge filters before alignment, does this help
+* Write stuff to accomodate scaling between ion & SEM images
+* Make a function to plot where the alignment thinks it should go
+
+If you have mismatched image pixel sizes, pad the smaller one with the mean value,
+
+
 Returning to the landing post position
 --------------------------------------
 Must keep track of the horizontal_field_width for the landing post images (EB & IB)
@@ -21,6 +79,7 @@ width = 5 microns
 height = 12 microns
 z_milling_depth = 5 microns (this is probably overkill)
 ion_beam_current = 28 nano-Amps
+
 
 Heidi eucentricity calibration on the sample
 ---------------------------------------------

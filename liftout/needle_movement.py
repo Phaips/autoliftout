@@ -9,6 +9,7 @@ __all__ = [
     "sputter_platinum",
     "insert_needle",
     "retract_needle",
+    "move_needle_closer",
     "x_corrected_needle_movement",
     "y_corrected_needle_movement",
     "z_corrected_needle_movement",
@@ -54,8 +55,8 @@ def sputter_platinum(microscope, sputter_time=60, *,
     if microscope.patterning.state == "Running":
         microscope.patterning.stop()
     else:
-        logging.warning("Patterning state is {}".format(self.patterning.state))
-        loggging.warning("Consider adjusting the patterning line depth.")
+        logging.warning("Patterning state is {}".format(microscope.patterning.state))
+        logging.warning("Consider adjusting the patterning line depth.")
     # Cleanup
     microscope.patterning.clear_patterns()
     microscope.beams.electron_beam.unblank()
@@ -125,6 +126,7 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
         Distance to move the needle towards the sample in z, in meters.
         Negative values move the needle TOWARDS the sample surface.
     """
+    # TODO: x should be moved NEGATIVE 40microns for LANDING
     needle = microscope.specimen.manipulator
     stage = microscope.specimen.stage
     # Needle starts from the parking position (after inserting it)
