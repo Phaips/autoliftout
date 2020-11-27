@@ -1,7 +1,7 @@
 """J-cut milling for liftout sample preparation."""
 import numpy as np
 
-from user_input import ask_user
+from .user_input import ask_user
 
 
 __all__ = [
@@ -11,6 +11,8 @@ __all__ = [
     "mill_trenches",
     "mill_jcut",
     "mill_to_sever_jcut",
+    "jcut_milling_patterns",
+    "jcut_severing_pattern",
 ]
 
 
@@ -197,13 +199,13 @@ def mill_trenches(microscope, *, milling_current=7.4e-9):
     confirm_and_run_milling(microscope, milling_current)
 
 
-def _jcut_milling_patterns(microscope, *,
-                           jcut_angle_degrees=6,
-                           pretilt_degrees=27,
-                           lamella_depth=5e-6,
-                           jcut_length=12e-6,
-                           jcut_trench_thickness=1e-6,
-                           jcut_milling_depth=3e-6):
+def jcut_milling_patterns(microscope, *,
+                          jcut_angle_degrees=6,
+                          pretilt_degrees=27,
+                          lamella_depth=5e-6,
+                          jcut_length=12e-6,
+                          jcut_trench_thickness=1e-6,
+                          jcut_milling_depth=3e-6):
     """Create J-cut milling pattern in the center of the ion beam field of view.
 
     Parameters
@@ -275,13 +277,13 @@ def mill_jcut(microscope, *, milling_current=0.74e-9):
     confirm_and_run_milling(microscope, milling_current)
 
 
-def _jcut_severing_pattern(microscope, *,
-                           jcut_angle=6,
-                           pretilt_degrees=27,
-                           lamella_depth=5e-6,
-                           jcut_length=12e-6,
-                           jcut_trench_thickness=1e-6,
-                           jcut_milling_depth=3e-6):
+def jcut_severing_pattern(microscope, *,
+                          jcut_angle=6,  # TODO: should this be the lifotut angle instead of the jcut angle?
+                          pretilt_degrees=27,
+                          lamella_depth=5e-6,
+                          jcut_length=12e-6,
+                          jcut_trench_thickness=1e-6,
+                          jcut_milling_depth=3e-6):
     """Create J-cut milling pattern in the center of the ion beam field of view.
 
     Parameters
