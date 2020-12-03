@@ -349,16 +349,13 @@ def y_corrected_stage_movement(expected_y, stage_tilt,
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
-def z_corrected_stage_movement(expected_z, stage_tilt,
-                               beam_type=BeamType.ELECTRON):
+def z_corrected_stage_movement(expected_z, stage_tilt):
     """Stage movement in Z, corrected for tilt of sample surface plane.
 
     Parameters
     ----------
     expected_z : in meters
     stage_tilt : in radians
-    beam_type : BeamType, optional
-        BeamType.ELECTRON or BeamType.ION
 
     Returns
     -------
