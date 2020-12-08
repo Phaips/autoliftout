@@ -27,13 +27,31 @@ def initialize(ip_address='10.0.0.1'):
     microscope.connect(ip_address)
     return microscope
 
+@click.command()
+@click.argument("config_filename")
+def main_cli(config_filename):
+    """Run the main command line interface.
 
-def main():
-    data_directory = "D:\SharedData\MyData\genevieve.buckley@monash.edu\\200316_liftout\data\\"
+    Parameters
+    ----------
+    config_filename : str
+        Path to protocol file with input parameters given in YAML (.yml) format
+    """
+    settings = autolamella.user_input.load_config(config_filename)
     output_log_filename = os.path.join(data_directory, 'logfile.log')
     configure_logging(log_filename=output_log_filename)
-    setup(microscope)
-    # code here
+    main(settings)
+
+
+def main(settings):
+    microscope = initialize(settings["system"]["ip_address"])
+    protocol_stages = liftout.user_input.protocol_stage_settings(settings)
+
+    # single liftout
+    setup(microscope)  # setup microscope, setup landing position, setup needle image
+    mill_lamella(microscope, protocol_stages) # select position, trench, jcut
+    liftout_lamella() # insert needle, touch needle, sputter, retract, take picture with no background
+    land_lamella()  # move to landing grid, find/align landing post, touch needle, glue, cut off needle
 
 
 if __name__ == '__main__':

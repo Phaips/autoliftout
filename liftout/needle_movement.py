@@ -6,6 +6,8 @@ import numpy as np
 import tqdm
 
 __all__ = [
+    "move_needle_to_liftout_position",
+    "move_needle_to_landing_position",
     "sputter_platinum",
     "insert_needle",
     "retract_needle",
@@ -14,6 +16,44 @@ __all__ = [
     "y_corrected_needle_movement",
     "z_corrected_needle_movement",
 ]
+
+
+def move_needle_to_lifout_position(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
+    """Move the needle into position, ready for liftout.
+
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
+        The Autoscript microscope object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    multichem = microscope.gas.get_multichem()
+    multichem.insert()
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    return park_position
+
+
+def move_needle_to_landing_position(microscope, *, x_shift=-40e-6, z_shift=-180e-6):
+    """Move the needle into position, ready for landing.
+
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
+        The Autoscript microscope object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    return park_position
 
 
 def sputter_platinum(microscope, sputter_time=60, *,
@@ -126,7 +166,6 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
         Distance to move the needle towards the sample in z, in meters.
         Negative values move the needle TOWARDS the sample surface.
     """
-    # TODO: x should be moved NEGATIVE 40microns for LANDING
     needle = microscope.specimen.manipulator
     stage = microscope.specimen.stage
     # Needle starts from the parking position (after inserting it)
@@ -165,7 +204,7 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     Parameters
     ----------
     expected_y : in meters
-    stage_tilt : in degrees
+    stage_tilt : in radians
 
     Returns
     -------
@@ -173,9 +212,8 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
 
-    tilt_radians = np.deg2rad(stage_tilt)
-    y_move = +np.cos(tilt_radians) * expected_y
-    z_move = +np.sin(tilt_radians) * expected_y
+    y_move = +np.cos(stage_tilt) * expected_y
+    z_move = +np.sin(stage_tilt) * expected_y
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
 
 
@@ -185,7 +223,7 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     Parameters
     ----------
     expected_z : in meters
-    stage_tilt : in degrees
+    stage_tilt : in radians
 
     Returns
     -------
@@ -193,7 +231,6 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
 
-    tilt_radians = np.deg2rad(stage_tilt)
-    y_move = -np.sin(tilt_radians) * expected_z
-    z_move = +np.cos(tilt_radians) * expected_z
+    y_move = -np.sin(stage_tilt) * expected_z
+    z_move = +np.cos(stage_tilt) * expected_z
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
