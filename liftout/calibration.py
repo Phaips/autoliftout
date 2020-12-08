@@ -2,7 +2,10 @@ import logging
 
 import numpy as np
 
-from .stage_movement import PRETILT_DEGREES, flat_to_electron_beam
+from .acquire import new_electron_image
+from .stage_movement import (PRETILT_DEGREES,
+                             flat_to_electron_beam,
+                             z_corrected_stage_movement)
 
 __all__ = [
     'setup',
@@ -130,7 +133,10 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     print('Automatically focussing and linking stage z-height.')
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
-    microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
+    z_difference = expected_z - microscope.specimen.stage.current_position.z
+    z_move = z_corrected_stage_movement(
+        z_difference, microscope.specimen.stage.current_position.t)
+    microscope.specimen.stage.relative_move(z_move)
     print(microscope.specimen.stage.current_position.z)
     # iteration if need be
     counter = 0
@@ -144,10 +150,14 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
         print('Automatically focussing and linking stage z-height.')
         microscope.auto_functions.run_auto_focus()
         microscope.specimen.stage.link()
-        microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
+        z_difference = expected_z - microscope.specimen.stage.current_position.z
+        z_move = z_corrected_stage_movement(
+            z_difference, microscope.specimen.stage.current_position.t)
+        microscope.specimen.stage.relative_move(z_move)
         print(microscope.specimen.stage.current_position.z)
     # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
+    new_electron_image(microscope)
 
 
 def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):

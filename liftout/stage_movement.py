@@ -349,18 +349,13 @@ def y_corrected_stage_movement(expected_y, stage_tilt,
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
-# TODO: input stage tilt in RADIANs, not in degrees, then you can input
-# microscope.specimen.stage.current_position.t
-def z_corrected_stage_movement(expected_z, stage_tilt,
-                               beam_type=BeamType.ELECTRON):
+def z_corrected_stage_movement(expected_z, stage_tilt):
     """Stage movement in Z, corrected for tilt of sample surface plane.
 
     Parameters
     ----------
     expected_z : in meters
     stage_tilt : in radians
-    beam_type : BeamType, optional
-        BeamType.ELECTRON or BeamType.ION
 
     Returns
     -------
@@ -369,12 +364,6 @@ def z_corrected_stage_movement(expected_z, stage_tilt,
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    if beam_type == BeamType.ELECTRON:
-        tilt_adjustment = np.deg2rad(PRETILT_DEGREES)
-    elif beam_type == BeamType.ION:
-        tilt_adjustment = np.deg2rad(52 - PRETILT_DEGREES)
-    tilt_radians = stage_tilt + tilt_adjustment
-    # TODO - check the signs are correct in the following two lines
-    y_move = -np.sin(tilt_radians) * expected_z
-    z_move = +np.cos(tilt_radians) * expected_z
+    y_move = -np.sin(stage_tilt) * expected_z
+    z_move = +np.cos(stage_tilt) * expected_z
     return StagePosition(x=0, y=y_move, z=z_move)
