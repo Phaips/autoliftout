@@ -48,12 +48,14 @@ def beamtype_from_image(image):
         raise RuntimeError("Beam type not recorded in image metadata!")
 
 
-def autocontrast(microscope):
+def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     """Atuomatically adjust the microscope image contrast.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
+    beam_type : BeamType, optional
+        BeamType.ELECTRON or BeamType.ION
 
     Returns
     -------
@@ -61,6 +63,11 @@ def autocontrast(microscope):
         Automatic contrast brightness settings.
     """
     from autoscript_sdb_microscope_client.structures import RunAutoCbSettings
+
+    if beam_type == BeamType.ELECTRON:
+        microscope.imaging.set_active_view(1)  # the electron beam view
+    elif beam_type == BeamType.ION:
+        microscope.imaging.set_active_view(2)  # the ion beam view
 
     autocontrast_settings = RunAutoCbSettings(
         method="MaxContrast",
