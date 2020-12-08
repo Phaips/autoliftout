@@ -131,9 +131,6 @@ def _add_missing_keys(dictionary):
     dictionary
         Python dictionray of user input settings.
     """
-    dictionary["lamella"]["overtilt_degrees"] = dictionary["lamella"].get(
-        "overtilt_degrees", 0
-    )
     dictionary["demo_mode"] = dictionary.get("demo_mode", False)
     return dictionary
 

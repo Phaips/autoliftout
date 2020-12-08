@@ -1,8 +1,10 @@
+import click
 from datetime import datetime
 import os
 import logging
 
-from .calibration import setup
+from liftout.calibration import setup
+from liftout.user_input import load_config, protocol_stage_settings
 
 
 def configure_logging(log_filename='logfile', log_level=logging.DEBUG):
@@ -37,7 +39,7 @@ def main_cli(config_filename):
     config_filename : str
         Path to protocol file with input parameters given in YAML (.yml) format
     """
-    settings = autolamella.user_input.load_config(config_filename)
+    settings = load_config(config_filename)
     output_log_filename = os.path.join(data_directory, 'logfile.log')
     configure_logging(log_filename=output_log_filename)
     main(settings)
@@ -45,7 +47,7 @@ def main_cli(config_filename):
 
 def main(settings):
     microscope = initialize(settings["system"]["ip_address"])
-    protocol_stages = liftout.user_input.protocol_stage_settings(settings)
+    protocol_stages = protocol_stage_settings(settings)
 
     # single liftout
     setup(microscope)  # setup microscope, setup landing position, setup needle image

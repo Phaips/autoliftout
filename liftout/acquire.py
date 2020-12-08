@@ -37,12 +37,12 @@ def beamtype_from_image(image):
     Raises
     ------
     RuntimeError
-        If beam type cannot be found in metadata_ini, raise exception.
+        If beam type cannot be found in metadata_as_ini, raise exception.
     """
-    metadata_string = image.metadata.metadata_ini
-    if "EBeam" in metadata_string:
+    metadata_string = image.metadata.metadata_as_ini
+    if "Beam=EBeam" in metadata_string:
         return BeamType.ELECTRON
-    elif "IBeam" in metadata_string:
+    elif "Beam=IBeam" in metadata_string:
         return BeamType.ION
     else:
         raise RuntimeError("Beam type not recorded in image metadata!")

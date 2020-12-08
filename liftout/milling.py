@@ -1,11 +1,18 @@
+import logging
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 from liftout.acquire import (new_electron_image,
                              new_ion_image,
                              autocontrast,
                              BeamType)
 from liftout.calibration import auto_link_stage
+from liftout.stage_movement import (x_corrected_stage_movement,
+                                    y_corrected_stage_movement)
 
 
-def create_lamella(microscope):
+def mill_lamella(microscope):
     stage = microscope.specimen.stage
     # Set the correct magnification / field of view
     field_of_view = 100e-6  # in meters
@@ -16,18 +23,14 @@ def create_lamella(microscope):
     auto_link_stage(microscope)
     # Take an ion beam image at the *milling current*
     ib = new_ion_image(microscope)
-    if ask_user("Have you centered the lamella location? yes/no"):
-        continue
-    else:
-        print("Ok, cancelling trench milling.")
-        return
-    mill_trenches()
-    ib_original = new_ion_image(microscope, settings=)
+    mill_trenches(icroscope, settings)
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
+    ib_original = new_ion_image(microscope, settings=image_settings)
     template = create_reference_image(ib_original)
     # Move to Jcut angle and take electron beam image
-    move_to_jcut_angle(stage)
+    move_to_jcut_angle(microscope)
     autocontrast(microscope)
-    image = new_electron_image(microscope, settings=)
+    image = new_ion_image(microscope, settings=image_settings)
     location = match_locations(microscope, image, template)
     # Visualize
     import autoscript_toolkit.vision as vision_toolkit
@@ -35,10 +38,10 @@ def create_lamella(microscope):
     plot_expected_alignment(location, image, template)
     # Realign
     realign_hog_matcher(microscope, location)
-    eb = new_electron_image(microscope)
+    ib = new_ion_image(microscope)
 
 
-def realign_hog_matcher(microscope):
+def realign_hog_matcher(microscope, location):
     stage = microscope.specimen.stage
     x_move = x_corrected_stage_movement(location.center_in_meters.x)
     y_move = y_corrected_stage_movement(location.center_in_meters.y,
@@ -64,13 +67,13 @@ def match_locations(microscope, image, template):
     from autoscript_toolkit.template_matchers import HogMatcher
 
     hog_matcher = HogMatcher(microscope)
-    original_feature_center = list(np.flip(np.array(template.data.shape)//2))
+    original_feature_center = list(np.flip(np.array(template.data.shape)//2, axis=0))
     location = vision_toolkit.locate_feature(image, template, hog_matcher, original_feature_center=original_feature_center)
     location.print_all_information()  # displays in x-y coordinate order
     return location
 
 
-def plot_overlaid_images(image_1, image_2)
+def plot_overlaid_images(image_1, image_2):
     fig, ax = plt.subplots(nrows=1, ncols=1)
     ax.imshow(image_1, cmap='Blues_r', alpha=1)
     ax.imshow(image_2, cmap='Oranges_r', alpha=0.5)
@@ -81,4 +84,4 @@ def plot_expected_alignment(location, image, template):
     aligned = np.copy(image.data)
     aligned = np.roll(aligned, -int(location.shift_in_pixels.y), axis=0)
     aligned = np.roll(aligned, -int(location.shift_in_pixels.x), axis=1)
-    view_overlaid_images(image.data, aligned)
+    plot_overlaid_images(image.data, aligned)

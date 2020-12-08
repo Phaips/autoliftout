@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-def move_needle_to_lifout_position(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
+def move_needle_to_liftout_position(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
     """Move the needle into position, ready for liftout.
 
     Parameters
