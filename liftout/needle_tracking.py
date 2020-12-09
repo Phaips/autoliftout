@@ -1,6 +1,9 @@
-from .acquire import new_electron_image, new_ion_image
-from .needle_movement import insert_needle, retract_needle
-from .stage_movement import move_sample_stage_out
+from skimage.filters import gaussian, threshold_otsu, median
+from scipy.ndimage.morphology import binary_dilation, disk
+
+from liftout.acquire import new_electron_image, new_ion_image
+from liftout.needle_movement import insert_needle, retract_needle
+from liftout.stage_movement import move_sample_stage_out
 
 
 __all__ = [
@@ -31,7 +34,12 @@ def needle_with_blank_background(microscope, *,
 
 
 def segment_needle(image):
-    raise NotImplementedError
+    """Alex's classical needle segmentation method."""
+    filt = median(image.data, disk(5))
+    thresh = threshold_otsu(filt)
+    binary = filt > thresh
+    mask = gaussian(binary_dilation(binary, iterations=15), 5)
+    return mask
 
 
 def locate_needle(image):
