@@ -5,6 +5,8 @@ import logging
 
 from liftout.calibration import setup
 from liftout.user_input import load_config, protocol_stage_settings
+from liftout.milling import mill_lamella
+from liftout.needle import liftout_lamella, land_lamella
 
 
 def configure_logging(log_filename='logfile', log_level=logging.DEBUG):
@@ -29,6 +31,7 @@ def initialize(ip_address='10.0.0.1'):
     microscope.connect(ip_address)
     return microscope
 
+
 @click.command()
 @click.argument("config_filename")
 def main_cli(config_filename):
@@ -47,11 +50,10 @@ def main_cli(config_filename):
 
 def main(settings):
     microscope = initialize(settings["system"]["ip_address"])
-    protocol_stages = protocol_stage_settings(settings)
-
     # single liftout
-    setup(microscope)  # setup microscope, setup landing position, setup needle image
-    mill_lamella(microscope, protocol_stages) # select position, trench, jcut
+    setup(microscope)  # setup microscope
+    # setup landing position, setup needle image
+    mill_lamella(microscope, settings) # select position, trench, jcut
     liftout_lamella() # insert needle, touch needle, sputter, retract, take picture with no background
     land_lamella()  # move to landing grid, find/align landing post, touch needle, glue, cut off needle
 

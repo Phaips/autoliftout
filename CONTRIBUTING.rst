@@ -13,7 +13,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://github.com/GenevieveBuckley/liftout/issues.
+Report bugs at https://github.com/DeMarcoLab/liftout/issues.
 
 If you are reporting a bug, please include:
 
@@ -99,6 +99,6 @@ Before you submit a pull request, check that it meets these guidelines:
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
 3. The pull request should work for Python 2.7, 3.3, 3.4, 3.5 and for PyPy. Check
-   https://travis-ci.org/GenevieveBuckley/liftout/pull_requests
+   https://travis-ci.org/DeMarcoLab/liftout/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
