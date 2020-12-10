@@ -11,6 +11,7 @@ Log in to the support PC "PFIB1" on the "Admin" account.
 
 Quick start for interactive scripting: open the Anaconda Prompt on PFIB1 and type
 ```
+cd MICROSCOPE\DeMarcoLab\liftout
 conda activate fibsem
 ipython
 ```
@@ -48,6 +49,13 @@ From the start menu, you can search for and open:
 
 Running Jupyter notebook cells in the "Autoscript User Guide" will execute those commands on the microscope.
 Use the offline user guide if you don't want to accidentally move the microscopes stages/etc.
+
+Autoscript uses several conventions:
+* distances are always in units of METERS
+* angles are always in units of RADIANS
+* a positive rotation direction is CLOCKWISE
+
+Remember you can always type one micron in units of meters like this: "1e-6"
 
 ## Running a complated program
 If you have a completed python script you'd like to run, first activate the "fibsem" environment and then
