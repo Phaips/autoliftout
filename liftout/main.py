@@ -1,3 +1,4 @@
+"""Main entry script."""
 import click
 from datetime import datetime
 import os
@@ -5,8 +6,8 @@ import logging
 
 from liftout.calibration import setup
 from liftout.user_input import load_config, protocol_stage_settings
-from liftout.milling import mill_lamella
-from liftout.needle import liftout_lamella, land_lamella
+# from liftout.milling import mill_lamella
+# from liftout.needle import liftout_lamella, land_lamella
 
 
 def configure_logging(log_filename='logfile', log_level=logging.DEBUG):

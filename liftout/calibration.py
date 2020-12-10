@@ -1,3 +1,4 @@
+"""Functions for microscope calibration."""
 import logging
 
 import numpy as np

@@ -1,3 +1,4 @@
+"""Trench milling patterns for liftout sample preparation."""
 import os
 import logging
 import time
@@ -8,6 +9,13 @@ from liftout.user_input import ask_user, protocol_stage_settings
 
 
 def mill_trenches(microscope, settings):
+    """Mill the trenches for the lamella.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    """
     if not ask_user("Have you centered the lamella position? yes/no \n"):
         print("Ok, cancelling trench milling.")
         return
@@ -26,7 +34,15 @@ def mill_trenches(microscope, settings):
 
 
 def mill_single_stage(microscope, settings, stage_settings, stage_number):
-    """Run ion beam milling for a single milling stage in the protocol."""
+    """Run ion beam milling for a single milling stage in the protocol.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    stage_settings : Dictionary of settings for a single protocol milling stage
+    stage_number : int. Current milling protocol stage number.
+    """
     logging.info('Milling trenches, protocol stage ', stage_number)
     demo_mode = settings["demo_mode"]
     upper_milling(
@@ -44,7 +60,18 @@ def mill_single_stage(microscope, settings, stage_settings, stage_number):
 
 
 def setup_milling(microscope, settings, stage_settings):
-    """Setup the ion beam system ready for milling."""
+    """Setup the ion beam system ready for milling.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    stage_settings : Dictionary of settings for a single protocol milling stage
+
+    Returns
+    -------
+    Autoscript microscope object.
+    """
     ccs_file = settings['system']["application_file_cleaning_cross_section"]
     microscope = reset_state(microscope, settings, application_file=ccs_file)
     microscope.beams.ion_beam.beam_current.value = stage_settings["milling_current"]

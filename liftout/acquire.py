@@ -1,3 +1,4 @@
+"""Functions for image acquisition."""
 from enum import Enum
 import logging
 import os

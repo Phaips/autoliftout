@@ -10,8 +10,8 @@ from autoscript_sdb_microscope_client.enumerations import *
 from liftout.acquire import new_ion_image, new_electron_image, create_camera_settings
 from liftout.align import realign_sample_stage
 from lifout.calibration import autocontrast, auto_link_stage
-from liftout.mill_jcut import mill_jcut, mill_to_sever_jcut
-from liftout.mill_trenches import mill_trenches
+from liftout.milling.jcut import mill_jcut, mill_to_sever_jcut
+from liftout.milling.trenches import mill_trenches
 from liftout.stage_movement import (
     move_to_jcut_angle,
     move_to_trenching_angle,
@@ -38,7 +38,7 @@ def match_locations(microscope, image, template):
     return location
 
 
-def plot_overlaid_images(image_1, image_2)
+def plot_overlaid_images(image_1, image_2):
     fig, ax = plt.subplots(nrows=1, ncols=1)
     ax.imshow(image_1, cmap='Blues_r', alpha=1)
     ax.imshow(image_2, cmap='Oranges_r', alpha=0.5)
@@ -79,17 +79,10 @@ def realign_hog_matcher(microscope, location):
     stage.relative_move(y_move)
 
 
-def main():
-    # ASSUMES SAMPLE STAGE IS ALREADY EUCENTRIC
-    microscope = initialize()
-    config_filename = '..\\protocol_liftout.yml'
-    settings = load_config(config_filename)
-    image_settings = setup(microscope, settings)
+def mill_lamella(microscope, settings):
     move_to_trenching_angle(microscope)
-
     mill_trenches(microscope, settings)
-
-
+    # Always put the field of view back to where it should be before aligning
     field_of_view = settings['imaging']['horizontal_field_width']
     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
@@ -112,16 +105,15 @@ def main():
     move_to_liftout_angle(stage)
     print("Done, ready for liftout!")
 
-# close_enough = False
-# while not close_enough:
-#     print('Realigning...')
-#     image = new_ion_image(microscope, settings=image_settings)
-#     location = match_locations(microscope, image, template)
-#     realign_hog_matcher(microscope, location)
-#     ib = new_ion_image(microscope, settings=image_settings)
-#     eb = new_electron_image(microscope, settings=image_settings)
-#     if abs(location.shift_in_meters.x) < 1e-6 and abs(location.shift_in_pixels.y) < 1e-6:
-#         close_enough = True
+
+def main():
+    # ASSUMES SAMPLE STAGE IS ALREADY EUCENTRIC
+    microscope = initialize()
+    config_filename = '..\\protocol_liftout.yml'
+    settings = load_config(config_filename)
+    image_settings = setup(microscope, settings)
+    mill_lamella(microscope, settings)
+
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+"""Alignment functions using image correlation."""
 import logging
 
 import numpy as np

@@ -1,8 +1,10 @@
+"""Functions for needle identification and liftout."""
+from scipy.ndimage.morphology import binary_dilation
 from skimage.filters import gaussian, threshold_otsu, median
-from scipy.ndimage.morphology import binary_dilation, disk
+from skimage.morphology import disk
 
 from liftout.acquire import new_electron_image, new_ion_image
-from liftout.needle_movement import insert_needle, retract_needle
+from liftout.needle.needle_movement import insert_needle, retract_needle
 from liftout.stage_movement import move_sample_stage_out
 
 
@@ -16,6 +18,24 @@ __all__ = [
 def needle_with_blank_background(microscope, *,
                                  acquire_ion_image=True,
                                  acquire_electron_image=True):
+    """Move the sample stage out of the way and take a picture of the needle.
+
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    acquire_ion_image : bool, optional
+        Whether to take an ion beam image of the needle, by default True
+    acquire_electron_image : bool, optional
+        Whether to take an electron beam image of the needle, by default True
+
+    Returns
+    -------
+    tuple
+        (AdornedImage, AdornerdImage)
+        Returns a tuple containing the electron and ion beam images.
+        Returns None instead of an AdornedImage if that image modality skipped
+    """
     original_stage_position = microscope.specimen.stage.current_position
     move_sample_stage_out(microscope)
     park_position = insert_needle(microscope)
