@@ -17,7 +17,7 @@ from liftout.milling.trenches import mill_trenches
 def mill_lamella(microscope, settings):
     stage = microscope.specimen.stage
     # Set the correct magnification / field of view
-    field_of_view = 100e-6  # in meters
+    field_of_view = 100e-6  # in meters  TODO: user input from yaml settings
     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
     # Move to trench position

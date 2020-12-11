@@ -240,7 +240,7 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.0025979381443298967
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.00190
     new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 

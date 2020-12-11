@@ -1,17 +1,12 @@
 from liftout import *
 
-# ASSUMES THE NEEDLE IS ALREADY CALIBRATION
-# AND ALL THE ALIGNMENTS ARE PERFECT
 
-microscope = initialize()
-yaml_filename = "protocol_liftout.yml"
-settings = load_config(yaml_filename)
-
-
-# Take needle picture with blank background
-def needle_reference_images(microscope):
+def needle_reference_images(microscope, move_needle_to="liftout"):
     move_sample_stage_out(microscope)
-    move_needle_to_liftout_position(microscope)
+    if move_needle_to == "liftout":
+        move_needle_to_liftout_position(microscope)
+    elif move_needle_to == "landing":
+        move_needle_to_landing_position(microscope)
     # TODO: image acquisition settings
     needle_reference_eb = new_electron_image(microscope)
     needle_reference_ib = new_ion_image(microscope)
@@ -19,46 +14,69 @@ def needle_reference_images(microscope):
     return needle_reference_eb, needle_reference_ib
 
 
-# Sputter platnium over whole grid
-stage = microscope.specimen.stage
-move_to_sample_grid(microscope)
-auto_link_stage(microscope)
-# TODO: yaml user input for sputtering application file choice
-sputter_platinum(microscope, sputter_time=60)
+def sputter_platinum_over_whole_grid(microscope):
+    # Sputter platnium over whole grid
+    stage = microscope.specimen.stage
+    move_to_sample_grid(microscope)
+    auto_link_stage(microscope, expected_z=5e-3)
+    # TODO: yaml user input for sputtering application file choice
+    sputter_platinum(microscope, sputter_time=60, horizontal_field_width=30e-6, line_pattern_length=7e-6)
 
 
-# Find sample positions
 def find_coordinates(microscope, name="", move_stage_angle=None):
+    """Manually select stage coordinate positions."""
     coordinates = []
     select_another_position = True
     while select_another_position:
-        flat_to_electron_beam(microscope)
-        if ask_user("Please move to the eucentric height.\n
-                    "Is the eucentric height now correct? yes/no:"):
-            if move_stage_angle is not None:
-                move_stage_angle(microscope)
-            if ask_user("Please center the {name} coordinate in the ion beam?.\n"
-                        "Is the {name} feature centered in the ion beam? yes/no:"):
-                coordinates.append(stage.current_position)
-            select_another_position = ask_user("Do you want to select another {name} position?")
+        ensure_eucentricity(microscope)
+        if move_stage_angle == "trench":
+            move_to_trenching_angle(microscope)
+        elif move_stage_angle == "landing":
+            move_to_landing_angle(microscope)
+        microscope.beams.electron_beam.horizontal_field_width.value = 400e-6
+        microscope.beams.ion_beam.horizontal_field_width.value = 400e-6
+        eb = new_electron_image(microscope)
+        ib = new_ion_image(microscope)
+        if ask_user(f"Please center the {name} coordinate in the ion beam.\n"
+                    f"Is the {name} feature centered in the ion beam? yes/no: "):
+            eb = new_electron_image(microscope)
+            coordinates.append(microscope.specimen.stage.current_position)
+            select_another_position = ask_user(f"Do you want to select another {name} position? yes/no: ")
     return coordinates
 
 
-print("Please select the lamella positions and check eucentric height manually.")
-lamella_coordinates = find_coordinates(microscope, name="lamella", move_stage_angle=move_to_trenching_angle)
-landing_coordinates = find_coordinates(microscope, name="landing position", move_stage_angle=move_to_landing_angle)
-zipped_coordinates = zip(lamella_coordinates, landing_coordinates)
+def find_needletip_and_target_locations(image):
+    print("Please click the needle tip position")
+    needletip_location = select_point(image)
+    print("Please click the lamella target position")
+    target_location = select_point(image)
+    return needletip_location, target_location
 
 
-def liftout_lamella(microscope, needle_reference_imgs):
-    needle_reference_eb, needle_reference_ib = needle_reference_imgs
-    # needletip_ref_location_eb = ??? TODO: automated needletip identification
-    # needletip_ref_location_ib = ??? TODO: automated needletip identification
-    park_position = move_needle_to_liftout_position(microscope)
-    # Z NEEDLE MOVEMENT
-    # TODO: user parameters for imaging settings & field of viewe from yaml file
-    microscope.beams.ion_beam.horizontal_field_width.value = 82.9e-6
-    ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
+def manual_needle_movement_in_xy(microscope, move_in_x=True, move_in_y=True):
+    stage = microscope.specimen.stage
+    needle = microscope.specimen.manipulator
+    microscope.beams.electron_beam.horizontal_field_width.value = 82.9e-6  # TODO: user input from yaml file
+    electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: User input imaging settings
+    needletip_location, target_location = find_needletip_and_target_locations(electron_image)
+    # Calculate needle movements
+    x_needletip_location = needletip_location[0]  # coordinates in x-y format
+    y_needletip_location = needletip_location[1]  # coordinates in x-y format
+    x_target_location = target_location[0]  # pixels, coordinates in x-y format
+    y_target_location = target_location[1]  # pixels, coordinates in x-y format
+    if move_in_y is True:
+        y_distance = y_target_location - y_needletip_location
+        y_move = y_corrected_needle_movement(y_distance, stage.current_position.t)
+        needle.relative_move(y_move)
+    if move_in_x is True:  # MUST MOVE X LAST! Avoids hitting the sample
+        x_distance = x_target_location - x_needletip_location
+        x_move = x_corrected_needle_movement(x_distance)
+        needle.relative_move(x_move)
+
+
+def manual_needle_movement_in_z(microscope):
+    microscope.beams.ion_beam.horizontal_field_width.value = 82.9e-6  # TODO: user input from yaml file
+    ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: user input imaging settings
     print("Please click the needle tip position")
     needletip_location = select_point(ion_image)
     print("Please click the lamella target position")
@@ -68,59 +86,79 @@ def liftout_lamella(microscope, needle_reference_imgs):
     z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
     z_move = z_corrected_needle_movement(z_distance, stage.current_position.t)
     needle.relative_move(z_move)
-    # Y NEEDLE MOVMEMNT, AND FINALLY THE X NEEDLE MOVEMENT
-    # TODO: user parameters for imaging settings & field of viewe from yaml file
-    microscope.beams.electron_beam.horizontal_field_width.value = 82.9e-6
-    electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))
-    # USER INPUT - Click to mark needle tip and target position in the electron beam image.
-    print("Please click the needle tip position")
-    needletip_location = select_point(electron_image)
-    print("Please click the lamella target position")
-    target_location = select_point(electron_image)
-    # Calculate needle movements
-    x_needletip_location = needletip_location[0]  # coordinates in x-y format
-    y_needletip_location = needletip_location[1]  # coordinates in x-y format
-    x_target_location = target_location[0]  # pixels, coordinates in x-y format
-    y_target_location = target_location[1]  # pixels, coordinates in x-y format
-    # Calculate the distance between the needle tip and the target.
-    x_distance = x_target_location - x_needletip_location
-    y_distance = y_target_location - y_needletip_location
-    x_move = x_corrected_needle_movement(x_distance)
-    y_move = y_corrected_needle_movement(y_distance, stage.current_position.t)
-    needle.relative_move(y_move)
-    needle.relative_move(x_move)  # x needle movmement must be last!
+
+
+def liftout_lamella(microscope, needle_reference_imgs):
+    needle_reference_eb, needle_reference_ib = needle_reference_imgs
+    # needletip_ref_location_eb = ??? TODO: automated needletip identification
+    # needletip_ref_location_ib = ??? TODO: automated needletip identification
+    park_position = move_needle_to_liftout_position(microscope)
+    manual_needle_movement_in_xy(microscope, move_in_x=False)
+    manual_needle_movement_in_z(microscope)
+    manual_needle_movement_in_xy(microscope)
     sputter_platinum(microscope, sputter_time=60)  # TODO: yaml user input for sputtering application file choice
-    # Sever jcut edge
     mill_to_sever_jcut(microscope)  # TODO: yaml user input for jcut milling current
     retract_needle(microscope, park_position)
-    # Take a picture of the needle + lamella with no background
-    move_needle_to_landing_position(microscope)
-    electron_image = new_electron_image(microscope)  # TODO: include imaging settings
-    ion_image = new_ion_image(microscope)  # TODO: include imaging settings
-    retract_needle(microscope, park_position)
-    return electron_image, ion_image
+    needle_reference_images_with_lamella = needle_reference_images(
+        microscope, move_needle_to="landing")
+    return needle_reference_images_with_lamella
 
 
 def land_lamella(microscope, landing_coord):
     move_to_landing_grid(microscope)
     microscope.specimen.stage.absolute_move(landing_coord)
+    import pdb; pdb.set_trace()
     # realign landing post
     # move needle + lamella in
+    park_position = move_needle_to_landing_position(microscope)
+    manual_needle_movement_in_xy(microscope, move_in_x=False)
+    manual_needle_movement_in_z(microscope)
+    manual_needle_movement_in_xy(microscope)
     # weld lamella to post
     # cut off needle + retract it
 
 
-def single_liftout(microscope, lamella_coord, landing_coord):
+def single_liftout(microscope, settings, lamella_coord, landing_coord):
     needle_reference_imgs = needle_reference_images(microscope)
     move_to_sample_grid(microscope)
     move_to_trenching_angle(microscope)
     microscope.specimen.stage.absolute_position(lamella_coord)
-    mill_lamella(microscope)
+    mill_lamella(microscope, settings)
     liftout_lamella(microscope, needle_reference_imgs)
     land_lamella(microscope)
 
 
-# Start liftout for each lamella
-for lamella_coord, landing_coord in zipped_coordinates:
-    single_liftout(microscope, lamella_coord, landing_coord)
-print("Finished.")
+@click.command()
+@click.argument("config_filename")
+def main_cli(config_filename):
+    """Run the main command line interface.
+
+    Parameters
+    ----------
+    config_filename : str
+        Path to protocol file with input parameters given in YAML (.yml) format
+    """
+    settings = load_config(config_filename)
+    output_log_filename = os.path.join(data_directory, 'logfile.log')
+    configure_logging(log_filename=output_log_filename)
+    main(settings)
+
+
+def main(settings):
+    # ASSUMES THE NEEDLE IS ALREADY CALIBRATION
+    # AND ALL THE ALIGNMENTS ARE PERFECT
+    microscope = initialize()
+    # needle_reference_images = needle_reference_images(microscope)
+    sputter_platinum_over_whole_grid(microscope)
+    print("Please select the lamella positions and check eucentric height manually.")
+    lamella_coordinates = find_coordinates(microscope, name="lamella", move_stage_angle="trench")
+    landing_coordinates = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
+    zipped_coordinates = zip(lamella_coordinates, landing_coordinates)
+    # Start liftout for each lamella
+    for lamella_coord, landing_coord in zipped_coordinates:
+        single_liftout(microscope, settings, lamella_coord, landing_coord)
+    print("Finished.")
+
+
+if __name__=="__main__":
+    main_cli()

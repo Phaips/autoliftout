@@ -1,5 +1,5 @@
 """Functions to stick the lamella onto the landing stage post."""
-import setup_ion_milling
+from liftout.milling.util import setup_ion_milling
 
 __all__ = [
     "weld_to_landing_post",
