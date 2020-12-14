@@ -1,3 +1,4 @@
+"""Functions for image acquisition."""
 from enum import Enum
 import logging
 import os
@@ -37,23 +38,25 @@ def beamtype_from_image(image):
     Raises
     ------
     RuntimeError
-        If beam type cannot be found in metadata_ini, raise exception.
+        If beam type cannot be found in metadata_as_ini, raise exception.
     """
-    metadata_string = image.metadata.metadata_ini
-    if "EBeam" in metadata_string:
+    metadata_string = image.metadata.metadata_as_ini
+    if "Beam=EBeam" in metadata_string:
         return BeamType.ELECTRON
-    elif "IBeam" in metadata_string:
+    elif "Beam=IBeam" in metadata_string:
         return BeamType.ION
     else:
         raise RuntimeError("Beam type not recorded in image metadata!")
 
 
-def autocontrast(microscope):
+def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     """Atuomatically adjust the microscope image contrast.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
+    beam_type : BeamType, optional
+        BeamType.ELECTRON or BeamType.ION
 
     Returns
     -------
@@ -61,6 +64,11 @@ def autocontrast(microscope):
         Automatic contrast brightness settings.
     """
     from autoscript_sdb_microscope_client.structures import RunAutoCbSettings
+
+    if beam_type == BeamType.ELECTRON:
+        microscope.imaging.set_active_view(1)  # the electron beam view
+    elif beam_type == BeamType.ION:
+        microscope.imaging.set_active_view(2)  # the ion beam view
 
     autocontrast_settings = RunAutoCbSettings(
         method="MaxContrast",

@@ -1,9 +1,12 @@
+"""Alignment functions using image correlation."""
 import logging
 
 import numpy as np
 import scipy.ndimage as ndi
 import skimage.draw
 import skimage.io
+
+from liftout.stage_movement import BeamType
 
 __all__ = [
     "realign_beam_shift",
@@ -61,7 +64,7 @@ def realign_sample_stage(microscope, new_image, reference_image):
 
     shift_in_meters = _calculate_beam_shift(new_image, reference_image)
     x_shift, y_shift = shift_in_meters
-    y_shift, z_shift = _correct_y_stage_shift(microscope, new_image)
+    y_shift, z_shift = _correct_y_stage_shift(microscope, new_image, y_shift)
     try:
         microscope.specimen.stage.relative_move(StagePosition(x=x_shift,
                                                               y=y_shift,

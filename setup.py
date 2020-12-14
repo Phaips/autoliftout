@@ -44,11 +44,7 @@ setup(
     url='https://github.com/GenevieveBuckley/liftout',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),
-    entry_points={
-        'console_scripts': [
-            # 'command = some.module:some_function',
-        ],
-    },
+    entry_points={"console_scripts": ["liftout = liftout.main:main_cli"]},
     include_package_data=True,
     package_data={
         'liftout': [

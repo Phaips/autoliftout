@@ -240,7 +240,7 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.0025979381443298967
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.00190
     new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 
@@ -349,18 +349,13 @@ def y_corrected_stage_movement(expected_y, stage_tilt,
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
-# TODO: input stage tilt in RADIANs, not in degrees, then you can input
-# microscope.specimen.stage.current_position.t
-def z_corrected_stage_movement(expected_z, stage_tilt,
-                               beam_type=BeamType.ELECTRON):
+def z_corrected_stage_movement(expected_z, stage_tilt):
     """Stage movement in Z, corrected for tilt of sample surface plane.
 
     Parameters
     ----------
     expected_z : in meters
     stage_tilt : in radians
-    beam_type : BeamType, optional
-        BeamType.ELECTRON or BeamType.ION
 
     Returns
     -------
@@ -369,12 +364,6 @@ def z_corrected_stage_movement(expected_z, stage_tilt,
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    if beam_type == BeamType.ELECTRON:
-        tilt_adjustment = np.deg2rad(PRETILT_DEGREES)
-    elif beam_type == BeamType.ION:
-        tilt_adjustment = np.deg2rad(52 - PRETILT_DEGREES)
-    tilt_radians = stage_tilt + tilt_adjustment
-    # TODO - check the signs are correct in the following two lines
-    y_move = -np.sin(tilt_radians) * expected_z
-    z_move = +np.cos(tilt_radians) * expected_z
+    y_move = -np.sin(stage_tilt) * expected_z
+    z_move = +np.cos(stage_tilt) * expected_z
     return StagePosition(x=0, y=y_move, z=z_move)

@@ -6,6 +6,8 @@ import numpy as np
 import tqdm
 
 __all__ = [
+    "move_needle_to_liftout_position",
+    "move_needle_to_landing_position",
     "sputter_platinum",
     "insert_needle",
     "retract_needle",
@@ -16,9 +18,49 @@ __all__ = [
 ]
 
 
+def move_needle_to_liftout_position(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
+    """Move the needle into position, ready for liftout.
+
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
+        The Autoscript microscope object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    multichem = microscope.gas.get_multichem()
+    multichem.insert()
+    return park_position
+
+
+def move_needle_to_landing_position(microscope, *, x_shift=-40e-6, z_shift=-180e-6):
+    """Move the needle into position, ready for landing.
+
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
+        The Autoscript microscope object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    return park_position
+
+
 def sputter_platinum(microscope, sputter_time=60, *,
                      sputter_application_file="cryo_Pt_dep",
-                     default_application_file="autolamella"):
+                     default_application_file="autolamella",
+                     horizontal_field_width=100e-6,
+                     line_pattern_length=15e-6):
     """Sputter platinum over the sample.
 
     Parameters
@@ -38,8 +80,15 @@ def sputter_platinum(microscope, sputter_time=60, *,
     microscope.patterning.clear_patterns()
     microscope.patterning.set_default_application_file(sputter_application_file)
     microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
+    multichem = microscope.gas.get_multichem()
+    multichem.insert()
     # Create sputtering pattern
-    pattern = microscope.patterning.create_line(-15e-6, +15e-6, +15e-6, +15e-6, 2e-6)  # 1um, at zero in the FOV
+    microscope.beams.electron_beam.horizontal_field_width.value = horizontal_field_width
+    pattern = microscope.patterning.create_line(-line_pattern_length/2,  # x_start
+                                                +line_pattern_length,    # y_start
+                                                +line_pattern_length/2,  # x_end
+                                                +line_pattern_length,    # y_end
+                                                2e-6)                    # milling depth
     pattern.time = sputter_time + 0.1
     # Run sputtering with progress bar
     microscope.beams.electron_beam.blank()
@@ -63,6 +112,7 @@ def sputter_platinum(microscope, sputter_time=60, *,
     microscope.patterning.set_default_application_file(default_application_file)
     microscope.imaging.set_active_view(original_active_view)
     microscope.patterning.set_default_beam_type(2)  # set ion beam
+    multichem.retract()
     logging.info("Sputtering finished.")
 
 
@@ -126,7 +176,6 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
         Distance to move the needle towards the sample in z, in meters.
         Negative values move the needle TOWARDS the sample surface.
     """
-    # TODO: x should be moved NEGATIVE 40microns for LANDING
     needle = microscope.specimen.manipulator
     stage = microscope.specimen.stage
     # Needle starts from the parking position (after inserting it)
@@ -165,7 +214,7 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     Parameters
     ----------
     expected_y : in meters
-    stage_tilt : in degrees
+    stage_tilt : in radians
 
     Returns
     -------
@@ -173,9 +222,8 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
 
-    tilt_radians = np.deg2rad(stage_tilt)
-    y_move = +np.cos(tilt_radians) * expected_y
-    z_move = +np.sin(tilt_radians) * expected_y
+    y_move = +np.cos(stage_tilt) * expected_y
+    z_move = +np.sin(stage_tilt) * expected_y
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
 
 
@@ -185,7 +233,7 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     Parameters
     ----------
     expected_z : in meters
-    stage_tilt : in degrees
+    stage_tilt : in radians
 
     Returns
     -------
@@ -193,7 +241,6 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
 
-    tilt_radians = np.deg2rad(stage_tilt)
-    y_move = -np.sin(tilt_radians) * expected_z
-    z_move = +np.cos(tilt_radians) * expected_z
+    y_move = -np.sin(stage_tilt) * expected_z
+    z_move = +np.cos(stage_tilt) * expected_z
     return ManipulatorPosition(x=0, y=y_move, z=z_move)

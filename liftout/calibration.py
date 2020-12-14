@@ -1,8 +1,14 @@
+"""Functions for microscope calibration."""
 import logging
 
 import numpy as np
 
-from .stage_movement import PRETILT_DEGREES, flat_to_electron_beam
+from liftout.acquire import new_electron_image, new_ion_image
+from liftout.display import select_point
+from liftout.stage_movement import (PRETILT_DEGREES,
+                             flat_to_electron_beam,
+                             z_corrected_stage_movement)
+from liftout.user_input import ask_user
 
 __all__ = [
     'setup',
@@ -130,7 +136,10 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     print('Automatically focussing and linking stage z-height.')
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
-    microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
+    z_difference = expected_z - microscope.specimen.stage.current_position.z
+    z_move = z_corrected_stage_movement(
+        z_difference, microscope.specimen.stage.current_position.t)
+    microscope.specimen.stage.relative_move(z_move)
     print(microscope.specimen.stage.current_position.z)
     # iteration if need be
     counter = 0
@@ -144,10 +153,14 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
         print('Automatically focussing and linking stage z-height.')
         microscope.auto_functions.run_auto_focus()
         microscope.specimen.stage.link()
-        microscope.specimen.stage.absolute_move(StagePosition(z=expected_z))
+        z_difference = expected_z - microscope.specimen.stage.current_position.z
+        z_move = z_corrected_stage_movement(
+            z_difference, microscope.specimen.stage.current_position.t)
+        microscope.specimen.stage.relative_move(z_move)
         print(microscope.specimen.stage.current_position.z)
     # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
+    new_electron_image(microscope)
 
 
 def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
@@ -160,23 +173,36 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
     pretilt_angle : float
         Extra tilt added by the cryo-grid sample holder, in degrees.
     """
-    from autoscript_sdb_microscope_client.structures import StagePosition
-
     validate_scanning_rotation(microscope)  # ensure scan rotation is zero
     flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.000104
-    logging.info("Please click a feature to center in the electron beam image")
-    # TODO: hook up center_sem_location function
-    center_sem_location(microscope)
-    logging.info("Please click the same location in the ion beam image")
-    ion_image = new_ion_image(microscope)
-    click_location = select_point(ion_image)
-    _x, fib_delta_y = click_location
-    tilt = microscope.specimen.stage.current_position.t
-    delta_z = calculate_delta_z(fib_delta_y, tilt)
-    microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
-    # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
-    center_sem_location(microscope)
+    print("Rough eucentric alignment")
+    microscope.beams.electron_beam.horizontal_field_width.value = 900e-6
+    microscope.beams.ion_beam.horizontal_field_width.value = 900e-6
+    _eucentric_height_adjustment(microscope)
+    print("Final eucentric alignment")
+    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
+    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
+    _eucentric_height_adjustment(microscope)
     final_electron_image = new_electron_image(microscope)
     final_ion_image = new_ion_image(microscope)
     return final_electron_image, final_ion_image
+
+
+def _eucentric_height_adjustment(microscope):
+    from autoscript_sdb_microscope_client.structures import StagePosition
+
+    new_electron_image(microscope)
+    ask_user("Please double click to center a feature in the SEM?\n"
+             "Is the feature centered now? yes/no: ")
+    print("Please click the same location in the ion beam image")
+    ion_image = new_ion_image(microscope)
+    click_location = select_point(ion_image)
+    _x, fib_delta_y = click_location
+    stage = microscope.specimen.stage
+    tilt_radians = microscope.specimen.stage.current_position.t
+    delta_z = -np.cos(tilt_radians) * fib_delta_y
+    microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
+    # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
+    electron_image = new_electron_image(microscope)
+    ask_user("Please double click to center a feature in the SEM?\n"
+             "Is the feature centered now? yes/no: ")

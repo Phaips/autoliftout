@@ -1,0 +1,36 @@
+demo_mode: False
+system:
+  ip_address: 10.0.0.1
+  application_file_rectangle: "autolamella"
+  application_file_cleaning_cross_section: "autolamella"
+imaging:
+  horizontal_field_width: 100e-6 # ion beam horizontal field of view (meters)
+  dwell_time: 1e-6
+  resolution: "1536x1024"
+lamella:
+  lamella_width: 10e-6 # in meters
+  lamella_height: 3e-6 # in meters
+  total_cut_height: 6e-6 # in meters
+  milling_depth: 1e-6 # default milling depth, unless otherwise specified
+  milling_current: 0.74e-9 # default milling current, unless otherwise specified
+  protocol_stages: # stages will be milled in the order they appear here
+    # rough_cut
+    - percentage_roi_height: 0.3 # fractional percentage of total_cut height
+      percentage_from_lamella_surface: 0.7 # fractional percentage
+      milling_current: 0.74e-9 # in meters
+    # regular_cut
+    - percentage_roi_height: 0.8 # fractional percentage of total_cut height
+      percentage_from_lamella_surface: 0.0 # fractional percentage
+      milling_current: 0.74e-9 # in Amps
+      milling_depth: 0.6e-6 # in meters
+jcut:
+  jcut_milling_current: 0.74e-9 # in Amps
+  jcut_angle: 6  # in degrees
+  jcut_length: 7e-6 # in meters
+  jcut_lamella_depth: 5e-6 # in meters
+  jcut_trench_thickness: 1e-6 # in meters
+  jcut_milling_depth: 3e-6 # in meters
+  extra_bit: 8e-6  # J-cut should extend out a little past the lamella
+  mill_lhs_jcut_pattern: true # true or false
+  mill_rhs_jcut_pattern: false # true or false
+  mill_top_jcut_pattern: false # true or false
