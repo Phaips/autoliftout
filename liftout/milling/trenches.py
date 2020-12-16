@@ -8,14 +8,14 @@ import numpy as np
 from liftout.user_input import ask_user, protocol_stage_settings
 
 
-def mill_trenches(microscope, settings, condifrm=True):
+def mill_trenches(microscope, settings, confirm=True):
     """Mill the trenches for the lamella.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
     settings :  Dictionary of user input argument settings.
-    confrim : bool, optional
+    confirm : bool, optional
         Whether to ask the user to confirm before milling.
     """
     if confirm is True:

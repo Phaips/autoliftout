@@ -13,7 +13,7 @@ from liftout.align.hog_template_matching import (create_reference_image,
                                                  realign_hog_matcher)
 from liftout.milling.trenches import mill_trenches
 from liftout.milling.jcut import mill_jcut
-from liftout.stage_movement import move_to_trenching_angle
+from liftout.stage_movement import move_to_trenching_angle, move_to_jcut_angle
 
 
 def mill_lamella(microscope, settings):
@@ -28,7 +28,7 @@ def mill_lamella(microscope, settings):
     move_to_trenching_angle(microscope)
     # Take an ion beam image at the *milling current*
     ib = new_ion_image(microscope)
-    mill_trenches(microscope, settings, condifrm=True)
+    mill_trenches(microscope, settings, confirm=True)
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
     ib_original = new_ion_image(microscope, settings=image_settings)
     template = create_reference_image(ib_original)
