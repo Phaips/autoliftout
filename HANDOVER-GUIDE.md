@@ -26,6 +26,8 @@ microscope = initialize()
 
 The autoreload magic allows you to edit in Visual Studio Code and have it stay synchronized with ipython.
 
+In Visual Studio Code, if you want to see what's in a function you can right click on the name and select "Go to Definition".
+
 ## Software tools we use
 * git: we use [git for version control](https://www.atlassian.com/git)
 * python: the [Anaconda python distribution](https://www.anaconda.com/products/individual) is preferred

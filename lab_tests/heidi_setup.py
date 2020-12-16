@@ -14,15 +14,6 @@ def needle_reference_images(microscope, move_needle_to="liftout"):
     return needle_reference_eb, needle_reference_ib
 
 
-def sputter_platinum_over_whole_grid(microscope):
-    # Sputter platnium over whole grid
-    stage = microscope.specimen.stage
-    move_to_sample_grid(microscope)
-    auto_link_stage(microscope, expected_z=5e-3)
-    # TODO: yaml user input for sputtering application file choice
-    sputter_platinum(microscope, sputter_time=60, horizontal_field_width=30e-6, line_pattern_length=7e-6)
-
-
 def find_coordinates(microscope, name="", move_stage_angle=None):
     """Manually select stage coordinate positions."""
     coordinates = []

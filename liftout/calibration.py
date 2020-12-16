@@ -137,6 +137,8 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     z_difference = expected_z - microscope.specimen.stage.current_position.z
+    if abs(z_difference) > 3e-3:
+        raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
     z_move = z_corrected_stage_movement(
         z_difference, microscope.specimen.stage.current_position.t)
     microscope.specimen.stage.relative_move(z_move)
