@@ -16,6 +16,11 @@ def needle_reference_images(microscope, move_needle_to="liftout"):
 
 def find_coordinates(microscope, name="", move_stage_angle=None):
     """Manually select stage coordinate positions."""
+    if move_stage_angle == "trench":
+        move_to_samploe_grid(microscope)
+    elif move_stage_angle == "landing":
+        move_to_landing_grid(microscope)
+
     coordinates = []
     select_another_position = True
     while select_another_position:
