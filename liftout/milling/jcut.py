@@ -95,9 +95,11 @@ def mill_jcut(microscope, jcut_settings):
         The AutoScript microscope object instance.
     jcut_settings : dict
         Dictionary of J-cut parameter settings.
+    confrim : bool, optional
+        Whether to ask the user to confirm before milling.
     """
     jcut_milling_patterns(microscope, jcut_settings)
-    confirm_and_run_milling(microscope, jcut_settings['jcut_milling_current'])
+    confirm_and_run_milling(microscope, jcut_settings['jcut_milling_current'], confirm=False)
 
 
 def jcut_severing_pattern(microscope,

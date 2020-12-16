@@ -182,8 +182,8 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
     microscope.beams.ion_beam.horizontal_field_width.value = 900e-6
     _eucentric_height_adjustment(microscope)
     print("Final eucentric alignment")
-    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
-    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 200e-6
+    microscope.beams.ion_beam.horizontal_field_width.value = 200e-6
     _eucentric_height_adjustment(microscope)
     final_electron_image = new_electron_image(microscope)
     final_ion_image = new_ion_image(microscope)

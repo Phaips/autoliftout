@@ -31,9 +31,18 @@ def setup_ion_milling(microscope, *,
     microscope.patterning.clear_patterns()  # clear any existing patterns
     microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
 
+def _run_milling(microscope, milling_current, *, imaging_current=20e-12):
+        print("Ok, running ion beam milling now...")
+        microscope.beams.ion_beam.beam_current.value = milling_current
+        microscope.patterning.run()
+        print("Returning to the ion beam imaging current now.")
+        microscope.patterning.clear_patterns()
+        microscope.beams.ion_beam.beam_current.value = imaging_current
+        print("Ion beam milling complete.")
+
 
 def confirm_and_run_milling(microscope, milling_current, *,
-                            imaging_current=20e-12):
+                            imaging_current=20e-12, confirm=True):
     """Run all the ion beam milling pattterns, after user confirmation.
 
     Parameters
@@ -46,11 +55,8 @@ def confirm_and_run_milling(microscope, milling_current, *,
         The ion beam imaging current to return to, by default 20 pico-Amps.
     """
     # TODO: maybe display to the user how long milling will take
-    if ask_user("Do you want to run the ion beam milling?"):
-        print("Ok, running ion beam milling now...")
-        microscope.beams.ion_beam.beam_current.value = milling_current
-        microscope.patterning.run()
-        print("Returning to the ion beam imaging current now.")
-        microscope.patterning.clear_patterns()
-        microscope.beams.ion_beam.beam_current.value = imaging_current
-        print("Ion beam milling complete.")
+    if confirm is True:
+        if ask_user("Do you want to run the ion beam milling?"):
+            _run_milling(microscope, milling_current, imaging_current=imaging_current)
+    else:
+        _run_milling(microscope, milling_current, imaging_current=imaging_current)
