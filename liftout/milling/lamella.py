@@ -66,4 +66,6 @@ def mill_lamella(microscope, settings):
     mill_jcut(microscope, settings['jcut'], confirm=False)
     final_ib = new_ion_image(microscope, settings=image_settings)
     final_eb = new_electron_image(microscope, settings=image_settings)
-    return (final_eb, final_ib, eb, ib)
+    # Ready for liftout
+    move_to_liftout_angle(stage)
+    print("Done, ready for liftout!")

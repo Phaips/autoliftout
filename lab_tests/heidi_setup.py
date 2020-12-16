@@ -37,6 +37,7 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
                     f"Is the {name} feature centered in the ion beam? yes/no: "):
             eb = new_electron_image(microscope)
             coordinates.append(microscope.specimen.stage.current_position)
+            print(microscope.specimen.stage.current_position)
             select_another_position = ask_user(f"Do you want to select another {name} position? yes/no: ")
     return coordinates
 
