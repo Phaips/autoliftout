@@ -32,10 +32,26 @@ def mill_lamella(microscope, settings):
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
     ib_original = new_ion_image(microscope, settings=image_settings)
     template = create_reference_image(ib_original)
+    # Low res template image
+    scaling_factor = 4
+    lowres_data = rescale_intensity(rescale(template.data, 1/scaling_factor), out_range=np.uint8).astype(np.uint8)
+    lowres_template = AdornedImage(data=lowres_data)
+    lowres_template.metadata = template.metadata
+    lowres_template.metadata.binary_result.pixel_size.x *= scaling_factor
+    lowres_template.metadata.binary_result.pixel_size.y *= scaling_factor
     # Move to Jcut angle and take electron beam image
     move_to_jcut_angle(microscope)
     autocontrast(microscope)
+    # Low res resolution
+    microscope.beams.ion_beam.horizontal_field_width.value = field_of_view / scaling_factor
+    microscope.beams.electron_beam.horizontal_field_width.value = field_of_view / scaling_factor
+    image = new_electron_image(microscope, settings=image_settings)
+    location = match_locations(microscope, image, lowres_template)
+    realign_hog_matcher(microscope, location)
+    eb = new_electron_image(microscope, settings=image_settings)
     # Realign first to the electron beam image
+    microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
+    microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
     image = new_electron_image(microscope, settings=image_settings)
     location = match_locations(microscope, image, template)
     realign_hog_matcher(microscope, location)
@@ -47,7 +63,7 @@ def mill_lamella(microscope, settings):
     ib = new_ion_image(microscope, settings=image_settings)
     eb = new_electron_image(microscope, settings=image_settings)
     # Mill J-cut
-    mill_jcut(microscope, settings['jcut'])
+    mill_jcut(microscope, settings['jcut'], confirm=False)
     final_ib = new_ion_image(microscope, settings=image_settings)
     final_eb = new_electron_image(microscope, settings=image_settings)
     return (final_eb, final_ib, eb, ib)

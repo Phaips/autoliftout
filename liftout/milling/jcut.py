@@ -86,7 +86,7 @@ def jcut_milling_patterns(microscope,
     return jcut_top, jcut_lhs, jcut_rhs
 
 
-def mill_jcut(microscope, jcut_settings):
+def mill_jcut(microscope, jcut_settings, confirm=True):
     """Create and mill the rectangle patter to sever the jcut completely.
 
     Parmaters
@@ -99,7 +99,7 @@ def mill_jcut(microscope, jcut_settings):
         Whether to ask the user to confirm before milling.
     """
     jcut_milling_patterns(microscope, jcut_settings)
-    confirm_and_run_milling(microscope, jcut_settings['jcut_milling_current'], confirm=False)
+    confirm_and_run_milling(microscope, jcut_settings['jcut_milling_current'], confirm=confirm)
 
 
 def jcut_severing_pattern(microscope,
