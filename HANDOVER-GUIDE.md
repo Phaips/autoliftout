@@ -29,7 +29,7 @@ The autoreload magic allows you to edit in Visual Studio Code and have it stay s
 In Visual Studio Code, if you want to see what's in a function you can right click on the name and select "Go to Definition".
 
 ## Software tools we use
-* git: we use [git for version control](https://www.atlassian.com/git)
+* git: we use [git for version control](https://www.atlassian.com/git), sometimes paired with the [GitHub desktop](https://desktop.github.com/)
 * python: the [Anaconda python distribution](https://www.anaconda.com/products/individual) is preferred
 * conda: we use [conda virtual environments](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) to keep python dependencies neatly separated for each project. You can use the `conda list` command to see what is installed in the current environment.
 * Visual Studio Code: you can use [Visual Studio Code](https://code.visualstudio.com/) or your preferred code editor.
