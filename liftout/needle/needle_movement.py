@@ -5,10 +5,14 @@ import time
 import numpy as np
 import tqdm
 
+from liftout.calibration import auto_link_stage
+from liftout.stage_movement import move_to_sample_grid
+
 __all__ = [
     "move_needle_to_liftout_position",
     "move_needle_to_landing_position",
     "sputter_platinum",
+    "sputter_platinum_over_whole_grid",
     "insert_needle",
     "retract_needle",
     "move_needle_closer",
@@ -114,6 +118,16 @@ def sputter_platinum(microscope, sputter_time=60, *,
     microscope.patterning.set_default_beam_type(2)  # set ion beam
     multichem.retract()
     logging.info("Sputtering finished.")
+
+
+def sputter_platinum_over_whole_grid(microscope):
+    """Sputter platnium over whole grid."""
+    stage = microscope.specimen.stage
+    move_to_sample_grid(microscope)
+    auto_link_stage(microscope, expected_z=5e-3)
+    # TODO: yaml user input for sputtering application file choice
+    sputter_platinum(microscope, sputter_time=60, horizontal_field_width=30e-6, line_pattern_length=7e-6)
+    auto_link_stage(microscope)  # return stage to default linked z height
 
 
 def insert_needle(microscope):

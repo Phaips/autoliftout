@@ -8,21 +8,24 @@ import numpy as np
 from liftout.user_input import ask_user, protocol_stage_settings
 
 
-def mill_trenches(microscope, settings):
+def mill_trenches(microscope, settings, confirm=True):
     """Mill the trenches for the lamella.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
     settings :  Dictionary of user input argument settings.
+    confirm : bool, optional
+        Whether to ask the user to confirm before milling.
     """
-    if not ask_user("Have you centered the lamella position? yes/no \n"):
-        print("Ok, cancelling trench milling.")
-        return
-    logging.info('Milling trenches')
+    if confirm is True:
+        if not ask_user("Have you centered the lamella position? yes/no \n"):
+            print("Ok, cancelling trench milling.")
+            return
+    print('Milling trenches')
     protocol_stages = protocol_stage_settings(settings)
     for stage_number, stage_settings in enumerate(protocol_stages):
-        logging.info("Protocol stage {} of {}".format(
+        print("Protocol stage {} of {}".format(
             stage_number + 1, len(protocol_stages)))
         mill_single_stage(
             microscope,

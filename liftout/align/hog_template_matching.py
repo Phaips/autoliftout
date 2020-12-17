@@ -1,5 +1,12 @@
 """Alignment functions using histogram of gaussians (HOG) temlate matching."""
+import logging
+
+import numpy as np
+
 from liftout.display import plot_overlaid_images
+from liftout.stage_movement import (x_corrected_stage_movement,
+                                    y_corrected_stage_movement,
+                                    BeamType)
 
 __all__ = [
     "create_reference_image",
@@ -55,7 +62,7 @@ def match_locations(microscope, image, template):
     from autoscript_toolkit.template_matchers import HogMatcher
 
     hog_matcher = HogMatcher(microscope)
-    original_feature_center = list(np.flip(np.array(template.data.shape)//2))
+    original_feature_center = list(np.flip(np.array(template.data.shape)//2, axis=0))
     location = vision_toolkit.locate_feature(image, template, hog_matcher, original_feature_center=original_feature_center)
     location.print_all_information()  # displays in x-y coordinate order
     return location

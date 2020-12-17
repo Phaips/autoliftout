@@ -137,6 +137,8 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     z_difference = expected_z - microscope.specimen.stage.current_position.z
+    if abs(z_difference) > 3e-3:
+        raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
     z_move = z_corrected_stage_movement(
         z_difference, microscope.specimen.stage.current_position.t)
     microscope.specimen.stage.relative_move(z_move)
@@ -180,8 +182,8 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
     microscope.beams.ion_beam.horizontal_field_width.value = 900e-6
     _eucentric_height_adjustment(microscope)
     print("Final eucentric alignment")
-    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
-    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 200e-6
+    microscope.beams.ion_beam.horizontal_field_width.value = 200e-6
     _eucentric_height_adjustment(microscope)
     final_electron_image = new_electron_image(microscope)
     final_ion_image = new_ion_image(microscope)
