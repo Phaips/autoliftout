@@ -9,7 +9,7 @@ __all__ = [
 def setup_ion_milling(microscope, *,
                       application_file="Si_Alex",
                       patterning_mode="Parallel",
-                      ion_beam_field_of_view=82.9e-6):
+                      ion_beam_field_of_view=100e-6):
     """Setup for rectangle ion beam milling patterns.
 
     Parameters

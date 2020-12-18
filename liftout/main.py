@@ -100,9 +100,11 @@ def find_needletip_and_target_locations(image):
 
 
 def manual_needle_movement_in_xy(microscope, move_in_x=True, move_in_y=True):
+    from autoscript_sdb_microscope_client.structures import GrabFrameSettings
+
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
-    microscope.beams.electron_beam.horizontal_field_width.value = 82.9e-6  # TODO: user input from yaml file
+    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6  # TODO: user input from yaml file
     electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: User input imaging settings
     needletip_location, target_location = find_needletip_and_target_locations(electron_image)
     # Calculate needle movements
@@ -121,7 +123,11 @@ def manual_needle_movement_in_xy(microscope, move_in_x=True, move_in_y=True):
 
 
 def manual_needle_movement_in_z(microscope):
-    microscope.beams.ion_beam.horizontal_field_width.value = 82.9e-6  # TODO: user input from yaml file
+    from autoscript_sdb_microscope_client.structures import GrabFrameSettings
+
+    stage = microscope.specimen.stage
+    needle = microscope.specimen.manipulator
+    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6  # TODO: user input from yaml file
     ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: user input imaging settings
     print("Please click the needle tip position")
     needletip_location = select_point(ion_image)
@@ -129,12 +135,12 @@ def manual_needle_movement_in_z(microscope):
     target_location = select_point(ion_image)
     # Calculate movment
     z_safety_buffer = 400e-9  # in meters TODO: yaml user input
-    z_distance = -(ion_target[1] - ion_needletip[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
+    z_distance = -(target_location[1] - needletip_location[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
     z_move = z_corrected_needle_movement(z_distance, stage.current_position.t)
     needle.relative_move(z_move)
 
 
-def liftout_lamella(microscope, needle_reference_imgs):
+def liftout_lamella(microscope, settings, needle_reference_imgs):
     needle_reference_eb, needle_reference_ib = needle_reference_imgs
     # needletip_ref_location_eb = ??? TODO: automated needletip identification
     # needletip_ref_location_ib = ??? TODO: automated needletip identification
@@ -143,7 +149,7 @@ def liftout_lamella(microscope, needle_reference_imgs):
     manual_needle_movement_in_z(microscope)
     manual_needle_movement_in_xy(microscope)
     sputter_platinum(microscope, sputter_time=60)  # TODO: yaml user input for sputtering application file choice
-    mill_to_sever_jcut(microscope)  # TODO: yaml user input for jcut milling current
+    mill_to_sever_jcut(microscope, settings['jcut'])  # TODO: yaml user input for jcut milling current
     retract_needle(microscope, park_position)
     needle_reference_images_with_lamella = needle_reference_images(
         microscope, move_needle_to="landing")
@@ -172,7 +178,7 @@ def single_liftout(microscope, settings, lamella_coord, landing_coord):
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     autocontrast(microscope, beam_type=BeamType.ION)
     mill_lamella(microscope, settings)
-    liftout_lamella(microscope, needle_reference_imgs)
+    needle_reference_images_with_lamella = liftout_lamella(microscope, settings, needle_reference_imgs)
     land_lamella(microscope)
 
 

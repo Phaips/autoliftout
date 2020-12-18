@@ -19,7 +19,7 @@ from liftout.stage_movement import move_to_trenching_angle, move_to_jcut_angle
 
 
 def mill_lamella(microscope, settings):
-    from autoscript_sdb_microscope_client.structures import GrabFrameSettings
+    from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 
     stage = microscope.specimen.stage
     # Set the correct magnification / field of view
@@ -45,8 +45,8 @@ def mill_lamella(microscope, settings):
     move_to_jcut_angle(microscope)
     autocontrast(microscope)
     # Low res resolution
-    microscope.beams.ion_beam.horizontal_field_width.value = field_of_view / scaling_factor
-    microscope.beams.electron_beam.horizontal_field_width.value = field_of_view / scaling_factor
+    microscope.beams.ion_beam.horizontal_field_width.value = field_of_view * scaling_factor
+    microscope.beams.electron_beam.horizontal_field_width.value = field_of_view * scaling_factor
     image = new_electron_image(microscope, settings=image_settings)
     location = match_locations(microscope, image, lowres_template)
     realign_hog_matcher(microscope, location)
@@ -69,5 +69,5 @@ def mill_lamella(microscope, settings):
     final_ib = new_ion_image(microscope, settings=image_settings)
     final_eb = new_electron_image(microscope, settings=image_settings)
     # Ready for liftout
-    move_to_liftout_angle(stage)
+    move_to_liftout_angle(microscope)
     print("Done, ready for liftout!")

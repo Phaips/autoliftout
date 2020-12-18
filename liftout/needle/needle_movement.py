@@ -22,41 +22,31 @@ __all__ = [
 ]
 
 
-def move_needle_to_liftout_position(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
+def move_needle_to_liftout_position(microscope):
     """Move the needle into position, ready for liftout.
 
     Parameters
     ----------
     microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
         The Autoscript microscope object.
-    x_shift : float
-        Distance to move the needle from the parking position in x, in meters.
-    z_shift : float
-        Distance to move the needle towards the sample in z, in meters.
-        Negative values move the needle TOWARDS the sample surface.
     """
     park_position = insert_needle(microscope)
-    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    move_needle_closer(microscope)
     multichem = microscope.gas.get_multichem()
     multichem.insert()
     return park_position
 
 
-def move_needle_to_landing_position(microscope, *, x_shift=-40e-6, z_shift=-180e-6):
+def move_needle_to_landing_position(microscope):
     """Move the needle into position, ready for landing.
 
     Parameters
     ----------
     microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
         The Autoscript microscope object.
-    x_shift : float
-        Distance to move the needle from the parking position in x, in meters.
-    z_shift : float
-        Distance to move the needle towards the sample in z, in meters.
-        Negative values move the needle TOWARDS the sample surface.
     """
     park_position = insert_needle(microscope)
-    move_needle_closer(microscope, x_shift=x_shift, z_shift=z_shift)
+    move_needle_closer(microscope, x_shift=-40e-6)
     return park_position
 
 
@@ -197,8 +187,7 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
     x_move = x_corrected_needle_movement(x_shift)
     needle.relative_move(x_move)
     # Then move the needle towards the sample surface.
-    stage_tilt = np.rad2deg(stage.current_position.t)
-    z_move = z_corrected_needle_movement(z_shift, stage_tilt)
+    z_move = z_corrected_needle_movement(z_shift, stage.current_position.t)
     needle.relative_move(z_move)
     # The park position is always the same,
     # so the needletip will end up about 20 microns from the surface.
