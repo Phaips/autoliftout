@@ -15,7 +15,9 @@ from liftout.align.hog_template_matching import (create_reference_image,
                                                  realign_hog_matcher)
 from liftout.milling.trenches import mill_trenches
 from liftout.milling.jcut import mill_jcut
-from liftout.stage_movement import move_to_trenching_angle, move_to_jcut_angle
+from liftout.stage_movement import (move_to_trenching_angle,
+                                    move_to_jcut_angle,
+                                    move_to_liftout_angle)
 
 
 def mill_lamella(microscope, settings):

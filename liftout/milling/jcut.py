@@ -141,7 +141,8 @@ def jcut_severing_pattern(microscope,
     return jcut_severing_pattern
 
 
-def mill_to_sever_jcut(microscope, jcut_settings, *, milling_current=0.74e-9):
+def mill_to_sever_jcut(microscope, jcut_settings, *, milling_current=0.74e-9,
+                       confirm=True):
     """Create and mill the rectangle pattern to sever the jcut completely.
 
     Parmaters
@@ -150,6 +151,8 @@ def mill_to_sever_jcut(microscope, jcut_settings, *, milling_current=0.74e-9):
         The AutoScript microscope object instance.
     milling_current : float, optional
         The ion beam milling current, in Amps.
+    confirm : bool, optional
+        Whether to wait for user confirmation before milling.
     """
     jcut_severing_pattern(microscope, jcut_settings)
-    confirm_and_run_milling(microscope, milling_current)
+    confirm_and_run_milling(microscope, milling_current, confirm=confirm)

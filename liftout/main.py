@@ -19,7 +19,7 @@ from liftout.stage_movement import *
 from liftout.user_input import *
 
 
-def configure_logging(log_filename='logfile', log_level=logging.DEBUG):
+def configure_logging(log_filename='logfile', log_level=logging.INFO):
     """Log to the terminal and to file simultaneously."""
     timestamp = datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
     logging.basicConfig(
@@ -104,7 +104,6 @@ def manual_needle_movement_in_xy(microscope, move_in_x=True, move_in_y=True):
 
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
-    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6  # TODO: user input from yaml file
     electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: User input imaging settings
     needletip_location, target_location = find_needletip_and_target_locations(electron_image)
     # Calculate needle movements
@@ -127,7 +126,6 @@ def manual_needle_movement_in_z(microscope):
 
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
-    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6  # TODO: user input from yaml file
     ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: user input imaging settings
     print("Please click the needle tip position")
     needletip_location = select_point(ion_image)
@@ -141,6 +139,8 @@ def manual_needle_movement_in_z(microscope):
 
 
 def liftout_lamella(microscope, settings, needle_reference_imgs):
+    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
     needle_reference_eb, needle_reference_ib = needle_reference_imgs
     # needletip_ref_location_eb = ??? TODO: automated needletip identification
     # needletip_ref_location_ib = ??? TODO: automated needletip identification
@@ -149,7 +149,7 @@ def liftout_lamella(microscope, settings, needle_reference_imgs):
     manual_needle_movement_in_z(microscope)
     manual_needle_movement_in_xy(microscope)
     sputter_platinum(microscope, sputter_time=60)  # TODO: yaml user input for sputtering application file choice
-    mill_to_sever_jcut(microscope, settings['jcut'])  # TODO: yaml user input for jcut milling current
+    mill_to_sever_jcut(microscope, settings['jcut'], confirm=False)  # TODO: yaml user input for jcut milling current
     retract_needle(microscope, park_position)
     needle_reference_images_with_lamella = needle_reference_images(
         microscope, move_needle_to="landing")
@@ -193,7 +193,8 @@ def main_cli(config_filename):
         Path to protocol file with input parameters given in YAML (.yml) format
     """
     settings = load_config(config_filename)
-    output_log_filename = os.path.join(data_directory, 'logfile.log')
+    timestamp = datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
+    output_log_filename = os.path.join('logfile' + timestamp + '.log')
     configure_logging(log_filename=output_log_filename)
     main(settings)
 

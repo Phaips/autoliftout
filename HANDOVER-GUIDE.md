@@ -11,8 +11,8 @@ Log in to the support PC "PFIB1" on the "Admin" account.
 
 Quick start for interactive scripting: open the Anaconda Prompt on PFIB1 and type
 ```
-cd MICROSCOPE\DeMarcoLab\liftout
 conda activate fibsem
+cd MICROSCOPE\DeMarcoLab\liftout
 ipython
 ```
 and when ipython starts, type
