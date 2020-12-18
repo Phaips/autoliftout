@@ -55,6 +55,9 @@ def needle_reference_images(microscope, move_needle_to="liftout"):
         resolution="1536x1024",  # TODO: from yaml user input
         dwell_time=2e-6,
     )
+    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
+
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     needle_reference_eb = new_electron_image(microscope, camera_settings)
     autocontrast(microscope, beam_type=BeamType.ION)
@@ -153,21 +156,39 @@ def liftout_lamella(microscope, settings, needle_reference_imgs):
     retract_needle(microscope, park_position)
     needle_reference_images_with_lamella = needle_reference_images(
         microscope, move_needle_to="landing")
+    retract_needle(microscope, park_position)
     return needle_reference_images_with_lamella
 
 
-def land_lamella(microscope, landing_coord):
-    move_to_landing_grid(microscope)
+def realign_landing_post(microscope, original_ion_image):
+    from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+
+    # Heidi suggests doing this in two stages:
+    #    - first realignment with horizontal_field_width.value = 250e-6
+    #    - second fine alignment with horizontal_field_width.value = 150e-6
+    template = original_ion_image
+    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # TODO: user input, can't be smaller than 150e-6
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
+    image = new_ion_image(microscope, settings=image_settings)
+    realign_sample_stage(microscope, image, template, beam_type=BeamType.ION)
+
+    # location = match_locations(microscope, image, template)
+    # realign_hog_matcher(microscope, location)
+    ib = new_ion_image(microscope, settings=image_settings)
+    eb = new_electron_image(microscope, settings=image_settings)
+
+
+def land_lamella(microscope, landing_coord, original_ion_image):
     microscope.specimen.stage.absolute_move(landing_coord)
-    import pdb; pdb.set_trace()
-    # realign landing post
+    realign_landing_post(microscope, original_ion_image)
     # move needle + lamella in
     park_position = move_needle_to_landing_position(microscope)
     manual_needle_movement_in_xy(microscope, move_in_x=False)
     manual_needle_movement_in_z(microscope)
     manual_needle_movement_in_xy(microscope)
-    # weld lamella to post
-    # cut off needle + retract it
+    weld_to_landing_post(microscope, confirm=True)
+    cut_off_needle(microscope, confirm=True)
+    retract_needle(microscope, park_position)
 
 
 def single_liftout(microscope, settings, lamella_coord, landing_coord):

@@ -62,5 +62,7 @@ def confirm_and_run_milling(microscope, milling_current, *,
     if confirm is True:
         if ask_user("Do you want to run the ion beam milling?"):
             _run_milling(microscope, milling_current, imaging_current=imaging_current)
+        else:
+            microscope.patterning.clear_patterns()
     else:
         _run_milling(microscope, milling_current, imaging_current=imaging_current)
