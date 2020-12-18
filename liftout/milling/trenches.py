@@ -19,7 +19,7 @@ def mill_trenches(microscope, settings, confirm=True):
         Whether to ask the user to confirm before milling.
     """
     if confirm is True:
-        if not ask_user("Have you centered the lamella position? yes/no \n"):
+        if not ask_user("Have you centered the lamella position in the ion beam? yes/no \n"):
             print("Ok, cancelling trench milling.")
             return
     print('Milling trenches')

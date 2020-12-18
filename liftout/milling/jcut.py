@@ -131,7 +131,7 @@ def jcut_severing_pattern(microscope,
     # Setup
     setup_ion_milling(microscope)
     # Create milling pattern - right hand side of J-cut
-    angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle))
+    angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle_degrees))
     center_x = +((jcut_length - jcut_trench_thickness) / 2)
     center_y = ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction_factor  # noqa: E501
     width = jcut_trench_thickness
@@ -141,7 +141,8 @@ def jcut_severing_pattern(microscope,
     return jcut_severing_pattern
 
 
-def mill_to_sever_jcut(microscope, *, milling_current=0.74e-9):
+def mill_to_sever_jcut(microscope, jcut_settings, *, milling_current=0.74e-9,
+                       confirm=True):
     """Create and mill the rectangle pattern to sever the jcut completely.
 
     Parmaters
@@ -150,6 +151,8 @@ def mill_to_sever_jcut(microscope, *, milling_current=0.74e-9):
         The AutoScript microscope object instance.
     milling_current : float, optional
         The ion beam milling current, in Amps.
+    confirm : bool, optional
+        Whether to wait for user confirmation before milling.
     """
-    jcut_severing_pattern(microscope)
-    confirm_and_run_milling(microscope, milling_current)
+    jcut_severing_pattern(microscope, jcut_settings)
+    confirm_and_run_milling(microscope, milling_current, confirm=confirm)

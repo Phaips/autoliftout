@@ -102,7 +102,7 @@ def mill_lamella(microscope, settings):
     eb = new_electron_image(microscope, settings=image_settings)
     # Make the Jcut
     mill_jcut(microscope, settings['jcut'])
-    move_to_liftout_angle(stage)
+    move_to_liftout_angle(microscope)
     print("Done, ready for liftout!")
 
 

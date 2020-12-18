@@ -43,7 +43,7 @@ def realign_beam_shift(microscope, new_image, reference_image):
     return microscope.beams.ion_beam.beam_shift.value
 
 
-def realign_sample_stage(microscope, new_image, reference_image):
+def realign_sample_stage(microscope, new_image, reference_image, beam_type=BeamType.ELECTRON):
     """Realign to reference image using sample stage motors.
 
     Parameters
@@ -65,6 +65,10 @@ def realign_sample_stage(microscope, new_image, reference_image):
     shift_in_meters = _calculate_beam_shift(new_image, reference_image)
     x_shift, y_shift = shift_in_meters
     y_shift, z_shift = _correct_y_stage_shift(microscope, new_image, y_shift)
+    if beam_type == BeamType.ION:
+        x_shift = -x_shift
+        y_shift = -y_shift
+        z_shift = -z_shift
     try:
         microscope.specimen.stage.relative_move(StagePosition(x=x_shift,
                                                               y=y_shift,
@@ -93,8 +97,8 @@ def _correct_y_stage_shift(microscope, image, y_shift):
     [type]
         [description]
     """
-    from .acquire import beamtype_from_image
-    from .stage_movement import PRETILT_DEGREES
+    from liftout.acquire import beamtype_from_image
+    from liftout.stage_movement import PRETILT_DEGREES
 
     beam_type = beamtype_from_image(image)
     if beam_type == BeamType.ELECTRON:

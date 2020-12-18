@@ -4,9 +4,9 @@ from liftout import *
 def needle_reference_images(microscope, move_needle_to="liftout"):
     move_sample_stage_out(microscope)
     if move_needle_to == "liftout":
-        move_needle_to_liftout_position(microscope)
+        park_position = move_needle_to_liftout_position(microscope)
     elif move_needle_to == "landing":
-        move_needle_to_landing_position(microscope)
+        park_position = move_needle_to_landing_position(microscope)
     # TODO: image acquisition settings
     needle_reference_eb = new_electron_image(microscope)
     needle_reference_ib = new_ion_image(microscope)
@@ -17,7 +17,7 @@ def needle_reference_images(microscope, move_needle_to="liftout"):
 def find_coordinates(microscope, name="", move_stage_angle=None):
     """Manually select stage coordinate positions."""
     if move_stage_angle == "trench":
-        move_to_samploe_grid(microscope)
+        move_to_sample_grid(microscope)
     elif move_stage_angle == "landing":
         move_to_landing_grid(microscope)
 

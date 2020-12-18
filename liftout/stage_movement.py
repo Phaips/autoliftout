@@ -208,8 +208,8 @@ def move_to_landing_grid(microscope, *, pretilt_angle=PRETILT_DEGREES,
                                               z=0.0039338733)
     microscope.specimen.stage.absolute_move(landing_grid_position)
     # Zoom out so you can see the whole landing grid
-    microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.0017266667
+    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
     new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 
@@ -239,8 +239,8 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
                                        z=0.0039457213)
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
-    microscope.beams.ion_beam.horizontal_field_width.value = 0.0008288
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.00190
+    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
     new_electron_image(microscope)
     return microscope.specimen.stage.current_position
 
@@ -261,10 +261,10 @@ def move_sample_stage_out(microscope):
     from autoscript_sdb_microscope_client.structures import StagePosition
 
     # Must set tilt to zero, so we don't see reflections from metal stage base
-    sample_stage_out = StagePosition(x=-0.00060541666,
-                                     y=0.014089917,
-                                     z=0.0039562348,
-                                     t=0)  # zero tilt angle is important
+    microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
+    sample_stage_out = StagePosition(x=-0.002507,
+                                     y=0.025962792,
+                                     z=0.0039559049)
     microscope.specimen.stage.absolute_move(sample_stage_out)
     return microscope.specimen.stage.current_position
 
