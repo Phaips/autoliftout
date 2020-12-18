@@ -261,10 +261,10 @@ def move_sample_stage_out(microscope):
     from autoscript_sdb_microscope_client.structures import StagePosition
 
     # Must set tilt to zero, so we don't see reflections from metal stage base
-    sample_stage_out = StagePosition(x=-0.00060541666,
-                                     y=0.014089917,
-                                     z=0.0039562348,
-                                     t=0)  # zero tilt angle is important
+    microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
+    sample_stage_out = StagePosition(x=-0.002507,
+                                     y=0.025962792,
+                                     z=0.0039559049)
     microscope.specimen.stage.absolute_move(sample_stage_out)
     return microscope.specimen.stage.current_position
 

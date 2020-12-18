@@ -72,13 +72,14 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
         move_to_sample_grid(microscope)
     elif move_stage_angle == "landing":
         move_to_landing_grid(microscope)
+        ensure_eucentricity(microscope)
 
     coordinates = []
     select_another_position = True
     while select_another_position:
-        ensure_eucentricity(microscope)
         if move_stage_angle == "trench":
             move_to_trenching_angle(microscope)
+            ensure_eucentricity(microscope)
         elif move_stage_angle == "landing":
             move_to_landing_angle(microscope)
         microscope.beams.electron_beam.horizontal_field_width.value = 400e-6
@@ -181,7 +182,6 @@ def realign_landing_post(microscope, original_ion_image):
 def land_lamella(microscope, landing_coord, original_ion_image):
     microscope.specimen.stage.absolute_move(landing_coord)
     realign_landing_post(microscope, original_ion_image)
-    # move needle + lamella in
     park_position = move_needle_to_landing_position(microscope)
     manual_needle_movement_in_xy(microscope, move_in_x=False)
     manual_needle_movement_in_z(microscope)
@@ -224,8 +224,8 @@ def main(settings):
     microscope = initialize(settings["system"]["ip_address"])
     sputter_platinum_over_whole_grid(microscope)
     print("Please select the lamella positions and check eucentric height manually.")
-    lamella_coordinates = find_coordinates(microscope, name="lamella", move_stage_angle="trench")
     landing_coordinates = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
+    lamella_coordinates = find_coordinates(microscope, name="lamella", move_stage_angle="trench")
     zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
     # Start liftout for each lamella
     for lamella_coord, landing_coord in zipped_coordinates:
