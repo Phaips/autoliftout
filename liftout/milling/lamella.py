@@ -3,6 +3,8 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
+from skimage.exposure import rescale_intensity
+from skimage.transform import rescale
 
 from liftout.acquire import (new_electron_image,
                              new_ion_image,
