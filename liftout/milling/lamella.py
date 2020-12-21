@@ -20,7 +20,7 @@ from liftout.stage_movement import (move_to_trenching_angle,
                                     move_to_liftout_angle)
 
 
-def mill_lamella(microscope, settings):
+def mill_lamella(microscope, settings, confirm=True):
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 
     stage = microscope.specimen.stage
@@ -32,21 +32,22 @@ def mill_lamella(microscope, settings):
     move_to_trenching_angle(microscope)
     # Take an ion beam image at the *milling current*
     ib = new_ion_image(microscope)
-    mill_trenches(microscope, settings, confirm=True)
+    mill_trenches(microscope, settings, confirm=confirm)
+    autocontrast(microscope, beam_type=BeamType.ION)
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
     ib_original = new_ion_image(microscope, settings=image_settings)
     template = create_reference_image(ib_original)
     # Low res template image
     scaling_factor = 4
-    lowres_data = rescale_intensity(rescale(template.data, 1/scaling_factor), out_range=np.uint8).astype(np.uint8)
-    lowres_template = AdornedImage(data=lowres_data)
-    lowres_template.metadata = template.metadata
-    lowres_template.metadata.binary_result.pixel_size.x *= scaling_factor
-    lowres_template.metadata.binary_result.pixel_size.y *= scaling_factor
+    microscope.beams.ion_beam.horizontal_field_width.value = field_of_view * scaling_factor
+    microscope.beams.electron_beam.horizontal_field_width.value = field_of_view * scaling_factor
+    ib_lowres_original = new_ion_image(microscope, settings=image_settings)
+    lowres_template = AdornedImage(data=np.rot90(np.rot90(ib_lowres_original.data)))
+    lowres_template.metadata = ib_lowres_original.metadata
     # Move to Jcut angle and take electron beam image
     move_to_jcut_angle(microscope)
-    autocontrast(microscope)
     # Low res resolution
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view * scaling_factor
     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view * scaling_factor
     image = new_electron_image(microscope, settings=image_settings)
@@ -54,6 +55,7 @@ def mill_lamella(microscope, settings):
     realign_hog_matcher(microscope, location)
     eb = new_electron_image(microscope, settings=image_settings)
     # Realign first to the electron beam image
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
     image = new_electron_image(microscope, settings=image_settings)

@@ -46,7 +46,7 @@ def mill_single_stage(microscope, settings, stage_settings, stage_number):
     stage_settings : Dictionary of settings for a single protocol milling stage
     stage_number : int. Current milling protocol stage number.
     """
-    logging.info('Milling trenches, protocol stage ', stage_number)
+    logging.info(f'Milling trenches, protocol stage {stage_number}')
     demo_mode = settings["demo_mode"]
     upper_milling(
         microscope,
