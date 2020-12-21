@@ -63,6 +63,7 @@ def mill_lamella(microscope, settings, confirm=True):
     realign_hog_matcher(microscope, location)
     eb = new_electron_image(microscope, settings=image_settings)
     # Fine tune alignment of ion beam image
+    autocontrast(microscope, beam_type=BeamType.ION)
     image = new_ion_image(microscope, settings=image_settings)
     location = match_locations(microscope, image, template)
     realign_hog_matcher(microscope, location)
