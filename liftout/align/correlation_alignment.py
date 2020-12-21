@@ -43,7 +43,8 @@ def realign_beam_shift(microscope, new_image, reference_image):
     return microscope.beams.ion_beam.beam_shift.value
 
 
-def realign_sample_stage(microscope, new_image, reference_image, beam_type=BeamType.ELECTRON):
+def realign_sample_stage(microscope, new_image, reference_image, *,
+                         beam_type=BeamType.ELECTRON, correct_z_height=True):
     """Realign to reference image using sample stage motors.
 
     Parameters
@@ -52,7 +53,9 @@ def realign_sample_stage(microscope, new_image, reference_image, beam_type=BeamT
     new_image : The most recent image acquired.
         Must have the same dimensions and relative position as the reference.
     reference_image : The reference image to align with.
-        Muast have the same dimensions and relative position as the new image
+        Must have the same dimensions and relative position as the new image
+    correct_z_height : bool, optional
+        Whether to move the sample stage in z or not.
 
     Returns
     -------
@@ -69,6 +72,8 @@ def realign_sample_stage(microscope, new_image, reference_image, beam_type=BeamT
         x_shift = -x_shift
         y_shift = -y_shift
         z_shift = -z_shift
+    if correct_z_height is False:
+        z_shift = 0
     try:
         microscope.specimen.stage.relative_move(StagePosition(x=x_shift,
                                                               y=y_shift,

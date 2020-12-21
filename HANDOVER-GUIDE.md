@@ -9,7 +9,13 @@ Log in to the microscope PC on the "User" account.
 
 Log in to the support PC "PFIB1" on the "Admin" account.
 
-Quick start for interactive scripting: open the Anaconda Prompt on PFIB1 and type
+**Quick start for running program start to finish**: open the Anaconda Prompt on PFIB1 and type
+```
+conda activate fibsem
+liftout path\to\lifout\protocol.yml
+```
+
+**Quick start for interactive scripting**: open the Anaconda Prompt on PFIB1 and type
 ```
 conda activate fibsem
 cd MICROSCOPE\DeMarcoLab\liftout
@@ -21,6 +27,7 @@ and when ipython starts, type
 %autoreload 2
 from liftout import *
 microscope = initialize()
+# settings = load_config('protocol_liftout.yml')  # replace with your own path to the protocol file
 # ... whatever code you want to try next
 ```
 

@@ -75,24 +75,37 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
         ensure_eucentricity(microscope)
 
     coordinates = []
+    landing_post_reference_images = []
     select_another_position = True
     while select_another_position:
         if move_stage_angle == "trench":
-            move_to_trenching_angle(microscope)
             ensure_eucentricity(microscope)
+            move_to_trenching_angle(microscope)
         elif move_stage_angle == "landing":
             move_to_landing_angle(microscope)
-        microscope.beams.electron_beam.horizontal_field_width.value = 400e-6
-        microscope.beams.ion_beam.horizontal_field_width.value = 400e-6
+        microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
+        microscope.beams.ion_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
         eb = new_electron_image(microscope)
         ib = new_ion_image(microscope)
         if ask_user(f"Please center the {name} coordinate in the ion beam.\n"
                     f"Is the {name} feature centered in the ion beam? yes/no: "):
             eb = new_electron_image(microscope)
             coordinates.append(microscope.specimen.stage.current_position)
+            if move_stage_angle == "landing":
+                ib_low_res = new_ion_image(microscope)
+                microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # TODO: yaml use input
+                microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # TODO: yaml use input
+                ib_high_res = new_ion_image(microscope)
+                landing_post_reference_images.append((ib_low_res, ib_high_res))
+
             print(microscope.specimen.stage.current_position)
-            select_another_position = ask_user(f"Do you want to select another {name} position? yes/no: ")
-    return coordinates
+            select_another_position = ask_user(
+                f"Do you want to select another {name} position? "
+                f"{len(coordinates)} selected so far. yes/no: ")
+    if move_stage_angle == "landing":
+        return coordinates, landing_post_reference_images
+    else:
+        return coordinates
 
 
 def find_needletip_and_target_locations(image):
@@ -161,27 +174,33 @@ def liftout_lamella(microscope, settings, needle_reference_imgs):
     return needle_reference_images_with_lamella
 
 
-def realign_landing_post(microscope, original_ion_image):
+def realign_landing_post(microscope, original_landing_images):
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
-
-    # Heidi suggests doing this in two stages:
-    #    - first realignment with horizontal_field_width.value = 250e-6
-    #    - second fine alignment with horizontal_field_width.value = 150e-6
-    template = original_ion_image
-    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # TODO: user input, can't be smaller than 150e-6
-    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
+    # Unpack reference images
+    ib_low_res_reference, ib_high_res_reference = original_landing_images
+    # Low resolution alignment (TODO: magnifications must match, yaml user input)
+    template = ib_low_res_reference
+    microscope.beams.ion_beam.horizontal_field_width.value = 400e-6  # TODO: user input, can't be smaller than 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: user input, can't be smaller than 150e-6
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution, must match
     image = new_ion_image(microscope, settings=image_settings)
-    realign_sample_stage(microscope, image, template, beam_type=BeamType.ION)
-
-    # location = match_locations(microscope, image, template)
-    # realign_hog_matcher(microscope, location)
+    realign_sample_stage(microscope, image, template, beam_type=BeamType.ION, correct_z_height=False)
+    ib = new_ion_image(microscope, settings=image_settings)
+    eb = new_electron_image(microscope, settings=image_settings)
+    # High resolution alignment (TODO: magnifications must match, yaml user input)
+    template = ib_high_res_reference
+    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # TODO: user input, can't be smaller than 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # TODO: user input, can't be smaller than 150e-6
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution, must match
+    image = new_ion_image(microscope, settings=image_settings)
+    realign_sample_stage(microscope, image, template, beam_type=BeamType.ION, correct_z_height=False)
     ib = new_ion_image(microscope, settings=image_settings)
     eb = new_electron_image(microscope, settings=image_settings)
 
 
-def land_lamella(microscope, landing_coord, original_ion_image):
+def land_lamella(microscope, landing_coord, original_landing_images):
     microscope.specimen.stage.absolute_move(landing_coord)
-    realign_landing_post(microscope, original_ion_image)
+    realign_landing_post(microscope, original_landing_images)
     park_position = move_needle_to_landing_position(microscope)
     manual_needle_movement_in_xy(microscope, move_in_x=False)
     manual_needle_movement_in_z(microscope)
@@ -191,16 +210,12 @@ def land_lamella(microscope, landing_coord, original_ion_image):
     retract_needle(microscope, park_position)
 
 
-def single_liftout(microscope, settings, lamella_coord, landing_coord):
+def single_liftout(microscope, settings, lamella_coord, landing_coord, original_landing_images):
     needle_reference_imgs = needle_reference_images(microscope)
-    move_to_sample_grid(microscope)
-    move_to_trenching_angle(microscope)
     microscope.specimen.stage.absolute_move(lamella_coord)
-    autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    autocontrast(microscope, beam_type=BeamType.ION)
-    mill_lamella(microscope, settings)
+    mill_lamella(microscope, settings, confirm=False)
     needle_reference_images_with_lamella = liftout_lamella(microscope, settings, needle_reference_imgs)
-    land_lamella(microscope)
+    land_lamella(microscope, original_landing_images)
 
 
 @click.command()
@@ -222,14 +237,16 @@ def main_cli(config_filename):
 
 def main(settings):
     microscope = initialize(settings["system"]["ip_address"])
-    sputter_platinum_over_whole_grid(microscope)
-    print("Please select the lamella positions and check eucentric height manually.")
-    landing_coordinates = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
+    if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
+        sputter_platinum_over_whole_grid(microscope)
+    print("Please select the landing positions and check eucentric height manually.")
+    landing_coordinates, original_landing_images = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
     lamella_coordinates = find_coordinates(microscope, name="lamella", move_stage_angle="trench")
     zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
     # Start liftout for each lamella
-    for lamella_coord, landing_coord in zipped_coordinates:
-        single_liftout(microscope, settings, lamella_coord, landing_coord)
+    for i, (lamella_coord, landing_coord) in enumerate(zipped_coordinates):
+        landing_reference_images = original_landing_images[i]
+        single_liftout(microscope, settings, lamella_coord, landing_coord, landing_reference_images)
     print("Finished.")
 
 
