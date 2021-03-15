@@ -1,0 +1,17 @@
+- after Pt deposition -> landing posts.
+H: we have to manually click to selkect the poles.
+Is it possible to use image cross correllation to select the posts?
+8 posts, holes with number-indicator
+(mag x80, HFW 2.59 mm)
+
+images of posts saved: D:\Heidi\HS autolamella1 (check from cross correlation to identify the centre etc)
+
+after needle image taking : ion_flat position, take SEM, cross correlate with the image from when
+saving the coordinates [IMPLEMENT, save images, store, associate]
+
+after trench milling, rotate to electron_flat, image shifted to Jcut [correlate to adjust the coordinate]
+
+after trench milling, rotate to electron_flat for Jcut -> cross-correlate to correct the shift
+
+
+
