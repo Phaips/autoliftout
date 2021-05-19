@@ -37,6 +37,7 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     microscope.auto_functions.run_auto_cb()
     return autocontrast_settings
 
+
 # GLOBAL VARIABLE
 class Storage():
     def __init__(self, DIR=''):
@@ -48,6 +49,7 @@ class Storage():
         self.MILLED_TRENCHES_REF     = []
         self.liftout_counter = 0
         self.step_counter   = 0
+        self.settings = ''
     def AddDirectory(self,DIR):
         self.DIR = DIR
     def NewRun(self, prefix='RUN'):
@@ -70,7 +72,7 @@ class Storage():
         self.fileName = self.path_for_image + 'step%02d'%(self.step_counter) + '_'  + id + '.tif'
         print(self.fileName)
         image.save(self.fileName)
-storage = Storage() # glabal variable
+storage = Storage() # global variable
 
 class BeamType(Enum):
     ION = 'ION'
@@ -79,12 +81,15 @@ class BeamType(Enum):
 
 
 
+
 def flat_to_electron_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     """Make the sample surface flat to the electron beam.
     """
-    from autoscript_sdb_microscope_client.structures import (StagePosition, MoveSettings)
+    from autoscript_sdb_microscope_client.structures import (StagePosition,
+                                                             MoveSettings)
     stage = microscope.specimen.stage
-    rotation = np.deg2rad(290)
+    rotation = storage.settings["system"]["stage_rotation_flat_to_electron"]
+    rotation = np.deg2rad(rotation)
     tilt = np.deg2rad(pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
@@ -101,7 +106,8 @@ def flat_to_ion_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     from autoscript_sdb_microscope_client.structures import (StagePosition,
                                                              MoveSettings)
     stage = microscope.specimen.stage
-    rotation = np.deg2rad(290 - 180)
+    rotation = storage.settings["system"]["stage_rotation_flat_to_ion"]
+    rotation = np.deg2rad(rotation)
     tilt = np.deg2rad(52 - pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
@@ -109,10 +115,23 @@ def flat_to_ion_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    return stage.current_position(t=tilt), stage_settings)
     return stage.current_position
+
 
 def move_to_trenching_angle(microscope, *, pretilt_angle=PRETILT_DEGREES):
     """Tilt the sample stage to the correct angle for milling trenches.
+    Assumes trenches should be milled with the sample surface flat to ion beam.
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    pretilt_angle : float, optional
+        The pre-tilt angle of the sample holder, in degrees.
+    Returns
+    -------
+    autoscript_sdb_microscope_client.structures.StagePosition
+        The position of the microscope stage after moving.
     """
     flat_to_ion_beam(microscope, pretilt_angle=pretilt_angle)
     return microscope.specimen.stage.current_position
@@ -468,6 +487,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     field_width_highres = pixelsize_x_highres * eb_highres_reference.width
     ########################################  LOW resolution alignment #1  #############################################
     print(' - - - - - - - - - - - - - - Coarse alignment #1 - - - - - - - - - - - - - - ...')
+    refocus_and_relink(microscope)
     microscope.beams.ion_beam.horizontal_field_width.value      = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
     microscope.imaging.set_active_view(1)
@@ -488,7 +508,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
 
@@ -514,7 +534,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('Press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
 
@@ -538,7 +558,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('Press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
     storage.step_counter += 1
@@ -548,6 +568,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
 def realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt, beam_type=BeamType.ION):
     print('stage shift correction by image cross-correlation : different stage/image tilts')
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+    from autoscript_sdb_microscope_client.structures import StagePosition
     stage = microscope.specimen.stage
     ### Unpack reference images
     eb_lowres_reference, eb_highres_reference, ib_lowres_reference, ib_highres_reference = reference_images_low_and_high_res
@@ -606,9 +627,9 @@ def realign_at_different_stage_tilts(microscope, reference_images_low_and_high_r
         x_move = x_corrected_stage_movement(-dx_meters)
         yz_move = y_corrected_stage_movement(dy_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     if beam_type==BeamType.ION:
-        lowpass_pixels = int(max(new_ib_lowres.data.shape) / 6)     # =256 @ 1536x1024,  good for i-beam images
-        highpass_pixels = int(max(  new_ib_lowres.data.shape) / 64) # =24  @ 1536x1024, good for i-beam images => need a large highpass to remove noise and ringing
-        sigma = int(10 * max(new_ib_lowres.data.shape)    / 1536)   # =10 @ 1536x1024,  good for i-beam images
+        lowpass_pixels  = int(max(new_ib_lowres.data.shape) / 6)  # =256 @ 1536x1024,  good for i-beam images
+        highpass_pixels = int(max(new_ib_lowres.data.shape) / 64) # =24  @ 1536x1024, good for i-beam images => need a large highpass to remove noise and ringing
+        sigma = int(10 * max(new_ib_lowres.data.shape)    / 1536) # =10 @ 1536x1024,  good for i-beam images
         dx_pixels, dy_pixels = shift_from_crosscorrelation_simple_images(new_ib_lowres_norm * cmask, ib_lowres_reference_norm * cmask, lowpass=lowpass_pixels,
                                                                  highpass=highpass_pixels, sigma=sigma)
         dx_meters = dx_pixels * pixelsize_x_lowres
@@ -640,9 +661,9 @@ def realign_at_different_stage_tilts(microscope, reference_images_low_and_high_r
         x_move = x_corrected_stage_movement(-dx_meters)
         yz_move = y_corrected_stage_movement(dy_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     if beam_type==BeamType.ION:
-        lowpass_pixels = int(max(new_ib_highres.data.shape) / 6)        # =256 @ 1536x1024,  good for i-beam images
-        highpass_pixels = int( max(new_ib_highres.data.shape)/ 64 )     # =24  @ 1536x1024,  good for i-beam images => need a large highpass to remove noise and ringing
-        sigma = int( 10 * max(new_ib_highres.data.shape)/1536)          # =10   @ 1536x1024, good for i-beam images
+        lowpass_pixels  = int( max(new_ib_highres.data.shape) / 6)    # =256 @ 1536x1024,  good for i-beam images
+        highpass_pixels = int( max(new_ib_highres.data.shape)/ 64 )   # =24  @ 1536x1024,  good for i-beam images => need a large highpass to remove noise and ringing
+        sigma = int( 10 * max(new_ib_highres.data.shape)/1536)        # =10   @ 1536x1024, good for i-beam images
         dx_pixels, dy_pixels = shift_from_crosscorrelation_simple_images(new_ib_highres_norm * cmask, ib_highres_reference_norm * cmask, lowpass=lowpass_pixels,
                                                                  highpass=highpass_pixels, sigma=sigma)
         dx_meters = dx_pixels * pixelsize_x_highres
@@ -658,7 +679,6 @@ def realign_at_different_stage_tilts(microscope, reference_images_low_and_high_r
     storage.SaveImage(new_eb_highres, id='D_tiltAlign_sample_eb_highres_aligned')
     storage.SaveImage(new_ib_highres, id='D_tiltAlign_sample_ib_highres_aligned')
     storage.step_counter += 1
-
 
 ###################################################################################
 
@@ -791,11 +811,11 @@ if __name__ == '__main__':
     # 2   - take sem/fib images and correlate
     # 2.5 - correlate rotated ion beam image
     # 3 - hog, template matching
-    TEST = 5.9
+    TEST = 7
     print('cross-correlation test')
 
     if TEST==8:
-        storage.NewRun(prefix='test_alignment')
+        #storage.NewRun(prefix='test_alignment')
         from autoscript_sdb_microscope_client import SdbMicroscopeClient
         from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
         from autoscript_sdb_microscope_client.structures import StagePosition
@@ -806,9 +826,12 @@ if __name__ == '__main__':
         image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution, must match
 
         yy = input('MOVE TO POSITION TO CREATE REFERENCE IMAGES flat-to-ion after trenching: HIGH AND LOW RES, press Enter when ready...')
-        eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=400e-6, image_settings=image_settings)
-        eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width= 50e-6, image_settings=image_settings)
+        eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=600e-6, image_settings=image_settings)
+        eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width= 80e-6, image_settings=image_settings)
         reference_images_low_and_high_res = (eb_lowres_ref, eb_highres_ref, ib_lowres_ref, ib_highres_ref) #use these images for future alignment
+
+        realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res, plot=False) # correct the stage drift after 180 deg rotation using treched lamella images as reference
+
 
         flat_to_electron_beam(microscope, pretilt_angle=PRETILT_DEGREES) # rotate to flat_to_electron
         # the lamella is now aligned
@@ -840,7 +863,7 @@ if __name__ == '__main__':
 
 
     if TEST == 7:
-        storage.NewRun(prefix='test_alignment')
+        #storage.NewRun(prefix='test_alignment')
         from autoscript_sdb_microscope_client import SdbMicroscopeClient
         from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
         from autoscript_sdb_microscope_client.structures import StagePosition
@@ -851,8 +874,8 @@ if __name__ == '__main__':
         image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution, must match
 
         yy = input('MOVE TO POSITION TO CREATE REFERENCE IMAGES flat-to-ion after trenching: HIGH AND LOW RES, press Enter when ready...')
-        eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=400e-6, image_settings=image_settings)
-        eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width=100e-6, image_settings=image_settings)
+        eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=600e-6, image_settings=image_settings)
+        eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width= 80e-6, image_settings=image_settings)
         reference_images_low_and_high_res = (eb_lowres_ref, eb_highres_ref, ib_lowres_ref, ib_highres_ref) #use these images for future alignment
 
         flat_to_electron_beam(microscope, pretilt_angle=PRETILT_DEGREES) # rotate to flat_to_electron

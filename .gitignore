@@ -80,3 +80,6 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+liftout/cryo_20210401.142503/liftout000/step00__needle_eb_highres.tif
+*.tif
+*.pt

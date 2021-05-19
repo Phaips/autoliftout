@@ -1241,6 +1241,14 @@ if __name__ == "__main__":
 
 
     if TEST == 3.3:
+        # storage.step_counter +=1
+        # eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
+        # eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width= 80e-6, image_settings=image_settings)
+        # storage.SaveImage(eb_lowres_ref,  id='jcut_eb_lowres' )
+        # storage.SaveImage(ib_lowres_ref,  id='jcut_ib_lowres' )
+        # storage.SaveImage(eb_highres_ref, id='jcut_eb_highres')
+        # storage.SaveImage(ib_highres_ref, id='jcut_ib_highres')
+
         print('different lamella corners detection methods')
         pixelsize_x = 1
         pixelsize_y = 1

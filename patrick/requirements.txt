@@ -1,0 +1,6 @@
+pandas
+numpy
+pytorch
+torchvision
+cudatoolkit=10.2
+segmentation-models-pytorch

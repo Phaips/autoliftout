@@ -50,7 +50,6 @@ class BeamType(Enum):
     ION = 'ION'
     ELECTRON = 'ELECTRON'
 
-# GLOBAL VARIABLE
 
 # GLOBAL VARIABLE
 class Storage():
@@ -63,6 +62,7 @@ class Storage():
         self.MILLED_TRENCHES_REF     = []
         self.liftout_counter = 0
         self.step_counter   = 0
+        self.settings = ''
     def AddDirectory(self,DIR):
         self.DIR = DIR
     def NewRun(self, prefix='RUN'):
@@ -279,7 +279,7 @@ def create_camera_settings(imaging_settings, reduced_area_coords=[0, 0, 1, 1]):
     return camera_settings
 
 
-def new_electron_image(microscope, settings=None):
+def new_electron_image(microscope, settings=None, brightness=None, contrast=None):
     """Take new electron beam image.
     Returns
     -------
@@ -290,6 +290,10 @@ def new_electron_image(microscope, settings=None):
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
     microscope.imaging.set_active_view(1)  # the electron beam view
+    if brightness:
+        microscope.detector.brightness.value = brightness
+    if contrast:
+        microscope.detector.contrast.value = contrast
     if settings is not None:
         image = microscope.imaging.grab_frame(settings)
     else:
@@ -297,7 +301,7 @@ def new_electron_image(microscope, settings=None):
     return image
 
 
-def new_ion_image(microscope, settings=None):
+def new_ion_image(microscope, settings=None, brightness=None, contrast=None):
     """Take new ion beam image.
     AdornedImage
         If the returned AdornedImage is named 'image', then:
@@ -306,13 +310,17 @@ def new_ion_image(microscope, settings=None):
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
     microscope.imaging.set_active_view(2)  # the ion beam view
+    if brightness:
+        microscope.detector.brightness.value = brightness
+    if contrast:
+        microscope.detector.contrast.value = contrast
     if settings is not None:
         image = microscope.imaging.grab_frame(settings)
     else:
         image = microscope.imaging.grab_frame()
     return image
 
-def take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  image_settings=None):
+def take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  image_settings=None, __autocontrast=True):
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
     # image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
     #############
@@ -320,10 +328,12 @@ def take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  i
     microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
     microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
     microscope.imaging.set_active_view(1)
-    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    if __autocontrast:
+        autocontrast(microscope, beam_type=BeamType.ELECTRON)
     eb_reference = new_electron_image(microscope, image_settings)
     microscope.imaging.set_active_view(2)
-    autocontrast(microscope, beam_type=BeamType.ION)
+    if __autocontrast:
+        autocontrast(microscope, beam_type=BeamType.ION)
     ib_reference = new_ion_image(microscope, image_settings)
     return eb_reference, ib_reference
 
@@ -335,7 +345,8 @@ def flat_to_electron_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     from autoscript_sdb_microscope_client.structures import (StagePosition,
                                                              MoveSettings)
     stage = microscope.specimen.stage
-    rotation = np.deg2rad(290)
+    rotation = storage.settings["system"]["stage_rotation_flat_to_electron"]
+    rotation = np.deg2rad(rotation)
     tilt = np.deg2rad(pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
@@ -352,7 +363,8 @@ def flat_to_ion_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     from autoscript_sdb_microscope_client.structures import (StagePosition,
                                                              MoveSettings)
     stage = microscope.specimen.stage
-    rotation = np.deg2rad(290 - 180)
+    rotation = storage.settings["system"]["stage_rotation_flat_to_ion"]
+    rotation = np.deg2rad(rotation)
     tilt = np.deg2rad(52 - pretilt_angle)
     stage_settings = MoveSettings(rotate_compucentric=True)
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
@@ -361,8 +373,6 @@ def flat_to_ion_beam(microscope, *, pretilt_angle=PRETILT_DEGREES):
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
     return stage.current_position
-
-
 
 
 
@@ -409,9 +419,7 @@ def move_to_sample_grid(microscope, *, pretilt_angle=PRETILT_DEGREES):
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
     flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
-    sample_grid_center = StagePosition(x=-0.0025868173,
-                                       y=0.0031794167,
-                                       z=0.0039457213)
+    sample_grid_center = StagePosition(x=-0.0025868173, y=0.0031794167, z=0.0039457213)
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
@@ -542,6 +550,8 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
     microscope.beams.electron_beam.horizontal_field_width.value = 0.000400
     print('Automatically focusing and linking stage z-height.')
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     z_difference = expected_z - microscope.specimen.stage.current_position.z
@@ -560,7 +570,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
             raise(UserWarning("Could not auto-link z stage height."))
             break
         # Focus and re-link z stage height
-        print('Automatically focussing and linking stage z-height.')
+        print('Automatically focusing and linking stage z-height.')
         microscope.auto_functions.run_auto_focus()
         microscope.specimen.stage.link()
         z_difference = expected_z - microscope.specimen.stage.current_position.z
@@ -573,9 +583,29 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     new_electron_image(microscope)
 
 
+def refocus_and_relink(microscope, expected_z=3.95e-3):
+    #from autoscript_sdb_microscope_client.structures import RunAutoFocusSettings
+    #autofocus_settings = RunAutoFocusSettings(resolution="6144x4096")
+    """Automatically focus and link sample stage z-height.
+    """
+    from autoscript_sdb_microscope_client.structures import StagePosition
+    print("refocus_and_relink_stage")
+    print(microscope.specimen.stage.current_position.z)
+    microscope.imaging.set_active_view(1)  # the electron beam view
+    original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
+    #microscope.beams.electron_beam.horizontal_field_width.value = 0.000400
+    print('Automatically refocusing and relinking stage z-height.')
+    microscope.auto_functions.run_auto_focus()
+    microscope.specimen.stage.link()
+    z_difference = expected_z - microscope.specimen.stage.current_position.z
+    if abs(z_difference) > 3e-3:
+        raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
+    #microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
+    new_electron_image(microscope)
+
 
 def sputter_platinum(microscope, sputter_time=60, *,
-                     sputter_application_file="cryo_Pt_dep",
+                     sputter_application_file="Pt_M e",
                      default_application_file="autolamella",
                      horizontal_field_width=100e-6,
                      line_pattern_length=15e-6):
@@ -584,7 +614,7 @@ def sputter_platinum(microscope, sputter_time=60, *,
     ----------
     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
         The AutoScript microscope object instance.
-    sputter_time : int, optional
+    sputter_time : int, optionalye
         Time in seconds for platinum sputtering. Default is 60 seconds.
     sputter_application_file : str
         Application file for platinum sputtering/deposition.
@@ -678,7 +708,7 @@ def retract_needle(microscope, park_position):
     return retracted_position
 
 
-def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-180e-6):
+def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
     """Move the needle closer to the sample surface, after inserting.
     Parameters
     ----------
@@ -771,16 +801,19 @@ def needle_reference_images(microscope, move_needle_to="liftout", dwell_time=10e
     elif move_needle_to == "landing":
         park_position = move_needle_to_landing_position(microscope)
     # TODO: set field of view in electron & ion beam to match
-    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=dwell_time )
-    ####
     # microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6  # can't be smaller than 150e-6
     # microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
     # autocontrast(microscope, beam_type=BeamType.ELECTRON)
     # needle_reference_eb_lowres = new_electron_image(microscope, image_settings)
     # autocontrast(microscope, beam_type=BeamType.ION)
     # needle_reference_ib_lowres = new_ion_image(microscope, image_settings)
-    needle_reference_eb_lowres,  needle_reference_ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
-    needle_reference_eb_highres, needle_reference_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6, image_settings=image_settings)
+    resolution = storage.settings["reference_images"]["needle_ref_img_resolution"]
+    dwell_time = storage.settings["reference_images"]["needle_ref_img_dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+    hfw_lowres  = storage.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+    hfw_highres = storage.settings["reference_images"]["needle_ref_img_hfw_highres"]
+    needle_reference_eb_lowres,  needle_reference_ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_lowres,  image_settings=image_settings)
+    needle_reference_eb_highres, needle_reference_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_highres, image_settings=image_settings)
     ####
     retract_needle(microscope, park_position)
     return (needle_reference_eb_lowres, needle_reference_eb_highres, needle_reference_ib_lowres, needle_reference_ib_highres)
@@ -809,6 +842,7 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
     pretilt_angle : float
         Extra tilt added by the cryo-grid sample holder, in degrees.
     """
+    # TODO autofocus
     validate_scanning_rotation(microscope)  # ensure scan rotation is zero
     flat_to_electron_beam(microscope, pretilt_angle=pretilt_angle)
     print("Rough eucentric alignment")
@@ -827,12 +861,15 @@ def ensure_eucentricity(microscope, *, pretilt_angle=PRETILT_DEGREES):
 
 def _eucentric_height_adjustment(microscope):
     from autoscript_sdb_microscope_client.structures import StagePosition
-
-    new_electron_image(microscope)
+    from autoscript_sdb_microscope_client.structures import GrabFrameSettings
+    #resolution = storage.settings["reference_images"]["needle_ref_img_resolution"]
+    #dwell_time = storage.settings["reference_images"]["needle_ref_img_dwell_time"]
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
+    new_electron_image(microscope, settings=image_settings)
     ask_user("Please double click to center a feature in the SEM?\n"
              "Is the feature centered now? yes/no: ")
     print("Please click the same location in the ion beam image")
-    ion_image = new_ion_image(microscope)
+    ion_image = new_ion_image(microscope, settings=image_settings)
     click_location = select_point(ion_image)
     _x, fib_delta_y = click_location
     stage = microscope.specimen.stage
@@ -843,6 +880,13 @@ def _eucentric_height_adjustment(microscope):
     electron_image = new_electron_image(microscope)
     ask_user("Please double click to center a feature in the SEM?\n"
              "Is the feature centered now? yes/no: ")
+
+    resolution = storage.settings["reference_images"]["needle_ref_img_resolution"]
+    dwell_time = storage.settings["reference_images"]["needle_ref_img_dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+
+
+
 
 
 def find_coordinates(microscope, name="", move_stage_angle=None):
@@ -866,6 +910,7 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
             move_to_landing_angle(microscope)
         microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
         microscope.beams.ion_beam.horizontal_field_width.value      = 400e-6  # TODO: yaml use input
+        refocus_and_relink(microscope)
         eb = new_electron_image(microscope)
         ib = new_ion_image(microscope)
         if ask_user(f"Please center the {name} coordinate in the ion beam.\n"
@@ -881,10 +926,14 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
                 #microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6  # TODO: yaml use input
                 #ib_high_res = new_ion_image(microscope)
                 #eb_high_res = new_electron_image(microscope)
-                image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
-                eb_low_res, ib_low_res = take_electron_and_ion_reference_images(microscope,   hor_field_width=400e-6, image_settings=image_settings)
-                eb_high_res, ib_high_res = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
-                landing_post_reference_images.append( (eb_low_res, eb_high_res, ib_low_res, ib_high_res) )
+                resolution = storage.settings["reference_images"]["landing_post_ref_img_resolution"]
+                dwell_time = storage.settings["reference_images"]["landing_post_ref_img_dwell_time"]
+                image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+                hfw_lowres  = storage.settings["reference_images"]["landing_post_ref_img_hfw_lowres"]
+                hfw_highres = storage.settings["reference_images"]["landing_post_ref_img_hfw_highres"]
+                eb_lowres,  ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_lowres,  image_settings=image_settings)
+                eb_highres, ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_highres, image_settings=image_settings)
+                landing_post_reference_images.append( (eb_lowres, eb_highres, ib_lowres, ib_highres) )
             if move_stage_angle == "trench":
                 #microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
                 #microscope.beams.ion_beam.horizontal_field_width.value      = 400e-6  # TODO: yaml use input
@@ -894,11 +943,14 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
                 #microscope.beams.ion_beam.horizontal_field_width.value      =  50e-6  # TODO: yaml use input
                 #ib_high_res = new_ion_image(microscope)
                 #eb_high_res = new_electron_image(microscope)
-                image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
-                eb_low_res, ib_low_res = take_electron_and_ion_reference_images(microscope,   hor_field_width=400e-6, image_settings=image_settings)
-                eb_high_res, ib_high_res = take_electron_and_ion_reference_images(microscope, hor_field_width= 50e-6, image_settings=image_settings)
-                landing_post_reference_images.append( (eb_low_res, eb_high_res, ib_low_res, ib_high_res) )
-                trench_area_reference_images.append( (eb_low_res, eb_high_res, ib_low_res, ib_high_res) )
+                resolution = storage.settings["reference_images"]["trench_area_ref_img_resolution"]
+                dwell_time = storage.settings["reference_images"]["trench_area_ref_img_dwell_time"]
+                image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+                hfw_lowres  = storage.settings["reference_images"]["trench_area_ref_img_hfw_lowres"]
+                hfw_highres = storage.settings["reference_images"]["trench_area_ref_img_hfw_highres"]
+                eb_lowres, ib_lowres = take_electron_and_ion_reference_images(microscope,   hor_field_width=hfw_lowres,  image_settings=image_settings)
+                eb_highres, ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_highres, image_settings=image_settings)
+                trench_area_reference_images.append( (eb_lowres, eb_highres, ib_lowres, ib_highres) )
 
             print(microscope.specimen.stage.current_position)
             select_another_position = ask_user(
@@ -1067,7 +1119,7 @@ def find_needletip_shift_in_image_ELECTRON(needle_with_sample_Adorned, needle_re
     cmask = circ_mask(size=(Dmin, Dmin), radius=Dmin // 2 - 15, sigma=10)  # circular mask
     CMASK = np.zeros(needle_reference.shape)
     CMASK[old_tip_x - Dmin // 2: old_tip_x + Dmin // 2, old_tip_y - Dmin // 2: old_tip_y + Dmin // 2] = cmask
-    # fist normalise the reference image, then mask
+    # first normalise the reference image, then mask
     needle_reference_norm = ( needle_reference - np.mean(needle_reference) ) / np.std(needle_reference)
     reference_circ_norm = needle_reference_norm * CMASK * mask
     ####################
@@ -1244,14 +1296,16 @@ def land_needle_on_milled_lamella(microscope, needle_reference_images_nobg, move
     storage.SaveImage(needle_eb_highres_with_lamella, id='B_needle_land_sample_eb_highres')
     storage.SaveImage(needle_ib_lowres_with_lamella,  id='B_needle_land_sample_ib_lowres' )
     storage.SaveImage(needle_ib_highres_with_lamella, id='B_needle_land_sample_ib_highres')
+
+    #refocus_and_relink(microscope)
+
     ############ FIND dx, dy from LOW_RES ELECTRON images ############
-    x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(needle_eb_lowres_with_lamella, needle_ref_eb_lowres_nobg,
-                                                               show=False, median_smoothing=2)
+    x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(needle_eb_lowres_with_lamella, needle_ref_eb_lowres_nobg, show=False, median_smoothing=2)
     # (x,y)-correction for e-beam due to the shift in the SEM, (ion beam is aligned, but SEM is shifted due to the eucentricity blah blah)
     xcorrection = 1e-6 # empirically found
     ycorrection = 2e-6 # empirically found
-    x_move = x_corrected_needle_movement(x_shift + xcorrection)
-    y_move = y_corrected_needle_movement(y_shift + ycorrection, stage.current_position.t)
+    x_move = x_corrected_needle_movement(x_shift + xcorrection*0)
+    y_move = y_corrected_needle_movement(y_shift + ycorrection*0, stage.current_position.t)
     print('Needle approach from e-beam low res:')
     print('x_move = ', x_move, ';\ny_move = ', y_move)
     needle.relative_move(x_move)
@@ -1266,13 +1320,14 @@ def land_needle_on_milled_lamella(microscope, needle_reference_images_nobg, move
     ########
     pixelsize_x_highres = needle_ref_eb_highres_nobg.metadata.binary_result.pixel_size.x
     field_width_highres = pixelsize_x_highres * needle_ref_eb_highres_nobg.width
-    needle_eb_highres_with_lamella_shifted, needle_ib_highres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=field_width_lowres, image_settings=image_settings)
+    needle_eb_highres_with_lamella_shifted, needle_ib_highres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=field_width_highres, image_settings=image_settings)
     ###
     storage.SaveImage(needle_eb_lowres_with_lamella_shifted,  id='C_needle_land_sample_eb_lowres_shifted' )
     storage.SaveImage(needle_eb_highres_with_lamella_shifted, id='C_needle_land_sample_eb_highres_shifted')
     storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='C_needle_land_sample_ib_lowres_shifted' )
     storage.SaveImage(needle_ib_highres_with_lamella_shifted, id='C_needle_land_sample_ib_highres_shifted')
 
+    '''
     ############ FIND dx, dy from HIGH_RES ELECTRON images ############
     x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(needle_eb_highres_with_lamella_shifted,
                                                                needle_ref_eb_highres_nobg, show=False, median_smoothing=2)
@@ -1284,6 +1339,8 @@ def land_needle_on_milled_lamella(microscope, needle_reference_images_nobg, move
     needle.relative_move(y_move)
     #######
     #######
+    '''
+
     #############################  find dz from LOW RES ION  ############################
     # take images, eb & ib, with the sample+needle - correct X of the needle from lowres eb
     ### RETAKE THE IMAGES AFTER dx,dy SHIFT
@@ -1309,11 +1366,16 @@ def land_needle_on_milled_lamella(microscope, needle_reference_images_nobg, move
     z_distance = y_shift / np.cos(stage_tilt)
     # Calculate movement
     print('Needle approach from i-beam low res - Z: landing')
+
     zy_move_half = z_corrected_needle_movement(z_distance / 2, stage_tilt)
     print('Needle move in Z by half...')
     needle.relative_move(zy_move_half)
+
+    gap = 1e-6
+    zy_move_half_with_small_gap = z_corrected_needle_movement( (z_distance / 2) - gap, stage_tilt)
+    needle.relative_move(zy_move_half_with_small_gap)
     print('Needle move in Z by half... LANDED')
-    needle.relative_move(zy_move_half)
+
 
     #############################  LANDED, take pictures  ############################
     ### RETAKE THE IMAGES AFTER dx,dy,dz SHIFT and landing
@@ -1396,10 +1458,15 @@ def liftout_lamella(microscope, settings, needle_reference_imgs_nobg):
     # need smaller dwell time when there is a sample on the needle
     move_sample_stage_out(microscope)
     park_position = move_needle_to_landing_position(microscope)
-    image_settings_electron = GrabFrameSettings(resolution="3072x2048", dwell_time=1.0e-6)
-    image_settings_ion      = GrabFrameSettings(resolution="3072x2048", dwell_time=0.5e-6)
-    microscope.beams.ion_beam.horizontal_field_width.value      = 80e-6
-    microscope.beams.electron_beam.horizontal_field_width.value = 80e-6
+
+    resolution = storage.settings["reference_images"]["needle_with_lamella_ref_img_resolution"]
+    dwell_time_electron = storage.settings["reference_images"]["needle_with_lamella_ref_img_dwell_time_electron"]
+    dwell_time_ion      = storage.settings["reference_images"]["needle_with_lamella_ref_img_dwell_time_ion"]
+    hfw_highres = storage.settings["reference_images"]["needle_with_lamella_ref_img_hfw_highres"]
+    image_settings_electron = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time_electron)
+    image_settings_ion      = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time_ion)
+    microscope.beams.ion_beam.horizontal_field_width.value      = hfw_highres
+    microscope.beams.electron_beam.horizontal_field_width.value = hfw_highres
     microscope.imaging.set_active_view(1)
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     ref_landingPos_eb_highres = microscope.imaging.grab_frame(image_settings_electron)
@@ -1857,7 +1924,224 @@ def _create_cutoff_pattern(microscope, *,
     return pattern
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+from patrick.utils import load_model, model_inference, detect_and_draw_lamella_and_needle, scale_invariant_coordinates, calculate_distance_between_points, parse_metadata, show_overlay
+from PIL import Image
 
+def renormalise_and_mask_image(image, plot=False):
+    from autoscript_sdb_microscope_client.structures import AdornedImage
+    data = np.copy(image.data)
+
+    data_norm = ( data - np.mean(data) ) / np.std(data)
+    data_norm =  data_norm - data_norm.min()
+    data_norm = data_norm / data_norm.max()  *  255
+    data_norm = data_norm.astype(np.uint8)
+
+    Nx, Ny = data.shape
+    #################### elliptical mask ####################
+    dx = int( Nx//2 * 0.1 )
+    dy = int( Ny//2 * 0.1 )
+    elps_mask = ellipse_mask(size=data.shape, radius1=Nx//2-dx, radius2=Ny//2-dy, sigma=min(dx//2,dy//2))
+    elps_mask = np.transpose(elps_mask)
+    #################### rectangular mask ####################
+    #start  = np.round(np.array( [ int(Nx*0.1) , int(Ny*0.1) ] ) )
+    #extent = np.round(np.array( [ int(Nx*0.8) , int(Ny*0.8),  ] ) )
+    #rr, cc = skimage.draw.rectangle(start, extent=extent, shape=data.shape)
+    #rect_mask = np.zeros(data.shape)
+    #rect_mask[rr.astype(int), cc.astype(int)] = 1.0
+    #rect_mask = ndi.gaussian_filter(rect_mask, sigma= min(dx//2,dy//2)   )
+
+    image_norm = AdornedImage(data=(data_norm * elps_mask).astype(uint8)  )
+    image_norm.metadata = image.metadata
+
+    return image_norm
+
+
+def lamella_shift_from_img_centre(img, show=False):
+
+    #weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\12_04_2021_10_32_23_model.pt"
+    weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
+    model = load_model(weights_file=weights_file)
+
+    # convert img to numpy array
+    img_orig = np.asarray(img.data)
+
+    # model inference + display
+    img, rgb_mask = model_inference(model, None, img=img_orig)
+
+    # detect and draw lamella centre, and needle tip
+    (
+        lamella_centre_px,
+        rgb_mask_lamella,
+        needle_tip_px,
+        rgb_mask_needle,
+        rgb_mask_combined,
+    ) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+    # TODO: this col masks still needs to be extracted out
+
+    # scale invariant coordinatess
+    scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+        needle_tip_px, lamella_centre_px, rgb_mask_combined
+    )
+
+    # calculate distance between features
+    # (
+    #     distance,
+    #     vertical_distance,
+    #     horizontal_distance,
+    # ) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+    # prediction overlay
+    img_overlay = show_overlay(img, rgb_mask_lamella)
+
+    # df = parse_metadata(fname)
+
+    img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+    if show:
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        ax.imshow(img_orig, cmap='Blues_r', alpha=1)
+        ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+
+        plt.show()
+
+    # TODO: fix this
+    if scaled_lamella_centre_px is None:
+        raise ValueError("No lamella centre detected")
+
+    return 0.5 - scaled_lamella_centre_px[0], -(0.5 - scaled_lamella_centre_px[1])
+
+
+def realign_eucentric_with_machine_learning(microscope, image_settings, hor_field_width=150e-6, _autocontrast=False):
+    from autoscript_sdb_microscope_client import SdbMicroscopeClient
+    from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    from autoscript_sdb_microscope_client.structures import StagePosition
+    """ Realign image to lamella centre using ML detection"""
+    stage  = microscope.specimen.stage
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+
+    #eb_lowres,  ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hor_field_width, image_settings=image_settings, __autocontrast=False)
+    microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
+    microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
+    autocontrast(microscope, beam_type=BeamType.ELECTRON) # try to charge the area evenly
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    autocontrast(microscope, beam_type=BeamType.ION) # # try to charge the area evenly
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+
+
+    storage.step_counter +=1
+    storage.SaveImage(eb_lowres, id='A_eb_lowres')
+    storage.SaveImage(ib_lowres, id='A_ib_lowres')
+
+    # in microscope coordinates (not img coordinate)
+    eb_distance_y, eb_distance_x = lamella_shift_from_img_centre( renormalise_and_mask_image(eb_lowres), show=True)
+    ib_distance_y, ib_distance_x = lamella_shift_from_img_centre( renormalise_and_mask_image(ib_lowres), show=True)
+
+    # tested, can align within 20um
+
+    # z correction
+    pixelsize_x   = ib_lowres.metadata.binary_result.pixel_size.x
+    field_width   = pixelsize_x  * ib_lowres.width
+    dy_meters_ion = ib_distance_y * field_width
+    tilt_radians = stage.current_position.t
+    delta_z = -np.cos(tilt_radians) * dy_meters_ion
+    # delta_z = -dy_meters_ion / np.cos(np.deg2rad(-38))
+    stage.relative_move(StagePosition(z=delta_z))
+
+    # x correction
+    field_height   = pixelsize_x  * ib_lowres.height
+    dx_meters_ion = ib_distance_x * field_height
+    stage.relative_move(StagePosition(x=dx_meters_ion))
+
+    print("Realigning x and y in ion beam")
+    print(f"Electron Beam: {eb_distance_y}, {eb_distance_x}")
+    print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
+    print(f"Delta Z movement: {delta_z}")
+    print(f"Delta X movement: {dx_meters_ion}")
+
+
+    # electron dy shift
+    #eb_lowres,  ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hor_field_width, image_settings=image_settings,  __autocontrast=False)
+    microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
+    microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
+    autocontrast(microscope, beam_type=BeamType.ELECTRON) # try to charge the area evenly
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    autocontrast(microscope, beam_type=BeamType.ION) # # try to charge the area evenly
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_lowres, id='A_eb_lowres_moved1')
+    storage.SaveImage(ib_lowres, id='A_ib_lowres_moved1')
+
+
+    # in microscope coordinates (not img coordinate)
+    eb_distance_y, eb_distance_x = lamella_shift_from_img_centre( renormalise_and_mask_image(eb_lowres), show=True)
+    # z correction
+    pixelsize_x   = eb_lowres.metadata.binary_result.pixel_size.x
+    field_width   = pixelsize_x  * eb_lowres.width
+    dy_meters_elec = eb_distance_y * field_width
+    tilt_radians = stage.current_position.t
+    #delta_z = -np.cos(tilt_radians) * dy_meters_elec
+    #stage.relative_move(StagePosition(z=delta_z))
+    stage.relative_move(StagePosition(y=dy_meters_elec))
+
+    # x correction
+    field_height   = pixelsize_x  * eb_lowres.height
+    dx_meters_elec = eb_distance_x * field_height
+    stage.relative_move(StagePosition(x=dx_meters_elec))
+
+    print("Realigning x and y in electron beam")
+    print(f"Electron Beam: {eb_distance_y}, {eb_distance_x}")
+    print(f"Delta Z movement: {delta_z}")
+    print(f"Delta X movement: {dx_meters_elec}")
+
+    # ion again
+    #eb_lowres,  ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hor_field_width, image_settings=image_settings)
+    microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
+    microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
+    autocontrast(microscope, beam_type=BeamType.ELECTRON) # try to charge the area evenly
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    autocontrast(microscope, beam_type=BeamType.ION) # # try to charge the area evenly
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_lowres, id='A_eb_lowres_moved2')
+    storage.SaveImage(ib_lowres, id='A_ib_lowres_moved2')
+
+    # in microscope coordinates (not img coordinate)
+    ib_distance_y, ib_distance_x = lamella_shift_from_img_centre( renormalise_and_mask_image(ib_lowres), show=True)
+    # z correction
+    pixelsize_x   = ib_lowres.metadata.binary_result.pixel_size.x
+    field_width   = pixelsize_x  * ib_lowres.width
+    dy_meters_ion = ib_distance_y * field_width
+    tilt_radians = stage.current_position.t
+    delta_z = -np.cos(tilt_radians) * dy_meters_ion
+    # delta_z = -dy_meters_ion / np.cos(np.deg2rad(-38))
+    stage.relative_move(StagePosition(z=delta_z))
+
+    # x correction
+    field_height   = pixelsize_x  * ib_lowres.height
+    dx_meters_ion = ib_distance_x * field_height
+    stage.relative_move(StagePosition(x=dx_meters_ion))
+
+    print("Realigning x and y in ion beam")
+    print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
+    print(f"Delta Z movement: {delta_z}")
+    print(f"Delta X movement: {dy_meters_ion}")
+
+
+    # take final position images
+    eb_lowres,  ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hor_field_width, image_settings=image_settings, __autocontrast=False)
+    #microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
+    #microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
+    #eb_lowres = new_electron_image(microscope, settings = image_settings, brightness = 0.41, contrast = 0.8)
+    #ib_lowres = new_ion_image(microscope, settings = image_settings, brightness = 0.41, contrast = 0.8)
+    storage.SaveImage(eb_lowres, id='A_eb_lowres_final')
+    storage.SaveImage(ib_lowres, id='A_ib_lowres_final')
+
+    storage.step_counter += 1
 
 
 
@@ -1880,19 +2164,76 @@ def mill_lamella(microscope, settings, confirm=True):
     #############
     # Take reference images after trech milling, use them to realign after stage rotation to flat_to_electron position
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
-    eb_lowres_reference,  ib_lowres_reference  = take_electron_and_ion_reference_images(microscope, hor_field_width=400e-6, image_settings=image_settings) # TODO: yaml use input
-    eb_highres_reference, ib_highres_reference = take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  image_settings=image_settings) # TODO: yaml use input
+    refocus_and_relink(microscope)
+
+    resolution = storage.settings["reference_images"]["trench_area_ref_img_resolution"]
+    dwell_time = storage.settings["reference_images"]["trench_area_ref_img_dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+    hfw_lowres  = storage.settings["reference_images"]["trench_area_ref_img_hfw_lowres"]
+    hfw_highres = storage.settings["reference_images"]["trench_area_ref_img_hfw_highres"]
+    eb_lowres_reference,  ib_lowres_reference =  take_electron_and_ion_reference_images(microscope,  hor_field_width=hfw_lowres,  image_settings=image_settings)
+    eb_highres_reference, ib_highres_reference = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_highres, image_settings=image_settings)
     reference_images_low_and_high_res = (eb_lowres_reference, eb_highres_reference, ib_lowres_reference, ib_highres_reference) #use these images for future alignment
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = hfw_lowres
+    microscope.beams.electron_beam.horizontal_field_width.value = hfw_lowres
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope,      settings=image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.step_counter +=1
+    storage.SaveImage(eb_lowres, id='ref_A_eb_lowres__brightnessContrast')
+    storage.SaveImage(ib_lowres, id='ref_A_ib_lowres__brightnessContrast')
+    microscope.beams.ion_beam.horizontal_field_width.value      = hfw_highres
+    microscope.beams.electron_beam.horizontal_field_width.value = hfw_highres
+    eb_highres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_highres = new_ion_image(microscope,      settings=image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_highres, id='ref_A_eb_highres__brightnessContrast')
+    storage.SaveImage(ib_highres, id='ref_A_ib_highres__brightnessContrast')
+    reference_images_low_and_high_res_BC = (eb_lowres, eb_highres, ib_lowres, ib_highres) #use these images for future alignment
+
     ############# Move to flat_to_electron, take electron beam images, align using ion-beam image from tenching angle, Move to Jcut angle(+6 deg)
     flat_to_electron_beam(microscope, pretilt_angle=PRETILT_DEGREES) # rotate to flat_to_electron
-    realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res, plot=False) # correct the stage drift after 180 deg rotation using treched lamella images as reference
-    # the lamella is now aligned
+    microscope.beams.ion_beam.horizontal_field_width.value      = 400e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 400e-6
+    refocus_and_relink(microscope)
+    realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res, plot=True) # correct the stage drift after 180 deg rotation using treched lamella images as reference
+    #realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res_BC, plot=False) # correct the stage drift after 180 deg rotation using treched lamella images as reference
+    ##
+    #MACHINE LEARNING eucentic height adjustment two steps
+    image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
+    realign_eucentric_with_machine_learning(microscope, image_settings = image_settings_ML, hor_field_width=150e-6)
+    realign_eucentric_with_machine_learning(microscope, image_settings = image_settings_ML, hor_field_width=80e-6)
+
+    ##
+    #   the lamella is now aligned
     #############
     # Take new set of images after alignment
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
     eb_lowres_reference,  ib_lowres_reference  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings) # TODO: yaml use input
     eb_highres_reference, ib_highres_reference = take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  image_settings=image_settings) # TODO: yaml use input
     reference_images_low_and_high_res = (eb_lowres_reference, eb_highres_reference, ib_lowres_reference, ib_highres_reference)
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.step_counter +=1
+    storage.SaveImage(eb_lowres, id='aligned_A_eb_lowres__brightnessContrast')
+    storage.SaveImage(ib_lowres, id='aligned_A_ib_lowres__brightnessContrast')
+    microscope.beams.ion_beam.horizontal_field_width.value      = 50e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 50e-6
+    eb_highres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_highres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_highres, id='aligned_A_eb_highres__brightnessContrast')
+    storage.SaveImage(ib_highres, id='aligned_A_ib_highres__brightnessContrast')
+
     #############
     ############# Mill J-cut
     #############
@@ -1905,6 +2246,9 @@ def mill_lamella(microscope, settings, confirm=True):
     print(tilting)
     stage.relative_move(tilting, stage_settings)
     realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt=previous_stage_tilt, beam_type=BeamType.ION)
+    refocus_and_relink(microscope)
+    image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=150e-6)
     ############################################################################################
     ###############################  tilted images alignment # 2 ###############################
     ############################################################################################
@@ -1912,12 +2256,38 @@ def mill_lamella(microscope, settings, confirm=True):
     eb_lowres_ref, ib_lowres_ref   = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
     eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(microscope, hor_field_width= 50e-6, image_settings=image_settings)
     reference_images_low_and_high_res = (eb_lowres_ref, eb_highres_ref, ib_lowres_ref, ib_highres_ref) #use these images for future alignment
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.step_counter +=1
+    storage.SaveImage(eb_lowres, id='tilt3deg_A_eb_lowres__brightnessContrast')
+    storage.SaveImage(ib_lowres, id='tilt3deg_A_ib_lowres__brightnessContrast')
+    microscope.beams.ion_beam.horizontal_field_width.value      = 50e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 50e-6
+    eb_highres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_highres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_highres, id='tilt3deg_A_eb_highres__brightnessContrast')
+    storage.SaveImage(ib_highres, id='tilt3deg_A_ib_highres__brightnessContrast')
+    reference_images_low_and_high_res_BC = (eb_lowres, eb_highres, eb_highres, ib_highres) #use these images for future alignment
+
+
     ### Need to tilt +6 deg, tilt first +3 deg only, again +23deg, Now +6 deg
     previous_stage_tilt = stage.current_position.t
     tilting = StagePosition(x=0, y=0, z=0, t=np.deg2rad(3))
     print(tilting)
     stage.relative_move(tilting, stage_settings)
     realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt=previous_stage_tilt, beam_type=BeamType.ION)
+    refocus_and_relink(microscope)
+    image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=1.0e-6)  # TODO: user input resolution
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=150e-6)
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=80e-6)
+
     ############################################################################################
     #
     mill_jcut(microscope, settings['jcut'], confirm=False)
@@ -1929,6 +2299,26 @@ def mill_lamella(microscope, settings, confirm=True):
     storage.SaveImage(ib_lowres_ref_jcut,  id='ib_lowres_Jcut' )
     storage.SaveImage(eb_highres_ref_jcut, id='eb_highres_Jcut')
     storage.SaveImage(ib_highres_ref_jcut, id='ib_highres_Jcut')
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.step_counter +=1
+    storage.SaveImage(eb_lowres, id='jcut_A_eb_lowres__brightnessContrast')
+    storage.SaveImage(ib_lowres, id='jcut_A_ib_lowres__brightnessContrast')
+    microscope.beams.ion_beam.horizontal_field_width.value      = 50e-6
+    microscope.beams.electron_beam.horizontal_field_width.value = 50e-6
+    eb_highres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_highres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_highres, id='jcut_A_eb_highres__brightnessContrast')
+    storage.SaveImage(ib_highres, id='jcut_A_ib_highres__brightnessContrast')
+
+
     storage.step_counter += 1
 
     ########################## Ready for liftout ##########################
@@ -1938,6 +2328,12 @@ def mill_lamella(microscope, settings, confirm=True):
     # realign j-cut images to lift-out images
     reference_images_low_and_high_res = (eb_lowres_ref_jcut, eb_highres_ref_jcut, ib_lowres_ref_jcut, ib_highres_ref_jcut)
     realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt, beam_type=BeamType.ION) ### REALIGN to center in the ion beam after +4 deg tilt
+    image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=2e-6)  # TODO: user input resolution
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=150e-6)
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=80e-6)
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=50e-6)
+
+
     print("Done, ready for liftout!")
 
 
@@ -2035,7 +2431,7 @@ def land_lamella(microscope, landing_coord, original_landing_images, needle_refe
     x_move = x_corrected_needle_movement(x_shift)
     y_move = y_corrected_needle_movement(y_shift, stage.current_position.t)
     print('x_move = ', x_move, ';\ny_move = ', y_move)
-    yy = input('press ENTER to move the needle in Y only...')
+    #yy = input('press ENTER to move the needle in Y only...')
     needle.relative_move(y_move)
 
     ############ FIND dz from HIGH_RES ION images ############
@@ -2309,7 +2705,7 @@ def correct_stage_drift_using_reference_eb_images(microscope, reference_images_l
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('press Enter to move...')
+    #yy = input('press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
     ###
@@ -2334,7 +2730,7 @@ def correct_stage_drift_using_reference_eb_images(microscope, reference_images_l
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('press Enter to move...')
+    #yy = input('press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
     storage.step_counter += 1
@@ -2359,6 +2755,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     field_width_highres = pixelsize_x_highres * eb_highres_reference.width
     ########################################  LOW resolution alignment #1  #############################################
     print(' - - - - - - - - - - - - - - Coarse alignment #1 - - - - - - - - - - - - - - ...')
+    #refocus_and_relink(microscope)
     microscope.beams.ion_beam.horizontal_field_width.value      = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
     microscope.imaging.set_active_view(1)
@@ -2369,6 +2766,18 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     new_ib_lowres = microscope.imaging.grab_frame(image_settings)
     storage.SaveImage(new_eb_lowres,  id='B_01_ebTOib_sample_eb_lowres')
     storage.SaveImage(new_ib_lowres,  id='B_01_ebTOib_sample_ib_lowres')
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = field_width_lowres
+    microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_lowres, id='B_01_ebTOib_sample_eb_lowres_BC')
+    storage.SaveImage(ib_lowres, id='B_01_ebTOib_sample_ib_lowres_BC')
+
     #
     lowpass_pixels  = int( max(new_eb_lowres.data.shape) / 12 ) # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int( max(new_eb_lowres.data.shape)/ 256 ) # =6   @ 1536x1024, good for e-beam images
@@ -2379,7 +2788,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
 
@@ -2395,6 +2804,19 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     new_ib_lowres = microscope.imaging.grab_frame(image_settings)
     storage.SaveImage(new_eb_lowres,  id='B_02_ebTOib_sample_eb_lowres')
     storage.SaveImage(new_ib_lowres,  id='B_02_ebTOib_sample_ib_lowres')
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = field_width_lowres
+    microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
+    eb_lowres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_lowres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_lowres, id='B_02_ebTOib_sample_eb_lowres_BC')
+    storage.SaveImage(ib_lowres, id='B_02_ebTOib_sample_ib_lowres_BC')
+
+
     #
     lowpass_pixels  = int( max(new_eb_lowres.data.shape) / 12 ) # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int( max(new_eb_lowres.data.shape)/ 256 ) # =6   @ 1536x1024, good for e-beam images
@@ -2405,7 +2827,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('Press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
 
@@ -2421,6 +2843,18 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     new_ib_highres = microscope.imaging.grab_frame(image_settings)
     storage.SaveImage(new_eb_lowres,  id='C_ebTOib_sample_eb_highres_shifted')
     storage.SaveImage(new_ib_lowres,  id='C_ebTOib_sample_ib_highres_shifted')
+
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    microscope.beams.ion_beam.horizontal_field_width.value      = field_width_highres
+    microscope.beams.electron_beam.horizontal_field_width.value = field_width_highres
+    eb_highres = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+    ib_highres = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+    storage.SaveImage(eb_highres, id='C_ebTOib_sample_eb_highres_shifted_BC')
+    storage.SaveImage(ib_highres, id='C_ebTOib_sample_ib_highres_shifted_BC')
+
     lowpass_pixels  = int( max(new_eb_highres.data.shape) / 12 ) # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int( max(new_eb_highres.data.shape)/ 256 ) # =6   @ 1536x1024, good for e-beam images
     sigma = int(2 * max(new_eb_highres.data.shape) / 1536)       # =2   @ 1536x1024, good for e-beam images
@@ -2429,7 +2863,7 @@ def realign_using_reference_eb_and_ib_images(microscope, reference_images_low_an
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ELECTRON) ##check electron/ion movement
     print('relative movement of the the stage by X  :',  x_move)
     print('relative movement of the the stage by Y-Z:', yz_move)
-    yy = input('Press Enter to move...')
+    #yy = input('Press Enter to move...')
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
     storage.step_counter += 1
@@ -2607,7 +3041,7 @@ def realign_landing_post(microscope, reference_images_low_and_high_res, plot=Fal
     #
     lowpass_pixels = int(max(new_ib_lowres.data.shape) / 6)   # =256 @ 1536x1024,  good for i-beam images
     highpass_pixels = int(max(new_ib_lowres.data.shape) / 64) # =24  @ 1536x1024,  good for i-beam images => need a large highpass to remove noise and ringing
-    sigma = int(10 * max(new_ib_lowres.data.shape) / 1536)    # =10   @ 1536x1024, good for i-beam images
+    sigma = int(10 * max(new_ib_lowres.data.shape) / 1536)    # =10  @ 1536x1024, good for i-beam images
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(new_ib_lowres, ib_lowres_reference, lowpass=lowpass_pixels, highpass=highpass_pixels, sigma=sigma)
     x_move  = x_corrected_stage_movement(-dx_ei_meters)
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ION) ##check electron/ion movement
@@ -2631,7 +3065,7 @@ def realign_landing_post(microscope, reference_images_low_and_high_res, plot=Fal
     ########   ------------- correlate------------
     lowpass_pixels = int(max(new_ib_highres.data.shape) / 6)   # =256 @ 1536x1024,  good for i-beam images
     highpass_pixels = int(max(new_ib_highres.data.shape) / 64) # =24  @ 1536x1024,  good for i-beam images => need a large highpass to remove noise and ringing
-    sigma = int(10 * max(new_ib_highres.data.shape) / 1536)    # =10   @ 1536x1024, good for i-beam images
+    sigma = int(10 * max(new_ib_highres.data.shape) / 1536)    # =10  @ 1536x1024, good for i-beam images
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(new_ib_highres, ib_highres_reference, lowpass=lowpass_pixels, highpass=highpass_pixels, sigma=sigma)
     x_move  = x_corrected_stage_movement(-dx_ei_meters)
     yz_move = y_corrected_stage_movement(dy_ei_meters, stage.current_position.t, beam_type=BeamType.ION) ##check electron/ion movement
@@ -2663,6 +3097,9 @@ def single_liftout(microscope, settings, landing_coord, lamella_coord, original_
     # land
     land_lamella(microscope, original_landing_images, needle_reference_images_highres_with_lamella)
 
+def reload_config(config_filename):
+    settings = load_config(config_filename)
+    storage.settings = settings
 
 
 
@@ -2720,14 +3157,17 @@ if __name__ == '__main__':
     output_log_filename = os.path.join('logfile' + timestamp + '.log')
     configure_logging(log_filename=output_log_filename)
 
-    storage.NewRun()
+    storage.NewRun(prefix='cryo_machine_learning_click')
+    storage.settings = settings
 
     microscope = initialize(settings["system"]["ip_address"])
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     autocontrast(microscope, beam_type=BeamType.ION)
+
     if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
         sputter_platinum_over_whole_grid(microscope)
     print("Please select the landing positions and check eucentric height manually.")
+    '''
     landing_coordinates, original_landing_images = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
     lamella_coordinates, original_trench_images  = find_coordinates(microscope, name="lamella",          move_stage_angle="trench")
     zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
@@ -2740,6 +3180,7 @@ if __name__ == '__main__':
         single_liftout(microscope, settings, landing_coord, lamella_coord, landing_reference_images, lamella_area_reference_images)
         storage.liftout_counter += 1
     print("Finished.")
+    '''
 
 
 

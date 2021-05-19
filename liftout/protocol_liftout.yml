@@ -3,12 +3,31 @@ system:
   ip_address: 10.0.0.1
   application_file_rectangle: "autolamella"
   application_file_cleaning_cross_section: "autolamella"
+  stage_rotation_flat_to_electron: 50 # degrees
+  stage_rotation_flat_to_ion: 230 # degrees
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
   resolution: "1536x1024"
+reference_images:
+  landing_post_ref_img_resolution: "1536x1024"
+  landing_post_ref_img_dwell_time: 1e-6
+  landing_post_ref_img_hfw_lowres: 400e-6
+  landing_post_ref_img_hfw_highres: 150e-6
+  trench_area_ref_img_resolution: "1536x1024"
+  trench_area_ref_img_dwell_time: 1e-6
+  trench_area_ref_img_hfw_lowres: 600e-6
+  trench_area_ref_img_hfw_highres: 80e-6
+  needle_ref_img_resolution: "1536x1024"
+  needle_ref_img_dwell_time: 2e-6
+  needle_ref_img_hfw_lowres: 150e-6
+  needle_ref_img_hfw_highres: 100e-6
+  needle_with_lamella_ref_img_resolution: "3072x2048"
+  needle_with_lamella_ref_img_hfw_highres: 150e-6
+  needle_with_lamella_ref_img_dwell_time_electron: 1e-6
+  needle_with_lamella_ref_img_dwell_time_ion: 0.5e-6
 lamella:
-  lamella_width: 10e-6 # in meters
+  lamella_width: 12e-6 # in meters
   lamella_height: 3e-6 # in meters
   total_cut_height: 6e-6 # in meters
   milling_depth: 1e-6 # default milling depth, unless otherwise specified
@@ -23,8 +42,13 @@ lamella:
       percentage_from_lamella_surface: 0.0 # fractional percentage
       milling_current: 0.74e-9 # in Amps
       milling_depth: 0.6e-6 # in meters
+machine_learning:
+  eb_brightness: 0.4
+  eb_contrast: 0.70
+  ib_brightness: 0.41
+  ib_contrast: 0.86
 jcut:
-  jcut_milling_current: 0.74e-9 # in Amps
+  jcut_milling_current: 0.89e-9 # in Amps
   jcut_angle: 6  # in degrees
   jcut_length: 7e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters

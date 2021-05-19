@@ -918,6 +918,45 @@ def liftout_lamella(microscope, settings, needle_reference_imgs):
 if __name__ == "__main__":
     TEST = 3.3
 
+    if 0:
+        storage.NewRun(prefix='test_needle_landing_lowDose')
+        ip_address = '10.0.0.1'
+        from autoscript_sdb_microscope_client import SdbMicroscopeClient
+        from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+        from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+        microscope = SdbMicroscopeClient()
+        microscope.connect(ip_address)
+        stage  = microscope.specimen.stage
+        needle = microscope.specimen.manipulator
+        sample_stage_out = StagePosition(x=-0.002507, y=0.025962792, z=0.0039559049)
+        microscope.specimen.stage.absolute_move(sample_stage_out)
+
+        image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
+        needle_eb_highres, needle_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width= 80e-6, image_settings=image_settings)
+        needle_eb_lowres,  needle_ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
+        ###
+        storage.SaveImage(needle_eb_lowres,  id='_needle_eb_lowres' )
+        storage.SaveImage(needle_eb_highres, id='_needle_eb_highres')
+        storage.SaveImage(needle_ib_lowres,  id='_needle_ib_lowres' )
+        storage.SaveImage(needle_ib_highres, id='_needle_ib_highres')
+        storage.step_counter += 1
+
+        #park_position = move_needle_to_liftout_position(microscope)
+        #park_position = move_needle_to_landing_position(microscope)
+        #park_position = needle.current_position
+        #retract_needle(microscope, park_position)
+
+        image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=0.2e-6)  # TODO: user input resolution
+        eb_lowres_reference,  ib_lowres_reference  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings) # TODO: yaml use input
+        eb_highres_reference, ib_highres_reference = take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6,  image_settings=image_settings) # TODO: yaml use input
+        reference_images_low_and_high_res = (eb_lowres_reference, eb_highres_reference, ib_lowres_reference, ib_highres_reference)
+        storage.SaveImage(eb_lowres_reference,  id='_ref_eb_lowres' )
+        storage.SaveImage(eb_highres_reference, id='_ref_eb_highres')
+        storage.SaveImage(ib_lowres_reference,  id='_ref_ib_lowres' )
+        storage.SaveImage(ib_highres_reference, id='_ref_ib_highres')
+        storage.step_counter += 1
+
+
     # try this
     #sx = ndimage.sobel(im, axis=0, mode='constant')
     #sy = ndimage.sobel(im, axis=1, mode='constant')
@@ -961,6 +1000,21 @@ if __name__ == "__main__":
         storage.SaveImage(needle_ref_eb_highres_nobg, id='A_ref_eb_highres')
         storage.SaveImage(needle_ref_ib_lowres_nobg, id='A_ref_ib_lowres')
         storage.SaveImage(needle_ref_ib_highres_nobg, id='A_ref_ib_highres')
+
+
+        if 0:
+            needle_reference_images_nobg = [needle_ref_eb_lowres_nobg, needle_ref_eb_highres_nobg, needle_ref_ib_lowres_nobg, needle_ref_ib_highres_nobg]
+            needle_reference_imgs = NEEDLE_REF_NOBG_IMAGES
+            needle_ref_eb_lowres_nobg  = needle_reference_imgs[0]
+            needle_ref_eb_highres_nobg = needle_reference_imgs[1]
+            needle_ref_ib_lowres_nobg  = needle_reference_imgs[2]
+            needle_ref_ib_highres_nobg = needle_reference_imgs[3]
+            storage.SaveImage(needle_ref_eb_lowres_nobg, id='A_ref_eb_needle_nobg_lowres')
+            storage.SaveImage(needle_ref_eb_highres_nobg, id='A_ref_eb_needle_nobg_highres')
+            storage.SaveImage(needle_ref_ib_lowres_nobg, id='A_ref_ib_needle_nobg_lowres')
+            storage.SaveImage(needle_ref_ib_highres_nobg, id='A_ref_ib_needle_nobg_highres')
+            storage.step_counter += 1
+
         ######
         ######
         yy = input('Move the sample in and press ENTER...')
@@ -997,7 +1051,8 @@ if __name__ == "__main__":
         storage.SaveImage(needle_eb_lowres_with_lamella, id='B_sample_eb_lowres')
         storage.SaveImage(needle_eb_highres_with_lamella, id='B_sample_eb_highres')
         storage.SaveImage(needle_ib_lowres_with_lamella, id='B_sample_ib_lowres')
-        storage.SaveImage(needle_ib_highres_with_lamella, id='B_ref_ib_highres')
+        storage.SaveImage(needle_ib_highres_with_lamella, id='B_sample_ib_highres')
+        storage.step_counter +=1
         ############ FIND dx, dy from HIGH_RES ELECTRON images ############
         x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(needle_eb_lowres_with_lamella, needle_ref_eb_lowres_nobg, show=True, median_smoothing=2)
         xcorrection = 1e-6
@@ -1111,6 +1166,24 @@ if __name__ == "__main__":
         storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='E_sample_ib_lowres_landed')
         storage.SaveImage(needle_ib_highres_with_lamella_shifted, id='E_ref_ib_highres_landed')
 
+        if 0:
+            new_eb,  new_ib  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
+            storage.SaveImage(new_eb,  id='eb_')
+            storage.SaveImage(new_ib,  id='ib_')
+            storage.step_counter +=1
+
+        if 0:
+            eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+            eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+            ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+            ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+            microscope.beams.ion_beam.horizontal_field_width.value      = 80e-6 # hor_field_width
+            microscope.beams.electron_beam.horizontal_field_width.value = 80e-6 # hor_field_width
+            new_eb = new_electron_image(microscope, settings=image_settings, brightness=eb_brightness, contrast=eb_contrast)
+            new_ib = new_ion_image(microscope, settings = image_settings, brightness=ib_brightness, contrast=ib_contrast)
+            storage.SaveImage(new_eb,  id='eb__BC')
+            storage.SaveImage(new_ib,  id='ib__BC')
+            storage.step_counter +=1
 
 
         # TAKE NEEDLE z_UP (>30 MICRONS), TAKE GIS OUT, RESTRACT TO PARKING
