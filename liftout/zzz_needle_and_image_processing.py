@@ -1168,7 +1168,7 @@ if __name__ == "__main__":
 
         if 0:
             new_eb,  new_ib  = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
-            storage.SaveImage(new_eb,  id='eb_')
+            storage.SaveImage(new_eb,  id='eb_milled')
             storage.SaveImage(new_ib,  id='ib_')
             storage.step_counter +=1
 

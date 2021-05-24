@@ -30,6 +30,9 @@ from skimage.draw import line
 from skimage.transform import rescale, resize, downscale_local_mean
 
 
+from skimage import data, img_as_float
+from skimage import exposure
+
 class BeamType(Enum):
     ION = 'ION'
     ELECTRON = 'ELECTRON'
@@ -659,9 +662,9 @@ weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fre
 model = load_model(weights_file=weights_file)
 
 
-#DIR = r'C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\liftout\cryo_machine_learning_20210510.110832\liftout000'
-#DIR.replace('\\', '/')
-#fileName = DIR + '/' + r'step11_A_ib_lowres.tif' # no success
+DIR = r'C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\liftout\cryo_machine_learning_20210510.110832\liftout000'
+DIR.replace('\\', '/')
+fileName = DIR + '/' + r'step11_A_ib_lowres.tif' # no success
 #fileName = DIR + '/' + r'step12_A_ib_lowres.tif'
 #fileName = DIR + '/' + r'step26_C_tiltAlign_sample_eb_highres.tif'
 #fileName = DIR + '/' + r'step28_A_eb_lowres.tif'
@@ -670,10 +673,19 @@ model = load_model(weights_file=weights_file)
 #fileName = DIR + '/' + r'step43_B_needle_land_sample_ib_lowres.tif'
 #fileName = DIR + '/' + r'step28_A_eb_lowres.tif'
 
+#DIR = r'C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\liftout\cryo_machine_learning_20210517.124020\liftout000'
+#DIR.replace('\\', '/')
+#fileName = DIR + '/' + r'step10_A_ib_lowres.tif' # no success
 
-DIR = r'C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\liftout\cryo_machine_learning_20210517.124020\liftout000'
-DIR.replace('\\', '/')
-fileName = DIR + '/' + r'step10_A_ib_lowres.tif' # no success
+fig = plt.figure(figsize=(8, 5))
+Nx, Ny = 3,3
+axes = np.zeros((Nx, Ny), dtype=np.object)
+counter = 1
+for ii in range(Nx):
+    for jj in range(Ny):
+        axes[ii, jj] = plt.subplot(Nx, Ny, counter)
+        counter += 1
+
 
 imageTif = Image.open(fileName)
 img_orig = np.array(imageTif)
@@ -682,18 +694,77 @@ MEAN  = np.mean(img_orig)
 
 print('STD = ', STD, '; MEAN = ', MEAN)
 
+axes[0,0].imshow(img_orig, cmap=plt.cm.gray)
+axes[0,0].set_axis_off()
+axes[0,0].set_title('Original')
+
+
 histogram, bin_edges = np.histogram(img_orig, bins=256)
 plt.figure(11)
-plt.plot(bin_edges[0:-1], histogram, 'ob')  # <- or here
+plt.plot(bin_edges[0:-1], histogram, '-ob')  # <- or here
+plt.title('original hist')
 
+
+
+
+
+########################################################################################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+#fig, ax = plt.subplots(nrows=1, ncols=1)
+axes[0,1].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[0,1].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[0,1].set_title('original ML')
+########################################################################################
+
+
+
+
+########################################################################################
 if MEAN > (255 - STD/2):
     print('1---------- doing renormalisation, recalibration and padding ----------------- ')
     indices = np.where(img_orig < MEAN  )
     img_orig[indices] = 0
+    histogram3, bin_edges3 = np.histogram(img_orig, bins=256)
+    plt.figure(11)
+    plt.plot(bin_edges3[0:-1], histogram3, '-or')  # <- or here
 elif (MEAN<(255/2. - STD/2) and (MEAN < 2*STD)):
     print('2---------- doing renormalisation, recalibration and padding ----------------- ')
     indices = np.where(img_orig > MEAN  )
     img_orig[indices] = 255
+    histogram3, bin_edges3 = np.histogram(img_orig, bins=256)
+    plt.figure(11)
+    plt.plot(bin_edges3[0:-1], histogram3, '-or')  # <- or here
 
 elif (MEAN<(255/2. - STD/2) and MEAN>=STD/2) or (MEAN>=(255/2. + STD/2) and MEAN <= (255 - STD/2)):
     print('3---------- doing renormalisation, recalibration and padding ----------------- ')
@@ -716,6 +787,9 @@ elif (MEAN<(255/2. - STD/2) and MEAN>=STD/2) or (MEAN>=(255/2. + STD/2) and MEAN
     img_orig = img_orig.astype(np.uint8)
     #### filtering end
     histogram3, bin_edges3 = np.histogram(img_orig, bins=256)
+
+    plt.figure(11)
+    plt.plot(bin_edges3[0:-1], histogram3, '-or')  # <- or here
 
 
     ### renormalisation
@@ -744,25 +818,16 @@ elif (MEAN<(255/2. - STD/2) and MEAN>=STD/2) or (MEAN>=(255/2. + STD/2) and MEAN
     #img_mean  = np.mean(img_orig)
     #img_orig =  (img_orig  - img_mean) / img_sigma
 
+    #plt.figure(12)
+    #plt.plot(bin_edges[0:-1], histogram, 'b')  # <- or here
+    #plt.plot(bin_edges3[0:-1], histogram3, 'r')  # <- or here
 
-    plt.figure(12)
-    plt.plot(bin_edges[0:-1], histogram, 'b')  # <- or here
-    plt.figure(12)
-    plt.plot(bin_edges3[0:-1], histogram3, 'r')  # <- or here
-
-
+########################################################################################
 
 
 
-
-
-
-
-
-
+########################################################################################
 img, rgb_mask = model_inference(model, None, img=img_orig)
-
-
 # detect and draw lamella centre, and needle tip
 (
     lamella_centre_px,
@@ -792,9 +857,13 @@ img_overlay = show_overlay(img, rgb_mask_combined)
 
 img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
 
-fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+#fig, ax = plt.subplots(nrows=1, ncols=1)
+#ax.imshow(img_orig, cmap='Blues_r', alpha=1)
+#ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[0,2].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[0,2].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[0,2].set_axis_off()
+axes[0,2].set_title('hist modified ML')
 
 
 
@@ -803,8 +872,12 @@ ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
 
 
 
+####### log corrected ################
 imageTif = Image.open(fileName)
 img_orig = np.array(imageTif)
+
+img_orig = exposure.adjust_log(img_orig, 0.5)
+
 img, rgb_mask = model_inference(model, None, img=img_orig)
 # detect and draw lamella centre, and needle tip
 (
@@ -835,14 +908,252 @@ img_overlay = show_overlay(img, rgb_mask_combined)
 
 img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
 
-fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[1,0].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[1,0].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[1,0].set_axis_off()
+axes[1,0].set_title('log corrected')
 
 
 
 
 
+####### sigmoid corrected ################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+
+img_orig = exposure.adjust_sigmoid(img_orig, 0.5)
+
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+axes[1,1].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[1,1].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[1,1].set_axis_off()
+axes[1,1].set_title('sigmoid corrected')
+
+
+
+
+
+
+
+
+####### gamma corrected ################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+
+gamma = 0.5
+img_orig = exposure.adjust_gamma(img_orig, gamma)
+
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+axes[1,2].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[1,2].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[1,2].set_axis_off()
+axes[1,2].set_title('gamma corrected, '+str(gamma))
+
+
+
+
+
+
+
+
+####### gamma corrected ################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+
+gamma = 1
+img_orig = exposure.adjust_gamma(img_orig, gamma)
+
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+axes[2,0].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[2,0].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[2,0].set_axis_off()
+axes[2,0].set_title('gamma corrected, '+str(gamma))
+
+
+
+
+
+
+####### gamma corrected ################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+
+gamma = 2
+img_orig = exposure.adjust_gamma(img_orig, gamma)
+
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+axes[2,1].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[2,1].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[2,1].set_axis_off()
+axes[2,1].set_title('gamma corrected, '+str(gamma))
+
+
+
+
+
+
+
+
+
+
+
+####### gamma corrected ################
+imageTif = Image.open(fileName)
+img_orig = np.array(imageTif)
+
+gamma = 3
+img_orig = exposure.adjust_gamma(img_orig, gamma)
+
+img, rgb_mask = model_inference(model, None, img=img_orig)
+# detect and draw lamella centre, and needle tip
+(
+    lamella_centre_px,
+    rgb_mask_lamella,
+    needle_tip_px,
+    rgb_mask_needle,
+    rgb_mask_combined,
+) = detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None)
+# TODO: this col masks still needs to be extracted out
+
+# scale invariant coordinatess
+scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
+    needle_tip_px, lamella_centre_px, rgb_mask_combined
+)
+
+# calculate distance between features
+(
+    distance,
+    vertical_distance,
+    horizontal_distance,
+) = calculate_distance_between_points(scaled_lamella_centre_px, scaled_needle_tip_px)
+
+# prediction overlay
+img_overlay = show_overlay(img, rgb_mask_combined)
+
+# df = parse_metadata(fname)
+
+img_overlay_resized = Image.fromarray(img_overlay).resize((img.shape[1], img.shape[0]))
+
+axes[2,2].imshow(img_orig, cmap='Blues_r', alpha=1)
+axes[2,2].imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
+axes[2,2].set_axis_off()
+axes[2,2].set_title('gamma corrected, '+str(gamma))
 
 
 

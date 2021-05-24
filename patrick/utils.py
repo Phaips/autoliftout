@@ -309,12 +309,11 @@ def draw_needle_and_lamella(rgb_mask_c, needle_tip_px=None, lamella_centre_px=No
     return rgb_mask_c
 
 
-def detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None):
+def detect_and_draw_lamella_and_needle(rgb_mask):
     """ Detect the lamella centre and needle.
 
     args:
         rgb_mask: mask of needle, and lamella detections
-        cols_masks: columns for plotting with streamlit
 
     returns:
         lamella_centre_px: pixel coordinate of lamella centre
@@ -339,14 +338,6 @@ def detect_and_draw_lamella_and_needle(rgb_mask, cols_masks=None):
         mask_copy = np.zeros_like(rgb_mask)
         idx = np.where(np.all(rgb_mask == col, axis=-1))
         mask_copy[idx] = col
-
-        if cols_masks is not None:
-            # show separated masks TODO: refactor this part out
-            cols_masks[i].image(
-                mask_copy,
-                caption=f"{label} pixels:   {len(idx[0])}",
-                use_column_width=True,
-            )
 
         # find lamella centre
         if label == "lamella" and len(idx[0]) > 25:

@@ -23,6 +23,19 @@ ser.open()
 #command = "RANGE? 1\r\n"
 #command = "WARMUP? 1\r\n"
 #command = "SETP 1,40\r\n"
+#command = "PID? 1\r\n"
+command = "PID 1,500,20,0\r\n"
+ser.write(bytes(command,'utf-8'))
+time.sleep(0.1)
+ser.flush()
+output = ser.read_all()
+print(output)
+
+
+
+
+
+
 
 command = "TLIMIT A,373\r\n"
 ser.write(bytes(command,'utf-8'))
@@ -31,8 +44,6 @@ ser.flush()
 output = ser.read_all()
 print(output)
 
-
-
 command = "WARMUP 0,50\r\n"
 ser.write(bytes(command,'utf-8'))
 time.sleep(0.1)
@@ -40,7 +51,7 @@ ser.flush()
 output = ser.read_all()
 print(output)
 
-set_temperature = 40
+set_temperature = -140
 command = "SETP 1," + str(set_temperature) + "\r\n"
 ser.write(bytes(command,'utf-8'))
 time.sleep(0.1)
@@ -66,6 +77,7 @@ while 1:
         output = ser.read_all()
         print(output)
         break
+    time.sleep(5)
 
 
 '''

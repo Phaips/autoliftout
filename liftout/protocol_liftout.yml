@@ -42,13 +42,17 @@ lamella:
       percentage_from_lamella_surface: 0.0 # fractional percentage
       milling_current: 0.74e-9 # in Amps
       milling_depth: 0.6e-6 # in meters
+needle:
+  horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
+  dwell_time: 1e-6
+  resolution: "1536x1024"
 machine_learning:
   eb_brightness: 0.4
   eb_contrast: 0.70
   ib_brightness: 0.41
   ib_contrast: 0.86
 jcut:
-  jcut_milling_current: 0.89e-9 # in Amps
+  jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees
   jcut_length: 7e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters

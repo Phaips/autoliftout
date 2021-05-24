@@ -206,10 +206,6 @@ if __name__ == "__main__":
 
             from liftout.main import select_point
 
-            ret = select_point(img)
-            print(ret)
-
-            lamella_centre_px = ret
             # needle_tip_px = ret
 
 
