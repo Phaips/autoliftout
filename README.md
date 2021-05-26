@@ -1,3 +1,4 @@
+
 # Automated cryo-liftout for electron microscopy.
 
 `liftout` is a python package for automated cryo-lamella preparation and
@@ -35,4 +36,3 @@ virtual environment.)
 `liftout path/to/your_protocol.yml`
 4. Follow the user prompts to interactively select new lamella locations,
 before beginning the batch ion milling.
-
