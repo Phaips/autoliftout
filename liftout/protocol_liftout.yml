@@ -16,7 +16,7 @@ reference_images:
   landing_post_ref_img_hfw_highres: 150e-6
   trench_area_ref_img_resolution: "1536x1024"
   trench_area_ref_img_dwell_time: 1e-6
-  trench_area_ref_img_hfw_lowres: 600e-6
+  trench_area_ref_img_hfw_lowres: 400e-6
   trench_area_ref_img_hfw_highres: 80e-6
   needle_ref_img_resolution: "1536x1024"
   needle_ref_img_dwell_time: 2e-6
@@ -54,10 +54,10 @@ machine_learning:
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees
-  jcut_length: 7e-6 # in meters
+  jcut_length: 9e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 3e-6 # in meters
+  jcut_milling_depth: 1.5e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false
