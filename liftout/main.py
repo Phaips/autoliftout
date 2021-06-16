@@ -2862,9 +2862,17 @@ def sharpen_needle(microscope):
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
 
+    def Rotate(x, y, angle):
+        angle = np.deg2rad(angle)
+        x_rot = x * math.cos(angle) - y * math.sin(angle)
+        y_rot = x * math.sin(angle) + y * math.cos(angle)
+        return x_rot, y_rot
+
     move_sample_stage_out(microscope)
 
     park_position = insert_needle(microscope)
+    stage_tilt = stage.current_position.t
+    print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
     z_move_in = z_corrected_needle_movement(-180e-6, stage_tilt)
     needle.relative_move(z_move_in)
 
@@ -2885,65 +2893,149 @@ def sharpen_needle(microscope):
     storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb' )
     storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib' )
 
+    x_0, y_0 = needletip_shift_from_img_centre(needle_ib, show=True)
 
-    x_shift, y_shift = needletip_shift_from_img_centre(needle_ib, show=True)
+    # move needle to the centre
+    x_move = x_corrected_needle_movement(-x_0)
+    needle.relative_move(x_move)
+    stage_tilt = stage.current_position.t
+    print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
+    z_distance = y_0 / np.sin(np.deg2rad(52))
+    z_move = z_corrected_needle_movement(z_distance, stage_tilt)
+    print('z_move = ', z_move)
+    needle.relative_move(z_move)
 
+
+
+    # needle images after centering
+    resolution = storage.settings["imaging"]["resolution"]
+    dwell_time = storage.settings["imaging"]["dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+    hfw_lowres  = storage.settings["imaging"]["horizontal_field_width"]
+    needle_eb, needle_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_lowres, image_settings=image_settings)
+    storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb_centre' )
+    storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib_centre' )
+
+    x_0, y_0 = needletip_shift_from_img_centre(needle_ib, show=True)
 
     # TODO: add to protocol, how sharp the tip etc.
     # TODO: refactor this
 
-    width = 30e-6
-    height = 4e-6
-    tip_angle_1 = 50 # deg
-    depth = 1e-6
-    rotation =  - tip_angle_1
-    delta_y = width / 2 * np.sin(np.deg2rad(rotation))
-    delta_x = width / 2  * np.cos(np.deg2rad(rotation))
-    beam_fov = 150e-6
+    #width = 30e-6
+    #height = 4e-6
+    #tip_angle_1 = 50 # deg
+    #depth = 1e-6
+    #rotation =  - tip_angle_1
+    #delta_y = width / 2 * np.sin(np.deg2rad(rotation))
+    #delta_x = width / 2  * np.cos(np.deg2rad(rotation))
+    #beam_fov = 150e-6
 
-    print("xshift: ", x_shift, " y_shift: ", y_shift)
-    print("delta_x : ", delta_x, ",  delta_y: ", delta_y)
-    print("x_position: ", (x_shift - delta_x) / 1e-6)
-    print("y_position: ", (y_shift - delta_y) / 1e-6)
+    height = storage.settings["sharpen"]["height"]
+    width  = storage.settings["sharpen"]["width"]
+    depth  = storage.settings["sharpen"]["depth"]
+    bias   = storage.settings["sharpen"]["bias"]
+    hfw    = storage.settings["sharpen"]["hfw"]
+    tip_angle    = storage.settings["sharpen"]["tip_angle"] # 2NA of the needle   2*alpha
+    needle_angle = storage.settings["sharpen"]["needle_angle"] # needle tilt on the screen 45 deg +/-
+    milling_current = storage.settings["sharpen"]["sharpen_milling_current"]
+
+    alpha = tip_angle/2 # half of NA of the needletip
+    beta =  np.rad2deg( np.arctan( width / height ) ) # box's width and length, beta is the diagonal angle
+    D = np.sqrt( width**2 + height**2 )  / 2 # half of box diagonal
+    rotation_1 = -(needle_angle + alpha)
+    rotation_2 = -(needle_angle - alpha) - 180
+
+    ############################################################################
+    # dx_1 = D * math.cos( np.deg2rad(needle_angle + alpha) )
+    # dy_1 = D * math.sin( np.deg2rad(needle_angle + alpha) )
+    # x_1 = x_0 - dx_1 # centre of the bottom box
+    # y_1 = y_0 - dy_1 # centre of the bottom box
+
+    # dx_2 = D * math.cos( np.deg2rad(needle_angle - alpha - beta) )
+    # dy_2 = D * math.sin( np.deg2rad(needle_angle - alpha - beta) )
+    # x_2 = x_0 - dx_2 # centre of the top box
+    # y_2 = y_0 - dy_2 # centre of the top box
+
+    # x_1_origin = x_1 - x_0
+    # y_1_origin = y_1 - y_0 # shift the x1,y1 to the origin
+    # x_2_origin_rot, y_2_origin_rot = Rotate( x_1_origin, y_1_origin, 360-(2*alpha+2*beta) ) # rotate to get the x2,y2 point
+    # x_2_rot = x_2_origin_rot + x_0 # shift to the old centre at x0,y0
+    # y_2_rot = y_2_origin_rot + y_0
+
+    ############################################################################
+    dx_1 = (width/2) * math.cos( np.deg2rad(needle_angle + alpha) )
+    dy_1 = (width/2) * math.sin( np.deg2rad(needle_angle + alpha) )
+    ddx_1 = (height/2) * math.sin( np.deg2rad(needle_angle + alpha) )
+    ddy_1 = (height/2) * math.cos( np.deg2rad(needle_angle + alpha) )
+    x_1 = x_0 - dx_1 + ddx_1 # centre of the bottom box
+    y_1 = y_0 - dy_1 - ddy_1 # centre of the bottom box
+
+    dx_2 = D * math.cos( np.deg2rad(needle_angle - alpha) )
+    dy_2 = D * math.sin( np.deg2rad(needle_angle - alpha ) )
+    ddx_2 = (height/2) * math.sin( np.deg2rad(needle_angle - alpha) )
+    ddy_2 = (height/2) * math.cos( np.deg2rad(needle_angle - alpha) )
+    x_2 = x_0 - dx_2 - ddx_2  # centre of the top box
+    y_2 = y_0 - dy_2 + ddy_2 # centre of the top box
+
+
+    print("needletip xshift offcentre: ", x_0, "; needletip yshift offcentre: ", y_0)
     print("width: ", width)
     print("height: ", height)
     print("depth: ", depth)
-    print("rotation :",  rotation)
+    print("needle_angle: ", needle_angle)
+    print("tip_angle: ", tip_angle)
+    print("rotation1 :",  rotation_1)
+    print("rotation2 :",  rotation_2)
+    print("=================================================")
+    print("centre of bottom box: x1 = ",  x_3, '; y1 = ', y_3)
+    print("centre of top box:    x2 = ",  x_4, '; y2 = ', y_4)
+    print("=================================================")
+    print("centre of top box (rot): x2rot = ",  x_2_rot, '; y2rot = ', y_2_rot)
 
+
+    #pattern = microscope.patterning.create_rectangle(x_3, y_3, width+2*bias, height+2*bias, depth)
+    #pattern.rotation = np.deg2rad(rotation_1)
+    #pattern = microscope.patterning.create_rectangle(x_4, y_4, width+2*bias, height+2*bias, depth)
+    #pattern.rotation = np.deg2rad(rotation_2)
 
     # bottom cut pattern
-    cut_coord_bottom = {"center_x": x_shift - delta_x ,
-                    "center_y": y_shift + delta_y - 1e-6,
+    cut_coord_bottom = {"center_x": x_1,
+                    "center_y": y_1,
                     "width": width,
-                    "height": height,
+                    "height": height-bias,
                     "depth": depth,
-                    "rotation": rotation,
-                    "beam_fov": beam_fov}
+                    "rotation": rotation_1,
+                    "hfw": hfw}
 
     # top cut pattern
-    cut_coord_top = {"center_x": x_shift - delta_x ,
-                    "center_y": y_shift + delta_y + 7.5e-6,
+    cut_coord_top = {"center_x": x_2 ,
+                    "center_y": y_2,
                     "width": width,
-                    "height": height,
+                    "height": height-bias,
                     "depth": depth,
-                    "rotation": rotation + 180 + 15,
-                    "beam_fov": beam_fov}
+                    "rotation": rotation_2,
+                    "hfw": hfw}
 
 
     # create sharpening patterns
-    setup_ion_milling(microscope, ion_beam_field_of_view=beam_fov)
+    setup_ion_milling(microscope, ion_beam_field_of_view=hfw)
 
     sharpen_patterns = []
     for cut_coord in [cut_coord_bottom, cut_coord_top]:
         pattern = _create_sharpen_pattern(microscope,
             center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
             width=cut_coord["width"], height=cut_coord["height"],
-            depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["beam_fov"] )
-
+            depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["hfw"] )
         sharpen_patterns.append(pattern)
 
-    # TODO: actually mill
 
+    confirm_and_run_milling(microscope, milling_current, confirm=False)
+
+    needle_eb, needle_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_lowres, image_settings=image_settings)
+    storage.step_counter +=1
+    storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb_sharp' )
+    storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib_sharp' )
+    storage.step_counter +=1
 
     retract_needle(microscope, park_position)
 
