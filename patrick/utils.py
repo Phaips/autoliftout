@@ -308,6 +308,31 @@ def draw_needle_and_lamella(rgb_mask_c, needle_tip_px=None, lamella_centre_px=No
 
     return rgb_mask_c
 
+def detect_and_draw_lamella_right_edge(rgb_mask):
+
+    rgb_mask_l = PIL.Image.fromarray(rgb_mask)
+    lamella_right_edge_px = [0,0]
+
+    # extract only label pixels to find edges
+    mask_copy = np.zeros_like(rgb_mask)
+    idx = np.where(np.all(rgb_mask == (255, 0, 0), axis=-1))
+    mask_copy[idx] = (255, 0, 0)
+
+    # TODO: fix for when there is no detection
+    if len(idx[0]) > 25:
+        # from detect lamella edge
+        px = list(zip(idx[0], idx[1]))
+
+        # get index of max value
+        max_idx = np.argmax(idx[1])
+        lamella_right_edge_px = px[max_idx]  # right lamella edge
+
+    rgb_mask_combined = draw_lamella_centre(
+            rgb_mask_l=rgb_mask_l, lamella_centre_px=lamella_right_edge_px
+        )
+
+    return lamella_right_edge_px, rgb_mask_combined
+
 
 def detect_and_draw_lamella_and_needle(rgb_mask):
     """ Detect the lamella centre and needle.
