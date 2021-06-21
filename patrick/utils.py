@@ -16,7 +16,10 @@ import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
 from torchvision import transforms, utils
+from skimage import feature
+from scipy.spatial import distance
 
+from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 # user functions
 
 # transformations
@@ -28,6 +31,16 @@ transformation = transforms.Compose(
     ]
 )
 
+
+def create_adorned_image_from_file(fname):
+    """ Create an Autoscript AdornedImage from a Tiff file"""
+    img_np = load_image(fname)
+
+    adorned_img = AdornedImage(data=img_np)
+    # TODO: metadata, what is the structure of metadata?
+    # how can I load it from tiff tags?
+
+    return adorned_img
 
 def load_image(fname):
 
@@ -56,17 +69,12 @@ def load_model(weights_file):
     return model
 
 
-# @st.cache
-def model_inference(model, fname, img=None):
+def model_inference(model, img):
 
     """
         Helper function to run the image through model,
         and return image and predicted mask
     """
-    if img is None:
-        # load selected image
-        img = load_image(fname)
-
     # pre-process image (+ batch dim)
     img_t = preprocess_image(img=img, transformation=transformation)
 
@@ -77,38 +85,6 @@ def model_inference(model, fname, img=None):
     rgb_mask = decode_output(output)
 
     return img, rgb_mask
-
-
-def draw_mask(fname):
-    """ Helper function for drawing the label mask directly from .json"""
-
-    basename = fname.split(".tif")[0]
-    label_fname = basename + ".json"
-
-    with open(label_fname) as json_file:
-        label = json.load(json_file)
-
-    # label not showing???
-    img = np.asarray(PIL.Image.open(fname), dtype=np.uint8)
-
-    im = Image.fromarray(img)
-    im = im.convert("RGBA")
-    draw = ImageDraw.Draw(im)
-
-    for shape in label["shapes"]:
-        pts = shape["points"]
-        class_label = shape["label"]
-
-        if class_label == "needle":
-            col = (0, 255, 0, 127)
-        else:
-            col = (255, 0, 0, 127)
-        pts = [tuple(pt) for pt in pts]
-
-        draw.polygon(pts, fill=col, outline=col)
-
-    return im
-
 
 def decode_output(output):
     """decodes the output of segmentation model to RGB mask"""
@@ -143,7 +119,8 @@ def decode_segmap(image, nc=3):
 
 
 def show_overlay(img, rgb_mask):
-
+    # TODO: This doesnt actually do anything useful
+    # TODO: figure out how to remove / consolidate this
     # convert to np if required
     if isinstance(rgb_mask, PIL.Image.Image):
         rgb_mask = np.asarray(rgb_mask)
@@ -318,7 +295,6 @@ def detect_and_draw_lamella_right_edge(rgb_mask):
     idx = np.where(np.all(rgb_mask == (255, 0, 0), axis=-1))
     mask_copy[idx] = (255, 0, 0)
 
-    # TODO: fix for when there is no detection
     if len(idx[0]) > 25:
         # from detect lamella edge
         px = list(zip(idx[0], idx[1]))
@@ -390,6 +366,23 @@ def detect_and_draw_lamella_and_needle(rgb_mask):
 
     return lamella_centre_px, rgb_mask_l, needle_tip_px, rgb_mask_n, rgb_mask_c
 
+def scale_invariant_coordinates_NEW(px, mask):
+    """ Return the scale invariant coordinates of the features in the given mask
+
+    args:
+        px (tuple): pixel coordinates of the feature (y, x)
+        mask (PIL.Image): PIL Image of detection mask
+
+    returns:
+        scaled_px (tuple): pixel coordinates of the feature as proportion of mask size
+
+    """
+
+    scaled_px = (px[0] / mask.size[1], px[1] / mask.size[0])
+
+    return scaled_px
+
+
 
 def scale_invariant_coordinates(
     needle_tip_px=None, lamella_centre_px=None, rgb_mask_combined=None
@@ -414,6 +407,59 @@ def scale_invariant_coordinates(
         )
 
     return scaled_lamella_centre_px, scaled_needle_tip_px
+
+
+def detect_closest_landing_point(img, landing_px):
+    """ Identify the closest edge landing point to the initially selected landing point"""
+
+    # identify edge pixels
+    edges = feature.canny(img, sigma=3) # sigma higher usually better
+    edge_mask = np.where(edges)
+    edge_px = list(zip(edge_mask[0], edge_mask[1]))
+
+    # set min distance
+    min_dst = np.inf
+
+    # TODO: vectorise this like
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
+
+    for px in edge_px:
+
+        # distance between edges and landing point
+        dst = distance.euclidean(landing_px, px)
+
+        # select point with min
+        if dst < min_dst:
+
+            min_dst = dst
+            landing_edge_pt = px
+
+    print("Dist: ", px, landing_px, dst)
+    return landing_edge_pt, edges
+
+
+def draw_landing_edges_and_point(img, edges, edge_landing_px, show=True):
+    """Draw the detected landing edge ontop of the edge detection image"""
+    # draw landing point
+    landing_px_mask = PIL.Image.fromarray(np.zeros_like(img))
+    landing_px_mask = draw_rectangle_feature(
+        landing_px_mask, edge_landing_px, RECT_WIDTH=10
+    )
+
+    # draw crosshairs
+    draw = PIL.ImageDraw.Draw(landing_px_mask)
+    draw_crosshairs(draw=draw, mask=landing_px_mask, idx=edge_landing_px)
+
+    # show landing spot
+    if show:
+
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title(f"Landing Post Position")
+        ax.imshow(img, cmap="gray", alpha=0.9)
+        ax.imshow(landing_px_mask, cmap="gray", alpha=0.5)
+        plt.show()
+
+    return landing_px_mask
 
 
 def parse_metadata(filename):

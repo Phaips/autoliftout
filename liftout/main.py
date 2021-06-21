@@ -1275,7 +1275,7 @@ def calculate_proportional_needletip_distance_from_img_centre(img, show=False):
     img_orig = np.asarray(img.data)
 
     # model inference + display
-    img_np, rgb_mask = model_inference(model, None, img=img_orig)
+    img_np, rgb_mask = model_inference(model, img=img_orig)
 
     # detect and draw lamella centre, and needle tip
     (
@@ -1345,7 +1345,7 @@ def calculate_needletip_shift_from_lamella_centre(img, show=False):
     img_orig = np.asarray(img.data)
 
     # model inference + display
-    img_np, rgb_mask = model_inference(model, None, img=img_orig)
+    img_np, rgb_mask = model_inference(model, img=img_orig)
 
     # detect and draw lamella centre, and needle tip
     (
@@ -1406,7 +1406,7 @@ def needletip_shift_from_lamella_centre(img, show=True):
 
     return x_shift, y_shift
 
-def calculate_lamella_edge_shift_from_landing_post(img, show=False):
+def calculate_lamella_edge_shift_from_landing_post(img, landing_px, show=False):
     """Calculate the shift from the right edge of the lamella to the edge of the landing post
 
     The distance is calculated as a proportion of the image
@@ -1419,7 +1419,7 @@ def calculate_lamella_edge_shift_from_landing_post(img, show=False):
     img_orig = np.asarray(img.data)
 
     # model inference + display
-    img_np, rgb_mask = model_inference(model, None, img=img_orig)
+    img_np, rgb_mask = model_inference(model, img=img_orig)
 
     # detect and draw lamella right edge
     lamella_right_edge_px, rgb_mask_combined = detect_and_draw_lamella_right_edge(rgb_mask)
@@ -1442,33 +1442,41 @@ def calculate_lamella_edge_shift_from_landing_post(img, show=False):
     img_downscale = Image.fromarray(img_orig).resize((rgb_mask_combined.size[0], rgb_mask_combined.size[1]))
 
     print("Confirm Lamella Edge Position")
-    lamella_right_edge_px = validate_detection(img_downscale, img, lamella_right_edge_px, "lamella_centre")
+    lamella_right_edge_px = validate_detection(img_downscale, img, lamella_right_edge_px, "lamella_edge")
 
-    landing_post_px = None # TODO: detect this automatically
+    scaled_lamella_right_edge_px = scale_invariant_coordinates_NEW(lamella_right_edge_px, rgb_mask_combined)
+
+    ## LANDING EDGE
+
+    # use the initially selected landing point, and snap to the nearest edge
+    edge_landing_px, edges = detect_closest_landing_point(img_orig, landing_px)
+    landing_px_mask = draw_landing_edges_and_point(img_orig, edges, edge_landing_px)
+
     print("Confirm Landing Post Position")
-    landing_post_px = validate_detection(img_downscale, img, landing_post_px, "landing_post")
+    edge_landing_px = validate_detection(img_orig, img, edge_landing_px, "landing_post")
 
-    # scale invariant coordinates
-    scaled_lamella_right_edge_px, scaled_landing_post_px = scale_invariant_coordinates(
-        landing_post_px, lamella_right_edge_px, rgb_mask_combined
-    )
+    # scale landing coordinates
+    scaled_edge_landing_px = scale_invariant_coordinates_NEW(edge_landing_px, landing_px_mask)
+
+    print("Landing Point:", edge_landing_px)
+    print("Proportional: ", scaled_edge_landing_px)
 
     # if no needle tip is found, something has gone wrong
     if scaled_lamella_right_edge_px is None:
         raise ValueError("No Lamella Edge detected")
 
     # if no landing post is found, something has gone wrong
-    if scaled_landing_post_px is None:
+    if scaled_edge_landing_px is None:
         raise ValueError("No Landing Post detected")
 
     # x, y
-    return -(scaled_lamella_right_edge_px[1] - scaled_landing_post_px[1]), scaled_lamella_right_edge_px[0] - scaled_landing_post_px[0],
+    return -(scaled_lamella_right_edge_px[1] - scaled_edge_landing_px[1]), scaled_lamella_right_edge_px[0] - scaled_edge_landing_px[0],
 
 # TODO: replace all functions with this helper
 def calculate_shift_distance_in_metres(img, distance_x, distance_y):
     """Convert the shift distance from proportion of img to metres"""
 
-    pixelsize_x = img.metadata.binary_result.pixel_size.x
+    pixelsize_x = img.metadata.binary_result.pixel_size.x #5.20833e-008
     field_width   = pixelsize_x  * img.width
     field_height  = pixelsize_x  * img.height
     x_shift = distance_x * field_width
@@ -1477,9 +1485,9 @@ def calculate_shift_distance_in_metres(img, distance_x, distance_y):
 
     return x_shift, y_shift
 
-def lamella_edge_to_landing_post(img, show=True):
+def lamella_edge_to_landing_post(img, landing_px, show=True):
     """Calculate the shift in metres from needle tip to lamella centre """
-    landing_post_distance_x, landing_post_distance_y = calculate_lamella_edge_shift_from_landing_post(img, show=True)
+    landing_post_distance_x, landing_post_distance_y = calculate_lamella_edge_shift_from_landing_post(img, landing_px=landing_px, show=True)
 
     x_shift, y_shift = calculate_shift_distance_in_metres(img, landing_post_distance_x, landing_post_distance_y)
     return x_shift, y_shift
@@ -2242,7 +2250,9 @@ def _create_sharpen_pattern(microscope, *,
 import matplotlib.pyplot as plt
 import numpy as np
 from patrick.utils import (load_model, model_inference, detect_and_draw_lamella_and_needle,
-                        scale_invariant_coordinates, calculate_distance_between_points, parse_metadata, show_overlay, detect_and_draw_lamella_right_edge)
+                        scale_invariant_coordinates, show_overlay, detect_and_draw_lamella_right_edge,
+                        detect_closest_landing_point, draw_landing_edges_and_point,
+                        scale_invariant_coordinates_NEW)
 from PIL import Image
 
 def renormalise_and_mask_image(image, plot=False):
@@ -2316,7 +2326,7 @@ def lamella_shift_from_img_centre(img, show=False):
     img_orig = np.asarray(img.data)
 
     # model inference + display
-    img_np, rgb_mask = model_inference(model, None, img=img_orig)
+    img_np, rgb_mask = model_inference(model, img=img_orig)
 
     # detect and draw lamella centre, and needle tip
     (
@@ -2329,8 +2339,6 @@ def lamella_shift_from_img_centre(img, show=False):
 
     # prediction overlay
     img_overlay = show_overlay(img_np, rgb_mask_lamella)
-
-    # df = parse_metadata(fname)
 
     img_overlay_resized = Image.fromarray(img_overlay).resize((img_np.shape[1], img_np.shape[0]))
 
@@ -2351,7 +2359,6 @@ def lamella_shift_from_img_centre(img, show=False):
         needle_tip_px, lamella_centre_px, rgb_mask_combined
     )
 
-    # TODO: fix this
     if scaled_lamella_centre_px is None:
         raise ValueError("No lamella centre detected")
 
@@ -2678,7 +2685,7 @@ def mill_lamella(microscope, settings, confirm=True):
     storage.step_counter +=1
 
 
-    ### Need to tilt +6 deg, tilt first +3 deg only, again +23deg, Now +6 deg
+    ### Need to tilt +6 deg, tilt first +3 deg only, again +3deg, Now +6 deg
     previous_stage_tilt = stage.current_position.t
     tilting = StagePosition(x=0, y=0, z=0, t=np.deg2rad(3))
     print(tilting)
@@ -2804,6 +2811,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     park_position = move_needle_to_landing_position(microscope)
 
     # Lamella to Landing Post
+    # TODO: check if the landing post is cslose enough to the centre
 
     # y-movement
     needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
@@ -2813,7 +2821,8 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='A_landing_needle_land_sample_ib_lowres' )
 
     # TODO: make distance measurement calculation direction consistent
-    x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted)
+    landing_px = needle_eb_lowres_with_lamella_shifted.height // 2, needle_eb_lowres_with_lamella_shifted.width // 2
+    x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
     x_move = x_corrected_needle_movement(x_shift)
     y_move = y_corrected_needle_movement(y_shift, stage.current_position.t)
     print('x_move = ', x_move, ';\ny_move = ', y_move)
@@ -2826,7 +2835,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(needle_eb_lowres_with_lamella_shifted,  id='B_landing_needle_land_sample_eb_lowres_after_y_move' )
     storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='B_landing_needle_land_sample_ib_lowres_after_y_move' )
 
-    x_shift, y_shift = lamella_edge_to_landing_post(needle_ib_lowres_with_lamella_shifted)
+    x_shift, y_shift = lamella_edge_to_landing_post(needle_ib_lowres_with_lamella_shifted, landing_px)
     stage_tilt = stage.current_position.t
     print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
     z_distance = y_shift / np.sin(np.deg2rad(52))
@@ -2841,10 +2850,32 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(needle_eb_lowres_with_lamella_shifted,  id='C_landing_needle_land_sample_eb_lowres_after_z_move' )
     storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='C_landing_needle_land_sample_ib_lowres_after_z_move' )
 
-    x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted)
+    x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
     x_move = x_corrected_needle_movement(x_shift)
     print('x_move = ', x_move)
+
+
+    # half move
+    x_move = x_corrected_needle_movement(x_shift / 2)
+    print('x_move = ', x_move)
+
     needle.relative_move(x_move)
+
+    # x-movement
+    needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
+                    image_settings=image_settings)
+    storage.SaveImage(needle_eb_lowres_with_lamella_shifted,  id='C_landing_needle_land_sample_eb_lowres_after_x_half_move' )
+    storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='C_landing_needle_land_sample_ib_lowres_after_x_half_move' )
+
+    print("ion:")
+    x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
+
+    # x-move the rest of the way
+    x_move = x_corrected_needle_movement(x_shift)
+    print('x_move = ', x_move)
+
+    needle.relative_move(x_move)
+
 
 
     # take final landing images
@@ -3839,7 +3870,7 @@ if __name__ == '__main__':
 
 
 
-    storage.NewRun(prefix='new_needle_images')
+    storage.NewRun(prefix='edge_landing_detection_')
     storage.settings = settings
 
     microscope = initialize(settings["system"]["ip_address"])
@@ -3855,28 +3886,28 @@ if __name__ == '__main__':
     storage.SaveImage(eb, id='grid')
     storage.step_counter += 1
 
-    if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
-        sputter_platinum_over_whole_grid(microscope)
+    # if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
+    #     sputter_platinum_over_whole_grid(microscope)
 
-    autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
-    eb = microscope.imaging.grab_frame(image_settings)
-    storage.SaveImage(eb, id='grid_Pt_deposition')
-    storage.step_counter += 1
+    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    # microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
+    # eb = microscope.imaging.grab_frame(image_settings)
+    # storage.SaveImage(eb, id='grid_Pt_deposition')
+    # storage.step_counter += 1
 
-    print("Please select the landing positions and check eucentric height manually.")
+    # print("Please select the landing positions and check eucentric height manually.")
     landing_coordinates, original_landing_images = find_coordinates(microscope, name="landing position", move_stage_angle="landing")
-    lamella_coordinates, original_trench_images  = find_coordinates(microscope, name="lamella",          move_stage_angle="trench")
-    zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
-    storage.LANDING_POSTS_POS_REF = original_landing_images
-    storage.LAMELLA_POS_REF       = original_trench_images
-    # Start liftout for each lamella
-    for i, (lamella_coord, landing_coord) in enumerate(zipped_coordinates):
-        landing_reference_images      = original_landing_images[i]
-        lamella_area_reference_images = original_trench_images[i]
-        single_liftout(microscope, settings, landing_coord, lamella_coord, landing_reference_images, lamella_area_reference_images)
-        storage.liftout_counter += 1
-    print("Finished.")
+    # lamella_coordinates, original_trench_images  = find_coordinates(microscope, name="lamella",          move_stage_angle="trench")
+    # zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
+    # storage.LANDING_POSTS_POS_REF = original_landing_images
+    # storage.LAMELLA_POS_REF       = original_trench_images
+    # # Start liftout for each lamella
+    # for i, (lamella_coord, landing_coord) in enumerate(zipped_coordinates):
+    #     landing_reference_images      = original_landing_images[i]
+    #     lamella_area_reference_images = original_trench_images[i]
+    #     single_liftout(microscope, settings, landing_coord, lamella_coord, landing_reference_images, lamella_area_reference_images)
+    #     storage.liftout_counter += 1
+    # print("Finished.")
 
 
 
