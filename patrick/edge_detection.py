@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
 
 
 import PIL
@@ -14,23 +14,27 @@ from PIL import ImageDraw
 
 from scipy.spatial import distance
 
-from utils import draw_rectangle_feature, draw_crosshairs    
+from utils import draw_rectangle_feature, draw_crosshairs
 
 
-def detect_closest_landing_point(img, landing_pt):
-
+def detect_closest_landing_point(img, landing_px):
+    """ Identify the closest edge landing point to the initially selected landing point"""
+    
     # identify edge pixels
-    edges = feature.canny(img, sigma=3)
+    edges = feature.canny(img, sigma=3) # sigma higher usually better
     edge_mask = np.where(edges)
     edge_px = list(zip(edge_mask[0], edge_mask[1]))
 
     # set min distance
     min_dst = np.inf
 
+    # TODO: vectorise this like
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
+
     for px in edge_px:
-                            
+
         # distance between edges and landing point
-        dst = distance.euclidean(landing_pt, px)
+        dst = distance.euclidean(landing_px, px)
 
         # select point with min
         if dst < min_dst:
@@ -38,31 +42,32 @@ def detect_closest_landing_point(img, landing_pt):
             min_dst = dst
             landing_edge_pt = px
 
-    print("Dist: ", px, landing_pt, dst)
+    print("Dist: ", px, landing_px, dst)
     return landing_edge_pt, edges
 
 
-def draw_landing_edges_and_point(img, edges, edge_landing_pt, show=True):
-
+def draw_landing_edges_and_point(img, edges, edge_landing_px, show=True):
+    """Draw the detected landing edge ontop of the edge detection image"""
     # draw landing point
-    landing_pt_mask = PIL.Image.fromarray(np.zeros_like(img))
-    landing_pt_mask = draw_rectangle_feature(landing_pt_mask, edge_landing_pt, RECT_WIDTH=10)
-    
-    # draw crosshairs
-    draw = PIL.ImageDraw.Draw(landing_pt_mask)
-    draw_crosshairs(draw=draw, mask=landing_pt_mask, idx=edge_landing_pt, color="red")
+    landing_px_mask = PIL.Image.fromarray(np.zeros_like(img))
+    landing_px_mask = draw_rectangle_feature(
+        landing_px_mask, edge_landing_px, RECT_WIDTH=10
+    )
 
+    # draw crosshairs
+    draw = PIL.ImageDraw.Draw(landing_px_mask)
+    draw_crosshairs(draw=draw, mask=landing_px_mask, idx=edge_landing_px)
+
+    # show landing spot
     if show:
-        
+
         fig, ax = plt.subplots(1, 1)
         ax.set_title(f"Edge sigma={3}")
         ax.imshow(edges, cmap="gray", alpha=0.9)
-        ax.imshow(landing_pt_mask, cmap="gray", alpha=0.5)
+        ax.imshow(landing_px_mask, cmap="gray", alpha=0.5)
         plt.show()
 
-    return landing_pt_mask
-
-
+    return landing_px_mask
 
 
 if __name__ == "__main__":
@@ -76,21 +81,27 @@ if __name__ == "__main__":
         img = np.array(PIL.Image.open(fname))
         # use img.data to get this from Adorned Image
 
-
-        # crop image to centre 
-        # h, w = img.shape[0], img.shape[1]
-        # h_min, h_max = int(h*0.4), int(h*0.6)
-        # w_min, w_max = int(w*0.4), int(w*0.6)
-        # print(w, h)
+        test_landing_pxs = [(400, 750), (700, 750), (200, 500), (600, 1000)]
+        # Note: this will only work if the landing pt is close to selection, if calibration is off all bets are off
         
-        # img = img[h_min:h_max, w_min: w_max]
+        for landing_px in test_landing_pxs:
+
+            # use the initially selected landing point, and snap to the nearest edge
+            edge_landing_px, edges = detect_closest_landing_point(img, landing_px)
+            landing_px_mask = draw_landing_edges_and_point(img, edges, edge_landing_px)
+
+            # TODO: validate detection here
+
+            scaled_edge_landing_px = (
+                    edge_landing_px[0] / landing_px_mask.size[1],  # mask is a PIL.Image (x, y) landing_px is px (y, x)
+                    edge_landing_px[1] / landing_px_mask.size[0],
+            )
+
+            print("Landing Point:", edge_landing_px)
+            print("Proportional: ", scaled_edge_landing_px)
 
 
 
-        landing_pt = (700, 750)
-        edge_landing_pt, edges = detect_closest_landing_point(img, landing_pt)
-        landing_pt_mask = draw_landing_edges_and_point(img, edges, edge_landing_pt)
-
-        # only detect near vertical edges?
-        # only detect near the centre of image?
-        # detect edge nearest the selected point?
+            # TODO: ensure the image size is the same between detection and this
+            # TODO: convert to proportional / metres
+            # TODO: refactor utils.scale_invariant_coordinates to be general
