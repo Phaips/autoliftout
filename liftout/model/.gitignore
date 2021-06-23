@@ -1,0 +1,10 @@
+*.pyc
+data/*
+example/*
+models/*
+images/*
+
+*.csv
+log.md
+app.py
+main.py
