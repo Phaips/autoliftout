@@ -2942,6 +2942,8 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(landing_eb_highres3,  id='E_landing_eb_lamella_final_3' )
     storage.SaveImage(landing_ib_highres3,  id='E_landing_ib_lamella_final_3' )
 
+    # NEW
+    # take_and_save_electron_and_ion_reference_images(microscope, hor_field_width=100e-6, image_settings=image_settings, label="E_landing_lamella_after_weld")
 
     # x_shift, y_shift = needletip_shift_from_lamella_centre(landing_ib_highres)
     # x_shift, y_shift = needletip_shift_from_lamella_centre(landing_ib_highres2)
@@ -2965,6 +2967,9 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(landing_eb_highres3,  id='F_landing_eb_lamella_final_cut' )
     storage.SaveImage(landing_ib_highres3,  id='F_landing_ib_lamella_final_cut' )
 
+    # NEW
+    # take_and_save_electron_and_ion_reference_images(microscope, hor_field_width=100e-6, image_settings=image_settings, label="F_landing_lamella_final_cut")
+
     # retract needle from landing position
     retract_needle(microscope, park_position)
 
@@ -2976,6 +2981,9 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.SaveImage(landing_eb_highres3,  id='F_cut_needle_eb_lamella_2' )
     storage.SaveImage(landing_ib_highres3,  id='F_cut_needle_ib_lamella_2' )
 
+    # NEW
+    # take_and_save_electron_and_ion_reference_images(microscope, hor_field_width=80e-6, image_settings=image_settings, label="F_landing_lamella_retract_needle_highres")
+    # take_and_save_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings, label="F_landing_lamella_retract_needle_lowres")
     storage.step_counter += 1
 
 
