@@ -2,40 +2,160 @@
 
 
 import glob
-import json
-import re
 from random import shuffle
 
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL
-import segmentation_models_pytorch as smp
-import streamlit as st
 import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
 from torchvision import transforms, utils
+from skimage import feature
+from scipy.spatial import distance
 
-from utils import load_image, draw_crosshairs
-from liftout.main import validate_detection
 
+from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW
 from DetectionModel import DetectionModel
 
+def select_point_new(image):
+    fig, ax = plt.subplots()
+    ax.imshow(image, cmap="gray")
+    coords = []
+
+    def on_click(event):
+        print(event.xdata, event.ydata)
+        coords.append(event.ydata)
+        coords.append(event.xdata)
+
+    fig.canvas.mpl_connect("button_press_event", on_click)
+    plt.show()
+
+    return tuple(coords[-2:])
+
+def validate_detection(img, img_base, detection_coord, det_type):
+    correct = input(f"Is the detection for {det_type} correct? (y/n)")
+    #TODO: change this to user_input
+    if correct == "n":
+
+        detection_coord_initial = detection_coord # save initial coord
+
+        print(f"Please click the {det_type} position")
+        detection_coord = select_point_new(img)
+
+        # TODO: need to resolve behaviour when user exits plot without selecting?
+        # if detection_coord is None:
+        #     detection_coord = detection_coord # use initial coord
+
+
+        # save image for training here
+        print("Saving image for labelling")
+        #storage.step_counter +=1
+        #storage.SaveImage(img_base, id="label_")
+
+
+    print(f"{det_type}: {detection_coord}")
+    return detection_coord
+
+
+# TODO: this generalisation might be more trouble. I think it is actually better, easier to support multiple types
+def calculate_shift_between_features(adorned_img, shift_type="needle_to_lamella_centre", show=False):
+    """
+    NOTE: img.data is np.array for Adorned Image
+
+    """
+
+    # TODO: fix display colours for this?
+
+    if hasattr(adorned_img, 'data'):
+        img = adorned_img.data # extract image data
+    if isinstance(adorned_img, np.ndarray):
+        img = adorned_img # adorned image is just numpy array
+
+    weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
+    detector = Detector(weights_file) # TODO: wrap in class
+
+    # load image from file
+    mask = detector.detection_model.model_inference(img)
+
+    supported_shift_types = [
+        "needle_tip_to_lamella_centre",
+        "lamella_centre_to_image_centre",
+        "lamella_edge_to_landing_post",
+        "needle_tip_to_image_centre"
+    ]
+    if shift_type not in supported_shift_types:
+        raise ValueError("ERROR: shift type calculation is not supported")
+
+    # detect feature shift
+    if shift_type=="needle_tip_to_lamella_centre":
+        feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
+        feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+
+        feature_1_type = "lamella_centre"
+        feature_2_type = "needle_tip"
+
+    if shift_type=="lamella_centre_to_image_centre":
+        feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
+        feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+
+        feature_1_type = "lamella_centre"
+        feature_2_type = "image_centre"
+
+    if shift_type=="lamella_edge_to_landing_post":
+        # TODO: This doesnt work yet
+        # TODO: The directions and shapes are wrong and messing things up needs to be fixed
+        feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
+        
+        # need to resize image
+        img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
+
+        landing_px=(img_landing.size[0]//2, img_landing.size[1]//2)
+
+        print(img_landing.size)
+        print(mask.shape)
+        print(landing_px)
+
+        feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px) # landing post # TODO: initial landing point?
+
+        feature_1_type = "lamella_edge"
+        feature_2_type = "landing_post"
+
+    if shift_type=="needle_tip_to_image_centre":
+        feature_1_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+        feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+
+        feature_1_type = "image_centre"
+        feature_2_type = "needle_tip"
+
+    # display features for validation
+    mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
+    alpha_blend = draw_overlay(img, mask_combined, show=show)
+
+    # # need to use the same scale images for both detection selections
+    img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+
+    # validate detection
+    feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
+    feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
+
+    # scale invariant coordinatesss
+    scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
+    scaled_feature_2_px = scale_invariant_coordinates_NEW(feature_2_px, mask_combined)
+
+    # if no detection is found, something has gone wrong
+    if scaled_feature_1_px is None or scaled_feature_2_px is None:
+        raise ValueError("No detections available")
+
+    # x, y distance (proportional)
+    return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0] 
+    #TODO: this will probably be wrong now for most, need to re-validate
 
 
 
-    
-
-
-
-
-
-# REFACTOR DRAWING TOOLS
-# - refactor drawing to use a single function:
+# REFACTOR DETECTION AND DRAWING TOOLS
 
 # TODO: make the mask consistently a np.array or PIL.Images
-
-# extract_class_pixels(mask, color)
 def extract_class_pixels(mask, color):
     # TODO: get a better name for this
     """ Extract only the pixels that are classified as the desired class (color)
@@ -55,9 +175,6 @@ def extract_class_pixels(mask, color):
     class_mask[idx] = color
 
     return class_mask, idx
-
-
-# - draw_feature(mask, px, color, crosshair)
 
 
 def draw_feature(mask, px, color, RECT_WIDTH=4, crosshairs=False):
@@ -95,10 +212,6 @@ def draw_feature(mask, px, color, RECT_WIDTH=4, crosshairs=False):
 
     return mask
 
-
-# - draw_two_features(mask, feature_1, feature_2, line=False)
-
-
 def draw_two_features(
     mask, feature_1, feature_2, color_1="red", color_2="green", line=True):
     """ Draw two detected features on the same mask, and optionally a line between 
@@ -128,8 +241,40 @@ def draw_two_features(
 
     return mask
 
+def draw_overlay(img, mask, alpha=0.4, show=False):
+    """ Draw the detection overlay onto base image
+    
+    args:
+        img: orignal image (np.array or PIL.Image)
+        mask: detection mask (np.array or PIL.Image)
 
-# - detect_centre_point(mask, color, threshold)
+    returns:
+        alpha_blend: mask overlaid with original image (PIL.Image)
+
+    """
+
+    # convert to PIL Image from np.array
+    if isinstance(mask, np.ndarray):
+        mask = PIL.Image.fromarray(mask)
+    if isinstance(img, np.ndarray):
+        img = PIL.Image.fromarray(img)
+
+    # resize to same size as mask
+    img = img.resize((mask.size[0], mask.size[1]), resample=PIL.Image.BILINEAR)
+    
+    # required for blending
+    img = img.convert("RGB") 
+    mask = mask.convert("RGB") 
+
+    # blend images together
+    alpha_blend = PIL.Image.blend(img, mask, alpha)
+
+    if show:
+        plt.imshow(alpha_blend)
+        plt.show()
+
+    return alpha_blend
+
 def detect_centre_point(mask, color, threshold=25):
     """ Detect the centre (mean) point of the mask for a given color (label)
     
@@ -192,38 +337,6 @@ def detect_right_edge(mask, color, threshold):
     return edge_px
 
 
-# - draw_overlay(img, mask, alpha, show) - DONE
-def draw_overlay(img, mask, alpha=0.4, show=False):
-    """ Draw the detection overlay onto base image
-    
-    args:
-        img: orignal image (np.array or PIL.Image)
-        mask: detection mask (np.array or PIL.Image)
-
-    returns:
-        alpha_blend: mask overlaid with original image (PIL.Image)
-
-    """
-
-    # convert to PIL Image from np.array
-    if isinstance(mask, np.ndarray):
-        mask = PIL.Image.fromarray(mask)
-    if isinstance(img, np.ndarray):
-        img = PIL.Image.fromarray(img)
-
-    # resize to same size as mask
-    img = img.resize((mask.size[0], mask.size[1]), resample=PIL.Image.BILINEAR)
-    img = img.convert("RGB")  # required for blending
-
-    # blend images together
-    alpha_blend = PIL.Image.blend(img, mask, alpha)
-
-    if show:
-        plt.imshow(alpha_blend)
-        plt.show()
-
-    return alpha_blend
-
 
 def detect_needle_tip(img, mask, threshold=200):
 
@@ -234,7 +347,7 @@ def detect_needle_tip(img, mask, threshold=200):
 
     edge_px = detect_right_edge(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, edge_px, color, crosshairs=True)
-    needle_mask = draw_overlay(img, mask_draw, show=True)
+    needle_mask = draw_overlay(img, mask_draw)
 
     return edge_px, needle_mask
 
@@ -247,7 +360,7 @@ def detect_lamella_centre(img, mask, threshold=25):
 
     centre_px = detect_centre_point(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, centre_px, color, crosshairs=True)
-    lamella_mask = draw_overlay(img, mask_draw, show=True)
+    lamella_mask = draw_overlay(img, mask_draw)
 
     return centre_px, lamella_mask
 
@@ -259,9 +372,68 @@ def detect_lamella_edge(img, mask, threshold=25):
     mask_filt, px_filt = extract_class_pixels(mask, color) # this is duplicate in detect_func
     edge_px = detect_right_edge(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, edge_px, color, crosshairs=True)
-    lamella_mask = draw_overlay(img, mask_draw, show=True)
+    lamella_mask = draw_overlay(img, mask_draw)
 
     return edge_px, lamella_mask
+
+def detect_closest_edge(img, landing_px):
+    """ Identify the closest edge point to the initially selected point
+    
+    args:
+        img: base image (PIL.Image)
+        landing_px: the initial landing point pixel (tuple)
+    return:
+        landing_edge_pt: the closest edge point to the intitially selected point (tuple)
+        edges: the edge mask (np.array)
+    """
+    if isinstance(img, PIL.Image.Image):
+        img = np.asarray(img)
+
+    # identify edge pixels
+    edges = feature.canny(img, sigma=3) # sigma higher usually better
+    edge_mask = np.where(edges)
+    edge_px = list(zip(edge_mask[0], edge_mask[1]))
+
+    # set min distance
+    min_dst = np.inf
+
+    # TODO: vectorise this like
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
+
+    for px in edge_px:
+
+        # distance between edges and landing point
+        dst = distance.euclidean(landing_px, px)
+
+        # select point with min
+        if dst < min_dst:
+
+            min_dst = dst
+            landing_edge_px = px
+
+    print("Dist: ", px, landing_px, dst)
+    return landing_edge_px, edges
+
+def detect_landing_edge(img, landing_px):
+    """ Detect the landing edge point closest to the initial point using canny edge detection
+    
+    args:
+        img: base image (np.array)
+        landing_px: the initial landing point pixel (tuple)
+    
+    returns:
+        landing_edge_px: the closest edge point to the intitially selected point (tuple)
+        landing_mask: the edge mask (PIL.Image)
+    """
+    if isinstance(img, np.ndarray):
+        img = PIL.Image.fromarray(img)
+ 
+    landing_edge_px, edges_mask = detect_closest_edge(img, landing_px)
+    mask_draw = draw_feature(img, landing_edge_px, color="blue", crosshairs=True)
+    landing_mask = draw_overlay(img, edges_mask, alpha=0.5)
+
+    return landing_edge_px, landing_mask
+
 
 
 
@@ -270,3 +442,50 @@ class Detector:
     def __init__(self, weights_file) -> None:
         self.detection_model = DetectionModel(weights_file)
         
+
+####################### # UNUSED #######################
+
+# def calculate_needletip_shift_from_lamella_centre(adorned_img, show=False):
+#     """
+#     NOTE: img.data is np.array for Adorned Image
+
+#     """
+
+#     if hasattr(adorned_img, 'data'):
+#         img = adorned_img.data # extract image data
+#     if isinstance(adorned_img, np.ndarray):
+#         img = adorned_img # adorned image is just numpy array
+
+#     weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
+#     detector = Detector(weights_file) # TODO: wrap in class
+
+#     # load image from file
+#     mask = detector.detection_model.model_inference(img)
+
+#     # detect features
+#     needle_tip_px, needle_mask = detect_needle_tip(img, mask)
+#     lamella_centre_px, lamella_mask = detect_lamella_centre(img, mask)
+
+#     # display features
+#     mask_combined = draw_two_features(mask, lamella_centre_px, needle_tip_px)
+#     alpha_blend = draw_overlay(img, mask_combined, show=show)
+
+#     # # need to use the same scale images for both detection selections
+#     img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+
+#     # validate detection
+#     needle_tip_px = validate_detection(img_downscale, img, needle_tip_px, "needle tip")
+#     lamella_centre_px = validate_detection(img_downscale, img, lamella_centre_px, "lamella_centre")
+
+#     # scale invariant coordinatesss
+#     scaled_lamella_centre_px = scale_invariant_coordinates_NEW(lamella_centre_px, mask_combined)
+#     scaled_needle_tip_px = scale_invariant_coordinates_NEW(needle_tip_px, mask_combined)
+
+#     # if no detection is found, something has gone wrong
+#     if scaled_needle_tip_px is None or scaled_lamella_centre_px is None:
+#         raise ValueError("No detections available")
+
+#     # # x, y
+#     return -(scaled_lamella_centre_px[1] - scaled_needle_tip_px[1]), scaled_lamella_centre_px[0] - scaled_needle_tip_px[0]
+
+
