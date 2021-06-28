@@ -1,7 +1,7 @@
 # TODO:
 
 - remove unused functions
-- add function to take and save images in 1 line
+- add function to take and save images in 1 line - DONE
 - refactor out old / new functions
 - convert to object oriented design
 - make sure that each shift calculation is consistent in direction so that dont need to keep swapping negative signs
@@ -13,3 +13,8 @@
 
 - replace / refactor all instances of taking and saving images
 - rename calculate distance functions to be more logical
+
+- refactor drawing to use a single function: draw_feature(mask, px, color, crosshair)
+- draw_two_features(mask, feature_1, feature_2, line=False)
+- detect_centre_point(mask, color, threshold)
+- detect_right_edge(mask, color, threshold)

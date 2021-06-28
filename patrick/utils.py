@@ -133,6 +133,9 @@ def show_overlay(img, rgb_mask):
     # alpha = 0.4
     # img_rgb = cv2.cvtColor(img_resize_np, cv2.COLOR_GRAY2RGB)
     # img_overlay = cv2.addWeighted(img_rgb, 1 - alpha, rgb_mask, alpha, 1)
+    # https://stackoverflow.com/questions/5324647/how-to-merge-a-transparent-png-image-with-another-image-using-pil
+    # https://pythontic.com/image-processing/pillow/alpha-composite
+    # TODO: PIL version
 
     return rgb_mask
 
