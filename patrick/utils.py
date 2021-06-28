@@ -19,7 +19,7 @@ from torchvision import transforms, utils
 from skimage import feature
 from scipy.spatial import distance
 
-from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+# from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 # user functions
 
 # transformations

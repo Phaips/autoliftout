@@ -14,7 +14,9 @@
 - replace / refactor all instances of taking and saving images
 - rename calculate distance functions to be more logical
 
-- refactor drawing to use a single function: draw_feature(mask, px, color, crosshair)
-- draw_two_features(mask, feature_1, feature_2, line=False)
-- detect_centre_point(mask, color, threshold)
-- detect_right_edge(mask, color, threshold)
+- refactor drawing to use a single function: 
+- draw_feature(mask, px, color, crosshair) - DONE
+- draw_two_features(mask, feature_1, feature_2, line=False) - DONE
+- detect_centre_point(mask, color, threshold) - DONE
+- detect_right_edge(mask, color, threshold) - DONE
+- draw_overlay(img, mask, alpha, show) - DONE
