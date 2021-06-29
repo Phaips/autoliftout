@@ -25,3 +25,4 @@
 - packaging, setup.py
 https://www.youtube.com/watch?v=GaWs-LenLYE
 https://www.youtube.com/watch?v=wCGsLqHOT2I
+https://iq-inc.com/importerror-attempted-relative-import/

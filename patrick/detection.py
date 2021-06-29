@@ -16,13 +16,13 @@ from scipy.spatial import distance
 
 
 from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW
-from DetectionModel import DetectionModel
+import DetectionModel
 
 class Detector:
 
     def __init__(self, weights_file) -> None:
 
-        self.detection_model = DetectionModel(weights_file)
+        self.detection_model = DetectionModel.DetectionModel(weights_file)
 
         self.supported_shift_types = [
             "needle_tip_to_lamella_centre",
@@ -455,54 +455,4 @@ def detect_landing_edge(img, landing_px):
     landing_mask = draw_overlay(img, edges_mask, alpha=0.5)
 
     return landing_edge_px, landing_mask
-
-
-
-        
-
-####################### # UNUSED #######################
-
-# def calculate_needletip_shift_from_lamella_centre(adorned_img, show=False):
-#     """
-#     NOTE: img.data is np.array for Adorned Image
-
-#     """
-
-#     if hasattr(adorned_img, 'data'):
-#         img = adorned_img.data # extract image data
-#     if isinstance(adorned_img, np.ndarray):
-#         img = adorned_img # adorned image is just numpy array
-
-#     weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
-#     detector = Detector(weights_file) # TODO: wrap in class
-
-#     # load image from file
-#     mask = detector.detection_model.model_inference(img)
-
-#     # detect features
-#     needle_tip_px, needle_mask = detect_needle_tip(img, mask)
-#     lamella_centre_px, lamella_mask = detect_lamella_centre(img, mask)
-
-#     # display features
-#     mask_combined = draw_two_features(mask, lamella_centre_px, needle_tip_px)
-#     alpha_blend = draw_overlay(img, mask_combined, show=show)
-
-#     # # need to use the same scale images for both detection selections
-#     img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
-
-#     # validate detection
-#     needle_tip_px = validate_detection(img_downscale, img, needle_tip_px, "needle tip")
-#     lamella_centre_px = validate_detection(img_downscale, img, lamella_centre_px, "lamella_centre")
-
-#     # scale invariant coordinatesss
-#     scaled_lamella_centre_px = scale_invariant_coordinates_NEW(lamella_centre_px, mask_combined)
-#     scaled_needle_tip_px = scale_invariant_coordinates_NEW(needle_tip_px, mask_combined)
-
-#     # if no detection is found, something has gone wrong
-#     if scaled_needle_tip_px is None or scaled_lamella_centre_px is None:
-#         raise ValueError("No detections available")
-
-#     # # x, y
-#     return -(scaled_lamella_centre_px[1] - scaled_needle_tip_px[1]), scaled_lamella_centre_px[0] - scaled_needle_tip_px[0]
-
 

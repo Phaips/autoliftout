@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import glob
-from detection import *
+from random import shuffle
+import detection
 
 
 if __name__ == "__main__":
@@ -14,12 +15,12 @@ if __name__ == "__main__":
     shuffle(filenames)
 
     # detector class
-    detector = Detector(weights_file)
+    detector = detection.Detector(weights_file)
 
     for fname in filenames:
 
         # load image from file
-        img = load_image_from_file(fname)
+        img = detection.load_image_from_file(fname)
 
         supported_shift_types = [
             # "needle_tip_to_lamella_centre",
