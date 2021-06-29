@@ -18,6 +18,113 @@ from scipy.spatial import distance
 from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW
 from DetectionModel import DetectionModel
 
+class Detector:
+
+    def __init__(self, weights_file) -> None:
+
+        self.detection_model = DetectionModel(weights_file)
+
+        self.supported_shift_types = [
+            "needle_tip_to_lamella_centre",
+            "lamella_centre_to_image_centre",
+            "lamella_edge_to_landing_post",
+            "needle_tip_to_image_centre"
+        ]
+    
+    def detect_features(self, img, mask, shift_type):
+
+        if shift_type not in self.supported_shift_types:
+            raise ValueError("ERROR: shift type calculation is not supported")
+
+        # detect feature shift
+        if shift_type=="needle_tip_to_lamella_centre":
+            feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
+            feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+
+            feature_1_type = "lamella_centre"
+            feature_2_type = "needle_tip"
+
+        if shift_type=="lamella_centre_to_image_centre":
+            feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+
+            feature_1_type = "lamella_centre"
+            feature_2_type = "image_centre"
+
+        if shift_type=="lamella_edge_to_landing_post":
+            # TODO: This doesnt work yet
+            # TODO: The directions and shapes are wrong and messing things up needs to be fixed
+            feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
+            
+            # need to resize image
+            img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
+
+            landing_px=(img_landing.size[0]//2, img_landing.size[1]//2)
+
+            print(img_landing.size)
+            # print(mask.shape)
+            print(landing_px)
+            print("NOTE: landing not yet working")
+            feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px) # landing post # TODO: initial landing point?
+
+            feature_1_type = "lamella_edge"
+            feature_2_type = "landing_post"
+
+        if shift_type=="needle_tip_to_image_centre":
+            feature_1_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+            feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+
+            feature_1_type = "image_centre"
+            feature_2_type = "needle_tip"
+
+        return feature_1_px, feature_1_type, feature_2_px, feature_2_type
+
+    def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False):
+        """
+        NOTE: img.data is np.array for Adorned Image
+
+        """
+        # TODO: fix display colours for this?
+
+        if hasattr(adorned_img, 'data'):
+            img = adorned_img.data # extract image data
+        if isinstance(adorned_img, np.ndarray):
+            img = adorned_img # adorned image is just numpy array
+
+        # load image from file
+        mask = self.detection_model.model_inference(img)
+
+        # detect features for calculation
+        feature_1_px, feature_1_type, feature_2_px, feature_2_type = self.detect_features(img, mask, shift_type)
+
+        # display features for validation
+        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
+        img_blend = draw_overlay(img, mask_combined, show=show)
+
+        # # need to use the same scale images for both detection selections
+        img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+
+        # validate detection
+        feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
+        feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
+
+        # scale invariant coordinatesss
+        scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
+        scaled_feature_2_px = scale_invariant_coordinates_NEW(feature_2_px, mask_combined)
+
+        # if no detection is found, something has gone wrong
+        if scaled_feature_1_px is None or scaled_feature_2_px is None:
+            raise ValueError("No detections available")
+
+        # x, y distance (proportional)
+        return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0] 
+        #TODO: this will probably be wrong now for most, need to re-validate
+
+
+
+
+# Detection, Drawing helper functions
+
 def select_point_new(image):
     fig, ax = plt.subplots()
     ax.imshow(image, cmap="gray")
@@ -58,104 +165,24 @@ def validate_detection(img, img_base, detection_coord, det_type):
     return detection_coord
 
 
-# TODO: this generalisation might be more trouble. I think it is actually better, easier to support multiple types
-def calculate_shift_between_features(adorned_img, shift_type="needle_to_lamella_centre", show=False):
-    """
-    NOTE: img.data is np.array for Adorned Image
+def load_image_from_live(img):
 
-    """
+    """ Load a live image from the microscope as np.array """
 
-    # TODO: fix display colours for this?
+    return np.asarray(img.data)
 
-    if hasattr(adorned_img, 'data'):
-        img = adorned_img.data # extract image data
-    if isinstance(adorned_img, np.ndarray):
-        img = adorned_img # adorned image is just numpy array
 
-    weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
-    detector = Detector(weights_file) # TODO: wrap in class
+def load_image_from_file(fname):
 
-    # load image from file
-    mask = detector.detection_model.model_inference(img)
+    """ Load a .tif image from disk as np.array """
 
-    supported_shift_types = [
-        "needle_tip_to_lamella_centre",
-        "lamella_centre_to_image_centre",
-        "lamella_edge_to_landing_post",
-        "needle_tip_to_image_centre"
-    ]
-    if shift_type not in supported_shift_types:
-        raise ValueError("ERROR: shift type calculation is not supported")
+    img = np.asarray(Image.open(fname))
 
-    # detect feature shift
-    if shift_type=="needle_tip_to_lamella_centre":
-        feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
-        feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
-
-        feature_1_type = "lamella_centre"
-        feature_2_type = "needle_tip"
-
-    if shift_type=="lamella_centre_to_image_centre":
-        feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
-        feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
-
-        feature_1_type = "lamella_centre"
-        feature_2_type = "image_centre"
-
-    if shift_type=="lamella_edge_to_landing_post":
-        # TODO: This doesnt work yet
-        # TODO: The directions and shapes are wrong and messing things up needs to be fixed
-        feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
-        
-        # need to resize image
-        img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
-
-        landing_px=(img_landing.size[0]//2, img_landing.size[1]//2)
-
-        print(img_landing.size)
-        print(mask.shape)
-        print(landing_px)
-
-        feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px) # landing post # TODO: initial landing point?
-
-        feature_1_type = "lamella_edge"
-        feature_2_type = "landing_post"
-
-    if shift_type=="needle_tip_to_image_centre":
-        feature_1_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
-        feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
-
-        feature_1_type = "image_centre"
-        feature_2_type = "needle_tip"
-
-    # display features for validation
-    mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
-    alpha_blend = draw_overlay(img, mask_combined, show=show)
-
-    # # need to use the same scale images for both detection selections
-    img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
-
-    # validate detection
-    feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
-    feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
-
-    # scale invariant coordinatesss
-    scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
-    scaled_feature_2_px = scale_invariant_coordinates_NEW(feature_2_px, mask_combined)
-
-    # if no detection is found, something has gone wrong
-    if scaled_feature_1_px is None or scaled_feature_2_px is None:
-        raise ValueError("No detections available")
-
-    # x, y distance (proportional)
-    return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0] 
-    #TODO: this will probably be wrong now for most, need to re-validate
-
+    return img
 
 
 # REFACTOR DETECTION AND DRAWING TOOLS
 
-# TODO: make the mask consistently a np.array or PIL.Images
 def extract_class_pixels(mask, color):
     # TODO: get a better name for this
     """ Extract only the pixels that are classified as the desired class (color)
@@ -339,7 +366,7 @@ def detect_right_edge(mask, color, threshold):
 
 
 def detect_needle_tip(img, mask, threshold=200):
-
+    """Detect the needle tip"""
     color = (0, 255, 0) # fixed color
 
     # TODO: extract filter from detection?
@@ -352,7 +379,7 @@ def detect_needle_tip(img, mask, threshold=200):
     return edge_px, needle_mask
 
 def detect_lamella_centre(img, mask, threshold=25):
-
+    """Detect the centre of the lamella"""
     color = (255, 0, 0) # fixed color
 
     # TODO: extract filter from detection?
@@ -365,7 +392,7 @@ def detect_lamella_centre(img, mask, threshold=25):
     return centre_px, lamella_mask
 
 def detect_lamella_edge(img, mask, threshold=25):
-
+    """Detect the right edge of the lamella"""
     color = (255, 0, 0) # fixed color
 
     # TODO: extract filter from detection?
@@ -436,11 +463,6 @@ def detect_landing_edge(img, landing_px):
 
 
 
-
-class Detector:
-
-    def __init__(self, weights_file) -> None:
-        self.detection_model = DetectionModel(weights_file)
         
 
 ####################### # UNUSED #######################
