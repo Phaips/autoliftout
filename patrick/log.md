@@ -20,3 +20,8 @@
 - detect_centre_point(mask, color, threshold) - DONE
 - detect_right_edge(mask, color, threshold) - DONE
 - draw_overlay(img, mask, alpha, show) - DONE
+
+
+- packaging, setup.py
+https://www.youtube.com/watch?v=GaWs-LenLYE
+https://www.youtube.com/watch?v=wCGsLqHOT2I

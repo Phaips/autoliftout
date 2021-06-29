@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
-from DetectionModel import *
 from detection import *
-
-
-
-
 
 
 if __name__ == "__main__":

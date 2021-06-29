@@ -54,17 +54,12 @@ class Detector:
         if shift_type=="lamella_edge_to_landing_post":
             # TODO: This doesnt work yet
             # TODO: The directions and shapes are wrong and messing things up needs to be fixed
-            feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
             
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
+            landing_px=(img_landing.size[1]//2, img_landing.size[0]//2)
 
-            landing_px=(img_landing.size[0]//2, img_landing.size[1]//2)
-
-            print(img_landing.size)
-            # print(mask.shape)
-            print(landing_px)
-            print("NOTE: landing not yet working")
+            feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
             feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px) # landing post # TODO: initial landing point?
 
             feature_1_type = "lamella_edge"
