@@ -12,7 +12,7 @@
 - code the cleanup stage
 
 - replace / refactor all instances of taking and saving images
-- rename calculate distance functions to be more logical
+- rename calculate distance functions to be more logical - DONE
 
 - refactor drawing to use a single function: 
 - draw_feature(mask, px, color, crosshair) - DONE

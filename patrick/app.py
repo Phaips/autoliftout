@@ -37,7 +37,7 @@ def main():
 
     st.sidebar.subheader("Filter Options")
     st.sidebar.write(f"{len(filenames)} filenames matched")
-    n_files = st.sidebar.number_input("Number of Images ", 1, 200, 5)
+    n_files = st.sidebar.number_input("Number of Images ", 1, len(filenames), 5)
     shuffle(filenames)
     
     for fname in filenames[:n_files]:       
@@ -81,3 +81,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# TODO: add save images
