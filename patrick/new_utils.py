@@ -1,3 +1,5 @@
+
+
 def take_electron_and_ion_reference_images(
     microscope,
     hor_field_width=50e-6,
