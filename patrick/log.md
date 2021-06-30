@@ -22,7 +22,27 @@
 - draw_overlay(img, mask, alpha, show) - DONE
 
 
+- change feature distance calculation to be consistent (stationary minus moving)
+-   this should make the direction consistent
+-   in some cases the stage (lamella) moves, other times needle (consistent with naming, moving_to_stationary)
+-           "needle_tip_to_lamella_centre",
+            "lamella_centre_to_image_centre",
+            "lamella_edge_to_landing_post",
+            "needle_tip_to_image_centre"
+- need to resolve the colours so that they are consistent with this and not determined by postition - Done
+
 - packaging, setup.py
 https://www.youtube.com/watch?v=GaWs-LenLYE
 https://www.youtube.com/watch?v=wCGsLqHOT2I
 https://iq-inc.com/importerror-attempted-relative-import/
+
+# Conceptual Breakdown
+
+- setup
+- milling
+- detection
+- measurement (calibration)
+- imaging (acquire)
+- movement
+- display
+- utils

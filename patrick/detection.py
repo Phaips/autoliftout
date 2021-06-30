@@ -6,6 +6,7 @@ from random import shuffle
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import PIL
 import torch
 import torch.nn.functional as F
@@ -14,9 +15,10 @@ from torchvision import transforms, utils
 from skimage import feature
 from scipy.spatial import distance
 
-
-from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW
 import DetectionModel
+
+from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata
+from new_utils import select_point_new, validate_detection, load_image_from_file
 
 class Detector:
 
@@ -32,6 +34,22 @@ class Detector:
         ]
     
     def detect_features(self, img, mask, shift_type):
+        """
+        
+        args:
+            img: the input img (np.array)
+            mask: the output rgb prediction mask (np.array)
+            shift_type: the type of feature detection to run (str)
+        
+        return:
+            feature_1_px: the pixel coordinates of feature one (tuple)
+            feature_1_type: the type of detection for feature one (str) 
+            feature_1_color: color to plot feature one detection (str)
+            feature_2_px: the pixel coordinates of feature two (tuple)
+            feature_2_type: the type of detection for feature two (str) 
+            feature_2_color: color to plot feature two detection (str)
+        """
+        # TODO: convert feature attributes to dict?
 
         if shift_type not in self.supported_shift_types:
             raise ValueError("ERROR: shift type calculation is not supported")
@@ -44,12 +62,18 @@ class Detector:
             feature_1_type = "lamella_centre"
             feature_2_type = "needle_tip"
 
+            feature_1_color = "red"
+            feature_2_color = "green"
+
         if shift_type=="lamella_centre_to_image_centre":
             feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
             feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
 
             feature_1_type = "lamella_centre"
             feature_2_type = "image_centre"
+
+            feature_1_color = "red"
+            feature_2_color = "white"
 
         if shift_type=="lamella_edge_to_landing_post":
             # TODO: This doesnt work yet
@@ -65,24 +89,40 @@ class Detector:
             feature_1_type = "lamella_edge"
             feature_2_type = "landing_post"
 
+            feature_1_color = "red"
+            feature_2_color = "white"
+
         if shift_type=="needle_tip_to_image_centre":
-            feature_1_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
-            feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+            feature_1_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
 
-            feature_1_type = "image_centre"
-            feature_2_type = "needle_tip"
+            feature_1_type = "needle_tip"
+            feature_2_type = "image_centre"
 
-        return feature_1_px, feature_1_type, feature_2_px, feature_2_type
+            feature_1_color = "green"
+            feature_2_color = "white"
 
-    def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False):
+        return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
+
+    def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
         """
-        NOTE: img.data is np.array for Adorned Image
+        Calculate the distance between two features in the image coordinate system (as a proportion of the image).
+
+        args:
+            adorned_img: input image (AdornedImage, or np.array)
+            shift_type: the type of feature detection shift to calculation
+            show: display a plot of feature detections over the input image (bool)
+            validate: enable manual validation of the feature detections (bool)
+
+        return:
+            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple) 
 
         """
         # TODO: fix display colours for this?
 
+        # check image type 
         if hasattr(adorned_img, 'data'):
-            img = adorned_img.data # extract image data
+            img = adorned_img.data # extract image data from AdornedImage
         if isinstance(adorned_img, np.ndarray):
             img = adorned_img # adorned image is just numpy array
 
@@ -90,18 +130,19 @@ class Detector:
         mask = self.detection_model.model_inference(img)
 
         # detect features for calculation
-        feature_1_px, feature_1_type, feature_2_px, feature_2_type = self.detect_features(img, mask, shift_type)
+        feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color = self.detect_features(img, mask, shift_type)
 
         # display features for validation
-        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
-        img_blend = draw_overlay(img, mask_combined, show=show)
+        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px, color_1=feature_1_color, color_2=feature_2_color)
+        img_blend = draw_overlay(img, mask_combined, show=show, title=shift_type)
 
         # # need to use the same scale images for both detection selections
         img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
 
         # validate detection
-        feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
-        feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
+        if validate:
+            feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
+            feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
 
         # scale invariant coordinatesss
         scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
@@ -115,68 +156,31 @@ class Detector:
         return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0] 
         #TODO: this will probably be wrong now for most, need to re-validate
 
-
-
-
-# Detection, Drawing helper functions
-
-def select_point_new(image):
-    fig, ax = plt.subplots()
-    ax.imshow(image, cmap="gray")
-    coords = []
-
-    def on_click(event):
-        print(event.xdata, event.ydata)
-        coords.append(event.ydata)
-        coords.append(event.xdata)
-
-    fig.canvas.mpl_connect("button_press_event", on_click)
-    plt.show()
-
-    return tuple(coords[-2:])
-
-def validate_detection(img, img_base, detection_coord, det_type):
-    correct = input(f"Is the detection for {det_type} correct? (y/n)")
-    #TODO: change this to user_input
-    if correct == "n":
-
-        detection_coord_initial = detection_coord # save initial coord
-
-        print(f"Please click the {det_type} position")
-        detection_coord = select_point_new(img)
-
-        # TODO: need to resolve behaviour when user exits plot without selecting?
-        # if detection_coord is None:
-        #     detection_coord = detection_coord # use initial coord
-
-
-        # save image for training here
-        print("Saving image for labelling")
-        #storage.step_counter +=1
-        #storage.SaveImage(img_base, id="label_")
-
-
-    print(f"{det_type}: {detection_coord}")
-    return detection_coord
-
-
-def load_image_from_live(img):
-
-    """ Load a live image from the microscope as np.array """
-
-    return np.asarray(img.data)
-
-
-def load_image_from_file(fname):
-
-    """ Load a .tif image from disk as np.array """
-
-    img = np.asarray(Image.open(fname))
-
-    return img
-
-
 # REFACTOR DETECTION AND DRAWING TOOLS
+
+def calculate_shift_distance_in_metres(img, distance_x, distance_y, metadata=None):
+    """Convert the shift distance from proportion of img to metres using image metadata"""
+
+    # check image type 
+    if isinstance(img, np.ndarray):
+        # use extracted metadata
+        pixelsize_x = float(metadata["[Scan].PixelWidth"])
+        width = img.shape[1]
+        height = img.shape[0]
+    else:
+        # use embedded metadata in Adorned Image
+        pixelsize_x = img.metadata.binary_result.pixel_size.x #5.20833e-008
+        width = img.width
+        height = img.height
+
+    # scale distances by pixelsize
+    field_width   = pixelsize_x  * width
+    field_height  = pixelsize_x  * height
+    x_shift_metres = distance_x * field_width
+    y_shift_metres = distance_y * field_height
+
+    return x_shift_metres, y_shift_metres
+
 
 def extract_class_pixels(mask, color):
     # TODO: get a better name for this
@@ -263,7 +267,7 @@ def draw_two_features(
 
     return mask
 
-def draw_overlay(img, mask, alpha=0.4, show=False):
+def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
     """ Draw the detection overlay onto base image
     
     args:
@@ -292,6 +296,7 @@ def draw_overlay(img, mask, alpha=0.4, show=False):
     alpha_blend = PIL.Image.blend(img, mask, alpha)
 
     if show:
+        plt.title(title)
         plt.imshow(alpha_blend)
         plt.show()
 
@@ -433,7 +438,6 @@ def detect_closest_edge(img, landing_px):
             min_dst = dst
             landing_edge_px = px
 
-    print("Dist: ", px, landing_px, dst)
     return landing_edge_px, edges
 
 def detect_landing_edge(img, landing_px):
