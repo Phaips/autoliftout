@@ -46,6 +46,8 @@ def take_electron_and_ion_reference_images(
 
     return eb_reference, ib_reference
 
+    # REFACTORED ^^
+
 # needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
 #                 image_settings=image_settings, save=True, save_label="test_image")
 
@@ -271,6 +273,7 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
 
     return sharpen_patterns
 
+# REFACTORED ^^^
 
 ###################################################################################################################################################
 
@@ -376,7 +379,7 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
     print(f"Delta Z movement: {yz_move_ion.z}")
 
 
-    ############################################# PART 2 ############################################# 
+    ############################################# PART 2 #############################################
 
     # electron dy shift
     save_label = "A_eucentric_calibration_lowres_moved_1"
