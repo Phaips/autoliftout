@@ -2748,13 +2748,11 @@ def mill_lamella(microscope, settings, confirm=True):
     print(tilting)
     stage.relative_move(tilting, stage_settings)
 
-    # realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt=previous_stage_tilt, beam_type=BeamType.ION)
-
     # realign with model
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=1.0e-6)  # TODO: user input resolution
-    # realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=150e-6)
+    hfw_ml = 80e-6 # 150e-6, 80e-6, 50e-6
     realign_eucentric_with_machine_learning(microscope, image_settings_ML,
-                                            hor_field_width=80e-6, _autocontrast=True)
+                                            hor_field_width=hfw_ml, _autocontrast=True)
 
 
     ############################### Mill J-Cut ###############################
@@ -2794,12 +2792,9 @@ def mill_lamella(microscope, settings, confirm=True):
 
 
     # realign with model after moving to liftout angle
-    # reference_images_low_and_high_res = (eb_lowres_ref_jcut, eb_highres_ref_jcut, ib_lowres_ref_jcut, ib_highres_ref_jcut)
-    # realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt, beam_type=BeamType.ION) ### REALIGN to center in the ion beam after +4 deg tilt
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
-    # realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=150e-6)
-    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=80e-6, _autocontrast=True)
-    # realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=50e-6, _autocontrast=True)
+    hfw_ml = 80e-6 # 150e-6, 80e-6, 50e-6
+    realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=hfw_ml, _autocontrast=True)
 
     print("Done, ready for liftout!")
 
@@ -2872,13 +2867,16 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     # Lamella to Landing Post
     # TODO: check if the landing post is cslose enough to the centre
 
+
+    # image settings from config
+    resolution = storage.settings["reference_images"]["landing_post_ref_img_resolution"]
+    dwell_time = storage.settings["reference_images"]["landing_post_ref_img_dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+
     # y-movement
     needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="A_landing_needle_land_sample_lowres")
-
-    # storage.SaveImage(needle_eb_lowres_with_lamella_shifted,  id='A_landing_needle_land_sample_eb_lowres')
-    # storage.SaveImage(needle_ib_lowres_with_lamella_shifted,  id='A_landing_needle_land_sample_ib_lowres')
 
     # TODO: make distance measurement calculation direction consistent
     landing_px = needle_eb_lowres_with_lamella_shifted.height // 2, needle_eb_lowres_with_lamella_shifted.width // 2
@@ -2893,10 +2891,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="B_landing_needle_land_sample_lowres_after_y_move")
 
-    # storage.SaveImage(needle_eb_lowres_with_lamella_shifted,
-    #                   id='B_landing_needle_land_sample_eb_lowres_after_y_move')
-    # storage.SaveImage(needle_ib_lowres_with_lamella_shifted,
-    #                   id='B_landing_needle_land_sample_ib_lowres_after_y_move')
 
     x_shift, y_shift = lamella_edge_to_landing_post(needle_ib_lowres_with_lamella_shifted, landing_px)
 
@@ -2911,10 +2905,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="C_landing_needle_land_sample_lowres_after_z_move")
-    # storage.SaveImage(needle_eb_lowres_with_lamella_shifted,
-    #                   id='C_landing_needle_land_sample_eb_lowres_after_z_move')
-    # storage.SaveImage(needle_ib_lowres_with_lamella_shifted,
-    #                   id='C_landing_needle_land_sample_ib_lowres_after_z_move')
 
     x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
     x_move = x_corrected_needle_movement(x_shift)
@@ -2930,10 +2920,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="C_landing_needle_land_sample_lowres_after_x_half_move")
-    # storage.SaveImage(needle_eb_lowres_with_lamella_shifted,
-    #                   id='C_landing_needle_land_sample_eb_lowres_after_x_half_move')
-    # storage.SaveImage(needle_ib_lowres_with_lamella_shifted,
-    #                   id='C_landing_needle_land_sample_ib_lowres_after_x_half_move')
 
     print("ion:")
     x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
@@ -2949,33 +2935,15 @@ def land_lamella(microscope, landing_coord, original_landing_images):
         microscope, hor_field_width=50e-6, image_settings=image_settings,
         save=True, save_label="D_landing_lamella_final")
 
-    # storage.SaveImage(landing_eb_highres,  id='D_landing_eb_lamella_final')
-    # storage.SaveImage(landing_ib_highres,  id='D_landing_ib_lamella_final')
-
     storage.step_counter += 1
 
-    # finish landing
+    # weld to lamella to landing post
     weld_to_landing_post(microscope, confirm=True)
 
     # calculate cut off position
-    #landing_eb_highres, landing_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=50e-6, image_settings=image_settings)
-    #landing_eb_highres2, landing_ib_highres2 = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6, image_settings=image_settings)
     landing_eb_highres3, landing_ib_highres3 = take_electron_and_ion_reference_images(
         microscope, hor_field_width=100e-6, image_settings=image_settings,
         save=True, save_label="E_landing_lamella_final_weld")
-
-    # storage.SaveImage(landing_eb_highres,  id='E_landing_eb_lamella_final_1' )
-    # storage.SaveImage(landing_ib_highres,  id='E_landing_ib_lamella_final_1' )
-
-    # storage.SaveImage(landing_eb_highres2,  id='E_landing_eb_lamella_final_2' )
-    # storage.SaveImage(landing_ib_highres2,  id='E_landing_ib_lamella_final_2' )
-
-    # storage.SaveImage(landing_eb_highres3,  id='E_landing_eb_lamella_final_3')
-    # storage.SaveImage(landing_ib_highres3,  id='E_landing_ib_lamella_final_3')
-
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(landing_ib_highres)
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(landing_ib_highres2)
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(landing_ib_highres3)
 
     # calculate shift from needle top to centre of image
     x_shift, y_shift = needletip_shift_from_img_centre(landing_ib_highres3)
@@ -2992,8 +2960,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     landing_eb_highres3, landing_ib_highres3 = take_electron_and_ion_reference_images(
         microscope, hor_field_width=100e-6, image_settings=image_settings,
         save=True, save_label="F_landing_lamella_final_cut")
-    # storage.SaveImage(landing_eb_highres3,  id='F_landing_eb_lamella_final_cut')
-    # storage.SaveImage(landing_ib_highres3,  id='F_landing_ib_lamella_final_cut')
 
     # retract needle from landing position
     retract_needle(microscope, park_position)
@@ -3005,77 +2971,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
         microscope, hor_field_width=150e-6, image_settings=image_settings,
         save=True, save_label="G_landing_lamella_final_needle_cut_lowres")
 
-    # storage.SaveImage(landing_eb_highres2,  id='F_cut_needle_eb_lamella_1')
-    # storage.SaveImage(landing_ib_highres2,  id='F_cut_needle_ib_lamella_1')
-    # storage.SaveImage(landing_eb_highres3,  id='F_cut_needle_eb_lamella_2')
-    # storage.SaveImage(landing_ib_highres3,  id='F_cut_needle_ib_lamella_2')
-
     storage.step_counter += 1
-
-    # eb_highres_reference, ib_highres_reference = needle_reference_images_highres_with_lamella
-    # storage.SaveImage(eb_highres_reference, id='A_landing_ref_eb_highres')
-    # storage.SaveImage(ib_highres_reference, id='A_landing_ref_ib_highres')
-    # pixelsize_x = eb_highres_reference.metadata.binary_result.pixel_size.x
-    # field_width = pixelsize_x * eb_highres_reference.width
-    # microscope.beams.ion_beam.horizontal_field_width.value      = field_width
-    # microscope.beams.electron_beam.horizontal_field_width.value = field_width
-    # image_settings_electron = GrabFrameSettings(resolution="3072x2048", dwell_time=1.0e-6)
-    # image_settings_ion      = GrabFrameSettings(resolution="3072x2048", dwell_time=0.5e-6)
-
-    # microscope.imaging.set_active_view(1)
-    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    # landing_eb_highres = microscope.imaging.grab_frame(image_settings_electron)
-    # microscope.imaging.set_active_view(2)
-    # autocontrast(microscope, beam_type=BeamType.ION)
-    # landing_ib_highres = microscope.imaging.grab_frame(image_settings_ion)
-    # storage.SaveImage(landing_eb_highres, id='B_landingLamella_eb_highres')
-    # storage.SaveImage(landing_ib_highres, id='B_landingLamella_ib_highres')
-
-    # ############ FIND dx, dy from HIGH_RES ELECTRON images ############
-    # x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(landing_eb_highres, eb_highres_reference, show=False, median_smoothing=2)
-    # x_move = x_corrected_needle_movement(x_shift)
-    # y_move = y_corrected_needle_movement(y_shift, stage.current_position.t)
-    # print('x_move = ', x_move, ';\ny_move = ', y_move)
-    # #yy = input('press ENTER to move the needle in Y only...')
-    # needle.relative_move(y_move)
-
-    # ############ FIND dz from HIGH_RES ION images ############
-    # # landing_eb_lowres02, landing_ib_lowres02   = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6, image_settings=image_settings)
-    # microscope.imaging.set_active_view(1)
-    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    # landing_eb_highres02 = microscope.imaging.grab_frame(image_settings_electron)
-    # microscope.imaging.set_active_view(2)
-    # autocontrast(microscope, beam_type=BeamType.ION)
-    # landing_ib_highres02 = microscope.imaging.grab_frame(image_settings_ion)
-    # storage.SaveImage(landing_eb_highres02, id='C_landingLamella_eb_highres_yShifted')
-    # storage.SaveImage(landing_ib_highres02, id='C_landingLamella_ib_highres_yShifted')
-    # x_shift, y_shift = find_needletip_shift_in_image_ION(landing_ib_highres02, ib_highres_reference, show=False, median_smoothing=2)
-    # stage_tilt = stage.current_position.t
-    # print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
-    # z_distance = y_shift / np.sin(np.deg2rad(52))
-    # z_move = z_corrected_needle_movement(z_distance, stage_tilt)
-    # needle.relative_move(z_move)
-
-    # ############ FIND dx from HIGH_RES ElEC images ############
-    # # landing_eb_highres, landing_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6, image_settings=image_settings)
-    # microscope.imaging.set_active_view(1)
-    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    # landing_eb_highres03 = microscope.imaging.grab_frame(image_settings_electron)
-    # microscope.imaging.set_active_view(2)
-    # autocontrast(microscope, beam_type=BeamType.ION)
-    # landing_ib_highres03 = microscope.imaging.grab_frame(image_settings_ion)
-    # storage.SaveImage(landing_eb_highres02, id='D_landingLamella_eb_highres_yShifted')
-    # storage.SaveImage(landing_ib_highres02, id='D_landingLamella_ib_highres_yShifted')
-    # x_shift, y_shift = find_needletip_shift_in_image_ELECTRON(landing_eb_highres03, eb_highres_reference, show=False,  median_smoothing=2)
-    # x_move = x_corrected_needle_movement(x_shift)
-    # print('x_move = ', x_move)
-    # needle.relative_move(x_move)
-
-    # landed_eb_highres, landed_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6, image_settings=image_settings_ion)
-    # storage.SaveImage(landed_eb_highres, id='E_landed_eb_highres')
-    # storage.SaveImage(landed_ib_highres, id='E_landed_ib_highres')
-    # storage.step_counter += 1
-
 
 def sharpen_needle(microscope):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
