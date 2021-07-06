@@ -30,7 +30,8 @@ class Detector:
             "needle_tip_to_lamella_centre",
             "lamella_centre_to_image_centre",
             "lamella_edge_to_landing_post",
-            "needle_tip_to_image_centre"
+            "needle_tip_to_image_centre",
+            "trim_lamella_to_centre"
         ]
     
     def detect_features(self, img, mask, shift_type):
@@ -101,6 +102,17 @@ class Detector:
 
             feature_1_color = "green"
             feature_2_color = "white"
+        
+        if shift_type == "trim_lamella_to_centre":
+            # centre_px, centre_mask = detect_lamella_centre(img, mask)
+            feature_1_px, feature_2_px, left_mask = detect_trim_region(img, mask)
+
+            feature_1_type = "top_trim"
+            feature_2_type = "bottom_trim"
+            
+            feature_1_color = "white"
+            feature_2_color = "white"
+
 
         return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
 
@@ -203,7 +215,7 @@ def extract_class_pixels(mask, color):
     return class_mask, idx
 
 
-def draw_feature(mask, px, color, RECT_WIDTH=4, crosshairs=False):
+def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
     """ Helper function to draw the feature on the mask 
 
     args:
@@ -333,7 +345,7 @@ def detect_centre_point(mask, color, threshold=25):
 
 # - detect_right_edge(mask, color, threshold)
 
-def detect_right_edge(mask, color, threshold):
+def detect_right_edge(mask, color, threshold, left=False):
     """ Detect the right edge point of the mask for a given color (label)
     
     args:
@@ -359,11 +371,12 @@ def detect_right_edge(mask, color, threshold):
 
         # get index of max value (right)
         max_idx = np.argmax(idx[1])
+        if left:
+            max_idx = np.argmin(idx[1])
+
         edge_px = px[max_idx]  # right edge px
 
     return edge_px
-
-
 
 def detect_needle_tip(img, mask, threshold=200):
     """Detect the needle tip"""
@@ -460,3 +473,92 @@ def detect_landing_edge(img, landing_px):
 
     return landing_edge_px, landing_mask
 
+
+
+def detect_bounding_box(mask, color, threshold):
+    """ Detect the bounding edge points of the mask for a given color (label)
+    
+    args:
+        mask: the detection mask (PIL.Image)
+        color: the color of the label for the feature to detect (rgb tuple)
+        threshold: the minimum number of required pixels for a detection to count (int)
+    
+    return:
+
+        edge_px: the pixel coordinates of the edge points of the feature list((tuple))
+    """
+
+    top_px, bottom_px, left_px, right_px = (0, 0), (0, 0), (0, 0), (0, 0)
+
+    # extract class pixels
+    class_mask, idx = extract_class_pixels(mask, color)
+
+    # only return an edge point if detection is above a threshold
+
+    if len(idx[0]) > threshold:
+        # convert mask to coordinates
+        px = list(zip(idx[0], idx[1]))
+
+        # get index of each value
+        top_idx = np.argmin(idx[0])
+        bottom_idx = np.argmax(idx[0])
+        left_idx = np.argmin(idx[1])
+        right_idx = np.argmax(idx[1])
+
+        # pixel coordinates
+        top_px = px[top_idx]  
+        bottom_px = px[bottom_idx]  
+        left_px = px[left_idx]  
+        right_px = px[right_idx] 
+
+    # bbox should be (x0, y0), (x1, y1)
+    x0 = top_px[0]
+    y0 = left_px[1]
+    x1 = bottom_px[0]
+    y1 = right_px[1]
+
+    bbox = (x0, y0, x1, y1)
+
+    return [top_px, bottom_px, left_px, right_px], bbox
+
+def detect_trim_region(img, mask):
+    """Detect the region of the lamella to trim"""
+
+    if isinstance(img, np.ndarray):
+        img = PIL.Image.fromarray(img)
+    
+    color = (255, 0, 0)
+    threshold=25
+    min_height = 20 # minimum lamella trim height
+    
+    # detect centre
+    centre_px, centre_mask = detect_lamella_centre(img, mask)
+    
+    # detect bounding box around lamella
+    pts, bbox = detect_bounding_box(mask, color, threshold=threshold) #top, bot, left, right
+
+    mask_draw = draw_feature(img, bbox[:2], color="blue", crosshairs=True)
+    landing_mask = draw_overlay(img, mask_draw, alpha=0.5)
+    
+    # detect top and bottom edges
+    w = bbox[3] - bbox[1]
+    h = min(bbox[2] - bbox[0], min_height) # 
+    
+    # trim top and bottom edges to leave only small lamella slice
+    # bbox method
+    # top_px = bbox[0] + h/4
+    # bottom_px = bbox[2] - h/4  
+    # left_px = bbox[1] + w/2
+
+    # centre px method
+    top_px = centre_px[0] - h/6
+    bottom_px = centre_px[0] + h /6
+    left_px = centre_px[1]
+
+    # top and bottom cut start (left and up/down)
+    top_trim_px = top_px, left_px
+    bottom_trim_px = bottom_px, left_px
+
+    return top_trim_px, bottom_trim_px, landing_mask
+
+    # TODO: this is fooled by small red specks need a way to aggregate a whole detection clump and ignore outliers...

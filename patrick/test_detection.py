@@ -39,10 +39,11 @@ if __name__ == "__main__":
         df_metadata = utils.parse_metadata(fname)
 
         supported_shift_types = [
-            "needle_tip_to_lamella_centre",
-            "lamella_centre_to_image_centre",
-            "lamella_edge_to_landing_post",
-            "needle_tip_to_image_centre"
+            # "needle_tip_to_lamella_centre",
+            # "lamella_centre_to_image_centre",
+            # "lamella_edge_to_landing_post",
+            # "needle_tip_to_image_centre",
+            "trim_lamella_to_centre"
         ]
 
         print(f"image: {fname}")
