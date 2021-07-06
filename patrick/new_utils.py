@@ -3,53 +3,29 @@ import PIL
 from PIL import Image
 import detection
 import matplotlib.pyplot as plt
+import glob
+
+import shutil
+
+def extract_img_for_labelling(path, logfile="logfile"):
+    """Extract all the images that have been identified for retraining"""
+
+    log_dir = path+f"{logfile}/"
+    label_dir = path+"label"
+    dest_dir = path
+    # identify images with _label postfix
+    filenames = glob.glob(log_dir+ "*label*.tif")
 
 
-def take_electron_and_ion_reference_images(
-    microscope,
-    hor_field_width=50e-6,
-    image_settings=None,
-    __autocontrast=True,
-    eb_brightness=None,
-    ib_brightness=None,
-    eb_contrast=None,
-    ib_contrast=None,
-    save=False,
-    save_label="_default",
-):
-    from autoscript_sdb_microscope_client.structures import (
-        AdornedImage,
-        GrabFrameSettings,
-    )
+    for fname in filenames:
+        # print(fname)
+        basename = fname.split("/")[-1]
+        print(fname, basename)
+        shutil.copyfile(fname, path+"label/"+basename)
 
-    # image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
-    #############
+    # zip the image folder        
+    shutil.make_archive(f"{path}/images", 'zip', label_dir)
 
-    # Take reference images with lower resolution, wider field of view
-    microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
-    microscope.beams.ion_beam.horizontal_field_width.value = hor_field_width
-    microscope.imaging.set_active_view(1)
-    if __autocontrast:
-        autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    eb_reference = new_electron_image(
-        microscope, image_settings, eb_brightness, eb_contrast
-    )
-    microscope.imaging.set_active_view(2)
-    if __autocontrast:
-        autocontrast(microscope, beam_type=BeamType.ION)
-    ib_reference = new_ion_image(microscope, image_settings, ib_brightness, ib_contrast)
-
-    # save images
-    if save:
-        storage.SaveImage(eb_image, id=save_label + "_eb")
-        storage.SaveImage(ib_image, id=save_label + "_ib")
-
-    return eb_reference, ib_reference
-
-    # REFACTORED ^^
-
-# needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
-#                 image_settings=image_settings, save=True, save_label="test_image")
 
 
 ######################################## SHARPEN_NEEDLE ###############################################################################################
@@ -291,245 +267,6 @@ def calculate_shift_distance_in_metres(img, distance_x, distance_y):
     print('x_shift = ', x_shift/1e-6, 'um; ', 'y_shift = ', y_shift/1e-6, 'um; ')
 
     return x_shift, y_shift
-
-
-###########################################  REALIGN EUCENTRIC WITH ML #############################################################################
-
-def realign_eucentric_with_machine_learning(microscope, image_settings, hor_field_width=150e-6, _autocontrast=False):
-    from autoscript_sdb_microscope_client import SdbMicroscopeClient
-    from autoscript_sdb_microscope_client.structures import (
-        AdornedImage,
-        GrabFrameSettings,
-        ManipulatorPosition,
-        StagePosition
-    )
-
-    """ Realign image to lamella centre using ML detection"""
-    stage = microscope.specimen.stage
-
-    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
-    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
-    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
-    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
-
-    storage.step_counter += 1
-    save_label = "A_eucentric_calibration_lowres"
-
-    if _autocontrast:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-    else:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            eb_brightness=eb_brightness,
-            ib_brightness=ib_brightness,
-            eb_contrast=eb_contrast,
-            ib_contrast=ib_contrast,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-
-    # in microscope coordinates (not img coordinate)
-    ib_distance_y, ib_distance_x = lamella_shift_from_img_centre(ib_lowres, show=True)
-
-
-    # test new version
-    # weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
-    # detector = detection.Detector(weights_file)
-    # x_distance, y_distance = detector.calculate_shift_between_features(ib_lowres, shift_type="lamella_centre_to_image_centre", show=True)
-    # dx_meters_ion, dy_meters_ion = calculate_shift_distance_in_metres(ib_lowres, distance_x, distance_y)
-
-
-    # tested, can align within 20um
-
-    # z correction
-    pixelsize_x = ib_lowres.metadata.binary_result.pixel_size.x
-    field_width = pixelsize_x * ib_lowres.width
-    dy_meters_ion = ib_distance_y * field_width
-    tilt_radians = stage.current_position.t
-
-    # if 0:  # simple way, from eucentric correction for landing poles
-    #     delta_z = -np.cos(tilt_radians) * dy_meters_ion
-    #     # delta_z = -dy_meters_ion / np.cos(np.deg2rad(-38))
-    #     stage.relative_move(StagePosition(z=delta_z))
-    yz_move_ion = y_corrected_stage_movement(
-        dy_meters_ion, stage_tilt=tilt_radians, beam_type=BeamType.ION
-    )
-    stage.relative_move(yz_move_ion)
-
-    # x correction
-    field_height = pixelsize_x * ib_lowres.height
-    dx_meters_ion = ib_distance_x * field_height
-    stage.relative_move(StagePosition(x=dx_meters_ion))
-
-    print("Realigning x and y in ion beam")
-    # print(f"Electron Beam: {eb_distance_y}, {eb_distance_x}")
-    print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
-    print(f"Delta X movement: {dx_meters_ion}")
-    print(f"Delta Y movement: {yz_move_ion.y}")
-    print(f"Delta Z movement: {yz_move_ion.z}")
-
-
-    ############################################# PART 2 #############################################
-
-    # electron dy shift
-    save_label = "A_eucentric_calibration_lowres_moved_1"
-
-    if _autocontrast:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-    else:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            eb_brightness=eb_brightness,
-            ib_brightness=ib_brightness,
-            eb_contrast=eb_contrast,
-            ib_contrast=ib_contrast,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-
-    # in microscope coordinates (not img coordinate)
-    # renormalise_and_mask_image
-    eb_distance_y, eb_distance_x = lamella_shift_from_img_centre(eb_lowres, show=True)
-
-    # new version
-    # x_distance, y_distance = detector.calculate_shift_between_features(eb_lowres, shift_type="lamella_centre_to_image_centre", show=True)
-    # dx_meters_elec, dy_meters_elec = calculate_shift_distance_in_metres(eb_lowres, distance_x, distance_y)
-
-
-    # z correction
-    pixelsize_x = eb_lowres.metadata.binary_result.pixel_size.x
-    field_width = pixelsize_x * eb_lowres.width
-    dy_meters_elec = eb_distance_y * field_width
-    tilt_radians = stage.current_position.t
-    # delta_z = -np.cos(tilt_radians) * dy_meters_elec
-    # stage.relative_move(StagePosition(z=delta_z))
-    ##### stage.relative_move(StagePosition(y=dy_meters_elec))
-    yz_move_elec = y_corrected_stage_movement(
-        dy_meters_elec, stage_tilt=tilt_radians, beam_type=BeamType.ELECTRON
-    )
-    stage.relative_move(yz_move_elec)
-
-    # x correction
-    field_height = pixelsize_x * eb_lowres.height
-    dx_meters_elec = eb_distance_x * field_height
-    stage.relative_move(StagePosition(x=dx_meters_elec))
-
-    print("Realigning x and y in electron beam")
-    print(f"Electron Beam: {eb_distance_y}, {eb_distance_x}")
-    print(f"Delta Y movement: {yz_move_elec.y}")
-    print(f"Delta Z movement: {yz_move_elec.z}")
-    print(f"Delta X movement: {dx_meters_elec}")
-
-
-    ############################################# PART 3 #############################################
-
-    # ion again
-    save_label = "A_eucentric_calibration_lowres_moved_2"
-
-    if _autocontrast:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-    else:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            eb_brightness=eb_brightness,
-            ib_brightness=ib_brightness,
-            eb_contrast=eb_contrast,
-            ib_contrast=ib_contrast,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-
-    # in microscope coordinates (not img coordinate)
-    ib_distance_y, ib_distance_x = lamella_shift_from_img_centre(ib_lowres, show=True)
-
-    # new version
-    # x_distance, y_distance = detector.calculate_shift_between_features(ib_lowres, shift_type="lamella_centre_to_image_centre", show=True)
-    # dx_meters_ion, dy_meters_ion = calculate_shift_distance_in_metres(eb_lowres, distance_x, distance_y)
-
-    # z correction
-    pixelsize_x = ib_lowres.metadata.binary_result.pixel_size.x
-    field_width = pixelsize_x * ib_lowres.width
-    dy_meters_ion = ib_distance_y * field_width
-    tilt_radians = stage.current_position.t
-    delta_z = -np.cos(tilt_radians) * dy_meters_ion
-    # delta_z = -dy_meters_ion / np.cos(np.deg2rad(-38))
-    # stage.relative_move(StagePosition(z=delta_z))
-    yz_move_ion = y_corrected_stage_movement(
-        dy_meters_ion, stage_tilt=tilt_radians, beam_type=BeamType.ION
-    )
-    stage.relative_move(yz_move_ion)
-
-    # x correction
-    field_height = pixelsize_x * ib_lowres.height
-    dx_meters_ion = ib_distance_x * field_height
-    stage.relative_move(StagePosition(x=dx_meters_ion))
-
-    print("Realigning x and y in ion beam")
-    print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
-    print(f"Delta Y movement: {yz_move_ion.y}")
-    print(f"Delta Z movement: {yz_move_ion.z}")
-    print(f"Delta X movement: {dx_meters_ion}")
-
-    ############################################# PART 4 #############################################
-
-    # take final position images
-    save_label = "A_eucentric_calibration_lowres_final"
-
-    if _autocontrast:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-    else:
-        eb_lowres, ib_lowres = take_electron_and_ion_reference_images(
-            microscope,
-            hor_field_width=hor_field_width,
-            image_settings=image_settings,
-            eb_brightness=eb_brightness,
-            ib_brightness=ib_brightness,
-            eb_contrast=eb_contrast,
-            ib_contrast=ib_contrast,
-            __autocontrast=_autocontrast,
-            save=True,
-            save_label=save_label,
-        )
-
-    storage.step_counter += 1
-
 
 ###################################################################################################################################################
 
