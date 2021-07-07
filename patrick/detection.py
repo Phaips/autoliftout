@@ -18,7 +18,7 @@ from scipy.spatial import distance
 import DetectionModel
 
 from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata
-import new_utils 
+import new_utils
 
 class Detector:
 
@@ -31,23 +31,24 @@ class Detector:
             "lamella_centre_to_image_centre",
             "lamella_edge_to_landing_post",
             "needle_tip_to_image_centre",
-            "trim_lamella_to_centre"
+            "trim_lamella_top_to_centre",
+            "trim_lamella_bottom_to_centre"
         ]
-    
+
     def detect_features(self, img, mask, shift_type):
         """
-        
+
         args:
             img: the input img (np.array)
             mask: the output rgb prediction mask (np.array)
             shift_type: the type of feature detection to run (str)
-        
+
         return:
             feature_1_px: the pixel coordinates of feature one (tuple)
-            feature_1_type: the type of detection for feature one (str) 
+            feature_1_type: the type of detection for feature one (str)
             feature_1_color: color to plot feature one detection (str)
             feature_2_px: the pixel coordinates of feature two (tuple)
-            feature_2_type: the type of detection for feature two (str) 
+            feature_2_type: the type of detection for feature two (str)
             feature_2_color: color to plot feature two detection (str)
         """
         # TODO: convert feature attributes to dict?
@@ -79,7 +80,7 @@ class Detector:
         if shift_type=="lamella_edge_to_landing_post":
             # TODO: This doesnt work yet
             # TODO: The directions and shapes are wrong and messing things up needs to be fixed
-            
+
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
             landing_px=(img_landing.size[1]//2, img_landing.size[0]//2)
@@ -102,15 +103,30 @@ class Detector:
 
             feature_1_color = "green"
             feature_2_color = "white"
-        
-        if shift_type == "trim_lamella_to_centre":
-            # centre_px, centre_mask = detect_lamella_centre(img, mask)
-            feature_1_px, feature_2_px, left_mask = detect_trim_region(img, mask)
+
+        if shift_type == "trim_lamella_top_to_centre":
+            # top_trim_px
+            feature_1_px, left_mask = detect_trim_region(img, mask, top=True)
+            # img centre
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
 
             feature_1_type = "top_trim"
-            feature_2_type = "bottom_trim"
-            
-            feature_1_color = "white"
+            feature_2_type = "image_centre"
+
+            feature_1_color = "blue"
+            feature_2_color = "white"
+
+        if shift_type == "trim_lamella_bottom_to_centre":
+
+            # bottom_trim_px
+            feature_1_px, left_mask = detect_trim_region(img, mask, top=False)
+            # img centre
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+
+            feature_1_type = "bottom_trim"
+            feature_2_type = "image_centre"
+
+            feature_1_color = "blue"
             feature_2_color = "white"
 
 
@@ -127,12 +143,12 @@ class Detector:
             validate: enable manual validation of the feature detections (bool)
 
         return:
-            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple) 
+            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple)
 
         """
         # TODO: fix display colours for this?
 
-        # check image type 
+        # check image type
         if hasattr(adorned_img, 'data'):
             img = adorned_img.data # extract image data from AdornedImage
         if isinstance(adorned_img, np.ndarray):
@@ -165,7 +181,7 @@ class Detector:
             raise ValueError("No detections available")
 
         # x, y distance (proportional)
-        return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0] 
+        return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0]
         #TODO: this will probably be wrong now for most, need to re-validate
 
 # REFACTOR DETECTION AND DRAWING TOOLS
@@ -173,7 +189,7 @@ class Detector:
 def calculate_shift_distance_in_metres(img, distance_x, distance_y, metadata=None):
     """Convert the shift distance from proportion of img to metres using image metadata"""
 
-    # check image type 
+    # check image type
     if isinstance(img, np.ndarray):
         # use extracted metadata
         pixelsize_x = float(metadata["[Scan].PixelWidth"])
@@ -216,7 +232,7 @@ def extract_class_pixels(mask, color):
 
 
 def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
-    """ Helper function to draw the feature on the mask 
+    """ Helper function to draw the feature on the mask
 
     args:
         mask: base mask to draw the feature (np.array)
@@ -252,7 +268,7 @@ def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
 
 def draw_two_features(
     mask, feature_1, feature_2, color_1="red", color_2="green", line=True):
-    """ Draw two detected features on the same mask, and optionally a line between 
+    """ Draw two detected features on the same mask, and optionally a line between
 
     args:
         mask: the detection mask with all classes (PIL.Image or np.array)
@@ -281,7 +297,7 @@ def draw_two_features(
 
 def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
     """ Draw the detection overlay onto base image
-    
+
     args:
         img: orignal image (np.array or PIL.Image)
         mask: detection mask (np.array or PIL.Image)
@@ -299,10 +315,10 @@ def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
 
     # resize to same size as mask
     img = img.resize((mask.size[0], mask.size[1]), resample=PIL.Image.BILINEAR)
-    
+
     # required for blending
-    img = img.convert("RGB") 
-    mask = mask.convert("RGB") 
+    img = img.convert("RGB")
+    mask = mask.convert("RGB")
 
     # blend images together
     alpha_blend = PIL.Image.blend(img, mask, alpha)
@@ -316,12 +332,12 @@ def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
 
 def detect_centre_point(mask, color, threshold=25):
     """ Detect the centre (mean) point of the mask for a given color (label)
-    
+
     args:
         mask: the detection mask (PIL.Image)
         color: the color of the label for the feature to detect (rgb tuple)
         threshold: the minimum number of required pixels for a detection to count (int)
-    
+
     return:
 
         centre_px: the pixel coordinates of the centre point of the feature (tuple)
@@ -347,12 +363,12 @@ def detect_centre_point(mask, color, threshold=25):
 
 def detect_right_edge(mask, color, threshold, left=False):
     """ Detect the right edge point of the mask for a given color (label)
-    
+
     args:
         mask: the detection mask (PIL.Image)
         color: the color of the label for the feature to detect (rgb tuple)
         threshold: the minimum number of required pixels for a detection to count (int)
-    
+
     return:
 
         edge_px: the pixel coordinates of the right edge point of the feature (tuple)
@@ -418,7 +434,7 @@ def detect_lamella_edge(img, mask, threshold=25):
 
 def detect_closest_edge(img, landing_px):
     """ Identify the closest edge point to the initially selected point
-    
+
     args:
         img: base image (PIL.Image)
         landing_px: the initial landing point pixel (tuple)
@@ -455,18 +471,18 @@ def detect_closest_edge(img, landing_px):
 
 def detect_landing_edge(img, landing_px):
     """ Detect the landing edge point closest to the initial point using canny edge detection
-    
+
     args:
         img: base image (np.array)
         landing_px: the initial landing point pixel (tuple)
-    
+
     returns:
         landing_edge_px: the closest edge point to the intitially selected point (tuple)
         landing_mask: the edge mask (PIL.Image)
     """
     if isinstance(img, np.ndarray):
         img = PIL.Image.fromarray(img)
- 
+
     landing_edge_px, edges_mask = detect_closest_edge(img, landing_px)
     mask_draw = draw_feature(img, landing_edge_px, color="blue", crosshairs=True)
     landing_mask = draw_overlay(img, edges_mask, alpha=0.5)
@@ -477,12 +493,12 @@ def detect_landing_edge(img, landing_px):
 
 def detect_bounding_box(mask, color, threshold):
     """ Detect the bounding edge points of the mask for a given color (label)
-    
+
     args:
         mask: the detection mask (PIL.Image)
         color: the color of the label for the feature to detect (rgb tuple)
         threshold: the minimum number of required pixels for a detection to count (int)
-    
+
     return:
 
         edge_px: the pixel coordinates of the edge points of the feature list((tuple))
@@ -506,10 +522,10 @@ def detect_bounding_box(mask, color, threshold):
         right_idx = np.argmax(idx[1])
 
         # pixel coordinates
-        top_px = px[top_idx]  
-        bottom_px = px[bottom_idx]  
-        left_px = px[left_idx]  
-        right_px = px[right_idx] 
+        top_px = px[top_idx]
+        bottom_px = px[bottom_idx]
+        left_px = px[left_idx]
+        right_px = px[right_idx]
 
     # bbox should be (x0, y0), (x1, y1)
     x0 = top_px[0]
@@ -521,33 +537,33 @@ def detect_bounding_box(mask, color, threshold):
 
     return [top_px, bottom_px, left_px, right_px], bbox
 
-def detect_trim_region(img, mask):
+def detect_trim_region(img, mask, top=True):
     """Detect the region of the lamella to trim"""
 
     if isinstance(img, np.ndarray):
         img = PIL.Image.fromarray(img)
-    
+
     color = (255, 0, 0)
     threshold=25
     min_height = 20 # minimum lamella trim height
-    
+
     # detect centre
     centre_px, centre_mask = detect_lamella_centre(img, mask)
-    
+
     # detect bounding box around lamella
     pts, bbox = detect_bounding_box(mask, color, threshold=threshold) #top, bot, left, right
 
     mask_draw = draw_feature(img, bbox[:2], color="blue", crosshairs=True)
     landing_mask = draw_overlay(img, mask_draw, alpha=0.5)
-    
+
     # detect top and bottom edges
     w = bbox[3] - bbox[1]
-    h = min(bbox[2] - bbox[0], min_height) # 
-    
+    h = min(bbox[2] - bbox[0], min_height) #
+
     # trim top and bottom edges to leave only small lamella slice
     # bbox method
     # top_px = bbox[0] + h/4
-    # bottom_px = bbox[2] - h/4  
+    # bottom_px = bbox[2] - h/4
     # left_px = bbox[1] + w/2
 
     # centre px method
@@ -559,6 +575,8 @@ def detect_trim_region(img, mask):
     top_trim_px = top_px, left_px
     bottom_trim_px = bottom_px, left_px
 
-    return top_trim_px, bottom_trim_px, landing_mask
-
+    if top:
+        return top_trim_px, landing_mask
+    else:
+        return bottom_trim_px, landing_mask
     # TODO: this is fooled by small red specks need a way to aggregate a whole detection clump and ignore outliers...

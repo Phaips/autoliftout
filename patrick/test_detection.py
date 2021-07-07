@@ -18,9 +18,9 @@ if __name__ == "__main__":
 
     # weights_file = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/patrick/test_model.pt"
     # weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
-    
+
     # cmd line arguments
-    validate = args.validate 
+    validate = args.validate
     weights_file = args.model
     data_path = args.data
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
         # load image from file
         img = new_utils.load_image_from_file(fname)
-        
+
         # img metadata
         df_metadata = utils.parse_metadata(fname)
 
@@ -44,13 +44,14 @@ if __name__ == "__main__":
             # "lamella_centre_to_image_centre",
             # "lamella_edge_to_landing_post",
             # "needle_tip_to_image_centre",
-            "trim_lamella_to_centre"
+            "trim_lamella_top_to_centre",
+            "trim_lamella_bottom_to_centre"
         ]
 
         print(f"image: {fname}")
-        
+
         for shift_type in supported_shift_types:
-            
+
             print("shift_type: ", shift_type)
             x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=True, validate=validate)
             print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
