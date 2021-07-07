@@ -9,6 +9,7 @@ imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
   resolution: "1536x1024"
+  imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
 reference_images:
   landing_post_ref_img_resolution: "1536x1024"
   landing_post_ref_img_dwell_time: 1e-6

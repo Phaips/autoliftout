@@ -725,7 +725,7 @@ def sputter_platinum_over_whole_grid(microscope):
     move_to_sample_grid(microscope)
     auto_link_stage(microscope, expected_z=5e-3)
     # TODO: yaml user input for sputtering application file choice
-    sputter_platinum(microscope, sputter_time=5, horizontal_field_width=30e-6, line_pattern_length=7e-6)
+    sputter_platinum(microscope, sputter_time=20, horizontal_field_width=30e-6, line_pattern_length=7e-6)
     auto_link_stage(microscope)  # return stage to default linked z height
 
 
@@ -1380,12 +1380,6 @@ def needletip_shift_from_img_centre(img, show=True):
     """Calculate the shift in metres from needle tip to lamella centre """
     needle_distance_x, needle_distance_y = calculate_proportional_needletip_distance_from_img_centre(
         img, show=True)
-    # pixelsize_x = img.metadata.binary_result.pixel_size.x
-    # field_width   = pixelsize_x  * img.width
-    # field_height  = pixelsize_x  * img.height
-    # x_shift = needle_distance_x * field_width
-    # y_shift = needle_distance_y * field_height
-    # print('x_shift = ', x_shift/1e-6, 'um; ', 'y_shift = ', y_shift/1e-6, 'um; ')
 
     x_shift, y_shift = calculate_shift_distance_in_metres(img, needle_distance_x, needle_distance_y)
 
@@ -1453,13 +1447,6 @@ def calculate_needletip_shift_from_lamella_centre(img, show=False):
 def needletip_shift_from_lamella_centre(img, show=True):
     """Calculate the shift in metres from needle tip to lamella centre """
     needle_distance_x, needle_distance_y = calculate_needletip_shift_from_lamella_centre(img, show=True)
-
-    # pixelsize_x = img.metadata.binary_result.pixel_size.x
-    # field_width   = pixelsize_x  * img.width
-    # field_height  = pixelsize_x  * img.height
-    # x_shift = needle_distance_x * field_width
-    # y_shift = needle_distance_y * field_height
-    # print('x_shift = ', x_shift/1e-6, 'um; ', 'y_shift = ', y_shift/1e-6, 'um; ')
 
     x_shift, y_shift = calculate_shift_distance_in_metres(img, needle_distance_x, needle_distance_y)
 
@@ -1643,7 +1630,7 @@ def land_needle_on_milled_lamella(microscope):
     #############################  Final Z-Movement to Land  ############################
     # final z-movement to land
     hfw_highres = storage.settings["reference_images"]["needle_with_lamella_shifted_img_highres"]
-    needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=150e-6,
+    needle_eb_lowres_with_lamella_shifted, needle_ib_lowres_with_lamella_shifted = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
                                                                                                                           image_settings=image_settings, __autocontrast=True,
                                                                                                                           save=True, save_label="E_needle_land_sample_lowres_shifted_half_z" )
     # calculate shift in image coordinates (-beam)
@@ -1654,6 +1641,7 @@ def land_needle_on_milled_lamella(microscope):
     print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
     print('cos(t) = ', np.cos(stage_tilt))
     z_distance = y_shift / np.cos(stage_tilt)
+    print("z_distance: ", z_distance)
 
     # Calculate movement
     print('Needle approach from i-beam low res - Z: landing')
@@ -1664,7 +1652,7 @@ def land_needle_on_milled_lamella(microscope):
     needle.relative_move(x_move)
 
     # move in z
-    gap = 1e-6
+    gap = 0.5e-6
     zy_move_gap = z_corrected_needle_movement(z_distance - gap, stage_tilt)
     needle.relative_move(zy_move_gap)
     print('Needle move in Z minus gap ... LANDED')
@@ -1687,44 +1675,6 @@ def land_needle_on_milled_lamella(microscope):
                                                                                                             save=True, save_label="E_needle_land_sample_highres_landed")
     storage.step_counter += 1
 
-
-# def OLD__manual_needle_movement_in_xy(microscope, move_in_x=True, move_in_y=True):
-#     from autoscript_sdb_microscope_client.structures import GrabFrameSettings
-#     stage = microscope.specimen.stage
-#     needle = microscope.specimen.manipulator
-#     electron_image = new_electron_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: User input imaging settings
-#     needletip_location, target_location = find_needletip_and_target_locations(electron_image)
-#     # Calculate needle movements
-#     x_needletip_location = needletip_location[0]  # coordinates in x-y format
-#     y_needletip_location = needletip_location[1]  # coordinates in x-y format
-#     x_target_location = target_location[0]  # pixels, coordinates in x-y format
-#     y_target_location = target_location[1]  # pixels, coordinates in x-y format
-#     if move_in_y is True:
-#         y_distance = y_target_location - y_needletip_location
-#         y_move = y_corrected_needle_movement(y_distance, stage.current_position.t)
-#         needle.relative_move(y_move)
-#     if move_in_x is True:  # MUST MOVE X LAST! Avoids hitting the sample
-#         x_distance = x_target_location - x_needletip_location
-#         x_move = x_corrected_needle_movement(x_distance)
-#         needle.relative_move(x_move)
-
-
-# def OLD__manual_needle_movement_in_z(microscope):
-#     from autoscript_sdb_microscope_client.structures import GrabFrameSettings
-#     stage = microscope.specimen.stage
-#     needle = microscope.specimen.manipulator
-#     ion_image = new_ion_image(microscope, settings=GrabFrameSettings(dwell_time=500e-9, resolution="1536x1024"))  # TODO: user input imaging settings
-#     print("Please click the needle tip position")
-#     needletip_location = select_point(ion_image)
-#     print("Please click the lamella target position")
-#     target_location = select_point(ion_image)
-#     # Calculate movement
-#     z_safety_buffer = 400e-9  # in meters TODO: yaml user input
-#     z_distance = -(target_location[1] - needletip_location[1] / np.sin(np.deg2rad(52))) - z_safety_buffer
-#     z_move = z_corrected_needle_movement(z_distance, stage.current_position.t)
-#     needle.relative_move(z_move)
-
-
 ########################################LIFT-OUT#########################################################
 def liftout_lamella(microscope, settings):
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
@@ -1737,9 +1687,9 @@ def liftout_lamella(microscope, settings):
     dwell_time = storage.settings["reference_images"]["needle_ref_img_dwell_time"]
     image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
 
-    # fix field of view to match the reference images
-    microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
-    microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
+    # # fix field of view to match the reference images
+    # microscope.beams.ion_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
+    # microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
 
     # move needle to liftout start position
     park_position = move_needle_to_liftout_position(microscope)
@@ -1770,9 +1720,15 @@ def liftout_lamella(microscope, settings):
     z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
     needle.relative_move(z_move_out_from_trench)
 
+    z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
+    needle.relative_move(z_move_out_from_trench)
+
+    z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
+    needle.relative_move(z_move_out_from_trench)
+
     eb, ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=150e-6, image_settings=image_settings,
-        save=True, save_label="jcut_sever_liftout")
+        save=True, save_label="liftout_of_trench")
     storage.step_counter += 1
 
     retract_needle(microscope, park_position)
@@ -1991,6 +1947,8 @@ def setup_ion_milling(microscope, *,
 
 
 def _run_milling(microscope, milling_current, *, imaging_current=20e-12):
+    if storage.settings["imaging"]["imaging_current"]:
+        imaging_current = storage.settings["imaging"]["imaging_current"]
     print("Ok, running ion beam milling now...")
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.beams.ion_beam.beam_current.value = milling_current
@@ -2016,6 +1974,8 @@ def confirm_and_run_milling(microscope, milling_current, *,
         Whether to wait for user confirmation before milling.
     """
     # TODO: maybe display to the user how long milling will take
+    if storage.settings["imaging"]["imaging_current"]:
+        imaging_current = storage.settings["imaging"]["imaging_current"]
     if confirm is True:
         if ask_user("Do you want to run the ion beam milling? yes/no: "):
             _run_milling(microscope, milling_current, imaging_current=imaging_current)
@@ -2651,16 +2611,14 @@ def mill_lamella(microscope, settings, confirm=True):
 
     # correct the stage drift after 180 deg rotation using treched lamella images as reference
     realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res, plot=True)
-    # realign_using_reference_eb_and_ib_images(microscope, reference_images_low_and_high_res_BC, plot=False) # correct the stage drift after 180 deg rotation using treched lamella images as reference
 
 
     ############################### Realign with ML ###############################
 
     # realign eucentric height (centred) with model
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
-    # realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=300e-6)
-    # realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=150e-6)
-    realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=80e-6, _autocontrast=True)
+    hfw_ml = 80e-6 # 150e-6, 80e-6, 50e-6
+    realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=hfw_ml, _autocontrast=True)
 
 
 
@@ -2713,14 +2671,6 @@ def mill_lamella(microscope, settings, confirm=True):
 
     ############################### Align After Tilt 02 ###############################
 
-    # Take new images, use them ans reference to align for the next 3 deg tilt
-    # eb_lowres_ref, ib_lowres_ref = take_electron_and_ion_reference_images(
-    #     microscope, hor_field_width=150e-6, image_settings=image_settings)
-    # eb_highres_ref, ib_highres_ref = take_electron_and_ion_reference_images(
-    #     microscope, hor_field_width=50e-6, image_settings=image_settings)
-    # # use these images for future alignment
-    # reference_images_low_and_high_res = (eb_lowres_ref, eb_highres_ref, ib_lowres_ref, ib_highres_ref)
-
     # take reference images after alignment
     eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
     eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
@@ -2750,7 +2700,6 @@ def mill_lamella(microscope, settings, confirm=True):
 
     # realign with model
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=1.0e-6)  # TODO: user input resolution
-    hfw_ml = 80e-6 # 150e-6, 80e-6, 50e-6
     realign_eucentric_with_machine_learning(microscope, image_settings_ML,
                                             hor_field_width=hfw_ml, _autocontrast=True)
 
@@ -2912,7 +2861,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
 
     # half move
     x_move = x_corrected_needle_movement(x_shift / 2)
-    print('x_move = ', x_move)
+    print('x_move (half) = ', x_move)
 
     needle.relative_move(x_move)
 
@@ -2921,7 +2870,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="C_landing_needle_land_sample_lowres_after_x_half_move")
 
-    print("ion:")
+
     x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
 
     # x-move the rest of the way
@@ -2964,6 +2913,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     # retract needle from landing position
     retract_needle(microscope, park_position)
 
+    # take final reference images
     landing_eb_final_highres, landing_ib_final_highres = take_electron_and_ion_reference_images(
         microscope, hor_field_width=80e-6, image_settings=image_settings,
         save=True, save_label="G_landing_lamella_final_needle_cut_highres")
@@ -2972,6 +2922,49 @@ def land_lamella(microscope, landing_coord, original_landing_images):
         save=True, save_label="G_landing_lamella_final_needle_cut_lowres")
 
     storage.step_counter += 1
+
+
+# import patrick.detection as detection
+
+def trim_lamella(microscope):
+    from autoscript_sdb_microscope_client import SdbMicroscopeClient
+    from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    stage = microscope.specimen.stage
+    needle = microscope.specimen.manipulator
+
+
+
+    # needle images
+    resolution = storage.settings["imaging"]["resolution"]
+    dwell_time = storage.settings["imaging"]["dwell_time"]
+    image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+    hfw_lowres = storage.settings["imaging"]["horizontal_field_width"]
+
+    lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
+        microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
+        save=True, save_label="A_trim_lamella")
+
+
+    # detector class (model)
+    detector = detection.Detector(weights_file)
+
+    # take img
+    shift_type="trim_lamella_to_centre"
+
+    print("shift_type: ", shift_type)
+    x_distance, y_distance = detector.calculate_shift_between_features(lamella_eb, shift_type=shift_type, show=True, validate=validate)
+    print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+
+    x_shift, y_shift = detection.calculate_shift_distance_in_metres(lamella_eb, x_distance, y_distance)
+    print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
+
+    # TODO: draw mill pattern
+
+    # TODO: this actually needs to be the shift from the img centre (needs to happen for top and bottom...)
+
+
+
 
 def sharpen_needle(microscope):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient

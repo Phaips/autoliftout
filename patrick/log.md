@@ -14,7 +14,7 @@
 - replace / refactor all instances of taking and saving images
 - rename calculate distance functions to be more logical - DONE
 
-- refactor drawing to use a single function: 
+- refactor drawing to use a single function:
 - draw_feature(mask, px, color, crosshair) - DONE
 - draw_two_features(mask, feature_1, feature_2, line=False) - DONE
 - detect_centre_point(mask, color, threshold) - DONE
@@ -46,3 +46,17 @@ https://iq-inc.com/importerror-attempted-relative-import/
 - movement
 - display
 - utils
+
+
+
+# TODO:
+- change confirmation: "Is the feature centred now? yes/no to:
+    - please centre the feature in the SEM/ion and enter yes
+    - needs user to actually do the centring
+
+- add a global flag for confirmation of milling
+- add a global flag for validation of detections
+
+
+- lamella falls off the needle when retracting out
+-   move further in to get a better weld?
