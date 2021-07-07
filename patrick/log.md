@@ -60,3 +60,6 @@ https://iq-inc.com/importerror-attempted-relative-import/
 
 - lamella falls off the needle when retracting out
 -   move further in to get a better weld?
+
+
+- sharpen needle pattern very sensitive to initial position / params

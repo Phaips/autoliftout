@@ -1,7 +1,7 @@
 import numpy as np
 import PIL
 from PIL import Image
-import detection
+import patrick.detection
 import matplotlib.pyplot as plt
 import glob
 
@@ -23,7 +23,7 @@ def extract_img_for_labelling(path, logfile="logfile"):
         print(fname, basename)
         shutil.copyfile(fname, path+"label/"+basename)
 
-    # zip the image folder        
+    # zip the image folder
     shutil.make_archive(f"{path}/images", 'zip', label_dir)
 
 

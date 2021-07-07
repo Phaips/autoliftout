@@ -1708,7 +1708,7 @@ def liftout_lamella(microscope, settings):
     storage.step_counter += 1
 
     # TODO: yaml user input for jcut milling current
-    mill_to_sever_jcut(microscope, settings['jcut'], confirm=False)
+    mill_to_sever_jcut(microscope, settings['jcut'], confirm=True)
     eb, ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=80e-6, image_settings=image_settings,
         save=True, save_label="jcut_sever")
@@ -1717,12 +1717,18 @@ def liftout_lamella(microscope, settings):
     # TAKE NEEDLE z_UP (>30 MICRONS), TAKE GIS OUT, RESTRACT TO PARKING
     stage_tilt = stage.current_position.t
     print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
+
+    print("Moving out of trench by 10um")
     z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
     needle.relative_move(z_move_out_from_trench)
 
+    time.sleep(1)
+    print("Moving out of trench by 10um")
     z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
     needle.relative_move(z_move_out_from_trench)
 
+    time.sleep(1)
+    print("Moving out of trench by 10um")
     z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
     needle.relative_move(z_move_out_from_trench)
 
@@ -2192,6 +2198,20 @@ def _create_cutoff_pattern(microscope, *,
 
 
 def _create_sharpen_pattern(microscope, *,
+                            center_x=-10.5e-6,
+                            center_y=-5e-6,
+                            width=8e-6,
+                            height=2e-6,
+                            depth=1e-6,
+                            rotation_degrees=40,
+                            ion_beam_field_of_view=100e-6):
+
+    pattern = microscope.patterning.create_rectangle(
+        center_x, center_y, width, height, depth)
+    pattern.rotation = np.deg2rad(rotation_degrees)
+    return pattern
+
+def _create_mill_pattern(microscope, *,
                             center_x=-10.5e-6,
                             center_y=-5e-6,
                             width=8e-6,
@@ -2705,7 +2725,7 @@ def mill_lamella(microscope, settings, confirm=True):
 
 
     ############################### Mill J-Cut ###############################
-    mill_jcut(microscope, settings['jcut'], confirm=False)
+    mill_jcut(microscope, settings['jcut'], confirm=True)
 
     # take reference images after jcut
     eb_lowres_ref_jcut,  ib_lowres_ref_jcut = take_electron_and_ion_reference_images(
@@ -2881,7 +2901,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
 
     # take final landing images
     landing_eb_highres, landing_ib_highres = take_electron_and_ion_reference_images(
-        microscope, hor_field_width=50e-6, image_settings=image_settings,
+        microscope, hor_field_width=150e-6, image_settings=image_settings,
         save=True, save_label="D_landing_lamella_final")
 
     storage.step_counter += 1
@@ -2901,14 +2921,32 @@ def land_lamella(microscope, landing_coord, original_landing_images):
                  "center_y": y_shift,
                  "width": 8e-6,
                  "height": 0.5e-6,
-                 "depth": 4e-6,
+                 "depth": 4e-6, # TODO: might need more to get through needle
                  "rotation": 0, "hfw": 100e-6}  # TODO: check rotation
 
     # cut off needle tip
     cut_off_needle(microscope, cut_coord=cut_coord, confirm=True)
     landing_eb_highres3, landing_ib_highres3 = take_electron_and_ion_reference_images(
-        microscope, hor_field_width=100e-6, image_settings=image_settings,
+        microscope, hor_field_width=80e-6, image_settings=image_settings,
         save=True, save_label="F_landing_lamella_final_cut")
+    landing_eb_lowres, landing_ib_lowres = take_electron_and_ion_reference_images(
+        microscope, hor_field_width=150e-6, image_settings=image_settings,
+        save=True, save_label="F_landing_lamella_final_cut_lowres")
+
+    time.sleep(1)
+    print("Moving needle out by 10um")
+    z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
+    needle.relative_move(z_move_out_from_trench)
+
+    time.sleep(1)
+    print("Moving needle out by 10um")
+    z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
+    needle.relative_move(z_move_out_from_trench)
+
+    time.sleep(1)
+    print("Moving needle out by 10um")
+    z_move_out_from_trench = z_corrected_needle_movement(10e-6, stage_tilt)
+    needle.relative_move(z_move_out_from_trench)
 
     # retract needle from landing position
     retract_needle(microscope, park_position)
@@ -2924,45 +2962,154 @@ def land_lamella(microscope, landing_coord, original_landing_images):
     storage.step_counter += 1
 
 
-# import patrick.detection as detection
+import patrick.detection as detection
 
-def trim_lamella(microscope):
+def thinning_lamella(microscope):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
-    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition, MoveSettings, StagePosition
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
 
+    # move to landing coord
+    microscope.specimen.stage.absolute_move(landing_coord)
+
+    # tilt to 0 rotate 180 move to 21 deg
+
+    # tilt to zero, to prevent hitting anything
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+
+    # rotate to thinning angle
+    microscope.specimen.stage.relative_move(StagePosition(r=np.deg2rad(180)), stage_settings)
+
+    # tilt to thinning angle
+    microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(21)), stage_settings)
 
 
-    # needle images
+    # lamella images
     resolution = storage.settings["imaging"]["resolution"]
     dwell_time = storage.settings["imaging"]["dwell_time"]
     image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
-    hfw_lowres = storage.settings["imaging"]["horizontal_field_width"]
+    hfw_lowres = 100e-6#storage.settings["imaging"]["horizontal_field_width"]
 
     lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
-        save=True, save_label="A_trim_lamella")
+        save=True, save_label="A_thinning_lamella_21deg_tilt")
+
+    # realign lamella to image centre
+    image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
+
+    realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=150e-6)
 
 
-    # detector class (model)
+
+
+    # storage.step_counter += 1
+
+    # from autoscript_sdb_microscope_client.structures import StagePosition
+    # for i in range(18):
+
+    #     angle = 2
+    #     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(angle)), stage_settings)
+
+    #     # lamella images
+    #     lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
+    #         microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
+    #         save=True, save_label=f"D_thinning_lamella_{(i+1)*angle}deg_tilt")
+
+    #     if ask_user("Continue? (y/n)"):
+    #         pass
+    #     else:
+    #         break
+
+    #         # tilt~ 21deg
+
+    # storage.step_counter += 1
+    import patrick.detection as detection
+
+    # take images for thinning lamella patterns
+    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+
+    lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
+        microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
+        __autocontrast=False, eb_brightness=eb_brightness, eb_contrast=eb_contrast,
+        ib_brightness=ib_brightness, ib_contrast=ib_contrast,
+        save=True, save_label="A_thinning_lamella_patters")
+
+    # # detector class (model)
+    weights_file = storage.settings["machine_learning"]["weights"]
     detector = detection.Detector(weights_file)
 
-    # take img
-    shift_type="trim_lamella_to_centre"
+    # thinning top and bottom
+    shift_types=["thin_lamella_top_to_centre", "thin_lamella_bottom_to_centre"]
 
-    print("shift_type: ", shift_type)
-    x_distance, y_distance = detector.calculate_shift_between_features(lamella_eb, shift_type=shift_type, show=True, validate=validate)
-    print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+    thinning_shifts = []
+    for shift_type in shift_types:
 
-    x_shift, y_shift = detection.calculate_shift_distance_in_metres(lamella_eb, x_distance, y_distance)
-    print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
+        print("shift_type: ", shift_type)
+        x_distance, y_distance = detector.calculate_shift_between_features(lamella_ib, shift_type=shift_type, show=True, validate=True)
+        print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
 
-    # TODO: draw mill pattern
+        x_shift, y_shift = detection.calculate_shift_distance_in_metres(lamella_ib, x_distance, y_distance)
+        print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
-    # TODO: this actually needs to be the shift from the img centre (needs to happen for top and bottom...)
+        # append shifts for patterns
+        thinning_shifts.append((x_shift, y_shift))
 
+
+    # calculate thinning patterns
+    height = storage.settings["thin"]["height"]
+    width = storage.settings["thin"]["width"]
+    depth = storage.settings["thin"]["depth"]
+    rotation = storage.settings["thin"]["rotation"]
+    hfw = storage.settings["thin"]["hfw"]
+
+    # # TODO: draw mill pattern
+    thinning_coord_top = {
+        "center_x": -thinning_shifts[0][0] + 2.5e-6,
+        "center_y": thinning_shifts[0][1] + 0.5e-6,
+        "width": width,
+        "height": height,
+        "depth": depth,
+        "rotation": rotation,
+        "hfw": hfw
+    }
+
+    thinning_coord_bottom = {
+        "center_x": -thinning_shifts[1][0] + 2.5e-6,
+        "center_y": thinning_shifts[1][1] - 0.5e-6,
+        "width": width,
+        "height": height,
+        "depth": depth,
+        "rotation": rotation,
+        "hfw": hfw
+    }
+    microscope.patterning.clear_patterns()
+    create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom)
+
+    # # TODO: this actually needs to be the shift from the img centre (needs to happen for top and bottom...)
+
+
+def create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom):
+    thinning_lamella_patterns = []
+    for thinning_coord in [thinning_coord_top, thinning_coord_bottom]:
+        pattern = _create_mill_pattern(
+            microscope,
+            center_x=thinning_coord["center_x"],
+            center_y=thinning_coord["center_y"],
+            width=thinning_coord["width"],
+            height=thinning_coord["height"],
+            depth=thinning_coord["depth"],
+            rotation_degrees=thinning_coord["rotation"],
+            ion_beam_field_of_view=thinning_coord["hfw"],
+        )
+        thinning_lamella_patterns.append(pattern)
+
+    return thinning_lamella_patterns
 
 
 
@@ -2996,8 +3143,6 @@ def sharpen_needle(microscope):
     needle_eb, needle_ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
         save=True, save_label="A_sharpen_needle_initial")
-    # storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb')
-    # storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib')
 
     x_0, y_0 = needletip_shift_from_img_centre(needle_ib, show=True)
 
@@ -3020,124 +3165,35 @@ def sharpen_needle(microscope):
     needle_eb, needle_ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
         save=True, save_label="A_sharpen_needle_centre")
-    # storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb_centre')
-    # storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib_centre')
 
     x_0, y_0 = needletip_shift_from_img_centre(needle_ib, show=True)
 
-    # height = storage.settings["sharpen"]["height"]
-    # width = storage.settings["sharpen"]["width"]
-    # depth = storage.settings["sharpen"]["depth"]
-    # bias = storage.settings["sharpen"]["bias"]
-    # hfw = storage.settings["sharpen"]["hfw"]
-    # tip_angle = storage.settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
-    # needle_angle = storage.settings["sharpen"]["needle_angle"]  # needle tilt on the screen 45 deg +/-
-    # milling_current = storage.settings["sharpen"]["sharpen_milling_current"]
+    # sharpening parameters
+    height = storage.settings["sharpen"]["height"]
+    width = storage.settings["sharpen"]["width"]
+    depth = storage.settings["sharpen"]["depth"]
+    bias = storage.settings["sharpen"]["bias"]
+    hfw = storage.settings["sharpen"]["hfw"]
+    tip_angle = storage.settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
+    needle_angle = storage.settings["sharpen"][
+        "needle_angle"
+    ]  # needle tilt on the screen 45 deg +/-
+    milling_current = storage.settings["sharpen"]["sharpen_milling_current"]
 
-    # alpha = tip_angle/2  # half of NA of the needletip
-    # beta = np.rad2deg(np.arctan(width / height))  # box's width and length, beta is the diagonal angle
-    # D = np.sqrt(width**2 + height**2) / 2  # half of box diagonal
-    # rotation_1 = -(needle_angle + alpha)
-    # rotation_2 = -(needle_angle - alpha) - 180
-
-    # ############################################################################
-    # # dx_1 = D * math.cos( np.deg2rad(needle_angle + alpha) )
-    # # dy_1 = D * math.sin( np.deg2rad(needle_angle + alpha) )
-    # # x_1 = x_0 - dx_1 # centre of the bottom box
-    # # y_1 = y_0 - dy_1 # centre of the bottom box
-
-    # # dx_2 = D * math.cos( np.deg2rad(needle_angle - alpha - beta) )
-    # # dy_2 = D * math.sin( np.deg2rad(needle_angle - alpha - beta) )
-    # # x_2 = x_0 - dx_2 # centre of the top box
-    # # y_2 = y_0 - dy_2 # centre of the top box
-
-    # # x_1_origin = x_1 - x_0
-    # # y_1_origin = y_1 - y_0 # shift the x1,y1 to the origin
-    # # x_2_origin_rot, y_2_origin_rot = Rotate( x_1_origin, y_1_origin, 360-(2*alpha+2*beta) ) # rotate to get the x2,y2 point
-    # # x_2_rot = x_2_origin_rot + x_0 # shift to the old centre at x0,y0
-    # # y_2_rot = y_2_origin_rot + y_0
-
-    # ############################################################################
-    # dx_1 = (width/2) * math.cos(np.deg2rad(needle_angle + alpha))
-    # dy_1 = (width/2) * math.sin(np.deg2rad(needle_angle + alpha))
-    # ddx_1 = (height/2) * math.sin(np.deg2rad(needle_angle + alpha))
-    # ddy_1 = (height/2) * math.cos(np.deg2rad(needle_angle + alpha))
-    # x_1 = x_0 - dx_1 + ddx_1  # centre of the bottom box
-    # y_1 = y_0 - dy_1 - ddy_1  # centre of the bottom box
-
-    # dx_2 = D * math.cos(np.deg2rad(needle_angle - alpha))
-    # dy_2 = D * math.sin(np.deg2rad(needle_angle - alpha))
-    # ddx_2 = (height/2) * math.sin(np.deg2rad(needle_angle - alpha))
-    # ddy_2 = (height/2) * math.cos(np.deg2rad(needle_angle - alpha))
-    # x_2 = x_0 - dx_2 - ddx_2  # centre of the top box
-    # y_2 = y_0 - dy_2 + ddy_2  # centre of the top box
-
-    # print("needletip xshift offcentre: ", x_0, "; needletip yshift offcentre: ", y_0)
-    # print("width: ", width)
-    # print("height: ", height)
-    # print("depth: ", depth)
-    # print("needle_angle: ", needle_angle)
-    # print("tip_angle: ", tip_angle)
-    # print("rotation1 :",  rotation_1)
-    # print("rotation2 :",  rotation_2)
-    # print("=================================================")
-    # print("centre of bottom box: x1 = ",  x_1, '; y1 = ', y_1)
-    # print("centre of top box:    x2 = ",  x_2, '; y2 = ', y_2)
-    # print("=================================================")
-
-    # #pattern = microscope.patterning.create_rectangle(x_3, y_3, width+2*bias, height+2*bias, depth)
-    # #pattern.rotation = np.deg2rad(rotation_1)
-    # #pattern = microscope.patterning.create_rectangle(x_4, y_4, width+2*bias, height+2*bias, depth)
-    # #pattern.rotation = np.deg2rad(rotation_2)
-
-    # # bottom cut pattern
-    # cut_coord_bottom = {"center_x": x_1,
-    #                     "center_y": y_1,
-    #                     "width": width,
-    #                     "height": height-bias,
-    #                     "depth": depth,
-    #                     "rotation": rotation_1,
-    #                     "hfw": hfw}
-
-    # # top cut pattern
-    # cut_coord_top = {"center_x": x_2,
-    #                  "center_y": y_2,
-    #                  "width": width,
-    #                  "height": height-bias,
-    #                  "depth": depth,
-    #                  "rotation": rotation_2,
-    #                  "hfw": hfw}
-
-    # # create sharpening patterns
-    # setup_ion_milling(microscope, ion_beam_field_of_view=hfw)
-
-    # sharpen_patterns = []
-    # for cut_coord in [cut_coord_bottom, cut_coord_top]:
-    #     pattern = _create_sharpen_pattern(microscope,
-    #                                       center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
-    #                                       width=cut_coord["width"], height=cut_coord["height"],
-    #                                       depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["hfw"])
-    #     sharpen_patterns.append(pattern)
-
-
-    # NEW
     # create sharpening patterns
     cut_coord_bottom, cut_coord_top = calculate_sharpen_needle_pattern(x_0=x_0, y_0=y_0)
-
-    setup_ion_milling(microscope, ion_beam_field_of_view=hfw)
 
     sharpen_patterns = create_sharpen_needle_patterns(
         microscope, cut_coord_bottom, cut_coord_top
     )
 
+    # run sharpening milling
     confirm_and_run_milling(microscope, milling_current, confirm=True)
 
     needle_eb, needle_ib = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
         save=True, save_label="A_sharpen_needle_sharp")
-    # storage.step_counter += 1
-    # storage.SaveImage(needle_eb,  id='A_sharpen_needle_eb_sharp')
-    # storage.SaveImage(needle_ib,  id='A_sharpen_needle_ib_sharp')
+
     storage.step_counter += 1
 
     retract_needle(microscope, park_position)
@@ -3235,6 +3291,9 @@ def calculate_sharpen_needle_pattern(x_0, y_0):
         "rotation": rotation_2,
         "hfw": hfw,
     }
+
+    # setup ion milling
+    setup_ion_milling(microscope, ion_beam_field_of_view=hfw, patterning_mode="Serial")
 
     return cut_coord_bottom, cut_coord_top
 
@@ -3915,6 +3974,8 @@ def single_liftout(microscope, settings, landing_coord, lamella_coord, original_
 
     # resharpen needle
     sharpen_needle(microscope)
+
+    # thinning lamella
 
 
 def reload_config(config_filename):

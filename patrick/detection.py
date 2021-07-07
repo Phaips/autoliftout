@@ -11,28 +11,28 @@ import PIL
 import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
-from torchvision import transforms, utils
+from torchvision import transforms
 from skimage import feature
 from scipy.spatial import distance
 
-import DetectionModel
+from patrick.DetectionModel import DetectionModel
 
-from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata
-import new_utils
+from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata
+import patrick.new_utils as new_utils
 
 class Detector:
 
     def __init__(self, weights_file) -> None:
 
-        self.detection_model = DetectionModel.DetectionModel(weights_file)
+        self.detection_model = DetectionModel(weights_file)
 
         self.supported_shift_types = [
             "needle_tip_to_lamella_centre",
             "lamella_centre_to_image_centre",
             "lamella_edge_to_landing_post",
             "needle_tip_to_image_centre",
-            "trim_lamella_top_to_centre",
-            "trim_lamella_bottom_to_centre"
+            "thin_lamella_top_to_centre",
+            "thin_lamella_bottom_to_centre"
         ]
 
     def detect_features(self, img, mask, shift_type):
@@ -104,26 +104,26 @@ class Detector:
             feature_1_color = "green"
             feature_2_color = "white"
 
-        if shift_type == "trim_lamella_top_to_centre":
-            # top_trim_px
-            feature_1_px, left_mask = detect_trim_region(img, mask, top=True)
+        if shift_type == "thin_lamella_top_to_centre":
+            # top_thin_px
+            feature_1_px, left_mask = detect_thin_region(img, mask, top=True)
             # img centre
             feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
 
-            feature_1_type = "top_trim"
+            feature_1_type = "top_thin"
             feature_2_type = "image_centre"
 
             feature_1_color = "blue"
             feature_2_color = "white"
 
-        if shift_type == "trim_lamella_bottom_to_centre":
+        if shift_type == "thin_lamella_bottom_to_centre":
 
-            # bottom_trim_px
-            feature_1_px, left_mask = detect_trim_region(img, mask, top=False)
+            # bottom_thin_px
+            feature_1_px, left_mask = detect_thin_region(img, mask, top=False)
             # img centre
             feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
 
-            feature_1_type = "bottom_trim"
+            feature_1_type = "bottom_thin"
             feature_2_type = "image_centre"
 
             feature_1_color = "blue"
@@ -537,15 +537,15 @@ def detect_bounding_box(mask, color, threshold):
 
     return [top_px, bottom_px, left_px, right_px], bbox
 
-def detect_trim_region(img, mask, top=True):
-    """Detect the region of the lamella to trim"""
+def detect_thin_region(img, mask, top=True):
+    """Detect the region of the lamella to thin"""
 
     if isinstance(img, np.ndarray):
         img = PIL.Image.fromarray(img)
 
     color = (255, 0, 0)
     threshold=25
-    min_height = 20 # minimum lamella trim height
+    min_height = 20 # minimum lamella thin height
 
     # detect centre
     centre_px, centre_mask = detect_lamella_centre(img, mask)
@@ -560,7 +560,7 @@ def detect_trim_region(img, mask, top=True):
     w = bbox[3] - bbox[1]
     h = min(bbox[2] - bbox[0], min_height) #
 
-    # trim top and bottom edges to leave only small lamella slice
+    # thin top and bottom edges to leave only small lamella slice
     # bbox method
     # top_px = bbox[0] + h/4
     # bottom_px = bbox[2] - h/4
@@ -572,11 +572,11 @@ def detect_trim_region(img, mask, top=True):
     left_px = centre_px[1]
 
     # top and bottom cut start (left and up/down)
-    top_trim_px = top_px, left_px
-    bottom_trim_px = bottom_px, left_px
+    top_thin_px = top_px, left_px
+    bottom_thin_px = bottom_px, left_px
 
     if top:
-        return top_trim_px, landing_mask
+        return top_thin_px, landing_mask
     else:
-        return bottom_trim_px, landing_mask
+        return bottom_thin_px, landing_mask
     # TODO: this is fooled by small red specks need a way to aggregate a whole detection clump and ignore outliers...

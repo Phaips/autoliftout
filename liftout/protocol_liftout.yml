@@ -54,7 +54,7 @@ machine_learning:
   eb_contrast: 0.70
   ib_brightness: 0.41
   ib_contrast: 0.86
-  weights: r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
+  weights: C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees
@@ -72,6 +72,12 @@ sharpen:
   depth: 1e-6
   bias: 0.25e-6
   hfw: 150e-6
-  tip_angle: 8
+  tip_angle: 15
   needle_angle: 41
   sharpen_milling_current: 0.74e-9 # in Amps
+thin:
+  width: 5e-6
+  height: 1e-6
+  depth: 4e-6
+  rotation: 0
+  hfw: 100e-6
