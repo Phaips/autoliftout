@@ -2,8 +2,7 @@
 
 
 
-import new_utils
-
+import utils
 
 path ="test_images/"
-new_utils.extract_img_for_labelling(path)
+utils.extract_img_for_labelling(path)

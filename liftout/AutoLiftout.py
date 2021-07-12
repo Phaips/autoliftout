@@ -204,6 +204,7 @@ class AutoLiftout:
         self._report_status()
         # sharpen_needle(microscope)
 
+# TODO: replace global instance of storage with class instance.... lots of work
 
 config_filename = sys.argv[1]
 # config_filename = "../liftout/protocol_liftout.yml"
