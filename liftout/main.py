@@ -1750,8 +1750,45 @@ def liftout_lamella(microscope, settings):
 
 ############################################# MILLING #######################################################
 
-def mill_trenches(microscope, settings, confirm=True):
+
+
+def mill_thin_lamella(microscope, settings, confirm=True):
     """Mill the trenches for the lamella.
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    confirm : bool, optional
+        Whether to ask the user to confirm before milling.
+    """
+    if confirm is True:
+        if not ask_user("Have you centered the lamella position in the ion beam? yes/no \n"):
+            print("Ok, cancelling trench milling.")
+            # return
+    print('Milling trenches')
+    protocol_stages = []
+
+    for stage_settings in settings["thin_lamella"]["protocol_stages"]:
+        tmp_settings = settings["thin_lamella"].copy()
+        tmp_settings.update(stage_settings)
+
+        protocol_stages.append(tmp_settings)
+
+    # protocol_stages = protocol_stage_settings(settings)
+    for stage_number, stage_settings in enumerate(protocol_stages):
+        print("Protocol stage {} of {}".format(
+            stage_number + 1, len(protocol_stages)))
+        mill_single_stage(
+            microscope,
+            settings,
+            stage_settings,
+            stage_number)
+    # Restore ion beam imaging current (20 pico-Amps)
+    microscope.beams.ion_beam.beam_current.value = 30e-12
+
+
+def mill_trenches(microscope, settings, confirm=True):
+    """Mill the trenches for thinning the lamella.
     Parameters
     ----------
     microscope : Autoscript microscope object.
@@ -1837,6 +1874,7 @@ def upper_milling(microscope, settings, stage_settings, demo_mode=False,):
     setup_milling(microscope, settings, stage_settings)
     # Create and mill patterns
     _upper_milling_coords(microscope, stage_settings)
+    input("continue?")
     if not demo_mode:
         print("Milling pattern...")
         microscope.imaging.set_active_view(2)  # the ion beam view
@@ -1854,6 +1892,7 @@ def lower_milling(microscope, settings, stage_settings, demo_mode=False,):
     setup_milling(microscope, settings, stage_settings)
     # Create and mill patterns
     _lower_milling_coords(microscope, stage_settings)
+    input("continue?")
     if not demo_mode:
         print("Milling pattern...")
         microscope.imaging.set_active_view(2)  # the ion beam view
@@ -2975,63 +3014,103 @@ def thinning_lamella(microscope):
 
     realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=100e-6)
 
-    import patrick.detection as detection
+    # import patrick.detection as detection
 
-    # take images for thinning lamella patterns
-    eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
-    eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
-    ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
-    ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
+    # # take images for thinning lamella patterns
+    # eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
+    # eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
+    # ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
+    # ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
 
-    lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
-        microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
-        __autocontrast=True, eb_brightness=eb_brightness, eb_contrast=eb_contrast,
-        ib_brightness=ib_brightness, ib_contrast=ib_contrast,
-        save=True, save_label="A_thinning_lamella_patterns2")
-
-
-    # thinning top and bottom
-    shift_types=["thin_lamella_top_to_centre", "thin_lamella_bottom_to_centre"]
-
-    thinning_shifts = []
-    for shift_type in shift_types:
-
-        x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, shift_type)
-
-        # append shifts for patterns
-        thinning_shifts.append((x_shift, y_shift))
+    # lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
+    #     microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
+    #     __autocontrast=True, eb_brightness=eb_brightness, eb_contrast=eb_contrast,
+    #     ib_brightness=ib_brightness, ib_contrast=ib_contrast,
+    #     save=True, save_label="A_thinning_lamella_patterns2")
 
 
-    # calculate thinning patterns
-    height = storage.settings["thin"]["height"]
-    width = storage.settings["thin"]["width"]
-    depth = storage.settings["thin"]["depth"]
-    rotation = storage.settings["thin"]["rotation"]
-    hfw = storage.settings["thin"]["hfw"]
+    # # thinning top and bottom
+    # shift_types=["thin_lamella_top_to_centre", "thin_lamella_bottom_to_centre"]
 
-    # # TODO: draw mill pattern
-    # TODO: use width / weight to adjust centre not magic numbers
-    thinning_coord_top = {
-        "center_x": -thinning_shifts[0][0] + width / 2,
-        "center_y": thinning_shifts[0][1] + height / 2,
-        "width": width,
-        "height": height,
-        "depth": depth,
-        "rotation": rotation,
-        "hfw": hfw
-    }
+    # thinning_shifts = []
+    # for shift_type in shift_types:
 
-    thinning_coord_bottom = {
-        "center_x": -thinning_shifts[1][0] + width / 2,
-        "center_y": thinning_shifts[1][1] - height / 2,
-        "width": width,
-        "height": height,
-        "depth": depth,
-        "rotation": rotation,
-        "hfw": hfw
-    }
-    microscope.patterning.clear_patterns()
-    create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom)
+    #     x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, shift_type)
+
+    #     # append shifts for patterns
+    #     thinning_shifts.append((x_shift, y_shift))
+
+
+    # LAMELLA EDGE TO IMAGE CENTRE?
+    # x-movement
+    storage.step_counter += 1
+    lamella_eb, lamella_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
+                                                                    image_settings=image_settings,
+                                                                    save=True, save_label="A_lamella_pre_thinning")
+
+
+    x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, "lamella_edge_to_landing_post")
+
+    # z-movement (shouldnt really be needed if eucentric calibration is correct)
+    stage_tilt = stage.current_position.t
+    print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
+    z_distance = y_shift / np.sin(np.deg2rad(52))
+    z_move = z_corrected_stage_movement(z_distance, stage_tilt)
+    print('z_move = ', z_move)
+    stage.relative_move(z_move)
+
+    # x-move the rest of the way
+    x_move = x_corrected_stage_movement(-x_shift)
+    print('x_move = ', x_move)
+
+    stage.relative_move(x_move)
+
+    width = settings["thin_lamella"]["lamella_width"]
+    x_move_half_width = x_corrected_stage_movement(-width / 2)
+    stage.relative_move(x_move_half_width)
+
+    # lamella edge needs to be centred in image...
+    # mill thin lamella pattern
+    mill_thin_lamella(microscope, settings, confirm=True)
+
+    storage.step_counter += 1
+    lamella_eb, lamella_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
+                                                                    image_settings=image_settings,
+                                                                    save=True, save_label="A_lamella_post_thinning")
+
+
+
+
+    # # calculate thinning patterns
+    # height = storage.settings["thin"]["height"]
+    # width = storage.settings["thin"]["width"]
+    # depth = storage.settings["thin"]["depth"]
+    # rotation = storage.settings["thin"]["rotation"]
+    # hfw = storage.settings["thin"]["hfw"]
+
+    # # # TODO: draw mill pattern
+    # # TODO: use width / weight to adjust centre not magic numbers
+    # thinning_coord_top = {
+    #     "center_x": -thinning_shifts[0][0] + width / 2,
+    #     "center_y": thinning_shifts[0][1] + height / 2,
+    #     "width": width,
+    #     "height": height,
+    #     "depth": depth,
+    #     "rotation": rotation,
+    #     "hfw": hfw
+    # }
+
+    # thinning_coord_bottom = {
+    #     "center_x": -thinning_shifts[1][0] + width / 2,
+    #     "center_y": thinning_shifts[1][1] - height / 2,
+    #     "width": width,
+    #     "height": height,
+    #     "depth": depth,
+    #     "rotation": rotation,
+    #     "hfw": hfw
+    # }
+    # microscope.patterning.clear_patterns()
+    # create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom)
 
     # # TODO: this actually needs to be the shift from the img centre (needs to happen for top and bottom...)
 
