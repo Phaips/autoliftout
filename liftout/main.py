@@ -3155,55 +3155,55 @@ if __name__ == '__main__':
     print(args)
     config_filename = args[0]
 
+    # oop version
+    # auto_liftout = AutoLiftout.AutoLiftout(config_filename)
+    # auto_liftout.setup()
+    # auto_liftout.run_liftout()
 
-    auto_liftout = AutoLiftout.AutoLiftout(config_filename)
-    auto_liftout.setup()
-    auto_liftout.run_liftout()
 
+    settings = load_config(config_filename)
+    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
+        '%Y%m%d.%H%M%S')  # datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
+    output_log_filename = os.path.join('logfile' + timestamp + '.log')
+    configure_logging(log_filename=output_log_filename)
 
-    # settings = load_config(config_filename)
-    # timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
-    #     '%Y%m%d.%H%M%S')  # datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
-    # output_log_filename = os.path.join('logfile' + timestamp + '.log')
-    # configure_logging(log_filename=output_log_filename)
+    storage.NewRun(prefix='thin_lamella_exp')
+    storage.settings = settings
 
-    # storage.NewRun(prefix='thin_lamella_exp')
-    # storage.settings = settings
+    microscope = initialize(settings["system"]["ip_address"])
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    autocontrast(microscope, beam_type=BeamType.ION)
 
-    # microscope = initialize(settings["system"]["ip_address"])
-    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    # autocontrast(microscope, beam_type=BeamType.ION)
+    image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
+    microscope.imaging.set_active_view(1)
+    microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
+    eb = microscope.imaging.grab_frame(image_settings)
+    storage.SaveImage(eb, id='grid')
+    storage.step_counter += 1
 
-    # image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
-    # microscope.imaging.set_active_view(1)
-    # microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
-    # eb = microscope.imaging.grab_frame(image_settings)
-    # storage.SaveImage(eb, id='grid')
-    # storage.step_counter += 1
+    if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
+        sputter_platinum_over_whole_grid(microscope)
 
-    # if ask_user("Do you want to sputter the whole sample grid with platinum? yes/no: "):
-    #     sputter_platinum_over_whole_grid(microscope)
+    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
+    eb = microscope.imaging.grab_frame(image_settings)
+    storage.SaveImage(eb, id='grid_Pt_deposition')
+    storage.step_counter += 1
 
-    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-    # microscope.beams.electron_beam.horizontal_field_width.value = 2750e-6
-    # eb = microscope.imaging.grab_frame(image_settings)
-    # storage.SaveImage(eb, id='grid_Pt_deposition')
-    # storage.step_counter += 1
-
-    # print("Please select the landing positions and check eucentric height manually.")
-    # landing_coordinates, original_landing_images = find_coordinates(
-    #     microscope, name="landing position", move_stage_angle="landing")
-    # lamella_coordinates, original_trench_images = find_coordinates(
-    #     microscope, name="lamella",          move_stage_angle="trench")
-    # zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
-    # storage.LANDING_POSTS_POS_REF = original_landing_images
-    # storage.LAMELLA_POS_REF = original_trench_images
-    # # Start liftout for each lamella
-    # for i, (lamella_coord, landing_coord) in enumerate(zipped_coordinates):
-    #     landing_reference_images = original_landing_images[i]
-    #     lamella_area_reference_images = original_trench_images[i]
-    #     single_liftout(microscope, settings, landing_coord, lamella_coord,
-    #                    landing_reference_images, lamella_area_reference_images)
-    #     storage.liftout_counter += 1
-    # print("Finished.")
+    print("Please select the landing positions and check eucentric height manually.")
+    landing_coordinates, original_landing_images = find_coordinates(
+        microscope, name="landing position", move_stage_angle="landing")
+    lamella_coordinates, original_trench_images = find_coordinates(
+        microscope, name="lamella",          move_stage_angle="trench")
+    zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
+    storage.LANDING_POSTS_POS_REF = original_landing_images
+    storage.LAMELLA_POS_REF = original_trench_images
+    # Start liftout for each lamella
+    for i, (lamella_coord, landing_coord) in enumerate(zipped_coordinates):
+        landing_reference_images = original_landing_images[i]
+        lamella_area_reference_images = original_trench_images[i]
+        single_liftout(microscope, settings, landing_coord, lamella_coord,
+                       landing_reference_images, lamella_area_reference_images)
+        storage.liftout_counter += 1
+    print("Finished.")
 
