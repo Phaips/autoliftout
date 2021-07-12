@@ -31,66 +31,6 @@ def initialize(ip_address='10.0.0.1'):
 # x = -55.4915 mm <- LIMIT HIT
 #
 
-def move_to_light_microscope(microscope, x=50.0e-3, y=0.0):
-    """Move the sample stage from the FIBSEM to the light microscope.
-
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-    x : float, optional
-        Relative movement in x to go from the FIBSEM to the light microscope.
-        By default positive 50 millimeters in the x-direction.
-    y : float, optional
-        Relative movement in y to go from the FIBSEM to the light microscope.
-        By default this is zero.
-
-    Returns
-    -------
-    StagePosition
-        FIBSEM microscope sample stage position after moving.
-        If the returned stage position is called 'stage_pos' then:
-        stage_pos.x = the x position of the FIBSEM sample stage (in meters)
-        stage_pos.y = the y position of the FIBSEM sample stage (in meters)
-        stage_pos.z = the z position of the FIBSEM sample stage (in meters)
-        stage_pos.r = the rotation of the FIBSEM sample stage (in radians)
-        stage_pos.t = the tilt of the FIBSEM sample stage (in radians)
-    """
-    from autoscript_sdb_microscope_client.structures import StagePosition
-    new_position = StagePosition(x=x, y=y, z=0, r=0, t=0)
-    microscope.specimen.stage.relative_move(new_position)
-    return microscope.specimen.stage.current_position
-
-
-def move_to_electron_microscope(microscope, x=-50.0e-3, y=0.0):
-    """Move the sample stage from the light microscope to the FIBSEM.
-
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-    x : float, optional
-        Relative movement in x to go from the light microscope to the FIBSEM.
-        By default negative 50 millimeters in the x-direction.
-    y : float, optional
-        Relative movement in y to go from the light microscope to the FIBSEM.
-        By default this is zero.
-
-    Returns
-    -------
-    StagePosition
-        FIBSEM microscope sample stage position after moving.
-        If the returned stage position is called 'stage_pos' then:
-        stage_pos.x = the x position of the FIBSEM sample stage (in meters)
-        stage_pos.y = the y position of the FIBSEM sample stage (in meters)
-        stage_pos.z = the z position of the FIBSEM sample stage (in meters)
-        stage_pos.r = the rotation of the FIBSEM sample stage (in radians)
-        stage_pos.t = the tilt of the FIBSEM sample stage (in radians)
-    """
-    from autoscript_sdb_microscope_client.structures import StagePosition
-
-    new_position = StagePosition(x=x, y=y, z=0, r=0, t=0)
-    microscope.specimen.stage.relative_move(new_position)
-    return microscope.specimen.stage.current_position
-
 
 def new_ion_image(microscope, settings=None):
     """Take new ion beam image.
