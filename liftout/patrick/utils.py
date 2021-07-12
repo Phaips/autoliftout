@@ -5,6 +5,7 @@ import json
 import re
 from random import shuffle
 
+# import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,7 +16,10 @@ import torch
 import torch.nn.functional as F
 from PIL import Image, ImageDraw
 from torchvision import transforms, utils
+from skimage import feature
+from scipy.spatial import distance
 
+# from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 # user functions
 
 # transformations
@@ -23,19 +27,84 @@ transformation = transforms.Compose(
     [
         transforms.ToPILImage(),
         transforms.Resize((1024 // 4, 1536 // 4)),
-        transforms.Lambda(lambda img: transforms.functional.adjust_contrast(img, contrast_factor=2)),
-        transforms.Lambda(lambda img: transforms.functional.adjust_gamma(img, gamma=2)),
         transforms.ToTensor(),
     ]
 )
 
 
-def load_image_from_live(img):
 
-    """ Load a live image from the microscope as np.array """
+import shutil
 
-    return np.asarray(img.data)
+def extract_img_for_labelling(path, logfile="logfile"):
+    """Extract all the images that have been identified for retraining"""
 
+    log_dir = path+f"{logfile}/"
+    label_dir = path+"label"
+    dest_dir = path
+    # identify images with _label postfix
+    filenames = glob.glob(log_dir+ "*label*.tif")
+
+
+    for fname in filenames:
+        # print(fname)
+        basename = fname.split("/")[-1]
+        print(fname, basename)
+        shutil.copyfile(fname, path+"label/"+basename)
+
+    # zip the image folder
+    shutil.make_archive(f"{path}/images", 'zip', label_dir)
+
+
+
+def create_adorned_image_from_file(fname):
+    """ Create an Autoscript AdornedImage from a Tiff file"""
+    img_np = load_image(fname)
+
+    adorned_img = AdornedImage(data=img_np)
+    # TODO: metadata, what is the structure of metadata?
+    # how can I load it from tiff tags?
+
+    return adorned_img
+
+def load_image(fname):
+
+    """ Load a .tif image from disk as np.array """
+
+    img = np.asarray(Image.open(fname))
+
+    return img
+
+def validate_detection(img, img_base, detection_coord, det_type):
+    correct = input(f"Is {det_type} correct? (y/n)")
+
+    if correct == "n":
+
+        print(f"Please click the {det_type} position")
+        detection_coord = select_point_new(img)
+
+        # save image for training here
+        print("Saving image for labelling. NOTE: NOT YET WORKING")
+        # TODO: somehow pass storage here?
+        # storage.step_counter += 1
+        # storage.SaveImage(img_base, id="label_")
+
+    print(detection_coord)
+    return detection_coord
+
+def select_point_new(image):
+    fig, ax = plt.subplots()
+    ax.imshow(image, cmap="gray")
+    coords = []
+
+    def on_click(event):
+        print(event.xdata, event.ydata)
+        coords.append(event.ydata)
+        coords.append(event.xdata)
+
+    fig.canvas.mpl_connect("button_press_event", on_click)
+    plt.show()
+
+    return tuple(coords[-2:])
 
 def load_image_from_file(fname):
 
@@ -45,6 +114,11 @@ def load_image_from_file(fname):
 
     return img
 
+def load_image_from_live(img):
+
+    """ Load a live image from the microscope as np.array """
+
+    return np.asarray(img.data)
 
 def preprocess_image(img, transformation):
     """ preprocess an image for model inference """
@@ -52,14 +126,13 @@ def preprocess_image(img, transformation):
     return transformation(img).unsqueeze(0)
 
 
-def load_model(weights_file, device="cpu"):
+def load_model(weights_file):
     """ helper function for loading model"""
 
     # load model
     model = smp.Unet(encoder_name="resnet18", in_channels=1, classes=3,)
-
     # load model weights
-    model.load_state_dict(torch.load(weights_file, map_location=device))
+    model.load_state_dict(torch.load(weights_file, map_location="cpu"))
     model.eval()
 
     return model
@@ -71,7 +144,6 @@ def model_inference(model, img):
         Helper function to run the image through model,
         and return image and predicted mask
     """
-
     # pre-process image (+ batch dim)
     img_t = preprocess_image(img=img, transformation=transformation)
 
@@ -82,38 +154,6 @@ def model_inference(model, img):
     rgb_mask = decode_output(output)
 
     return img, rgb_mask
-
-
-def draw_mask(fname):
-    """ Helper function for drawing the label mask directly from .json"""
-    # TODO: remove. unused
-    basename = fname.split(".tif")[0]
-    label_fname = basename + ".json"
-
-    with open(label_fname) as json_file:
-        label = json.load(json_file)
-
-    # label not showing???
-    img = np.asarray(PIL.Image.open(fname), dtype=np.uint8)
-
-    im = Image.fromarray(img)
-    im = im.convert("RGBA")
-    draw = ImageDraw.Draw(im)
-
-    for shape in label["shapes"]:
-        pts = shape["points"]
-        class_label = shape["label"]
-
-        if class_label == "needle":
-            col = (0, 255, 0, 127)
-        else:
-            col = (255, 0, 0, 127)
-        pts = [tuple(pt) for pt in pts]
-
-        draw.polygon(pts, fill=col, outline=col)
-
-    return im
-
 
 def decode_output(output):
     """decodes the output of segmentation model to RGB mask"""
@@ -148,36 +188,25 @@ def decode_segmap(image, nc=3):
 
 
 def show_overlay(img, rgb_mask):
-
-    # convert to np if required
-    if isinstance(rgb_mask, PIL.Image.Image):
-        rgb_mask = np.asarray(rgb_mask)
-
-    # resize rgb_mask to be same size as image.
-    rgb_mask_resized = Image.fromarray(rgb_mask).resize((img.shape[1], img.shape[0]))
-    
-    return rgb_mask_resized
-
-
-def show_overlay_streamlit(img, rgb_mask):
-
-    import cv2
-
+    # TODO: This doesnt actually do anything useful
+    # TODO: figure out how to remove / consolidate this
     # convert to np if required
     if isinstance(rgb_mask, PIL.Image.Image):
         rgb_mask = np.asarray(rgb_mask)
 
     # resize img to same size as mask
-    img_shape = (rgb_mask.shape[1], rgb_mask.shape[0])
-    img_resize_np = cv2.resize(img, img_shape, interpolation=cv2.INTER_AREA)
+    # img_shape = (rgb_mask.shape[1], rgb_mask.shape[0])
+    # img_resize_np = cv2.resize(img, img_shape, interpolation=cv2.INTER_AREA)
 
-    # add transparent overlay
-    alpha = 0.4
-    img_rgb = cv2.cvtColor(img_resize_np, cv2.COLOR_GRAY2RGB)
-    img_overlay = cv2.addWeighted(img_rgb, 1 - alpha, rgb_mask, alpha, 1)
+    # # add transparent overlay
+    # alpha = 0.4
+    # img_rgb = cv2.cvtColor(img_resize_np, cv2.COLOR_GRAY2RGB)
+    # img_overlay = cv2.addWeighted(img_rgb, 1 - alpha, rgb_mask, alpha, 1)
+    # https://stackoverflow.com/questions/5324647/how-to-merge-a-transparent-png-image-with-another-image-using-pil
+    # https://pythontic.com/image-processing/pillow/alpha-composite
+    # TODO: PIL version
 
-    return img_overlay
-
+    return rgb_mask
 
 def calculate_distance_between_points(lamella_centre_px, needle_tip_px):
 
@@ -191,16 +220,14 @@ def calculate_distance_between_points(lamella_centre_px, needle_tip_px):
 
         # calculate distance between needle point and lamella centre
         distance = np.sqrt(
-            np.power(vertical_distance, 2) + np.power(horizontal_distance, 2)
+            np.power(vertical_distance, 2) +
+            np.power(horizontal_distance, 2)
         )
     return distance, vertical_distance, horizontal_distance
 
 
 def get_rectangle_coordinates(px, RECT_WIDTH=4):
-    """ helper function for getting a rectangle centred on a pixel
-        px: coordinate as x, y
-
-    """
+    """ helper function for getting a rectangle centred on a pixel"""
     rect_px = (
         px[1] + RECT_WIDTH // 2,
         px[0] + RECT_WIDTH // 2,
@@ -226,7 +253,7 @@ def detect_lamella_centre(px):
     return lamella_centre_px
 
 
-def draw_rectangle_feature(mask, px, RECT_WIDTH=4, crosshair=True, color="white"):
+def draw_rectangle_feature(mask, px, RECT_WIDTH=4):
 
     # rectangle coordinates
     rect_px = get_rectangle_coordinates(px, RECT_WIDTH)
@@ -234,9 +261,6 @@ def draw_rectangle_feature(mask, px, RECT_WIDTH=4, crosshair=True, color="white"
     # draw mask
     draw = PIL.ImageDraw.Draw(mask)
     draw.rectangle(rect_px, fill="white", width=5)
-
-    # draw cross-hairs
-    draw_crosshairs(draw=draw, mask=mask, idx=px, color=color)
 
     return mask
 
@@ -254,8 +278,7 @@ def draw_lamella_centre(rgb_mask_l, lamella_centre_px=None):
     """
 
     # draw rectangle on lamella centre
-    rgb_mask_l = draw_rectangle_feature(rgb_mask_l, lamella_centre_px, 
-                                            crosshair=True, color="red")
+    rgb_mask_l = draw_rectangle_feature(rgb_mask_l, lamella_centre_px)
 
     return rgb_mask_l
 
@@ -277,7 +300,12 @@ def draw_needle_tip(rgb_mask_n, needle_tip_px=None):
 
     """draw the needle tip on the rgb mask"""
 
-    rgb_mask_n = draw_rectangle_feature(rgb_mask_n, needle_tip_px, crosshair=True, color="green")
+    # rectangle coordinates
+    rect_px = get_rectangle_coordinates(needle_tip_px)
+
+    # draw mask
+    draw = PIL.ImageDraw.Draw(rgb_mask_n)
+    draw.rectangle(rect_px, fill="white", width=5)
 
     return rgb_mask_n
 
@@ -286,31 +314,6 @@ def draw_crosshairs(draw, mask, idx, color="white"):
     """ helper function for drawing crosshairs on an image"""
     draw.line([0, idx[0], mask.size[0], idx[0]], color)
     draw.line([idx[1], 0, idx[1], mask.size[1]], color)
-
-
-def draw_line_between_lamella_and_img_centre(mask, lamella_centre_px):
-
-    draw = PIL.ImageDraw.Draw(mask)
-
-    # centre of image
-    centre_x, centre_y = mask.size[0] //2, mask.size[1] //2
-
-    # draw centre of image as rectange
-    mask = draw_rectangle_feature(mask, (centre_y, centre_x), crosshair=True, color="white")
-
-    # draw line between needle and lamella
-    draw.line(
-        [
-            mask.size[0]//2,
-            mask.size[1]//2,
-            lamella_centre_px[1],
-            lamella_centre_px[0],
-        ],
-        fill="white",
-        width=1,
-    )
-
-    return mask 
 
 
 def draw_needle_and_lamella(rgb_mask_c, needle_tip_px=None, lamella_centre_px=None):
@@ -322,11 +325,17 @@ def draw_needle_and_lamella(rgb_mask_c, needle_tip_px=None, lamella_centre_px=No
     # if needle detected, draw
     if needle_tip_px:
 
+        # draw cross-hairs
+        draw_crosshairs(draw=draw, mask=rgb_mask_c, idx=needle_tip_px, color="green")
+
         # draw needle tip
         rgb_mask_c = draw_needle_tip(rgb_mask_c, needle_tip_px=needle_tip_px)
 
     # if lamella detected, draw
     if lamella_centre_px:
+
+        # draw cross-hairs
+        draw_crosshairs(draw, rgb_mask_c, idx=lamella_centre_px, color="red")
 
         # # draw lamella centre on mask
         rgb_mask_c = draw_lamella_centre(rgb_mask_c, lamella_centre_px)
@@ -348,6 +357,30 @@ def draw_needle_and_lamella(rgb_mask_c, needle_tip_px=None, lamella_centre_px=No
 
     return rgb_mask_c
 
+def detect_and_draw_lamella_right_edge(rgb_mask):
+
+    rgb_mask_l = PIL.Image.fromarray(rgb_mask)
+    lamella_right_edge_px = [0,0]
+
+    # extract only label pixels to find edges
+    mask_copy = np.zeros_like(rgb_mask)
+    idx = np.where(np.all(rgb_mask == (255, 0, 0), axis=-1))
+    mask_copy[idx] = (255, 0, 0)
+
+    if len(idx[0]) > 25:
+        # from detect lamella edge
+        px = list(zip(idx[0], idx[1]))
+
+        # get index of max value
+        max_idx = np.argmax(idx[1])
+        lamella_right_edge_px = px[max_idx]  # right lamella edge
+
+    rgb_mask_combined = draw_lamella_centre(
+            rgb_mask_l=rgb_mask_l, lamella_centre_px=lamella_right_edge_px
+        )
+
+    return lamella_right_edge_px, rgb_mask_combined
+
 
 def detect_and_draw_lamella_and_needle(rgb_mask):
     """ Detect the lamella centre and needle.
@@ -367,26 +400,25 @@ def detect_and_draw_lamella_and_needle(rgb_mask):
     labels = ["background", "lamella", "needle"]
 
     # masks
-    rgb_mask_l = PIL.Image.fromarray(np.zeros_like(rgb_mask))
-    rgb_mask_n = PIL.Image.fromarray(np.zeros_like(rgb_mask))
+    rgb_mask_l = PIL.Image.fromarray(rgb_mask)
+    rgb_mask_n = PIL.Image.fromarray(rgb_mask)
     lamella_centre_px = None
     needle_tip_px = None
 
     for i, (col, label) in enumerate(zip(colors, labels)):
 
         # extract only label pixels to find edges
-        idx = np.where(np.all(rgb_mask == col, axis=-1))
         mask_copy = np.zeros_like(rgb_mask)
+        idx = np.where(np.all(rgb_mask == col, axis=-1))
         mask_copy[idx] = col
-        mask_copy = PIL.Image.fromarray(mask_copy)
 
         # find lamella centre
-        if label == "lamella" and len(idx[0]) > 100:
+        if label == "lamella" and len(idx[0]) > 25:
 
             # detect lamella centre and draw
             lamella_centre_px = detect_lamella_centre(idx)
             rgb_mask_l = draw_lamella_centre(
-                rgb_mask_l=mask_copy, lamella_centre_px=lamella_centre_px
+                rgb_mask_l=rgb_mask_l, lamella_centre_px=lamella_centre_px
             )
 
         # find needle tip:
@@ -395,7 +427,7 @@ def detect_and_draw_lamella_and_needle(rgb_mask):
             # show needle tip
             needle_tip_px = detect_needle_tip(idx)
             rgb_mask_n = draw_needle_tip(
-                rgb_mask_n=mask_copy, needle_tip_px=needle_tip_px
+                rgb_mask_n=rgb_mask_n, needle_tip_px=needle_tip_px
             )
 
     # draw both needle and lamella and line between
@@ -405,6 +437,23 @@ def detect_and_draw_lamella_and_needle(rgb_mask):
     )
 
     return lamella_centre_px, rgb_mask_l, needle_tip_px, rgb_mask_n, rgb_mask_c
+
+def scale_invariant_coordinates_NEW(px, mask):
+    """ Return the scale invariant coordinates of the features in the given mask
+
+    args:
+        px (tuple): pixel coordinates of the feature (y, x)
+        mask (PIL.Image): PIL Image of detection mask
+
+    returns:
+        scaled_px (tuple): pixel coordinates of the feature as proportion of mask size
+
+    """
+
+    scaled_px = (px[0] / mask.size[1], px[1] / mask.size[0])
+
+    return scaled_px
+
 
 
 def scale_invariant_coordinates(
@@ -430,6 +479,59 @@ def scale_invariant_coordinates(
         )
 
     return scaled_lamella_centre_px, scaled_needle_tip_px
+
+
+def detect_closest_landing_point(img, landing_px):
+    """ Identify the closest edge landing point to the initially selected landing point"""
+
+    # identify edge pixels
+    edges = feature.canny(img, sigma=3) # sigma higher usually better
+    edge_mask = np.where(edges)
+    edge_px = list(zip(edge_mask[0], edge_mask[1]))
+
+    # set min distance
+    min_dst = np.inf
+
+    # TODO: vectorise this like
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
+
+    for px in edge_px:
+
+        # distance between edges and landing point
+        dst = distance.euclidean(landing_px, px)
+
+        # select point with min
+        if dst < min_dst:
+
+            min_dst = dst
+            landing_edge_pt = px
+
+    print("Dist: ", px, landing_px, dst)
+    return landing_edge_pt, edges
+
+
+def draw_landing_edges_and_point(img, edges, edge_landing_px, show=True):
+    """Draw the detected landing edge ontop of the edge detection image"""
+    # draw landing point
+    landing_px_mask = PIL.Image.fromarray(np.zeros_like(img))
+    landing_px_mask = draw_rectangle_feature(
+        landing_px_mask, edge_landing_px, RECT_WIDTH=10
+    )
+
+    # draw crosshairs
+    draw = PIL.ImageDraw.Draw(landing_px_mask)
+    draw_crosshairs(draw=draw, mask=landing_px_mask, idx=edge_landing_px)
+
+    # show landing spot
+    if show:
+
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title(f"Landing Post Position")
+        ax.imshow(img, cmap="gray", alpha=0.9)
+        ax.imshow(landing_px_mask, cmap="gray", alpha=0.5)
+        plt.show()
+
+    return landing_px_mask
 
 
 def parse_metadata(filename):

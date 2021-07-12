@@ -9,6 +9,7 @@ imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
   resolution: "1536x1024"
+  imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
 reference_images:
   landing_post_ref_img_resolution: "1536x1024"
   landing_post_ref_img_dwell_time: 1e-6
@@ -53,6 +54,7 @@ machine_learning:
   eb_contrast: 0.70
   ib_brightness: 0.41
   ib_contrast: 0.86
+  weights: C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\liftout\patrick\models\fresh_full_n10.pt
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees
@@ -70,6 +72,42 @@ sharpen:
   depth: 1e-6
   bias: 0.25e-6
   hfw: 150e-6
-  tip_angle: 8
+  tip_angle: 15
   needle_angle: 41
   sharpen_milling_current: 0.74e-9 # in Amps
+cut:
+  width: 8e-6
+  height: 0.5e-6
+  depth: 4e-6
+  rotation: 0
+  hfw: 100e-6
+# thin:
+#   width: 5e-6
+#   height: 1e-6
+#   depth: 4e-6
+#   rotation: 0
+#   hfw: 100e-6
+thin_lamella: # Lamella parameters
+  lamella_width:  5e-6 # In meters. Width of lamella.
+  lamella_height: 2e-6 # In meters. Thickness of lamella.
+  total_cut_height: 5e-6 # In meters. Combined milling region above & below.
+  milling_depth: 0.1e-6 # In meters. Default milling depth.
+  milling_current: 0.89e-9 # In Amperes. Default milling current.
+  # Protocol stages are milled in the order they appear here.
+  # Stages may override the default parmeters above Eg: current, depth, etc.
+  protocol_stages:
+  # Rough cut, stage 1
+  - percentage_roi_height: 0.7 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.4 # Fraction from surface of lamella.
+    milling_depth: 0.5e-6 # In meters. Overrides the default miling depth.
+    milling_current: 0.89e-9 # In Amperes. Overrides the default current.
+  # Regular cut, stage 2
+  - percentage_roi_height: 0.3 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.2 # Fraction from surface of lamella.
+    milling_depth: 0.25e-6 # In meters. Overrides the default miling depth.
+    milling_current: 0.2e-9 # In Amperes. Overrides the default current.
+  # Polishing cut, stage 3
+  - percentage_roi_height: 0.3 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
+    milling_depth: 0.1e-6 # In meters. Overrides the default miling depth.
+    milling_current: 6e-11 # In Amperes. Overrides the default current.
