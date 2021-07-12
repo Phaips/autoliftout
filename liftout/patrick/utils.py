@@ -32,6 +32,30 @@ transformation = transforms.Compose(
 )
 
 
+
+import shutil
+
+def extract_img_for_labelling(path, logfile="logfile"):
+    """Extract all the images that have been identified for retraining"""
+
+    log_dir = path+f"{logfile}/"
+    label_dir = path+"label"
+    dest_dir = path
+    # identify images with _label postfix
+    filenames = glob.glob(log_dir+ "*label*.tif")
+
+
+    for fname in filenames:
+        # print(fname)
+        basename = fname.split("/")[-1]
+        print(fname, basename)
+        shutil.copyfile(fname, path+"label/"+basename)
+
+    # zip the image folder
+    shutil.make_archive(f"{path}/images", 'zip', label_dir)
+
+
+
 def create_adorned_image_from_file(fname):
     """ Create an Autoscript AdornedImage from a Tiff file"""
     img_np = load_image(fname)
@@ -51,7 +75,7 @@ def load_image(fname):
     return img
 
 def validate_detection(img, img_base, detection_coord, det_type):
-    correct = input("Is this correct (y/n)")
+    correct = input(f"Is {det_type} correct? (y/n)")
 
     if correct == "n":
 
@@ -59,9 +83,10 @@ def validate_detection(img, img_base, detection_coord, det_type):
         detection_coord = select_point_new(img)
 
         # save image for training here
-        print("Saving image for labelling")
-        storage.step_counter += 1
-        storage.SaveImage(img_base, id="label_")
+        print("Saving image for labelling. NOTE: NOT YET WORKING")
+        # TODO: somehow pass storage here?
+        # storage.step_counter += 1
+        # storage.SaveImage(img_base, id="label_")
 
     print(detection_coord)
     return detection_coord
