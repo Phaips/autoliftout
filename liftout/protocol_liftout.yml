@@ -75,9 +75,37 @@ sharpen:
   tip_angle: 15
   needle_angle: 41
   sharpen_milling_current: 0.74e-9 # in Amps
+cut:
+  width: 8e-6
+  height: 0.5e-6
+  depth: 4e-6
+  rotation: 0
+  hfw: 100e-6
 thin:
   width: 5e-6
   height: 1e-6
   depth: 4e-6
   rotation: 0
   hfw: 100e-6
+thin_lamella: # Lamella parameters
+  lamella_width:  5e-7 # In meters. Width of lamella.
+  lamella_height: 1e-7 # In meters. Thickness of lamella.
+  total_cut_height: 5e-7 # In meters. Combined milling region above & below.
+  milling_depth: 1e-6 # In meters. Default milling depth.
+  milling_current: 1e-8 # In Amperes. Default milling current.
+  # Protocol stages are milled in the order they appear here.
+  # Stages may override the default parmeters above Eg: current, depth, etc.
+  protocol_stages:
+  # Rough cut, stage 1
+  - percentage_roi_height: 0.5 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.5 # Fraction from surface of lamella.
+    milling_current: 3e-10 # In Amperes. Overrides the default current.
+    milling_depth: 5e-7 # In meters. Overrides the default miling depth.
+  # Regular cut, stage 2
+  - percentage_roi_height: 0.4 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.2 # Fraction from surface of lamella.
+    milling_current: 1e-8 # In Amperes. Overrides the default current.
+  # Polishing cut, stage 3
+  - percentage_roi_height: 0.3 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
+    milling_current: 3e-10 # In Amperes. Overrides the default current.
