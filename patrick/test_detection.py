@@ -6,7 +6,6 @@ import detection
 import argparse
 
 import utils
-import new_utils
 
 if __name__ == "__main__":
 
@@ -34,7 +33,7 @@ if __name__ == "__main__":
     for fname in filenames:
 
         # load image from file
-        img = new_utils.load_image_from_file(fname)
+        img = utils.load_image_from_file(fname)
 
         # img metadata
         df_metadata = utils.parse_metadata(fname)

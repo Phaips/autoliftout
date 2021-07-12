@@ -17,8 +17,7 @@ from scipy.spatial import distance
 
 from patrick.DetectionModel import DetectionModel
 
-from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata
-import patrick.new_utils as new_utils
+from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection
 
 class Detector:
 
@@ -169,8 +168,8 @@ class Detector:
 
         # validate detection
         if validate:
-            feature_1_px = new_utils.validate_detection(img_downscale, img, feature_1_px, feature_1_type)
-            feature_2_px = new_utils.validate_detection(img_downscale, img, feature_2_px, feature_2_type)
+            feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
+            feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
 
         # scale invariant coordinatesss
         scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)

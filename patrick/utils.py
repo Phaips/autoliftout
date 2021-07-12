@@ -51,6 +51,20 @@ def load_image(fname):
     return img
 
 
+def load_image_from_file(fname):
+
+    """ Load a .tif image from disk as np.array """
+
+    img = np.asarray(Image.open(fname))
+
+    return img
+
+def load_image_from_live(img):
+
+    """ Load a live image from the microscope as np.array """
+
+    return np.asarray(img.data)
+
 def preprocess_image(img, transformation):
     """ preprocess an image for model inference """
 
