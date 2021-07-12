@@ -258,38 +258,6 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     return autocontrast_settings
 
 
-# def _reduced_area_rectangle(reduced_area_coords):
-#     assert len(reduced_area_coords) == 4
-#     top_corner_x, top_corner_y, width, height = reduced_area_coords
-#     return Rectangle(top_corner_x, top_corner_y, width, height)
-
-
-# def create_camera_settings(imaging_settings, reduced_area_coords=[0, 0, 1, 1]):
-#     """Camera settings for acquiring images on the microscope.
-#     Parameters
-#     ----------
-#     imaging_settings : dictionary
-#         User input as dictionary containing keys "resolution" and "dwell_time".
-#     reduced_area_coords : Rectangle, optional
-#         Reduced area view for image acquisition.
-#         By default None, which will create a Rectangle(0, 0, 1, 1),
-#         which means the whole field of view will be imaged.
-#     Returns
-#     -------
-#     GrabFrameSettings
-#         Camera acquisition settings
-#     """
-#     from autoscript_sdb_microscope_client.structures import (GrabFrameSettings,
-#                                                              Rectangle)
-#     reduced_area = _reduced_area_rectangle(reduced_area_coords)
-#     camera_settings = GrabFrameSettings(
-#         resolution=imaging_settings["resolution"],
-#         dwell_time=imaging_settings["dwell_time"],
-#         reduced_area=reduced_area,
-#     )
-#     return camera_settings
-
-
 def new_electron_image(microscope, settings=None, brightness=None, contrast=None):
     """Take new electron beam image.
     Returns
@@ -330,24 +298,6 @@ def new_ion_image(microscope, settings=None, brightness=None, contrast=None):
     else:
         image = microscope.imaging.grab_frame()
     return image
-
-# def take_electron_and_ion_reference_images_OLD(microscope, hor_field_width=50e-6,  image_settings=None, __autocontrast=True,
-#                 eb_brightness=None, ib_brightness=None, eb_contrast=None, ib_contrast=None):
-#     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
-#     # image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)
-#     #############
-#     # Take reference images with lower resolution, wider field of view
-#     microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
-#     microscope.beams.ion_beam.horizontal_field_width.value      = hor_field_width
-#     microscope.imaging.set_active_view(1)
-#     if __autocontrast:
-#         autocontrast(microscope, beam_type=BeamType.ELECTRON)
-#     eb_reference = new_electron_image(microscope, image_settings, eb_brightness, eb_contrast)
-#     microscope.imaging.set_active_view(2)
-#     if __autocontrast:
-#         autocontrast(microscope, beam_type=BeamType.ION)
-#     ib_reference = new_ion_image(microscope, image_settings, ib_brightness, ib_contrast)
-#     return eb_reference, ib_reference
 
 
 def take_electron_and_ion_reference_images(
@@ -853,33 +803,6 @@ def move_needle_to_landing_position(microscope):
     move_needle_closer(microscope, x_shift=-25e-6)
     return park_position
 
-
-# def needle_reference_images(microscope, move_needle_to="liftout", dwell_time=10e-6):
-#     from autoscript_sdb_microscope_client.structures import GrabFrameSettings
-#     move_sample_stage_out(microscope)
-#     if move_needle_to == "liftout":
-#         park_position = move_needle_to_liftout_position(microscope)
-#     elif move_needle_to == "landing":
-#         park_position = move_needle_to_landing_position(microscope)
-#     # TODO: set field of view in electron & ion beam to match
-#     # microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6  # can't be smaller than 150e-6
-#     # microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # can't be smaller than 150e-6
-#     # autocontrast(microscope, beam_type=BeamType.ELECTRON)
-#     # needle_reference_eb_lowres = new_electron_image(microscope, image_settings)
-#     # autocontrast(microscope, beam_type=BeamType.ION)
-#     # needle_reference_ib_lowres = new_ion_image(microscope, image_settings)
-#     resolution = storage.settings["reference_images"]["needle_ref_img_resolution"]
-#     dwell_time = storage.settings["reference_images"]["needle_ref_img_dwell_time"]
-#     image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
-#     hfw_lowres  = storage.settings["reference_images"]["needle_ref_img_hfw_lowres"]
-#     hfw_highres = storage.settings["reference_images"]["needle_ref_img_hfw_highres"]
-#     needle_reference_eb_lowres,  needle_reference_ib_lowres  = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_lowres,  image_settings=image_settings)
-#     needle_reference_eb_highres, needle_reference_ib_highres = take_electron_and_ion_reference_images(microscope, hor_field_width=hfw_highres, image_settings=image_settings)
-#     ####
-#     retract_needle(microscope, park_position)
-#     return (needle_reference_eb_lowres, needle_reference_eb_highres, needle_reference_ib_lowres, needle_reference_ib_highres)
-
-
 def validate_scanning_rotation(microscope):
     """Ensure the scanning rotation is set to zero."""
     rotation = microscope.beams.ion_beam.scanning.rotation.value
@@ -977,14 +900,7 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
             eb = new_electron_image(microscope)
             coordinates.append(microscope.specimen.stage.current_position)
             if move_stage_angle == "landing":
-                # microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
-                # microscope.beams.ion_beam.horizontal_field_width.value      = 400e-6  # TODO: yaml use input
-                #ib_low_res = new_ion_image(microscope)
-                #eb_low_res = new_electron_image(microscope)
-                # microscope.beams.electron_beam.horizontal_field_width.value = 150e-6  # TODO: yaml use input
-                # microscope.beams.ion_beam.horizontal_field_width.value      = 150e-6  # TODO: yaml use input
-                #ib_high_res = new_ion_image(microscope)
-                #eb_high_res = new_electron_image(microscope)
+
                 resolution = storage.settings["reference_images"]["landing_post_ref_img_resolution"]
                 dwell_time = storage.settings["reference_images"]["landing_post_ref_img_dwell_time"]
                 image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
@@ -996,14 +912,7 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
                     microscope, hor_field_width=hfw_highres, image_settings=image_settings)
                 landing_post_reference_images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
             if move_stage_angle == "trench":
-                # microscope.beams.electron_beam.horizontal_field_width.value = 400e-6  # TODO: yaml use input
-                # microscope.beams.ion_beam.horizontal_field_width.value      = 400e-6  # TODO: yaml use input
-                #ib_low_res = new_ion_image(microscope)
-                #eb_low_res = new_electron_image(microscope)
-                # microscope.beams.electron_beam.horizontal_field_width.value =  50e-6  # TODO: yaml use input
-                # microscope.beams.ion_beam.horizontal_field_width.value      =  50e-6  # TODO: yaml use input
-                #ib_high_res = new_ion_image(microscope)
-                #eb_high_res = new_electron_image(microscope)
+
                 resolution = storage.settings["reference_images"]["trench_area_ref_img_resolution"]
                 dwell_time = storage.settings["reference_images"]["trench_area_ref_img_dwell_time"]
                 image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
@@ -1024,517 +933,6 @@ def find_coordinates(microscope, name="", move_stage_angle=None):
     else:
         return coordinates, trench_area_reference_images
 
-
-##################################   CORNER FINDING : FOR NEEDLETIP IDENTIFICATION ##############################
-# def gauss_derivative_kernels(size, sizey=None):
-#     """ returns x and y derivatives of a 2D
-#         gauss kernel array for convolutions """
-#     size = int(size)
-#     if not sizey:
-#         sizey = size
-#     else:
-#         sizey = int(sizey)
-#     y, x = np.mgrid[-size:size+1, -sizey:sizey+1]
-#     #x and y derivatives of a 2D gaussian with standard dev half of size
-#     # (ignore scale factor)
-#     gx = - x * np.exp(-(x**2/float((0.5*size)**2)+y**2/float((0.5*sizey)**2)))
-#     gy = - y * np.exp(-(x**2/float((0.5*size)**2)+y**2/float((0.5*sizey)**2)))
-#     return gx,gy
-#
-# def gauss_derivatives(im, n, ny=None):
-#     """ returns x and y derivatives of an image using gaussian
-#         derivative filters of size n. The optional argument
-#         ny allows for a different size in the y direction."""
-#     gx,gy = gauss_derivative_kernels(n, sizey=ny)
-#     imx = signal.convolve(im,gx, mode='same')
-#     imy = signal.convolve(im,gy, mode='same')
-#     return imx,imy
-#
-# def gauss_kernel(size, sizey = None):
-#     """ Returns a normalized 2D gauss kernel array for convolutions """
-#     size = int(size)
-#     if not sizey:
-#         sizey = size
-#     else:
-#         sizey = int(sizey)
-#     x, y = np.mgrid[-size:size+1, -sizey:sizey+1]
-#     g = np.exp(-(x**2/float(size)+y**2/float(sizey)))
-#     return g / g.sum()
-#
-#
-# def compute_harris_response(image):
-#     """ compute the Harris corner detector response function
-#         for each pixel in the image"""
-#     #derivatives
-#     imx,imy = gauss_derivatives(image, 3)
-#     #kernel for blurring
-#     gauss = gauss_kernel(3)
-#     #compute components of the structure tensor
-#     Wxx = signal.convolve(imx*imx,gauss, mode='same')
-#     Wxy = signal.convolve(imx*imy,gauss, mode='same')
-#     Wyy = signal.convolve(imy*imy,gauss, mode='same')
-#     #determinant and trace
-#     Wdet = Wxx*Wyy - Wxy**2
-#     Wtr  = Wxx + Wyy
-#     return Wdet / Wtr
-#
-# def get_harris_points(harrisim, min_distance=10, threshold=0.1):
-#     """ return corners from a Harris response image
-#         min_distance is the minimum nbr of pixels separating
-#         corners and image boundary"""
-#     #find top corner candidates above a threshold
-#     corner_threshold = max(harrisim.ravel()) * threshold
-#     harrisim_t = (harrisim > corner_threshold) * 1
-#     #get coordinates of candidates
-#     candidates = harrisim_t.nonzero()
-#     coords = [ (candidates[0][c],candidates[1][c]) for c in range(len(candidates[0]))]
-#     #...and their values
-#     candidate_values = [harrisim[c[0]][c[1]] for c in coords]
-#     #sort candidates
-#     index = argsort(candidate_values)
-#     #store allowed point locations in array
-#     allowed_locations = zeros(harrisim.shape)
-#     allowed_locations[min_distance:-min_distance,min_distance:-min_distance] = 1
-#     #select the best points taking min_distance into account
-#     filtered_coords = []
-#     for i in index:
-#         if allowed_locations[coords[i][0]][coords[i][1]] == 1:
-#             filtered_coords.append(coords[i])
-#             allowed_locations[(coords[i][0]-min_distance):(coords[i][0]+min_distance),(coords[i][1]-min_distance):(coords[i][1]+min_distance)] = 0
-#     return filtered_coords
-#
-#
-# def OLD___find_needletip_and_target_locations(image):
-#     print("Please click the needle tip position")
-#     needletip_location = select_point(image)
-#     print("Please click the lamella target position")
-#     target_location = select_point(image)
-#     return needletip_location, target_location
-#
-#
-#
-# def find_needletip_shift_in_image_ELECTRON(needle_with_sample_Adorned, needle_reference_Adorned, show=False, median_smoothing=2):
-#     try:
-#         pixelsize_x = needle_with_sample_Adorned.metadata.binary_result.pixel_size.x
-#         pixelsize_y = needle_with_sample_Adorned.metadata.binary_result.pixel_size.y
-#     except AttributeError:
-#         pixelsize_x = 1
-#         pixelsize_y = 1
-#     ### TEST
-#     ### Find the tip using corner-finding algorithm
-#     needle_reference   = needle_reference_Adorned.data
-#     needle_with_sample = needle_with_sample_Adorned.data
-#     field_width  = pixelsize_x  * needle_with_sample_Adorned.width
-#     height, width = needle_reference.shape # search for the tip in only the left half of the image
-#     harrisim = compute_harris_response( ndi.median_filter(needle_reference[:, 0:width//2], size=1) )
-#     filtered_coords_ref = get_harris_points(harrisim,4)
-#     right_outermost_point_ref = max(filtered_coords_ref, key=itemgetter(1))
-#     #############
-#     if show:
-#         plt.figure(1)
-#         plt.imshow(needle_reference, cmap='gray')
-#         plt.plot( [p[1] for p in filtered_coords_ref],[p[0] for p in filtered_coords_ref],'bo'  )
-#         plt.plot( [right_outermost_point_ref[1]], [right_outermost_point_ref[0]],   'ro')
-
-#     ### Find the tip from binarized image (mask) and corner-finding algorithm
-#     filt   = ndi.median_filter(needle_reference, size=5)
-#     thresh = threshold_otsu(filt)
-#     binary = filt > thresh
-#     mask   = gaussian(binary_dilation(binary, iterations=15), 5)
-#     mask_binary = (mask >= 0.51).astype(int)
-#     needle_ref_masked = needle_reference * mask_binary
-#     ysize, xsize = mask.shape
-#     harrisim = compute_harris_response(mask_binary[:, 0:width//2])
-#     filtered_coords_mask_ref = get_harris_points(harrisim,4)
-#     right_outermost_point_mask_ref = max(filtered_coords_mask_ref, key=itemgetter(1))
-#     ####
-#     if show:
-#         plt.figure(2)
-#         plt.imshow(mask_binary,   cmap='gray',     alpha=1)
-#         plt.imshow(needle_reference, cmap='Oranges_r',   alpha=0.5)
-#         plt.plot([p[1] for p in filtered_coords_mask_ref], [p[0] for p in filtered_coords_mask_ref], 'bo')
-#         plt.plot([right_outermost_point_mask_ref[1]], [right_outermost_point_mask_ref[0]], 'ro')
-#         plt.plot([right_outermost_point_ref[1]], [right_outermost_point_ref[0]], 'rd')
-#
-#     def R(p1, p2):
-#         return np.sqrt( (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 ) # find distance between two points
-#     # two tips found, if the tip coordinate from the noisy real needle image is way off, rely on the tip found from the binarized image
-#     #if R(right_outermost_point_ref, right_outermost_point_mask_ref  ) <= 20:
-#     #    right_outermost_point = right_outermost_point_ref
-#     #else:
-#     #    right_outermost_point = right_outermost_point_mask_ref
-#     # if ion beam - use harris points, if electron - check R bwt two points and select corner from
-#     right_outermost_point = right_outermost_point_ref # for now only use the corner found from the real image, not binarised one
-
-#     # tip position in the reference image :
-#     old_tip_x = right_outermost_point[0]
-#     old_tip_y = right_outermost_point[1]
-
-#     xmin = min(old_tip_y, mask.shape[1] - old_tip_y)
-#     ymin = min(old_tip_x, mask.shape[0] - old_tip_x)
-#     rmin = min(xmin, ymin)
-#     Dmin = 2 * rmin
-#     ####################
-#     cmask = circ_mask(size=(Dmin, Dmin), radius=Dmin // 2 - 15, sigma=10)  # circular mask
-#     CMASK = np.zeros(needle_reference.shape)
-#     CMASK[old_tip_x - Dmin // 2: old_tip_x + Dmin // 2, old_tip_y - Dmin // 2: old_tip_y + Dmin // 2] = cmask
-#     # first normalise the reference image, then mask
-#     needle_reference_norm = ( needle_reference - np.mean(needle_reference) ) / np.std(needle_reference)
-#     reference_circ_norm = needle_reference_norm * CMASK * mask
-#     ####################
-#     xmin = min(old_tip_x, mask.shape[1] - old_tip_x)
-#     ymin = min(old_tip_y, mask.shape[0] - old_tip_y)
-#     ELLPS_MASK = np.zeros(needle_reference.shape)
-#     elps_mask = ellipse_mask(size=(xmin*2, ymin*2), radius1=xmin-15, radius2=ymin-15, sigma=10)
-#     ELLPS_MASK[old_tip_y - ymin : old_tip_y + ymin, old_tip_x - xmin : old_tip_x + xmin] = elps_mask
-#     reference_elps_norm = needle_reference_norm * ELLPS_MASK * mask
-#     ####################
-#     lowpass_pixels  = int( max(needle_reference.shape) / 12 ) # =128 for 1536x1024 image
-#     highpass_pixels = int( max(needle_reference.shape)/ 256 ) # =6   for 1536x1024 image
-#     sigma = int( 2 * max(needle_reference.data.shape)/1536)   # =2 @ 1536x1024, good for e-beam images
-#     print(': High pass filter = ', lowpass_pixels, '; low pass filter = ', highpass_pixels)
-#     # nornalise the image before the cross-correlation
-#     needle_with_sample_norm = ( needle_with_sample - np.mean(needle_with_sample) ) / np.std(needle_with_sample)
-#     xcorr = crosscorrelation(needle_with_sample_norm, reference_elps_norm, bp='yes', lp=lowpass_pixels, hp=highpass_pixels, sigma=2)
-#     maxX, maxY = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-#     print('\n', maxX, maxY)
-#     cen = np.asarray(xcorr.shape) / 2
-#     print('centre = ', cen)
-#     err = np.array(cen - [maxX, maxY], int)
-#     print("Shift between 1 and 2 is = " + str(err))
-#     print("img2 is X-shifted by ", err[1], '; Y-shifted by ', err[0])
-#     new_tip_x = old_tip_x - err[0]
-#     new_tip_y = old_tip_y - err[1]
-#     x_shift = +1 * ( cen[1] - new_tip_y ) * pixelsize_x
-#     y_shift = -1 * ( cen[0] - new_tip_x ) * pixelsize_y
-#     print("X-shift to the image centre =  {} meters".format(x_shift))
-#     print("Y-shift to the image centre =  {} meters".format(y_shift))
-#     if show:
-#         plt.figure()
-#         plt.imshow(needle_reference,   cmap='Oranges_r',     alpha=1)
-#         plt.imshow(needle_with_sample, cmap='Blues_r',   alpha=0.5)
-#         plt.plot([old_tip_y], [old_tip_x], 'bd', markersize=5, label='original position')
-#         plt.plot([new_tip_y], [new_tip_x], 'rd', markersize=5, label='current position')
-#         plt.legend()
-#     return x_shift, y_shift # shift of location of the tip
-
-
-# def find_needletip_shift_in_image_ION(needle_with_sample_Adorned, needle_reference_Adorned, show=False, median_smoothing=2):
-#     try:
-#         pixelsize_x = needle_with_sample_Adorned.metadata.binary_result.pixel_size.x
-#         pixelsize_y = needle_with_sample_Adorned.metadata.binary_result.pixel_size.y
-#     except AttributeError:
-#         pixelsize_x = 1
-#         pixelsize_y = 1
-#     ### Find the tip using corner-finding algorithm
-#     needle_reference   = needle_reference_Adorned.data
-#     needle_with_sample = needle_with_sample_Adorned.data
-#     field_width  = pixelsize_x  * needle_with_sample_Adorned.width
-#     height, width = needle_reference.shape # search for the tip in only the left half of the image
-#     # ION images are more "noisy", need more median smooting to find the tip/top position
-#     harrisim = compute_harris_response( ndi.median_filter(needle_reference[:, 0:width//2], size=5) )
-#     filtered_coords_ref = get_harris_points(harrisim,4)
-#     right_outermost_point_ref = max(filtered_coords_ref, key=itemgetter(1))
-#     topmost_point_ref         = min(filtered_coords_ref, key=itemgetter(0)) # from ion image we need the topmost point,not the rightmost
-#     #############
-#     if show:
-#         plt.figure(1)
-#         plt.imshow(needle_reference, cmap='gray')
-#         plt.plot( [p[1] for p in filtered_coords_ref],[p[0] for p in filtered_coords_ref],'bo'  )
-#         plt.plot( [topmost_point_ref[1]], [topmost_point_ref[0]],   'ro')
-#     ### Find the tip from binarized image (mask) and corner-finding algorithm
-#     filt   = ndi.median_filter(needle_reference, size=2)
-#     thresh = threshold_otsu(filt)
-#     binary = filt > thresh
-#     mask   = gaussian(binary_dilation(binary, iterations=15), 5)
-#     mask_binary = (mask >= 0.51).astype(int)
-#     needle_ref_masked = needle_reference * mask_binary
-#     ysize, xsize = mask.shape
-#     harrisim = compute_harris_response(mask_binary[:, 0:width//2])
-#     filtered_coords_mask_ref = get_harris_points(harrisim,4)
-#     right_outermost_point_mask_ref = max(filtered_coords_mask_ref, key=itemgetter(1))
-#     topmost_point_mask_ref         = min(filtered_coords_mask_ref, key=itemgetter(0))
-#     ####
-#     if show:
-#         plt.figure(2)
-#         plt.imshow(mask_binary,   cmap='gray',     alpha=1)
-#         plt.imshow(needle_reference, cmap='Oranges_r',   alpha=0.5)
-#         plt.plot([p[1] for p in filtered_coords_mask_ref], [p[0] for p in filtered_coords_mask_ref], 'bo')
-#         plt.plot([topmost_point_mask_ref[1]], [topmost_point_mask_ref[0]], 'ro')
-#         plt.plot([topmost_point_ref[1]], [topmost_point_ref[0]], 'rd')
-#     def R(p1, p2):
-#         return np.sqrt( (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 ) # find distance between two points
-#     # two tips found, if the tip coordinate from the noisy real needle image is way off, rely on the tip found from the binarized image
-#     #if R(right_outermost_point_ref, right_outermost_point_mask_ref  ) <= 20:
-#     #    right_outermost_point = right_outermost_point_ref
-#     #else:
-#     #    right_outermost_point = right_outermost_point_mask_ref
-#     # if ion beam - use harris points, if electron - check R bwt two points and select corner from
-#     right_outermost_point = right_outermost_point_ref
-#     topmost_point         = topmost_point_ref
-
-#     # tip position in the reference image :
-#     old_tip_x = topmost_point[0]
-#     old_tip_y = topmost_point[1]
-
-#     xmin = min(old_tip_y, mask.shape[1] - old_tip_y)
-#     ymin = min(old_tip_x, mask.shape[0] - old_tip_x)
-#     rmin = min(xmin, ymin)
-#     Dmin = 2 * rmin
-#     ####################
-#     cmask = circ_mask(size=(Dmin, Dmin), radius=Dmin // 2 - 15, sigma=10)  # circular mask
-#     CMASK = np.zeros(needle_reference.shape)
-#     CMASK[old_tip_x - Dmin // 2: old_tip_x + Dmin // 2, old_tip_y - Dmin // 2: old_tip_y + Dmin // 2] = cmask
-#     needle_reference_norm = ( needle_reference - np.mean(needle_reference) ) / np.std(needle_reference)
-#     reference_circ_norm = needle_reference_norm * CMASK * mask
-#     ####################
-#     xmin = min(old_tip_x, mask.shape[1] - old_tip_x)
-#     ymin = min(old_tip_y, mask.shape[0] - old_tip_y)
-#     ELLPS_MASK = np.zeros(needle_reference.shape)
-#     elps_mask = ellipse_mask(size=(xmin*2, ymin*2), radius1=xmin-15, radius2=ymin-15, sigma=10)
-#     ELLPS_MASK[old_tip_y - ymin : old_tip_y + ymin, old_tip_x - xmin : old_tip_x + xmin] = elps_mask
-#     reference_elps_norm = needle_reference_norm * ELLPS_MASK * mask
-#     ####################
-#     lowpass_pixels  = int( max(needle_reference.shape) / 6 ) # =256 @ 1536x1024, good for i-beam images
-#     highpass_pixels = int( max(needle_reference.shape)/ 64 ) # =24  @ 1536x1024, good for i-beam images => need a large highpass to remove noise and ringing
-#     sigma = int( 10 * max(needle_reference.data.shape)/1536) # =10 @ 1536x1024, good for i-beam images
-#     print(': High pass filter = ', lowpass_pixels, '; low pass filter = ', highpass_pixels)
-#     needle_with_sample_norm = ( needle_with_sample - np.mean(needle_with_sample) ) / np.std(needle_with_sample)
-#     xcorr = crosscorrelation(needle_with_sample_norm, reference_elps_norm, bp='yes', lp=lowpass_pixels, hp=highpass_pixels, sigma=sigma)
-#     maxX, maxY = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-#     print('\n', maxX, maxY)
-#     cen = np.asarray(xcorr.shape) / 2
-#     print('centre = ', cen)
-#     err = np.array(cen - [maxX, maxY], int)
-#     print("Shift between 1 and 2 is = " + str(err))
-#     print("img2 is X-shifted by ", err[1], '; Y-shifted by ', err[0])
-#     new_tip_x = old_tip_x - err[0]
-#     new_tip_y = old_tip_y - err[1]
-#     x_shift = ( cen[1] - new_tip_y ) * pixelsize_x
-#     y_shift = ( cen[0] - new_tip_x ) * pixelsize_y
-#     print("X-shift to the image centre =  {} meters".format(x_shift))
-#     print("Y-shift to the image centre =  {} meters".format(y_shift))
-#     if show:
-#         plt.figure()
-#         plt.imshow(needle_reference,   cmap='Oranges_r',     alpha=1)
-#         plt.imshow(needle_with_sample, cmap='Blues_r',   alpha=0.5)
-#         plt.plot([old_tip_y], [old_tip_x], 'bd', markersize=5, label='original position')
-#         plt.plot([new_tip_y], [new_tip_x], 'rd', markersize=5, label='current position')
-#         plt.legend()
-#     return x_shift, y_shift # shift of location of the tip
-
-
-def calculate_proportional_needletip_distance_from_img_centre(img, show=False):
-    """Calculate the shift from the needletip to the image centre as a proportion of the image """
-    weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
-    model = load_model(weights_file=weights_file)
-
-    # convert img to numpy array
-    img_orig = np.asarray(img.data)
-
-    # model inference + display
-    img_np, rgb_mask = model_inference(model, img=img_orig)
-
-    # detect and draw lamella centre, and needle tip
-    (
-        lamella_centre_px,
-        rgb_mask_lamella,
-        needle_tip_px,
-        rgb_mask_needle,
-        rgb_mask_combined,
-    ) = detect_and_draw_lamella_and_needle(rgb_mask)
-
-    # prediction overlay
-    img_overlay = show_overlay(img_np, rgb_mask_combined)
-
-    # resize overlay back to full sized image for display
-    img_overlay_resized = Image.fromarray(img_overlay).resize((img_np.shape[1], img_np.shape[0]))
-
-    if show:
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-        ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
-
-        plt.show()
-
-    # # need to use the same scale images for both detection selections
-    img_downscale = Image.fromarray(img_orig).resize((rgb_mask_combined.size[0], rgb_mask_combined.size[1]))
-
-    print("Confirm Needle Tip Position")
-    needle_tip_px = validate_detection(img_downscale, img, needle_tip_px, "needle tip")
-
-    # scale invariant coordinatesss
-    scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
-        needle_tip_px, lamella_centre_px, rgb_mask_combined
-    )
-
-    # if no needle tip is found, something has gone wrong
-    if scaled_needle_tip_px is None:
-        raise ValueError("No needle tip detected")
-
-   # x, y
-    return -(0.5 - scaled_needle_tip_px[1]), 0.5 - scaled_needle_tip_px[0]
-
-
-def needletip_shift_from_img_centre(img, show=True):
-    """Calculate the shift in metres from needle tip to lamella centre """
-    needle_distance_x, needle_distance_y = calculate_proportional_needletip_distance_from_img_centre(
-        img, show=True)
-
-    x_shift, y_shift = calculate_shift_distance_in_metres(img, needle_distance_x, needle_distance_y)
-
-    return x_shift, y_shift
-
-
-def calculate_needletip_shift_from_lamella_centre(img, show=False):
-    """ Calculate the shift from the needle tip to the lamella centre as a proportion of the
-    image.
-    """
-
-    weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
-    model = load_model(weights_file=weights_file)
-
-    # convert img to numpy array
-    img_orig = np.asarray(img.data)
-
-    # model inference + display
-    img_np, rgb_mask = model_inference(model, img=img_orig)
-
-    # detect and draw lamella centre, and needle tip
-    (
-        lamella_centre_px,
-        rgb_mask_lamella,
-        needle_tip_px,
-        rgb_mask_needle,
-        rgb_mask_combined,
-    ) = detect_and_draw_lamella_and_needle(rgb_mask)
-
-    # prediction overlay
-    img_overlay = show_overlay(img_np, rgb_mask_combined)
-
-    # resize overlay back to full sized image for display
-    img_overlay_resized = Image.fromarray(img_overlay).resize((img_np.shape[1], img_np.shape[0]))
-
-    if show:
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-        ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
-
-        plt.show()
-
-    # # need to use the same scale images for both detection selections
-    img_downscale = Image.fromarray(img_orig).resize((rgb_mask_combined.size[0], rgb_mask_combined.size[1]))
-
-    print("Confirm Needle Tip Position")
-    needle_tip_px = validate_detection(img_downscale, img, needle_tip_px, "needle tip")
-
-    print("Confirm Lamella Centre Position")
-    lamella_centre_px = validate_detection(img_downscale, img, lamella_centre_px, "lamella_centre")
-
-    # scale invariant coordinatesss
-    scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
-        needle_tip_px, lamella_centre_px, rgb_mask_combined
-    )
-
-    # if no needle tip is found, something has gone wrong
-    if scaled_needle_tip_px is None:
-        raise ValueError("No needle tip detected")
-
-    # x, y
-    return -(scaled_lamella_centre_px[1] - scaled_needle_tip_px[1]), scaled_lamella_centre_px[0] - scaled_needle_tip_px[0]
-
-
-def needletip_shift_from_lamella_centre(img, show=True):
-    """Calculate the shift in metres from needle tip to lamella centre """
-    needle_distance_x, needle_distance_y = calculate_needletip_shift_from_lamella_centre(img, show=True)
-
-    x_shift, y_shift = calculate_shift_distance_in_metres(img, needle_distance_x, needle_distance_y)
-
-    return x_shift, y_shift
-
-
-def calculate_lamella_edge_shift_from_landing_post(img, landing_px, show=False):
-    """Calculate the shift from the right edge of the lamella to the edge of the landing post
-
-    The distance is calculated as a proportion of the image
-
-    """
-    weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
-    model = load_model(weights_file=weights_file)
-
-    # convert img to numpy array
-    img_orig = np.asarray(img.data)
-
-    # model inference + display
-    img_np, rgb_mask = model_inference(model, img=img_orig)
-
-    # detect and draw lamella right edge
-    lamella_right_edge_px, rgb_mask_combined = detect_and_draw_lamella_right_edge(rgb_mask)
-    print("Lamella Right Edge Pixel: ", lamella_right_edge_px)
-
-    # prediction overlay
-    img_overlay = show_overlay(img_np, rgb_mask_combined)
-
-    # resize overlay back to full sized image for display
-    img_overlay_resized = Image.fromarray(img_overlay).resize((img_np.shape[1], img_np.shape[0]))
-
-    if show:
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-        ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
-
-        plt.show()
-
-    # # need to use the same scale images for both detection selections
-    img_downscale = Image.fromarray(img_orig).resize((rgb_mask_combined.size[0], rgb_mask_combined.size[1]))
-
-    print("Confirm Lamella Edge Position")
-    lamella_right_edge_px = validate_detection(img_downscale, img, lamella_right_edge_px, "lamella_edge")
-
-    scaled_lamella_right_edge_px = scale_invariant_coordinates_NEW(lamella_right_edge_px, rgb_mask_combined)
-
-    # LANDING EDGE
-
-    # use the initially selected landing point, and snap to the nearest edge
-    edge_landing_px, edges = detect_closest_landing_point(img_orig, landing_px)
-    landing_px_mask = draw_landing_edges_and_point(img_orig, edges, edge_landing_px)
-
-    print("Confirm Landing Post Position")
-    edge_landing_px = validate_detection(img_orig, img, edge_landing_px, "landing_post")
-
-    # scale landing coordinates
-    scaled_edge_landing_px = scale_invariant_coordinates_NEW(edge_landing_px, landing_px_mask)
-
-    print("Landing Point:", edge_landing_px)
-    print("Proportional: ", scaled_edge_landing_px)
-
-    # if no needle tip is found, something has gone wrong
-    if scaled_lamella_right_edge_px is None:
-        raise ValueError("No Lamella Edge detected")
-
-    # if no landing post is found, something has gone wrong
-    if scaled_edge_landing_px is None:
-        raise ValueError("No Landing Post detected")
-
-    # x, y
-    return -(scaled_lamella_right_edge_px[1] - scaled_edge_landing_px[1]), scaled_lamella_right_edge_px[0] - scaled_edge_landing_px[0],
-
-# TODO: replace all functions with this helper
-
-
-def calculate_shift_distance_in_metres(img, distance_x, distance_y):
-    """Convert the shift distance from proportion of img to metres"""
-
-    pixelsize_x = img.metadata.binary_result.pixel_size.x  # 5.20833e-008
-    field_width = pixelsize_x * img.width
-    field_height = pixelsize_x * img.height
-    x_shift = distance_x * field_width
-    y_shift = distance_y * field_height
-    print('x_shift = ', x_shift/1e-6, 'um; ', 'y_shift = ', y_shift/1e-6, 'um; ')
-
-    return x_shift, y_shift
-
-
 def calculate_shift_between_features_in_metres(img, shift_type, show=True, validate=True):
 
     # detector class (model)
@@ -1549,16 +947,6 @@ def calculate_shift_between_features_in_metres(img, shift_type, show=True, valid
     print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
     return x_shift, y_shift
-
-def lamella_edge_to_landing_post(img, landing_px, show=True):
-    """Calculate the shift in metres from needle tip to lamella centre """
-    landing_post_distance_x, landing_post_distance_y = calculate_lamella_edge_shift_from_landing_post(
-        img, landing_px=landing_px, show=True)
-
-    x_shift, y_shift = calculate_shift_distance_in_metres(img, landing_post_distance_x, landing_post_distance_y)
-
-    return x_shift, y_shift
-
 
 def land_needle_on_milled_lamella(microscope):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
@@ -1595,7 +983,6 @@ def land_needle_on_milled_lamella(microscope):
     ############################### Initial X-Y Movement ###############################
 
     # calculate shift in image coordinates
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(needle_eb_lowres_with_lamella)
     x_shift, y_shift = calculate_shift_between_features_in_metres(needle_eb_lowres_with_lamella, "needle_tip_to_lamella_centre")
 
     # move needle in x and y (e-beam)
@@ -1629,7 +1016,6 @@ def land_needle_on_milled_lamella(microscope):
                                                                                                                             image_settings=image_settings, __autocontrast=False,
                                                                                                                             save=True, save_label="D_needle_land_sample_highres_before_z_shift")
     # calculate shift in image coordinates (i-beam)
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(needle_ib_highres_with_lamella_shifted)
     x_shift, y_shift = calculate_shift_between_features_in_metres(needle_ib_lowres_with_lamella_shifted, "needle_tip_to_lamella_centre")
 
     # calculate shift in xyz coordinates
@@ -1652,7 +1038,6 @@ def land_needle_on_milled_lamella(microscope):
                                                                                                                           image_settings=image_settings, __autocontrast=True,
                                                                                                                           save=True, save_label="E_needle_land_sample_lowres_shifted_half_z" )
     # calculate shift in image coordinates (-beam)
-    # x_shift, y_shift = needletip_shift_from_lamella_centre(needle_ib_highres_with_lamella_shifted)
     x_shift, y_shift = calculate_shift_between_features_in_metres(needle_ib_highres_with_lamella_shifted, "needle_tip_to_lamella_centre")
 
     # calculate shift in xyz coordinates
@@ -2271,36 +1656,6 @@ def _create_mill_pattern(microscope, *,
     pattern.rotation = np.deg2rad(rotation_degrees)
     return pattern
 
-
-# def renormalise_and_mask_image(image, plot=False):
-#     from autoscript_sdb_microscope_client.structures import AdornedImage
-#     data = np.copy(image.data)
-
-#     data_norm = ( data - np.mean(data) ) / np.std(data)
-#     data_norm =  data_norm - data_norm.min()
-#     data_norm = data_norm / data_norm.max()  *  255
-#     data_norm = data_norm.astype(np.uint8)
-
-#     Nx, Ny = data.shape
-#     #################### elliptical mask ####################
-#     dx = int( Nx//2 * 0.1 )
-#     dy = int( Ny//2 * 0.1 )
-#     elps_mask = ellipse_mask(size=data.shape, radius1=Nx//2-dx, radius2=Ny//2-dy, sigma=min(dx//2,dy//2))
-#     elps_mask = np.transpose(elps_mask)
-#     #################### rectangular mask ####################
-#     #start  = np.round(np.array( [ int(Nx*0.1) , int(Ny*0.1) ] ) )
-#     #extent = np.round(np.array( [ int(Nx*0.8) , int(Ny*0.8),  ] ) )
-#     #rr, cc = skimage.draw.rectangle(start, extent=extent, shape=data.shape)
-#     #rect_mask = np.zeros(data.shape)
-#     #rect_mask[rr.astype(int), cc.astype(int)] = 1.0
-#     #rect_mask = ndi.gaussian_filter(rect_mask, sigma= min(dx//2,dy//2)   )
-
-#     image_norm = AdornedImage(data=(data_norm * elps_mask).astype(uint8)  )
-#     image_norm.metadata = image.metadata
-
-#     return image_norm
-
-
 def select_point_new(image):
     fig, ax = plt.subplots()
     ax.imshow(image, cmap="gray")
@@ -2333,54 +1688,6 @@ def validate_detection(img, img_base, detection_coord, det_type):
     print(detection_coord)
     return detection_coord
 
-def lamella_shift_from_img_centre(img, show=False):
-
-    #weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\12_04_2021_10_32_23_model.pt"
-    weights_file = r"C:\Users\Admin\MICROSCOPE\DeMarcoLab\liftout\patrick\models\fresh_full_n10.pt"
-    model = load_model(weights_file=weights_file)
-
-    # convert img to numpy array
-    img_orig = np.asarray(img.data)
-
-    # model inference + display
-    img_np, rgb_mask = model_inference(model, img=img_orig)
-
-    # detect and draw lamella centre, and needle tip
-    (
-        lamella_centre_px,
-        rgb_mask_lamella,
-        needle_tip_px,
-        rgb_mask_needle,
-        rgb_mask_combined,
-    ) = detect_and_draw_lamella_and_needle(rgb_mask)
-
-    # prediction overlay
-    img_overlay = show_overlay(img_np, rgb_mask_lamella)
-
-    img_overlay_resized = Image.fromarray(img_overlay).resize((img_np.shape[1], img_np.shape[0]))
-
-    if show:
-        fig, ax = plt.subplots(nrows=1, ncols=1)
-        ax.imshow(img_orig, cmap='Blues_r', alpha=1)
-        ax.imshow(img_overlay_resized, cmap='Oranges_r', alpha=0.5)
-
-        plt.show()
-
-    # # need to use the same scale images for both detection selections
-    img_downscale = Image.fromarray(img_orig).resize((rgb_mask_combined.size[0], rgb_mask_combined.size[1]))
-    lamella_centre_px = validate_detection(img_downscale, img, lamella_centre_px, "lamella centre")
-
-    # scale invariant coordinatess
-    scaled_lamella_centre_px, scaled_needle_tip_px = scale_invariant_coordinates(
-        needle_tip_px, lamella_centre_px, rgb_mask_combined
-    )
-
-    if scaled_lamella_centre_px is None:
-        raise ValueError("No lamella centre detected")
-
-    return 0.5 - scaled_lamella_centre_px[0], -(0.5 - scaled_lamella_centre_px[1])
-
-
 def quick_eucentric_test():
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
     from autoscript_sdb_microscope_client.structures import StagePosition
@@ -2406,9 +1713,6 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
     ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
     ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
 
-    # microscope.beams.ion_beam.horizontal_field_width.value = hor_field_width
-    # microscope.beams.electron_beam.horizontal_field_width.value = hor_field_width
-
     eb_lowres,  ib_lowres = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hor_field_width, image_settings=image_settings,
         __autocontrast=_autocontrast,
@@ -2429,36 +1733,6 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
     # x correction
     stage.relative_move(StagePosition(x=-x_shift))
 
-
-    ###################################### TO REPLACE #####################################
-
-    # # in microscope coordinates (not img coordinate)
-    # ib_distance_y, ib_distance_x = lamella_shift_from_img_centre(ib_lowres, show=True)
-
-    # # tested, can align within 20um
-
-    # # z correction
-    # pixelsize_x = ib_lowres.metadata.binary_result.pixel_size.x
-    # field_width = pixelsize_x * ib_lowres.width
-    # dy_meters_ion = ib_distance_y * field_width
-    # tilt_radians = stage.current_position.t
-
-    # yz_move_ion = y_corrected_stage_movement(dy_meters_ion, stage_tilt=tilt_radians, beam_type=BeamType.ION)
-    # stage.relative_move(yz_move_ion)
-
-    # # x correction
-    # field_height = pixelsize_x * ib_lowres.height
-    # dx_meters_ion = ib_distance_x * field_height
-    # stage.relative_move(StagePosition(x=dx_meters_ion))
-
-    # print("Realigning x and y in ion beam")
-    # print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
-    # print(f"Delta X movement: {dx_meters_ion}")
-    # print(f"Delta Y movement: {yz_move_ion.y}")
-    # print(f"Delta Z movement: {yz_move_ion.z}")
-
-    ###################################### TO REPLACE #####################################
-
     # electron dy shift
     eb_lowres,  ib_lowres = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hor_field_width, image_settings=image_settings,
@@ -2478,34 +1752,6 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
     # x correction
     stage.relative_move(StagePosition(x=-x_shift))
 
-
-    ###################################### TO REPLACE #####################################
-    # in microscope coordinates (not img coordinate)
-    # renormalise_and_mask_image
-    # eb_distance_y, eb_distance_x = lamella_shift_from_img_centre(eb_lowres, show=True)
-
-
-    # # z correction
-    # pixelsize_x = eb_lowres.metadata.binary_result.pixel_size.x
-    # field_width = pixelsize_x * eb_lowres.width
-    # dy_meters_elec = eb_distance_y * field_width
-    # tilt_radians = stage.current_position.t
-
-    # yz_move_elec = y_corrected_stage_movement(dy_meters_elec, stage_tilt=tilt_radians, beam_type=BeamType.ELECTRON)
-    # stage.relative_move(yz_move_elec)
-
-    # # x correction
-    # field_height = pixelsize_x * eb_lowres.height
-    # dx_meters_elec = eb_distance_x * field_height
-    # stage.relative_move(StagePosition(x=dx_meters_elec))
-
-    # print("Realigning x and y in electron beam")
-    # print(f"Electron Beam: {eb_distance_y}, {eb_distance_x}")
-    # print(f"Delta Y movement: {yz_move_elec.y}")
-    # print(f"Delta Z movement: {yz_move_elec.z}")
-    # print(f"Delta X movement: {dx_meters_elec}")
-    ###################################### TO REPLACE #####################################
-
     # ion again
     eb_lowres,  ib_lowres = take_electron_and_ion_reference_images(
         microscope, hor_field_width=hor_field_width, image_settings=image_settings,
@@ -2513,8 +1759,6 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
         eb_brightness=eb_brightness, eb_contrast=eb_contrast,
         ib_brightness=ib_brightness, ib_contrast=ib_contrast,
         save=True, save_label="A_eucentric_calibration_lowres_moved_2",)
-
-
 
     # new
     x_shift, y_shift = calculate_shift_between_features_in_metres(ib_lowres, "lamella_centre_to_image_centre")
@@ -2526,34 +1770,6 @@ def realign_eucentric_with_machine_learning(microscope, image_settings, hor_fiel
 
     # x correction
     stage.relative_move(StagePosition(x=-x_shift))
-
-    ################################### TO REPLACE #####################################
-
-    # in microscope coordinates (not img coordinate)
-    # ib_distance_y, ib_distance_x = lamella_shift_from_img_centre(ib_lowres, show=True)
-
-    # # z correction
-    # pixelsize_x = ib_lowres.metadata.binary_result.pixel_size.x
-    # field_width = pixelsize_x * ib_lowres.width
-    # dy_meters_ion = ib_distance_y * field_width
-    # tilt_radians = stage.current_position.t
-    # delta_z = -np.cos(tilt_radians) * dy_meters_ion
-
-    # yz_move_ion = y_corrected_stage_movement(dy_meters_ion, stage_tilt=tilt_radians, beam_type=BeamType.ION)
-    # stage.relative_move(yz_move_ion)
-
-    # # x correction
-    # field_height = pixelsize_x * ib_lowres.height
-    # dx_meters_ion = ib_distance_x * field_height
-    # stage.relative_move(StagePosition(x=dx_meters_ion))
-
-    # print("Realigning x and y in ion beam")
-    # print(f"Ion Beam: {ib_distance_y}, {ib_distance_x}")
-    # print(f"Delta Y movement: {yz_move_ion.y}")
-    # print(f"Delta Z movement: {yz_move_ion.z}")
-    # print(f"Delta X movement: {dy_meters_ion}")
-
-    ###################################### TO REPLACE #####################################
 
     # # take final position images
     eb_lowres,  ib_lowres = take_electron_and_ion_reference_images(
@@ -2623,13 +1839,11 @@ def mill_lamella(microscope, settings, confirm=True):
                                 save=True, save_label="ref_A_highres_brightness_contrast")
 
     # use these images for future alignment
-    # reference_images_low_and_high_res_BC = (eb_lowres, eb_highres, ib_lowres, ib_highres)
 
     # Move to flat_to_electron, take electron beam images, align using ion-beam image from tenching angle, Move to Jcut angle(+6 deg)
     flat_to_electron_beam(microscope, pretilt_angle=PRETILT_DEGREES)  # rotate to flat_to_electron
     microscope.beams.ion_beam.horizontal_field_width.value = 400e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 400e-6
-    # refocus_and_relink(microscope)
 
     ############################### Realign with Ref Images ###############################
 
@@ -2648,12 +1862,6 @@ def mill_lamella(microscope, settings, confirm=True):
 
     # take reference images after alignment
     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
-    # eb_lowres_reference,  ib_lowres_reference = take_electron_and_ion_reference_images(
-    #     microscope, hor_field_width=150e-6, image_settings=image_settings)  # TODO: yaml use input
-    # eb_highres_reference, ib_highres_reference = take_electron_and_ion_reference_images(
-    #     microscope, hor_field_width=50e-6,  image_settings=image_settings)  # TODO: yaml use input
-    # reference_images_low_and_high_res = (eb_lowres_reference, eb_highres_reference,
-    #                                      ib_lowres_reference, ib_highres_reference)
 
     eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
     eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
@@ -2684,11 +1892,9 @@ def mill_lamella(microscope, settings, confirm=True):
     tilting = StagePosition(x=0, y=0, z=0, t=np.deg2rad(3))
     print(tilting)
     stage.relative_move(tilting, stage_settings)
-    #realign_at_different_stage_tilts(microscope, reference_images_low_and_high_res, previous_stage_tilt=previous_stage_tilt, beam_type=BeamType.ION)
 
     # realign with model
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
-    # TODO: investigate autocontrast problem (spiked pixel intensities)
     realign_eucentric_with_machine_learning(microscope, image_settings_ML,
                                             hor_field_width=150e-6, _autocontrast=True)
 
@@ -2713,7 +1919,6 @@ def mill_lamella(microscope, settings, confirm=True):
                             save=True, save_label="tilt_3_deg_A_highres_brightness_contrast")
 
     # # use these images for future alignment
-    # reference_images_low_and_high_res_BC = (eb_lowres, eb_highres, eb_highres, ib_highres)
     storage.step_counter += 1
 
     # Need to tilt +6 deg, tilt first +3 deg only, again +3deg, Now +6 deg
@@ -2770,62 +1975,6 @@ def mill_lamella(microscope, settings, confirm=True):
     realign_eucentric_with_machine_learning(microscope, image_settings_ML, hor_field_width=hfw_ml, _autocontrast=True)
 
     print("Done, ready for liftout!")
-
-
-# def OLD__mill_lamella(microscope, settings, confirm=True):
-#     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
-#     stage = microscope.specimen.stage
-#     # Set the correct magnification / field of view
-#     field_of_view = 100e-6  # in meters  TODO: user input from yaml settings
-#     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
-#     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
-#     # Move to trench position
-#     move_to_trenching_angle(microscope)  # flat to the ion
-#     ib = new_ion_image(microscope)       # Take an ion beam image at the *milling current*
-#     mill_trenches(microscope, settings, confirm=confirm)
-#     autocontrast(microscope, beam_type=BeamType.ION)
-#     image_settings = GrabFrameSettings(resolution="1536x1024", dwell_time=1e-6)  # TODO: user input resolution
-#     ib_original = new_ion_image(microscope, settings=image_settings)
-#     template = create_reference_image(ib_original)
-#     # Low res template image
-#     scaling_factor = 4
-#     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view * scaling_factor
-#     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view * scaling_factor
-#     ib_lowres_original = new_ion_image(microscope, settings=image_settings)
-#     lowres_template = AdornedImage(data=np.rot90(np.rot90(ib_lowres_original.data)))
-#     lowres_template.metadata = ib_lowres_original.metadata
-#     # Move to Jcut angle and take electron beam image
-#     move_to_jcut_angle(microscope)  # flat to electron beam
-#     # Low res resolution
-#     autocontrast(microscope, beam_type=BeamType.ELECTRON)
-#     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view * scaling_factor
-#     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view * scaling_factor
-#     image = new_electron_image(microscope, settings=image_settings)
-#     location = match_locations(microscope, image, lowres_template)
-#     realign_hog_matcher(microscope, location)
-#     eb = new_electron_image(microscope, settings=image_settings)
-#     # Realign first to the electron beam image
-#     autocontrast(microscope, beam_type=BeamType.ELECTRON)
-#     microscope.beams.ion_beam.horizontal_field_width.value = field_of_view
-#     microscope.beams.electron_beam.horizontal_field_width.value = field_of_view
-#     image = new_electron_image(microscope, settings=image_settings)
-#     location = match_locations(microscope, image, template)
-#     realign_hog_matcher(microscope, location)
-#     eb = new_electron_image(microscope, settings=image_settings)
-#     # Fine tune alignment of ion beam image
-#     autocontrast(microscope, beam_type=BeamType.ION)
-#     image = new_ion_image(microscope, settings=image_settings)
-#     location = match_locations(microscope, image, template)
-#     realign_hog_matcher(microscope, location)
-#     ib = new_ion_image(microscope, settings=image_settings)
-#     eb = new_electron_image(microscope, settings=image_settings)
-#     # Mill J-cut
-#     mill_jcut(microscope, settings['jcut'], confirm=False)
-#     final_ib = new_ion_image(microscope, settings=image_settings)
-#     final_eb = new_electron_image(microscope, settings=image_settings)
-#     # Ready for liftout
-#     move_to_liftout_angle(microscope)
-#     print("Done, ready for liftout!")
 
 def land_lamella(microscope, landing_coord, original_landing_images):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
@@ -2885,7 +2034,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
                                                                                                                           image_settings=image_settings,
                                                                                                                           save=True, save_label="C_landing_needle_land_sample_lowres_after_z_move")
 
-    # x_shift, y_shift = lamella_edge_to_landing_post(needle_eb_lowres_with_lamella_shifted, landing_px)
     x_shift, y_shift = calculate_shift_between_features_in_metres(needle_eb_lowres_with_lamella_shifted, "lamella_edge_to_landing_post")
 
     # half move
@@ -2924,7 +2072,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
         save=True, save_label="E_landing_lamella_final_weld")
 
     # calculate shift from needle top to centre of image
-    x_shift, y_shift = needletip_shift_from_img_centre(landing_ib_highres3)
+    x_shift, y_shift = calculate_shift_between_features_in_metres(needle_eb_highres_with_lamella_shifted, "needle_tip_to_image_centre")
 
 
     height = storage.settings["cut"]["height"]
@@ -2969,7 +2117,6 @@ def land_lamella(microscope, landing_coord, original_landing_images):
 
     storage.step_counter += 1
 
-
 import patrick.detection as detection
 
 def thinning_lamella(microscope):
@@ -3011,35 +2158,7 @@ def thinning_lamella(microscope):
 
     # realign lamella to image centre
     image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
-
     realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=100e-6)
-
-    # import patrick.detection as detection
-
-    # # take images for thinning lamella patterns
-    # eb_brightness = storage.settings["machine_learning"]["eb_brightness"]
-    # eb_contrast = storage.settings["machine_learning"]["eb_contrast"]
-    # ib_brightness = storage.settings["machine_learning"]["ib_brightness"]
-    # ib_contrast = storage.settings["machine_learning"]["ib_contrast"]
-
-    # lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
-    #     microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
-    #     __autocontrast=True, eb_brightness=eb_brightness, eb_contrast=eb_contrast,
-    #     ib_brightness=ib_brightness, ib_contrast=ib_contrast,
-    #     save=True, save_label="A_thinning_lamella_patterns2")
-
-
-    # # thinning top and bottom
-    # shift_types=["thin_lamella_top_to_centre", "thin_lamella_bottom_to_centre"]
-
-    # thinning_shifts = []
-    # for shift_type in shift_types:
-
-    #     x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, shift_type)
-
-    #     # append shifts for patterns
-    #     thinning_shifts.append((x_shift, y_shift))
-
 
     # LAMELLA EDGE TO IMAGE CENTRE?
     # x-movement
@@ -3073,13 +2192,14 @@ def thinning_lamella(microscope):
     # mill thin lamella pattern
     mill_thin_lamella(microscope, settings, confirm=True)
 
+    # take reference images after cleaning
     storage.step_counter += 1
     lamella_eb, lamella_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
                                                                     image_settings=image_settings,
                                                                     save=True, save_label="A_lamella_post_thinning")
 
-
-
+    # cleaning finished
+    print("Trim Lamella Finished.")
 
     # # calculate thinning patterns
     # height = storage.settings["thin"]["height"]
@@ -3115,22 +2235,22 @@ def thinning_lamella(microscope):
     # # TODO: this actually needs to be the shift from the img centre (needs to happen for top and bottom...)
 
 
-def create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom):
-    thinning_lamella_patterns = []
-    for thinning_coord in [thinning_coord_top, thinning_coord_bottom]:
-        pattern = _create_mill_pattern(
-            microscope,
-            center_x=thinning_coord["center_x"],
-            center_y=thinning_coord["center_y"],
-            width=thinning_coord["width"],
-            height=thinning_coord["height"],
-            depth=thinning_coord["depth"],
-            rotation_degrees=thinning_coord["rotation"],
-            ion_beam_field_of_view=thinning_coord["hfw"],
-        )
-        thinning_lamella_patterns.append(pattern)
+# def create_thinning_lamella_patterns(microscope, thinning_coord_top, thinning_coord_bottom):
+#     thinning_lamella_patterns = []
+#     for thinning_coord in [thinning_coord_top, thinning_coord_bottom]:
+#         pattern = _create_mill_pattern(
+#             microscope,
+#             center_x=thinning_coord["center_x"],
+#             center_y=thinning_coord["center_y"],
+#             width=thinning_coord["width"],
+#             height=thinning_coord["height"],
+#             depth=thinning_coord["depth"],
+#             rotation_degrees=thinning_coord["rotation"],
+#             ion_beam_field_of_view=thinning_coord["hfw"],
+#         )
+#         thinning_lamella_patterns.append(pattern)
 
-    return thinning_lamella_patterns
+#     return thinning_lamella_patterns
 
 
 

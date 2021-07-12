@@ -17,7 +17,7 @@ from scipy.spatial import distance
 
 from patrick.DetectionModel import DetectionModel
 
-from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection
+from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
 
 class Detector:
 

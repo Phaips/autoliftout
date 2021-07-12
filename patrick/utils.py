@@ -50,6 +50,36 @@ def load_image(fname):
 
     return img
 
+def validate_detection(img, img_base, detection_coord, det_type):
+    correct = input("Is this correct (y/n)")
+
+    if correct == "n":
+
+        print(f"Please click the {det_type} position")
+        detection_coord = select_point_new(img)
+
+        # save image for training here
+        print("Saving image for labelling")
+        storage.step_counter += 1
+        storage.SaveImage(img_base, id="label_")
+
+    print(detection_coord)
+    return detection_coord
+
+def select_point_new(image):
+    fig, ax = plt.subplots()
+    ax.imshow(image, cmap="gray")
+    coords = []
+
+    def on_click(event):
+        print(event.xdata, event.ydata)
+        coords.append(event.ydata)
+        coords.append(event.xdata)
+
+    fig.canvas.mpl_connect("button_press_event", on_click)
+    plt.show()
+
+    return tuple(coords[-2:])
 
 def load_image_from_file(fname):
 
