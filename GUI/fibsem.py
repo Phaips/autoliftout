@@ -32,15 +32,18 @@ def initialize(ip_address='10.0.0.1'):
 #
 
 
-def new_ion_image(microscope, settings=None):
-    """Take new ion beam image.
+def new_image(microscope, settings=None, modality=None):
+    """Take new ion or electron beam image.
 
     Uses whichever camera settings (resolution, dwell time, etc) are current.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
-
+    settings : Settings for image acquisition
+    modality : Which microscope to acquire an image from.  Possible options:
+        - "SEM" for electron beam
+        - "FIB" for ion beam
     Returns
     -------
     AdornedImage
@@ -49,22 +52,31 @@ def new_ion_image(microscope, settings=None):
         image.metadata.binary_result.pixel_size.x = image pixel size in x
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
-    microscope.imaging.set_active_view(2)  # the ion beam view
-    if settings is not None:
-        image = microscope.imaging.grab_frame(settings)
+    view = None
+    if modality == "FIB":
+        view = 1
+    elif modality == "SEM":
+        view = 2
+    if view is not None:
+        microscope.imaging.set_active_view(view)
+        if settings is not None:
+            image = microscope.imaging.grab_frame(settings)
+        else:
+            image = microscope.imaging.grab_frame()
     else:
-        image = microscope.imaging.grab_frame()
+        raise ValueError
     return image
 
 
-def new_electron_image(microscope, settings=None):
-    """Take new electron beam image.
-
-    Uses whichever camera settings (resolution, dwell time, etc) are current.
+def last_image(microscope, modality=None):
+    """Get the last previously acquired ion or electron beam image.
 
     Parameters
     ----------
     microscope : Autoscript microscope object.
+    modality : Which microscope to acquire an image from.  Possible options:
+        - "SEM" for electron beam
+        - "FIB" for ion beam
 
     Returns
     -------
@@ -74,51 +86,17 @@ def new_electron_image(microscope, settings=None):
         image.metadata.binary_result.pixel_size.x = image pixel size in x
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
-    microscope.imaging.set_active_view(1)  # the electron beam view
-    if settings is not None:
-        image = microscope.imaging.grab_frame(settings)
+
+    view = None
+    if modality == "FIB":
+        view = 1
+    elif modality == "SEM":
+        view = 2
+    if view is not None:
+        microscope.imaging.set_active_view(view)  # the ion beam view
+        image = microscope.imaging.get_image()
     else:
-        image = microscope.imaging.grab_frame()
-    return image
-
-
-def last_ion_image(microscope):
-    """Get the last previously acquired ion beam image.
-
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-
-    Returns
-    -------
-    AdornedImage
-        If the returned AdornedImage is named 'image', then:
-        image.data = a numpy array of the image pixels
-        image.metadata.binary_result.pixel_size.x = image pixel size in x
-        image.metadata.binary_result.pixel_size.y = image pixel size in y
-    """
-    microscope.imaging.set_active_view(2)  # the ion beam view
-    image = microscope.imaging.get_image()
-    return image
-
-
-def last_electron_image(microscope):
-    """Get the last previously acquired electron beam image.
-
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-
-    Returns
-    -------
-    AdornedImage
-        If the returned AdornedImage is named 'image', then:
-        image.data = a numpy array of the image pixels
-        image.metadata.binary_result.pixel_size.x = image pixel size in x
-        image.metadata.binary_result.pixel_size.y = image pixel size in y
-    """
-    microscope.imaging.set_active_view(1)  # the electron beam view
-    image = microscope.imaging.get_image()
+        raise ValueError
     return image
 
 
