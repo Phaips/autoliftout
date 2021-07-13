@@ -11,26 +11,6 @@ def initialize(ip_address='10.0.0.1'):
     microscope.connect(ip_address)
     return microscope
 
-# Too far! even futher than the fluorescence position
-# x = 54.5085 mm <-- LIMIT HIT
-#
-# Fluorescence position (roughly)
-# x = +48.4295 mm
-# y = -10.1004 mm
-#
-# FIBSEM position (roughly)
-# x = -1.5225 mm
-# y = -9.9092 mm
-#
-# Too far! even further than the FIBSEM place
-# x = -51.4745 mm
-# y = -9.718 mm
-# z = -4.0000 mm
-#
-# LIMIT!
-# x = -55.4915 mm <- LIMIT HIT
-#
-
 
 def new_image(microscope, settings=None, modality=None):
     """Take new ion or electron beam image.
@@ -42,8 +22,8 @@ def new_image(microscope, settings=None, modality=None):
     microscope : Autoscript microscope object.
     settings : Settings for image acquisition
     modality : Which microscope to acquire an image from.  Possible options:
-        - "SEM" for electron beam
-        - "FIB" for ion beam
+        - 'SEM' for electron beam
+        - 'FIB' for ion beam
     Returns
     -------
     AdornedImage
@@ -53,9 +33,9 @@ def new_image(microscope, settings=None, modality=None):
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
     view = None
-    if modality == "FIB":
+    if modality == 'SEM':
         view = 1
-    elif modality == "SEM":
+    elif modality == 'FIB':
         view = 2
     if view is not None:
         microscope.imaging.set_active_view(view)
@@ -75,8 +55,8 @@ def last_image(microscope, modality=None):
     ----------
     microscope : Autoscript microscope object.
     modality : Which microscope to acquire an image from.  Possible options:
-        - "SEM" for electron beam
-        - "FIB" for ion beam
+        - 'SEM' for electron beam
+        - 'FIB' for ion beam
 
     Returns
     -------
@@ -88,9 +68,9 @@ def last_image(microscope, modality=None):
     """
 
     view = None
-    if modality == "FIB":
+    if modality == 'SEM':
         view = 1
-    elif modality == "SEM":
+    elif modality == 'FIB':
         view = 2
     if view is not None:
         microscope.imaging.set_active_view(view)  # the ion beam view
@@ -152,10 +132,10 @@ def create_rectangular_pattern(microscope, image, x0, x1, y0, y1, depth=1e-6):
 
 
 def pixel_to_realspace_coordinate(coord, image):
-    """Covert pixel image coordinate to real space coordinate.
+    """Convert pixel image coordinate to real space coordinate.
 
     This conversion deliberately ignores the nominal pixel size in y,
-    as this can lead to inaccuraccies if the sample is not flat in y.
+    as this can lead to inaccuracies if the sample is not flat in y.
 
     Parameters
     ----------
@@ -201,13 +181,13 @@ def autocontrast(microscope):
     from autoscript_sdb_microscope_client.structures import RunAutoCbSettings
     microscope.imaging.set_active_view(2)
     RunAutoCbSettings(
-        method="MaxContrast",
-        resolution="768x512",  # low resolution, so as not to damage the sample
+        method='MaxContrast',
+        resolution='768x512',  # low resolution, so as not to damage the sample
         number_of_frames=5,
     )
-    logging.info("Automatically adjusting contrast...")
+    logging.info('Automatically adjusting contrast...')
     microscope.auto_functions.run_auto_cb()
-    image = last_image(microscope, modality="FIB")
+    image = last_image(microscope, modality='FIB')
     return image
 
 
@@ -221,10 +201,10 @@ def update_camera_settings(camera_dwell_time, image_resolution):
     image_resolution : str
         String describing image resolution. Format is pixel width by height.
         Common values include:
-            "1536x1024"
-            "3072x2048"
-            "6144x4096"
-            "768x512"
+            '1536x1024'
+            '3072x2048'
+            '6144x4096'
+            '768x512'
         The full list of available values may differ between instruments.
         See microscope.beams.ion_beam.scanning.resolution.available_values
 
