@@ -80,55 +80,41 @@ def last_image(microscope, modality=None):
     return image
 
 
-def create_rectangular_pattern(microscope, image, x0, x1, y0, y1, depth=1e-6):
-    """Create a rectangular pattern that is sent to the FIBSEM controller.
+def move_relative(microscope, x=0.0, y=0.0):
+    """Move the sample stage in ion or electron beam view and take new image
 
     Parameters
     ----------
-    microscope : Microscope class.
-        Connection to Autoscript client
-    image : Adorned Image
-        The image to draw rectangle on
-    x0 : float
-        X co-ord of top left corner of rectangle
-        Pixel coordinates, origin at top left corner.
-    x1 : float
-        X co-ord of bottom right corner of rectangle
-        Pixel coordinates, origin at top left corner.
-    y0 : float
-        Y co-ord of top left corner of rectangle
-        Pixel coordinates, origin at top left corner.
-    y1 : float
-        Y co-ord of bottom right corner of rectangle
-        Pixel coordinates, origin at top left corner.
-    depth : float
-        How deep to mill the ion beam pattern.
-        Realspace units, in meters. Default is 1e-6 == 1 micron depth.
+    microscope : Autoscript microscope object.
+    x : float, optional
+        Relative movement in x in realspace co-ordinates.
+    y : float, optional
+        Relative movement in y in realspace co-ordinates.
 
     Returns
     -------
-    rectangle_milling_pattern
-        Autoscript rectangle milling pattern. RectanglePattern class object.
+    StagePosition
+        FIBSEM microscope sample stage position after moving.
+        If the returned stage position is called 'stage_pos' then:
+        stage_pos.x = the x position of the FIBSEM sample stage (in meters)
+        stage_pos.y = the y position of the FIBSEM sample stage (in meters)
+        stage_pos.z = the z position of the FIBSEM sample stage (in meters)
+        stage_pos.r = the rotation of the FIBSEM sample stage (in radians)
+        stage_pos.t = the tilt of the FIBSEM sample stage (in radians)
     """
-    if x0 is None or x1 is None or y0 is None or y1 is None:
-        logging.warning("No rectangle selected")
+    from autoscript_sdb_microscope_client.structures import StagePosition
+    current_position_x = microscope.specimen.stage.current_position.x
+    current_position_y = microscope.specimen.stage.current_position.y
+    if current_position_x > 10e-3 or current_position_x < -10e-3:
+        print('Not under electron microscope, please reposition')
         return
-    microscope.imaging.set_active_view(2)  # the ion beam view
-    microscope.patterning.clear_patterns()
-    pixelsize_x = image.metadata.binary_result.pixel_size.x
-    pixelsize_y = image.metadata.binary_result.pixel_size.y
+    new_position = StagePosition(x=x, y=y, z=0, r=0, t=0)
+    # microscope.specimen.stage.relative_move(new_position)
+    print(f'Old position: {current_position_x*1e6}, {current_position_y*1e6}')
+    print(f'Moving by: {x*1e6}, {y*1e6}')
+    print(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
 
-    width = (x1-x0) * pixelsize_x   # real space (meters)
-    height = (y1-y0) * pixelsize_y  # real space (meters)
-
-    center_x_pixels = (x0 + ((x1-x0)/2))
-    center_y_pixels = (y0 + ((y1-y0)/2))
-
-    center_x_realspace, center_y_realspace = pixel_to_realspace_coordinate(
-        [center_x_pixels, center_y_pixels], image)
-    rectangle_milling_pattern = microscope.patterning.create_rectangle(
-        center_x_realspace, center_y_realspace, width, height, depth)
-    return rectangle_milling_pattern
+    return microscope.specimen.stage.current_position
 
 
 def pixel_to_realspace_coordinate(coord, image):
