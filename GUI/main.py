@@ -103,19 +103,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def initialise_image_frames(self):
         import matplotlib.pyplot as plt
 
-        figure_SEM = plt.figure()
-        canvas_SEM = _FigureCanvas(figure_SEM)
-        toolbar_SEM = _NavigationToolbar(canvas_SEM, self)
+        self.figure_SEM = plt.figure()
+        self.canvas_SEM = _FigureCanvas(self.figure_SEM)
+        self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
         self.label_SEM.setLayout(QtWidgets.QVBoxLayout())
-        self.label_SEM.layout().addWidget(toolbar_SEM)
-        self.label_SEM.layout().addWidget(canvas_SEM)
+        self.label_SEM.layout().addWidget(self.toolbar_SEM)
+        self.label_SEM.layout().addWidget(self.canvas_SEM)
 
-        figure_FIB = plt.figure()
-        canvas_FIB = _FigureCanvas(figure_FIB)
-        toolbar_FIB = _NavigationToolbar(canvas_FIB, self)
+        self.figure_FIB = plt.figure()
+        self.canvas_FIB = _FigureCanvas(self.figure_FIB)
+        self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
         self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
-        self.label_FIB.layout().addWidget(toolbar_FIB)
-        self.label_FIB.layout().addWidget(canvas_FIB)
+        self.label_FIB.layout().addWidget(self.toolbar_FIB)
+        self.label_FIB.layout().addWidget(self.canvas_FIB)
 
     def initialize_hardware(self, offline=False):
         if offline is False:
@@ -399,8 +399,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # Return random data if running in offline mode
         if self.offline:
             try:
-                self.image_SEM = np.random.rand(self.label_SEM.maximumHeight(), self.label_SEM.maximumWidth())
-                self.image_FIB = self.image_SEM
+                self.image_SEM.data = np.random.rand(self.label_SEM.maximumHeight(), self.label_SEM.maximumWidth())
+                self.image_FIB.data = self.image_SEM
                 self.update_display(modality=modality)
                 return
             except Exception:
@@ -439,16 +439,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Update the GUI display with the current image"""
         try:
             if modality == "SEM":
-                # image_array = self.image_SEM
+                image_array = self.image_SEM.data
                 self.figure_SEM.clear()
                 ax = self.figure_SEM.add_subplot(111)
-                ax.imshow(self.data)
+                ax.imshow(image_array, cmap='gray')
                 self.canvas_SEM.draw()
             elif modality == "FIB":
                 image_array = self.image_FIB.data
                 self.figure_FIB.clear()
                 ax = self.figure_FIB.add_subplot(111)
-                ax.imshow(image_array)
+                ax.imshow(image_array, cmap='gray')
                 self.canvas_FIB.draw()
 
         except Exception:
@@ -489,5 +489,5 @@ def launch_gui(ip_address="10.0.0.1", offline=False):
     sys.exit(app.exec_())
 
 
-# main(offline="False")
-main(offline="True")
+main(offline="False")
+# main(offline="True")
