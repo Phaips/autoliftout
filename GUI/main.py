@@ -71,13 +71,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_SEM = None
         self.image_FIB = None
         self.figure_SEM = None
-        self.canvas_SEM = None
-        self.toolbar_SEM = None
         self.figure_FIB = None
+        self.canvas_SEM = None
         self.canvas_FIB = None
+        self.ax_SEM = None
+        self.ax_FIB = None
+        self.toolbar_SEM = None
         self.toolbar_FIB = None
 
         self.initialise_image_frames()
+
+        # image frame interaction
+        self.xclick = None
+        self.yclick = None
 
         # initialise template and information
         self.edit = None
@@ -96,7 +102,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.lasers = None
         self.objective_stage = None
         self.camera_settings = None
-        self.comboBox_resolution.setCurrentIndex(2)  # resolution "3072x2048"
+        self.comboBox_resolution.setCurrentIndex(2)  # resolution '3072x2048'
 
         self.initialize_hardware(offline=offline)
 
@@ -431,14 +437,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if modality == 'SEM':
                 image_array = self.image_SEM.data
                 self.figure_SEM.clear()
-                ax = self.figure_SEM.add_subplot(111)
-                ax.imshow(image_array, cmap='gray')
+                self.ax_SEM = self.figure_SEM.add_subplot(111)
+                self.ax_SEM.imshow(image_array, cmap='gray')
                 self.canvas_SEM.draw()
             elif modality == 'FIB':
                 image_array = self.image_FIB.data
                 self.figure_FIB.clear()
-                ax = self.figure_FIB.add_subplot(111)
-                ax.imshow(image_array, cmap='gray')
+                self.ax_FIB = self.figure_FIB.add_subplot(111)
+                self.ax_FIB.imshow(image_array, cmap='gray')
                 self.canvas_FIB.draw()
 
         except Exception:
