@@ -200,19 +200,20 @@ def autocontrast(microscope):
     """
     from autoscript_sdb_microscope_client.structures import RunAutoCbSettings
     microscope.imaging.set_active_view(2)
-    autocontrast_settings = RunAutoCbSettings(
+    RunAutoCbSettings(
         method="MaxContrast",
         resolution="768x512",  # low resolution, so as not to damage the sample
         number_of_frames=5,
     )
-    # logging.info("Automatically adjusting contrast...")
+    logging.info("Automatically adjusting contrast...")
     microscope.auto_functions.run_auto_cb()
-    return autocontrast_settings
+    image = last_image(microscope, modality="FIB")
+    return image
 
 
 def update_camera_settings(camera_dwell_time, image_resolution):
     """Create new FIBSEM camera settings using Austoscript GrabFrameSettings.
-
+    
     Parameters
     ----------
     camera_dwell_time : float
