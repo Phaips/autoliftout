@@ -106,6 +106,26 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.initialize_hardware(offline=offline)
 
+    def on_click(self, event, modality):
+        image = None
+        if modality == 'SEM':
+            image = self.image_SEM
+        elif modality == 'FIB':
+            image = self.image_FIB
+
+        if event.button == 1:
+            if event.dblclick:
+                if image:
+                    self.xclick = event.xdata
+                    self.yclick = event.ydata
+                    x, y = fibsem.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                    # print(f'Moving {modality} in x by {round(x*1e6, 2)}um')
+                    # print(f'Moving {modality} in y by {round(y*1e6, 2)}um\n')
+
+                    fibsem.move_relative(self.microscope, x, y)
+                    self.get_last_image(modality=modality)
+
+
     def initialise_image_frames(self):
         import matplotlib.pyplot as plt
 
@@ -116,12 +136,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_SEM.layout().addWidget(self.toolbar_SEM)
         self.label_SEM.layout().addWidget(self.canvas_SEM)
 
+        self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_click(event, modality='SEM'))
+
         self.figure_FIB = plt.figure()
         self.canvas_FIB = _FigureCanvas(self.figure_FIB)
         self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
         self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
         self.label_FIB.layout().addWidget(self.toolbar_FIB)
         self.label_FIB.layout().addWidget(self.canvas_FIB)
+
+        self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_click(event, modality='FIB'))
 
     def initialize_hardware(self, offline=False):
         if offline is False:
