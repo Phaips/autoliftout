@@ -50,8 +50,8 @@ key_list_protocol = [
 ]
 
 protocol_template_path = '..\\protocol_liftout.yml'
-starting_positions = 6
-information_keys = ['x', 'y', 'z', 'Θx', 'Θy', 'Θz']
+starting_positions = 1
+information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
 
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
@@ -122,7 +122,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.connect_to_microscope(ip_address=self.ip_address)
         elif offline is True:
             pass
-            # self.connect_to_microscope(ip_address="localhost")
+            # self.connect_to_microscope(ip_address='localhost')
 
     def setup_connections(self):
         # Protocol and information table connections
@@ -181,8 +181,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         new_table_widget = QtWidgets.QTableWidget()
         new_table_widget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         new_table_widget.setAlternatingRowColors(True)
-        new_table_widget.setObjectName(f"tableWidget_{num_index}")
-        new_table_widget.setColumnCount(6)
+        new_table_widget.setObjectName(f'tableWidget_{num_index}')
+        new_table_widget.setColumnCount(len(information_keys))
         new_table_widget.setRowCount(starting_positions)
 
         # set up rows
@@ -326,7 +326,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     print('Not a yml configuration file')
                     load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
 
-                with open(load_directory.name, "r") as file:
+                with open(load_directory.name, 'r') as file:
                     _dict = yaml.safe_load(file)
                     file.close()
             except Exception:
@@ -363,17 +363,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             item.setText(str(self.params[information_keys[column]]))
             information.setItem(row, column, item)
 
-    def disconnect(self):
-        print("Running cleanup/teardown")
-        logging.debug("Running cleanup/teardown")
-        if self.objective_stage is not None and self.offline is False:
-            # Return objective lens stage to the "out" position and disconnect.
-            self.move_absolute_objective_stage(self.objective_stage, position=0)
-            self.objective_stage.disconnect()
-        if self.microscope is not None:
-            self.microscope.disconnect()
-
-    def connect_to_microscope(self, ip_address="10.0.0.1"):
+    def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""
         try:
             from GUI import fibsem
@@ -453,6 +443,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         except Exception:
             display_error_message(traceback.format_exc())
+
+    def disconnect(self):
+        print('Running cleanup/teardown')
+        logging.debug('Running cleanup/teardown')
+        if self.objective_stage and self.offline is False:
+            # Return objective lens stage to the 'out' position and disconnect.
+            self.move_absolute_objective_stage(self.objective_stage, position=0)
+            self.objective_stage.disconnect()
+        if self.microscope:
+            self.microscope.disconnect()
 
 
 def display_error_message(message):
