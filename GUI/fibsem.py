@@ -213,7 +213,7 @@ def autocontrast(microscope):
 
 def update_camera_settings(camera_dwell_time, image_resolution):
     """Create new FIBSEM camera settings using Austoscript GrabFrameSettings.
-    
+
     Parameters
     ----------
     camera_dwell_time : float
