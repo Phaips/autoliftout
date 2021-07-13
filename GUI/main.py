@@ -125,7 +125,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     fibsem.move_relative(self.microscope, x, y)
                     self.get_last_image(modality=modality)
 
-
     def initialise_image_frames(self):
         import matplotlib.pyplot as plt
 
