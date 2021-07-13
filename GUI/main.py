@@ -16,37 +16,37 @@ _translate = QtCore.QCoreApplication.translate
 logger = logging.getLogger(__name__)
 
 key_list_protocol = [
-    "demo_mode",
-    "system",
-    "ip_address",
-    "application_file_rectangle",
-    "application_file_cleaning_cross_section",
-    "imaging",
-    "horizontal_field_width",
-    "dwell_time",
-    "resolution",
-    "lamella",
-    "lamella_width",
-    "lamella_height",
-    "total_cut_height",
-    "milling_depth",
-    "milling_current",
-    "protocol_stages",
-    "percentage_roi_height",
-    "percentage_from_lamella_surface",
-    "milling_current",
-    "percentage_from_lamella_surface",
-    "jcut",
-    "jcut_milling_current",
-    "jcut_angle",
-    "jcut_length",
-    "jcut_lamella_depth",
-    "jcut_trench_thickness",
-    "jcut_milling_depth",
-    "extra_bit",
-    "mill_lhs_jcut_pattern",
-    "mill_rhs_jcut_pattern",
-    "mill_top_jcut_pattern",
+    'demo_mode',
+    'system',
+    'ip_address',
+    'application_file_rectangle',
+    'application_file_cleaning_cross_section',
+    'imaging',
+    'horizontal_field_width',
+    'dwell_time',
+    'resolution',
+    'lamella',
+    'lamella_width',
+    'lamella_height',
+    'total_cut_height',
+    'milling_depth',
+    'milling_current',
+    'protocol_stages',
+    'percentage_roi_height',
+    'percentage_from_lamella_surface',
+    'milling_current',
+    'percentage_from_lamella_surface',
+    'jcut',
+    'jcut_milling_current',
+    'jcut_angle',
+    'jcut_length',
+    'jcut_lamella_depth',
+    'jcut_trench_thickness',
+    'jcut_milling_depth',
+    'extra_bit',
+    'mill_lhs_jcut_pattern',
+    'mill_rhs_jcut_pattern',
+    'mill_top_jcut_pattern',
 ]
 
 protocol_template_path = '..\\protocol_liftout.yml'
@@ -55,11 +55,11 @@ information_keys = ['x', 'y', 'z', 'Θx', 'Θy', 'Θz']
 
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
-    def __init__(self, ip_address="10.0.0.1", offline=False):
+    def __init__(self, ip_address='10.0.0.1', offline=False):
         super(GUIMainWindow, self).__init__()
         self.offline = offline
         self.setupUi(self)
-        self.setWindowTitle("Autoliftout User Interface Main Window")
+        self.setWindowTitle('Autoliftout User Interface Main Window')
         self.statusbar.setSizeGripEnabled(0)
         self.status = QtWidgets.QLabel(self.statusbar)
         self.status.setAlignment(QtCore.Qt.AlignRight)
@@ -140,10 +140,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_random_data.clicked.connect(lambda: self.random_data())
 
         # FIBSEM methods
-        self.button_get_image_FIB.clicked.connect(lambda: self.get_image(modality="FIB"))
-        self.button_get_image_SEM.clicked.connect(lambda: self.get_image(modality="SEM"))
-        self.button_last_image_FIB.clicked.connect(lambda: self.get_last_image(modality="FIB"))
-        self.button_last_image_SEM.clicked.connect(lambda: self.get_last_image(modality="SEM"))
+        self.button_get_image_FIB.clicked.connect(lambda: self.get_image(modality='FIB'))
+        self.button_get_image_SEM.clicked.connect(lambda: self.get_image(modality='SEM'))
+        self.button_last_image_FIB.clicked.connect(lambda: self.get_last_image(modality='FIB'))
+        self.button_last_image_SEM.clicked.connect(lambda: self.get_last_image(modality='SEM'))
         self.comboBox_resolution.currentTextChanged.connect(lambda: self.update_fibsem_settings())
         self.lineEdit_dwell_time.textChanged.connect(lambda: self.update_fibsem_settings())
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
@@ -153,19 +153,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # new tab for protocol
         new_protocol_tab = QtWidgets.QWidget()
-        new_protocol_tab.setObjectName(f"Protocol {num_index}")
+        new_protocol_tab.setObjectName(f'Protocol {num_index}')
         layout_protocol_tab = QtWidgets.QGridLayout(new_protocol_tab)
-        layout_protocol_tab.setObjectName(f"gridLayout_{num_index}")
+        layout_protocol_tab.setObjectName(f'gridLayout_{num_index}')
 
         # new text edit to hold protocol
         protocol_text_edit = QtWidgets.QTextEdit()
         font = QtGui.QFont()
         font.setPointSize(10)
         protocol_text_edit.setFont(font)
-        protocol_text_edit.setObjectName(f"protocol_text_edit_{num_index}")
+        protocol_text_edit.setObjectName(f'protocol_text_edit_{num_index}')
         layout_protocol_tab.addWidget(protocol_text_edit, 0, 0, 1, 1)
 
-        self.tabWidget_Protocol.addTab(new_protocol_tab, f"Protocol {num_index}")
+        self.tabWidget_Protocol.addTab(new_protocol_tab, f'Protocol {num_index}')
         self.tabWidget_Protocol.setCurrentWidget(new_protocol_tab)
         self.load_template_protocol()
 
@@ -173,9 +173,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # new tab for information from FIBSEM
         new_information_tab = QtWidgets.QWidget()
-        new_information_tab.setObjectName(f"Protocol {num_index}")
+        new_information_tab.setObjectName(f'Protocol {num_index}')
         layout_new_information_tab = QtWidgets.QGridLayout(new_information_tab)
-        layout_new_information_tab.setObjectName(f"layout_new_information_tab_{num_index}")
+        layout_new_information_tab.setObjectName(f'layout_new_information_tab_{num_index}')
 
         # new empty table for information to fill
         new_table_widget = QtWidgets.QTableWidget()
@@ -190,20 +190,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             table_item = QtWidgets.QTableWidgetItem()
             new_table_widget.setVerticalHeaderItem(row, table_item)
             item = new_table_widget.verticalHeaderItem(row)
-            item.setText(_translate("MainWindow", f"Position {row+1}"))
+            item.setText(_translate('MainWindow', f'Position {row+1}'))
 
         # set up columns
         for column in range(len(information_keys)):
             table_item = QtWidgets.QTableWidgetItem()
             new_table_widget.setHorizontalHeaderItem(column, table_item)
             item = new_table_widget.horizontalHeaderItem(column)
-            item.setText(_translate("MainWindow", information_keys[column]))
+            item.setText(_translate('MainWindow', information_keys[column]))
 
         new_table_widget.horizontalHeader().setDefaultSectionSize(174)
         new_table_widget.horizontalHeader().setHighlightSections(True)
 
         layout_new_information_tab.addWidget(new_table_widget, 0, 0, 1, 1)
-        self.tabWidget_Information.addTab(new_information_tab, f"Protocol {num_index}")
+        self.tabWidget_Information.addTab(new_information_tab, f'Protocol {num_index}')
         self.tabWidget_Information.setCurrentWidget(new_information_tab)
 
     def rename_protocol(self):
@@ -238,11 +238,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         pass
 
     def load_template_protocol(self):
-        with open(protocol_template_path, "r") as file:
+        with open(protocol_template_path, 'r') as file:
             _dict = yaml.safe_load(file)
         for key in _dict:
             if key not in key_list_protocol:
-                print(f"Unexpected parameter in template file")
+                print(f'Unexpected parameter in template file')
                 return
         self.load_protocol_text(_dict)
 
@@ -255,49 +255,49 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for key, value in _dict.items():
             if type(value) is dict:
                 if jcut == 1:
-                    protocol_text += f"{key}:"  # jcut
+                    protocol_text += f'{key}:'  # jcut
                     jcut = 0
                 else:
-                    protocol_text += f"\n{key}:"  # first level excluding jcut
+                    protocol_text += f'\n{key}:'  # first level excluding jcut
                 for key2, value2 in value.items():
                     if type(value2) is list:
                         jcut = 1
-                        protocol_text += f"\n  {key2}:"  # protocol stages
+                        protocol_text += f'\n  {key2}:'  # protocol stages
                         for item in value2:
                             if count == 0:
-                                protocol_text += f"\n    # rough_cut"
+                                protocol_text += f'\n    # rough_cut'
                                 count = 1
                                 count2 = 0
                             else:
-                                protocol_text += f"    # regular_cut"
+                                protocol_text += f'    # regular_cut'
                                 count = 0
                                 count2 = 0
-                            protocol_text += f"\n    -"
+                            protocol_text += f'\n    -'
                             for key6, value6 in item.items():
                                 if count2 == 0:
-                                    protocol_text += f" {key6}: {value6}\n"  # first after list
+                                    protocol_text += f' {key6}: {value6}\n'  # first after list
                                     count2 = 1
                                 else:
-                                    protocol_text += f"      {key6}: {value6}\n"  # rest of list
+                                    protocol_text += f'      {key6}: {value6}\n'  # rest of list
                     else:
-                        protocol_text += f"\n  {key2}: {value2}"  # values not in list
+                        protocol_text += f'\n  {key2}: {value2}'  # values not in list
             else:
-                protocol_text += f"{key}: {value}"  # demo mode
+                protocol_text += f'{key}: {value}'  # demo mode
         self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).setText(protocol_text)
 
     def save_protocol(self, destination=None):
         dest = destination
         if dest is None:
-            dest = QtWidgets.QFileDialog.getExistingDirectory(self, "Select folder to save protocol in")
+            dest = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select folder to save protocol in')
             index = self.tabWidget_Protocol.currentIndex()
             tab = self.tabWidget_Protocol.tabBar().tabText(index)
-            dest = f"{dest}/{tab}.yml"
+            dest = f'{dest}/{tab}.yml'
         protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toPlainText()
         # protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toMarkdown()
         print(protocol_text)
         p = yaml.safe_load(protocol_text)
         print(p)
-        with open(dest, "w") as file:
+        with open(dest, 'w') as file:
             yaml.dump(p, file, sort_keys=False)
         self.save_destination = dest
         # save
@@ -311,20 +311,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             Path to file for parameter loading
         """
         checked = 0
-        print(f"Please select protocol file (yml)")
+        print(f'Please select protocol file (yml)')
         root = Tk()
         root.withdraw()
         _dict = None
         while not checked:
             checked = 1
             try:
-                load_directory = filedialog.askopenfile(mode="r", filetypes=[("yml files", "*.yml")])
+                load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
                 if load_directory is None:
                     return
 
-                while not load_directory.name.endswith(".yml"):
-                    print("Not a yml configuration file")
-                    load_directory = filedialog.askopenfile(mode="r", filetypes=[("yml files", "*.yml")])
+                while not load_directory.name.endswith('.yml'):
+                    print('Not a yml configuration file')
+                    load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
 
                 with open(load_directory.name, "r") as file:
                     _dict = yaml.safe_load(file)
@@ -334,7 +334,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             for key in _dict:
                 if key not in key_list_protocol:
                     if checked:
-                        print(f"Unexpected parameter in protocol file")
+                        print(f'Unexpected parameter in protocol file')
                     checked = 0
 
         root.destroy()
@@ -343,9 +343,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.load_protocol_text(_dict)
 
     def tab_moved(self, moved):
-        if moved == "protocol":
+        if moved == 'protocol':
             self.tabWidget_Information.tabBar().moveTab(self.tabWidget_Information.currentIndex(), self.tabWidget_Protocol.currentIndex())
-        elif moved == "information":
+        elif moved == 'information':
             self.tabWidget_Protocol.tabBar().moveTab(self.tabWidget_Protocol.currentIndex(), self.tabWidget_Information.currentIndex())
 
     def random_data(self):
@@ -406,19 +406,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             except Exception:
                 display_error_message(traceback.format_exc())
         try:
-            if modality == "SEM":
-                self.image_SEM = fibsem.new_image(self.microscope, self.camera_settings, modality="SEM")
+            if modality == 'SEM':
+                self.image_SEM = fibsem.new_image(self.microscope, self.camera_settings, modality='SEM')
                 # self.array_list_FIBSEM = np.copy(self.image_fibsem.data)
                 # Also consider correlation and milling window displays
                 # self.array_list_FIBSEM = ndi.median_filter(self.array_list_FIBSEM, 2)
                 # update display
-                self.update_display("SEM")
-            elif modality == "FIB":
+                self.update_display('SEM')
+            elif modality == 'FIB':
                 if self.checkBox_Autocontrast.isChecked():
                     self.image_FIB = fibsem.autocontrast(self.microscope)
                 else:
-                    self.image_FIB = fibsem.new_image(self.microscope, self.camera_settings, modality="FIB")
-                self.update_display(modality="FIB")
+                    self.image_FIB = fibsem.new_image(self.microscope, self.camera_settings, modality='FIB')
+                self.update_display(modality='FIB')
             else:
                 raise ValueError
         except Exception:
@@ -426,25 +426,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def get_last_image(self, modality=None):
         try:
-            if modality == "SEM":
-                self.image_SEM = fibsem.last_image(self.microscope, modality="SEM")
-                self.update_display(modality="SEM")
-            elif modality == "FIB":
-                self.image_FIB = fibsem.last_image(self.microscope, modality="FIB")
-                self.update_display(modality="FIB")
+            if modality == 'SEM':
+                self.image_SEM = fibsem.last_image(self.microscope, modality='SEM')
+                self.update_display(modality='SEM')
+            elif modality == 'FIB':
+                self.image_FIB = fibsem.last_image(self.microscope, modality='FIB')
+                self.update_display(modality='FIB')
         except Exception:
             display_error_message(traceback.format_exc())
 
     def update_display(self, modality):
         """Update the GUI display with the current image"""
         try:
-            if modality == "SEM":
+            if modality == 'SEM':
                 image_array = self.image_SEM.data
                 self.figure_SEM.clear()
                 ax = self.figure_SEM.add_subplot(111)
                 ax.imshow(image_array, cmap='gray')
                 self.canvas_SEM.draw()
-            elif modality == "FIB":
+            elif modality == 'FIB':
                 image_array = self.image_FIB.data
                 self.figure_FIB.clear()
                 ax = self.figure_FIB.add_subplot(111)
@@ -457,7 +457,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 def display_error_message(message):
     """PyQt dialog box displaying an error message."""
-    print("display_error_message")
+    print('display_error_message')
     logging.exception(message)
     error_dialog = QtWidgets.QErrorMessage()
     error_dialog.showMessage(message)
@@ -465,22 +465,22 @@ def display_error_message(message):
     return error_dialog
 
 
-def main(offline="True"):
-    if offline.lower() == "false":
+def main(offline='True'):
+    if offline.lower() == 'false':
         logging.basicConfig(level=logging.WARNING)
-        launch_gui(ip_address="10.0.0.1", offline=False)
-    elif offline.lower() == "true":
+        launch_gui(ip_address='10.0.0.1', offline=False)
+    elif offline.lower() == 'true':
         logging.basicConfig(level=logging.DEBUG)
-        with mock.patch.dict("os.environ", {"PYLON_CAMEMU": "1"}):
+        with mock.patch.dict('os.environ', {'PYLON_CAMEMU': '1'}):
             try:
-                launch_gui(ip_address="localhost", offline=True)
+                launch_gui(ip_address='localhost', offline=True)
             except Exception:
                 import pdb
                 traceback.print_exc()
                 pdb.set_trace()
 
 
-def launch_gui(ip_address="10.0.0.1", offline=False):
+def launch_gui(ip_address='10.0.0.1', offline=False):
     """Launch the `autoliftout` main application window."""
     app = QtWidgets.QApplication([])
     qt_app = GUIMainWindow(ip_address=ip_address, offline=offline)
@@ -489,5 +489,5 @@ def launch_gui(ip_address="10.0.0.1", offline=False):
     sys.exit(app.exec_())
 
 
-main(offline="False")
-# main(offline="True")
+main(offline='False')
+# main(offline='True')
