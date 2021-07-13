@@ -12,3 +12,4 @@ from liftout.milling import *
 from liftout.needle import *
 from liftout.stage_movement import *
 from liftout.user_input import *
+from liftout.patrick import *

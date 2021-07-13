@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 
 # user functions
-from utils import load_image, parse_metadata, match_filenames_from_path
+from utils import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
 from detection import *
 from DetectionModel import *
 
