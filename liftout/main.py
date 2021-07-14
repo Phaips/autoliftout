@@ -3270,7 +3270,6 @@ if __name__ == '__main__':
     storage = auto_liftout.storage
     auto_liftout.setup()
     auto_liftout.run_liftout()
-    # gui = GUI...
 
     # settings = load_config(config_filename)
     # timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
