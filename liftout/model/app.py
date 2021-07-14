@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import glob
-from detection import detect_lamella_edge
 from random import shuffle
 
 import PIL
@@ -9,9 +8,9 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from datetime import datetime
-
+#
 # user functions
-from utils import load_image, parse_metadata, match_filenames_from_path
+from utils import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
 from detection import *
 from DetectionModel import *
 
@@ -39,12 +38,12 @@ def main():
     st.sidebar.write(f"{len(filenames)} filenames matched")
     n_files = st.sidebar.number_input("Number of Images ", 1, len(filenames), 5)
     shuffle(filenames)
-    
-    for fname in filenames[:n_files]:       
-        
+
+    for fname in filenames[:n_files]:
+
         # load image from file
         img = load_image_from_file(fname)
-        
+
         # model inference
         mask = detector.detection_model.model_inference(img)
 
@@ -58,9 +57,9 @@ def main():
 
         mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
         img_blend = draw_overlay(img, mask_combined, show=False)
-        
-        # show images 
-        st.subheader(fname)        
+
+        # show images
+        st.subheader(fname)
         cols_raw = st.beta_columns(2)
         cols_raw[0].image(img, caption="base_img")
         cols_raw[1].image(mask, caption="label_img") # TODO: replace with label if available?

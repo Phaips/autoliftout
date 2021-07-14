@@ -15,9 +15,9 @@ from torchvision import transforms
 from skimage import feature
 from scipy.spatial import distance
 
-from patrick.DetectionModel import DetectionModel
+from DetectionModel import DetectionModel
 
-from patrick.utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
+from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
 # import liftout.liftout.main as liftout_main
 
 class Detector:
@@ -78,8 +78,6 @@ class Detector:
             feature_2_color = "white"
 
         if shift_type=="lamella_edge_to_landing_post":
-            # TODO: This doesnt work yet
-            # TODO: The directions and shapes are wrong and messing things up needs to be fixed
 
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
