@@ -1,5 +1,5 @@
-from GUI.qtdesigner_files import main as gui_main
-from GUI import fibsem as fibsem
+from liftout.gui.qtdesigner_files import main as gui_main
+from liftout.gui import fibsem
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
@@ -395,7 +395,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""
         try:
-            from GUI import fibsem
             self.microscope = fibsem.initialize(ip_address=ip_address)
             self.camera_settings = self.update_fibsem_settings()
         except Exception:
