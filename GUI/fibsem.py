@@ -109,8 +109,8 @@ def move_relative(microscope, x=0.0, y=0.0):
         print('Not under electron microscope, please reposition')
         return
     new_position = StagePosition(x=x, y=y, z=0, r=0, t=0)
-    # microscope.specimen.stage.relative_move(new_position)
-    print(f'Old position: {current_position_x*1e6}, {current_position_y*1e6}')
+    microscope.specimen.stage.relative_move(new_position)
+    print(f'Old pos ition: {current_position_x*1e6}, {current_position_y*1e6}')
     print(f'Moving by: {x*1e6}, {y*1e6}')
     print(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
 
