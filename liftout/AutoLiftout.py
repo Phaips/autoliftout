@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 import yaml
 from pprint import pprint
@@ -7,92 +8,11 @@ import os
 import sys
 from enum import Enum
 
-from liftout.main import *
-# from liftout.user_input import load_config
-
-########################################### TODO: REMOVE BELOW ###############################################################
-def load_config(yaml_filename):
-    """Load user input from yaml settings file.
-
-    Parameters
-    ----------
-    yaml_filename : str
-        Filename path of user configuration file.
-
-    Returns
-    -------
-    dict
-        Dictionary containing user input settings.
-    """
-    with open(yaml_filename, "r") as f:
-        settings_dict = yaml.safe_load(f)
-    # settings_dict = _add_missing_keys(settings_dict)
-    # settings_dict = _format_dictionary(settings_dict)
-    # settings = Settings(**settings_dict)  # convert to python dataclass
-    return settings_dict
-
-
-def configure_logging(log_filename='logfile', log_level=logging.INFO):
-    """Log to the terminal and to file simultaneously."""
-    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')#datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(message)s",
-        level=log_level,
-        # Multiple handlers can be added to your logging configuration.
-        # By default log messages are appended to the file if it exists already
-        handlers=[
-            logging.FileHandler(log_filename+timestamp+'.log'),
-            logging.StreamHandler(),
-        ])
-    print(log_filename+timestamp+'.log')
-
-class Storage():
-    def __init__(self, DIR=''):
-        self.DIR = DIR
-        self.NEEDLE_REF_IMGS         = [] # dict()
-        self.NEEDLE_WITH_SAMPLE_IMGS = [] # dict()
-        self.LANDING_POSTS_REF       = []
-        self.TRECHNING_POSITIONS_REF = []
-        self.MILLED_TRENCHES_REF     = []
-        self.liftout_counter = 0
-        self.step_counter   = 0
-        self.settings = ''
-    def AddDirectory(self,DIR):
-        self.DIR = DIR
-    def NewRun(self, prefix='RUN'):
-        self.__init__(self.DIR)
-        if self.DIR == '':
-            self.DIR = os.getcwd() # # dirs = glob.glob(saveDir + "/ALIGNED_*")        # nn = len(dirs) + 1
-        stamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
-        self.saveDir = self.DIR + '/' + prefix + '_' + stamp
-        self.saveDir = self.saveDir.replace('\\', '/')
-        os.mkdir(self.saveDir)
-    def SaveImage(self, image, dir_prefix='', id=''):
-        if len(dir_prefix) > 0:
-            self.path_for_image = self.saveDir + '/'  + dir_prefix + '/'
-        else:
-            self.path_for_image = self.saveDir + '/'  + 'liftout%03d'%(self.liftout_counter) + '/'
-        print(self.path_for_image)
-        if not os.path.isdir( self.path_for_image ):
-            print('creating directory')
-            os.mkdir(self.path_for_image)
-        self.fileName = self.path_for_image + 'step%02d'%(self.step_counter) + '_'  + id + '.tif'
-        print(self.fileName)
-        image.save(self.fileName)
-# storage = Storage() # global variable
-
-def initialize(ip_address='10.0.0.1'):
-    """Initialize connection to FIBSEM microscope with Autoscript."""
-    from autoscript_sdb_microscope_client import SdbMicroscopeClient
-
-    microscope = SdbMicroscopeClient()
-    microscope.connect(ip_address)
-    return microscope
-
-########################################### TODO: REMOVE ABOVE ###############################################################
-
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
+from liftout.main import configure_logging
+# import liftout.main as liftout
+# from liftout.user_input import *
+# from autoscript_sdb_microscope_client import SdbMicroscopeClient
+# from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 
 
 class AutoLiftoutStatus(Enum):
@@ -101,22 +21,22 @@ class AutoLiftoutStatus(Enum):
     Milling = 2
     Liftout = 3
     Landing = 4
-    Cleanup = 5
-    Reset = 6
+    Reset = 5
+    Cleanup = 6
     Finished = 7
 
 # TODO: logging and storage should be consistent and consolidated
 class AutoLiftout:
 
-    def __init__(self, config_filename) -> None:
+    def __init__(self, config_filename, run_name="run") -> None:
 
         # initialise autoliftout
-        configure_logging("log_")
+        configure_logging("logfile_")
 
         self.settings = load_config(config_filename)
 
         self.storage = Storage()
-        self.storage.NewRun(prefix='test_run')
+        self.storage.NewRun(prefix=run_name)
         self.storage.settings = self.settings
 
         self.microscope = initialize(self.settings["system"]["ip_address"])
@@ -163,10 +83,11 @@ class AutoLiftout:
         self.zipped_coordinates = [[1, 1], [1, 1], [1, 1], [1, 1]]
         self.original_landing_images = [[1], [1], [1], [1]]
         self.original_trench_images = [[1], [1], [1], [1]]
+
     def run_liftout(self):
 
         self._report_status()
-        self._get_fake_setup_data()
+        # self._get_fake_setup_data()
 
         # Start liftout for each lamella
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
@@ -174,6 +95,7 @@ class AutoLiftout:
             lamella_area_reference_images = self.original_trench_images[i]
             self.single_liftout(self.microscope, self.settings, landing_coord, lamella_coord, landing_reference_images, lamella_area_reference_images)
             self.storage.liftout_counter += 1
+
         self.current_status = AutoLiftoutStatus.Finished
         self._report_status()
 
@@ -181,32 +103,31 @@ class AutoLiftout:
 
         ### move to the previously stored position and correct the position using the reference images:
         microscope.specimen.stage.absolute_move(lamella_coord)
-        # realign_sample_stage(microscope, image, template, beam_type=BeamType.ION, correct_z_height=False)
-        # correct_stage_drift_using_reference_eb_images(microscope, original_lamella_area_images, plot=False)
+        correct_stage_drift_using_reference_eb_images(microscope, original_lamella_area_images, plot=False)
 
         # mill
         self.current_status = AutoLiftoutStatus.Milling
         self._report_status()
-        # mill_lamella(microscope, settings, confirm=False)
+        mill_lamella(microscope, settings, confirm=False)
 
         # lift-out
         self.current_status = AutoLiftoutStatus.Liftout
         self._report_status()
-        # liftout_lamella(microscope, settings)
+        liftout_lamella(microscope, settings)
 
         # land
         self.current_status = AutoLiftoutStatus.Landing
         self._report_status()
-        # land_lamella(microscope, landing_coord, original_landing_images)
+        land_lamella(microscope, landing_coord, original_landing_images)
 
         # resharpen needle
         self.current_status = AutoLiftoutStatus.Reset
         self._report_status()
-        # sharpen_needle(microscope)
+        sharpen_needle(microscope)
 
 # TODO: replace global instance of storage with class instance.... lots of work
 
-config_filename = sys.argv[1]
+# config_filename = sys.argv[1]
 # config_filename = "../liftout/protocol_liftout.yml"
 # config_filename = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\liftout\protocol_liftout.yml"
 # autoliftout = AutoLiftout(config_filename)
