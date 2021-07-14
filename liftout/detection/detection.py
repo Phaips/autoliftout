@@ -78,8 +78,6 @@ class Detector:
             feature_2_color = "white"
 
         if shift_type=="lamella_edge_to_landing_post":
-            # TODO: This doesnt work yet
-            # TODO: The directions and shapes are wrong and messing things up needs to be fixed
 
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))

@@ -23,14 +23,14 @@ import shutil
 # from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
 # user functions
 
-# transformations
-transformation = transforms.Compose(
-    [
-        transforms.ToPILImage(),
-        transforms.Resize((1024 // 4, 1536 // 4)),
-        transforms.ToTensor(),
-    ]
-)
+# # transformations
+# transformation = transforms.Compose(
+#     [
+#         transforms.ToPILImage(),
+#         transforms.Resize((1024 // 4, 1536 // 4)),
+#         transforms.ToTensor(),
+#     ]
+# )
 
 
 def extract_img_for_labelling(path, logfile="logfile"):
