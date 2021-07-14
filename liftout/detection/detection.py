@@ -15,16 +15,17 @@ from torchvision import transforms
 from skimage import feature
 from scipy.spatial import distance
 
-from DetectionModel import DetectionModel
+import liftout.detection.DetectionModel as DetectionModel
 
-from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
+from liftout.detection.utils import *
+# from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
 # import liftout.liftout.main as liftout_main
 
 class Detector:
 
     def __init__(self, weights_file) -> None:
 
-        self.detection_model = DetectionModel(weights_file)
+        self.detection_model = DetectionModel.DetectionModel(weights_file)
 
         self.supported_shift_types = [
             "needle_tip_to_lamella_centre",

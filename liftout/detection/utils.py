@@ -83,8 +83,8 @@ def validate_detection(img, img_base, detection_coord, det_type):
         # save image for training here
         print("Saving image for labelling. NOTE: NOT YET WORKING")
         # TODO: somehow pass storage here?
-        # storage.step_counter += 1
-        # storage.SaveImage(img_base, id="label_")
+        storage.step_counter += 1
+        storage.SaveImage(img_base, id="label_")
 
     print(detection_coord)
     return detection_coord
