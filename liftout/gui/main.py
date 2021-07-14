@@ -11,10 +11,12 @@ from tkinter import Tk, filedialog
 import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
+import matplotlib.pyplot as plt
 
 _translate = QtCore.QCoreApplication.translate
 logger = logging.getLogger(__name__)
 
+# TODO: automate key list reading from protocol file
 key_list_protocol = [
     'demo_mode',
     'system',
@@ -25,6 +27,26 @@ key_list_protocol = [
     'horizontal_field_width',
     'dwell_time',
     'resolution',
+    'imaging_current',
+    'reference_images',
+    'landing_post_ref_img_resolution',
+    'landing_post_ref_img_dwell_time',
+    'landing_post_ref_img_hfw_lowres',
+    'landing_post_ref_img_hfw_highres',
+    'trench_area_ref_img_resolution',
+    'trench_area_ref_img_dwell_time',
+    'trench_area_ref_img_hfw_lowres',
+    'trench_area_ref_img_hfw_highres',
+    'needle_ref_img_resolution',
+    'needle_ref_img_dwell_time',
+    'needle_ref_img_hfw_lowres',
+    'needle_ref_img_hfw_highres',
+    'needle_with_lamella_ref_img_resolution',
+    'needle_with_lamella_ref_img_hfw_highres',
+    'needle_with_lamella_ref_img_dwell_time_electron',
+    'needle_with_lamella_ref_img_dwell_time_ion',
+    'needle_with_lamella_shifted_img_lowres',
+    'needle_with_lamella_shifted_img_highres',
     'lamella',
     'lamella_width',
     'lamella_height',
@@ -36,6 +58,19 @@ key_list_protocol = [
     'percentage_from_lamella_surface',
     'milling_current',
     'percentage_from_lamella_surface',
+    'needle',
+    'horizontal_field_width',
+    'dwell_time',
+    'resolution',
+    'machine_learning',
+    'eb_brightness',
+    'eb_contrast',
+    'ib_brightness',
+    'ib_contrast',
+    'weights',
+    '',
+    '',
+    '',
     'jcut',
     'jcut_milling_current',
     'jcut_angle',
@@ -57,6 +92,9 @@ information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
         super(GUIMainWindow, self).__init__()
+        # from liftout import AutoLiftout
+        from liftout.main2 import AutoLiftout
+
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
@@ -106,7 +144,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.initialize_hardware(offline=offline)
 
-    def on_click(self, event, modality):
+        self.auto = AutoLiftout(microscope=self.microscope)
+
+        self.image_SEM = fibsem.last_image(self.microscope, modality="SEM")
+        self.update_display("SEM")
+
+        self.image_FIB = fibsem.last_image(self.microscope, modality="FIB")
+        self.update_display("FIB")
+
+        self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
+
+    def on_gui_click(self, event, modality):
         image = None
         if modality == 'SEM':
             image = self.image_SEM
@@ -126,7 +174,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     self.get_last_image(modality=modality)
 
     def initialise_image_frames(self):
-        import matplotlib.pyplot as plt
 
         self.figure_SEM = plt.figure()
         self.canvas_SEM = _FigureCanvas(self.figure_SEM)
@@ -135,7 +182,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_SEM.layout().addWidget(self.toolbar_SEM)
         self.label_SEM.layout().addWidget(self.canvas_SEM)
 
-        self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_click(event, modality='SEM'))
+        self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, modality='SEM'))
 
         self.figure_FIB = plt.figure()
         self.canvas_FIB = _FigureCanvas(self.figure_FIB)
@@ -144,7 +191,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_FIB.layout().addWidget(self.toolbar_FIB)
         self.label_FIB.layout().addWidget(self.canvas_FIB)
 
-        self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_click(event, modality='FIB'))
+        self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, modality='FIB'))
 
     def initialize_hardware(self, offline=False):
         if offline is False:
@@ -176,6 +223,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.comboBox_resolution.currentTextChanged.connect(lambda: self.update_fibsem_settings())
         self.lineEdit_dwell_time.textChanged.connect(lambda: self.update_fibsem_settings())
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
+
+    def ask_user(self, image=None, message=None):
+        self.popup = QtWidgets.QWidget()
+
+        if message is None:
+            message = "ok?"
+
+        question = QtWidgets.QLabel(self.popup)
+        print('1')
+        font = QtGui.QFont()
+        font.setPointSize(24)
+        question.setText(message)
+        question.setFont(font)
+
+        question.setAlignment(QtCore.Qt.AlignCenter)
+        question_layout = QtWidgets.QHBoxLayout()
+        question.setLayout(question_layout)
+        print('2')
+        print('3')
+        print('4')
+
+        button_box = QtWidgets.QWidget(self.popup)
+        button_layout = QtWidgets.QHBoxLayout()
+        yes = QtWidgets.QPushButton('Yes')
+        no = QtWidgets.QPushButton('No')
+
+        yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+
+        button_box.setLayout(button_layout)
+        button_box.layout().addWidget(yes)
+        button_box.layout().addWidget(no)
+
+        self.popup.setLayout(QtWidgets.QVBoxLayout())
+
+        if image:
+            fig = plt.figure()
+            canvas = _FigureCanvas(fig)
+            image_array = image.data
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.imshow(image_array, cmap='gray')
+            canvas.draw()
+            self.popup.layout().addWidget(canvas, 4)
+
+        self.popup.layout().addWidget(question, 1)
+        self.popup.layout().addWidget(button_box, 1)
+        self.popup.show()
+
+        print('5')
 
     def new_protocol(self):
         num_index = self.tabWidget_Protocol.__len__() + 1
@@ -269,10 +366,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def load_template_protocol(self):
         with open(protocol_template_path, 'r') as file:
             _dict = yaml.safe_load(file)
-        for key in _dict:
-            if key not in key_list_protocol:
-                print(f'Unexpected parameter in template file')
-                return
+        # for key in _dict:
+        #     if key not in key_list_protocol:
+        #         print(f'Unexpected parameter in template file')
+        #         return
         self.load_protocol_text(_dict)
 
     def load_protocol_text(self, dictionary):
@@ -404,7 +501,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if not self.microscope:
             self.connect_to_microscope()
         try:
-            from GUI import fibsem
             dwell_time = float(self.lineEdit_dwell_time.text())*1.e-6
             resolution = self.comboBox_resolution.currentText()
             fibsem_settings = fibsem.update_camera_settings(dwell_time, resolution)
