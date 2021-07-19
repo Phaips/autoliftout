@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-
-from PIL.Image import new
 import numpy as np
 import PIL
 import glob
-
+import shutil
 import os
 
 DATA_PATH = "/Users/patrickcleeve/Documents/university/bio/demarco/liftout/data"
@@ -20,13 +18,7 @@ print(len(aug_json))
 
 # # rename all the aug/ files to match the latest train
 
-import shutil
 idx = 687
-# # for i, fname in enumerate(aug_tif, 1):
-    
-# #     print(idx+i, f"{DATA_PATH}/train/raw/{idx+i:09d}.tif")
-
-# #     shutil.copyfile(fname, f"{DATA_PATH}/train/raw/{idx+i:09d}.tif")
 
 new_tif = []
 new_json = []

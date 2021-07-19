@@ -21,9 +21,10 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.nn import (Conv2d, Dropout2d, MaxPool2d, Module, ReLU, Sequential,
                       UpsamplingNearest2d)
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, SubsetRandomSampler
 from torchvision import transforms, utils
 from tqdm import tqdm
+
 
 # change this to pre-processing- and cache
 def load_images_and_masks_in_path(images_path, masks_path):
@@ -253,6 +254,13 @@ if __name__ == "__main__":
     # command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--data",
+        help="the directory containing the training data",
+        dest="data",
+        action="store",
+        default="data",
+    )
+    parser.add_argument(
         "--debug",
         help="show debugging visualisation during training",
         dest="debug",
@@ -274,6 +282,7 @@ if __name__ == "__main__":
         default=2,
     )
     args = parser.parse_args()
+    data_path = args.data
     DEBUG = args.debug
     model_checkpoint = args.checkpoint
     epochs = args.epochs
@@ -283,22 +292,35 @@ if __name__ == "__main__":
         "\n----------------------- Loading and Preparing Data -----------------------\n"
     )
 
-    img_path = "data/*/**/img"
-    label_path = "data/*/**/label"
+    img_path = f"{data_path}/train/**/img"
+    label_path = f"{data_path}/train/**/label"
+    print(f"Loading data set from {img_path}")
 
     train_images, train_masks = load_images_and_masks_in_path(img_path, label_path)
 
-    print(f"Loading data set from {img_path}")
 
     # hyperparams
     num_classes = 3
     batch_size = 1
 
     # load dataset
-    train_dataset = SegmentationDataset(
+    seg_dataset = SegmentationDataset(
         train_images, train_masks, num_classes, transforms=transformation
     )
-    train_data_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    # TODO: validation dataset
+
+    val_size = 0.2
+    dataset_size = len(seg_dataset)
+    dataset_idx = list(range(dataset_size))
+    split_idx = int(np.floor(val_size * dataset_size))
+    train_idx = dataset_idx[split_idx:]
+    val_idx = dataset_idx[:split_idx]
+
+    train_sampler =  SubsetRandomSampler(train_idx)
+    val_sampler = SubsetRandomSampler(val_idx)
+# https://towardsdatascience.com/pytorch-basics-sampling-samplers-2a0f29f0bf2a
+    train_data_loader = DataLoader(seg_dataset, batch_size=batch_size, shuffle=True, sampler=train_sampler)
     print(f"Train dataset has {len(train_data_loader)} batches of size {batch_size}")
 
     # from smp
