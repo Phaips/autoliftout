@@ -5,9 +5,9 @@ from skimage.filters import gaussian, threshold_otsu, median
 from skimage.measure import label
 from skimage.morphology import disk
 
-from liftout.acquire import new_electron_image, new_ion_image
-from liftout.needle.needle_movement import insert_needle, retract_needle
-from liftout.stage_movement import move_sample_stage_out
+from liftout.old_functions.acquire import new_electron_image, new_ion_image
+from liftout.old_functions.needle import insert_needle, retract_needle
+from liftout.old_functions.stage_movement import move_sample_stage_out
 
 
 __all__ = [

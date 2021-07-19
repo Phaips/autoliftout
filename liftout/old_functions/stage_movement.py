@@ -1,7 +1,7 @@
 """Sample stage movement functions."""
 import numpy as np
 
-from .acquire import BeamType, beamtype_from_image, new_electron_image
+from liftout.old_functions.acquire import BeamType, beamtype_from_image, new_electron_image
 
 __all__ = [
     "flat_to_electron_beam",

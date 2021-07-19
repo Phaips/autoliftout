@@ -1,23 +1,19 @@
 """Liftout sample preparation, combined trench and J-cut milling of lamellae"""
-import logging
 
-import matplotlib.pyplot as plt
 import numpy as np
-from skimage.exposure import rescale_intensity
-from skimage.transform import rescale
 
-from liftout.acquire import (new_electron_image,
-                             new_ion_image,
-                             autocontrast,
-                             BeamType)
-from liftout.align.hog_template_matching import (create_reference_image,
-                                                 match_locations,
-                                                 realign_hog_matcher)
-from liftout.milling.trenches import mill_trenches
-from liftout.milling.jcut import mill_jcut
-from liftout.stage_movement import (move_to_trenching_angle,
-                                    move_to_jcut_angle,
-                                    move_to_liftout_angle)
+from liftout.old_functions.acquire import (new_electron_image,
+                                           new_ion_image,
+                                           autocontrast,
+                                           BeamType)
+from liftout.old_functions.align import (create_reference_image,
+                                         match_locations,
+                                         realign_hog_matcher)
+from liftout.old_functions.milling.trenches import mill_trenches
+from liftout.old_functions.milling import mill_jcut
+from liftout.old_functions.stage_movement import (move_to_trenching_angle,
+                                                  move_to_jcut_angle,
+                                                  move_to_liftout_angle)
 
 
 def mill_lamella(microscope, settings, confirm=True):

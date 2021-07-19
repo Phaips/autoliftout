@@ -3,10 +3,10 @@ import logging
 
 import numpy as np
 
-from liftout.display import plot_overlaid_images
-from liftout.stage_movement import (x_corrected_stage_movement,
-                                    y_corrected_stage_movement,
-                                    BeamType)
+from liftout.old_functions.display import plot_overlaid_images
+from liftout.old_functions.stage_movement import (x_corrected_stage_movement,
+                                                  y_corrected_stage_movement,
+                                                  BeamType)
 
 __all__ = [
     "create_reference_image",

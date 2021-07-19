@@ -1,7 +1,7 @@
 """Functions to stick the lamella onto the landing stage post."""
 import numpy as np
 
-from liftout.milling.util import setup_ion_milling, confirm_and_run_milling
+from liftout.old_functions.milling import setup_ion_milling, confirm_and_run_milling
 
 __all__ = [
     "weld_to_landing_post",

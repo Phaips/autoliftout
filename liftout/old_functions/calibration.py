@@ -1,13 +1,12 @@
 """Functions for microscope calibration."""
-import logging
 
 import numpy as np
 
-from liftout.acquire import new_electron_image, new_ion_image
-from liftout.display import select_point
-from liftout.stage_movement import (PRETILT_DEGREES,
-                             flat_to_electron_beam,
-                             z_corrected_stage_movement)
+from liftout.old_functions.acquire import new_electron_image, new_ion_image
+from liftout.old_functions.display import select_point
+from liftout.old_functions.stage_movement import (PRETILT_DEGREES,
+                                                  flat_to_electron_beam,
+                                                  z_corrected_stage_movement)
 from liftout.user_input import ask_user
 
 __all__ = [
@@ -126,7 +125,6 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     #    1. Make landing grid flat to SEM
     #    2. Zoom really far in on a flat part that isn't part of the posts
     #    3. Auto-link z, using a DIFFERENT expected_z height (4.05 mm)
-    from autoscript_sdb_microscope_client.structures import StagePosition
 
     print("auto_link_stage")
     print(microscope.specimen.stage.current_position.z)

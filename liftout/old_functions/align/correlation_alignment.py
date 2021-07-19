@@ -6,7 +6,7 @@ import scipy.ndimage as ndi
 import skimage.draw
 import skimage.io
 
-from liftout.stage_movement import BeamType
+from liftout.old_functions.stage_movement import BeamType
 
 __all__ = [
     "realign_beam_shift",
@@ -102,8 +102,8 @@ def _correct_y_stage_shift(microscope, image, y_shift):
     [type]
         [description]
     """
-    from liftout.acquire import beamtype_from_image
-    from liftout.stage_movement import PRETILT_DEGREES
+    from liftout.old_functions.acquire import beamtype_from_image
+    from liftout.old_functions.stage_movement import PRETILT_DEGREES
 
     beam_type = beamtype_from_image(image)
     if beam_type == BeamType.ELECTRON:

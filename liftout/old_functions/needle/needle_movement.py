@@ -5,8 +5,8 @@ import time
 import numpy as np
 import tqdm
 
-from liftout.calibration import auto_link_stage
-from liftout.stage_movement import move_to_sample_grid
+from liftout.old_functions.calibration import auto_link_stage
+from liftout.old_functions.stage_movement import move_to_sample_grid
 
 __all__ = [
     "move_needle_to_liftout_position",

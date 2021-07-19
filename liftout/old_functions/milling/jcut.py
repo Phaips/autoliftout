@@ -1,10 +1,8 @@
 """J-cut milling patterns for liftout sample preparation."""
 import numpy as np
 
-from liftout.milling.util import confirm_and_run_milling, setup_ion_milling
-from liftout.stage_movement import PRETILT_DEGREES
-from liftout.user_input import ask_user
-
+from liftout.old_functions.milling import confirm_and_run_milling, setup_ion_milling
+from liftout.old_functions.stage_movement import PRETILT_DEGREES
 
 __all__ = [
     "mill_jcut",
