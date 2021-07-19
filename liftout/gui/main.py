@@ -1,6 +1,7 @@
 from liftout.gui.qtdesigner_files import main as gui_main
-from liftout.gui import fibsem
-
+from liftout.fibsem.acquire import *
+from liftout.fibsem.movement import *
+from liftout.fibsem.utils import *
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
 import traceback
@@ -26,7 +27,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         super(GUIMainWindow, self).__init__()
         # from liftout import AutoLiftout
         from liftout.main2 import AutoLiftout
-
+        # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
@@ -79,19 +80,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.auto = AutoLiftout(microscope=self.microscope)
 
-        self.image_SEM = fibsem.last_image(self.microscope, modality="SEM")
+        self.image_SEM = last_image(self.microscope, beam_type=BeamType.ELECTRON)
         self.update_display("SEM")
 
-        self.image_FIB = fibsem.last_image(self.microscope, modality="FIB")
+        self.image_FIB = last_image(self.microscope, beam_type=BeamType.ION)
         self.update_display("FIB")
 
         self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
 
     def on_gui_click(self, event, modality):
         image = None
-        if modality == 'SEM':
+        if beam_type is BeamType.ELECTRON:
             image = self.image_SEM
-        elif modality == 'FIB':
+        if beam_type is BeamType.ION:
             image = self.image_FIB
 
         if event.button == 1:
@@ -99,15 +100,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if image:
                     self.xclick = event.xdata
                     self.yclick = event.ydata
-                    x, y = fibsem.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                    x, y = pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
                     # print(f'Moving {modality} in x by {round(x*1e6, 2)}um')
                     # print(f'Moving {modality} in y by {round(y*1e6, 2)}um\n')
 
-                    fibsem.move_relative(self.microscope, x, y)
-                    self.get_last_image(modality=modality)
+                    move_relative(self.microscope, x, y)
+                    last_image(microscope=self.microscope, beam_type=beam_type)
 
     def initialise_image_frames(self):
-
         self.figure_SEM = plt.figure()
         self.canvas_SEM = _FigureCanvas(self.figure_SEM)
         self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
@@ -151,10 +151,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # FIBSEM methods
         self.button_get_image_FIB.clicked.connect(lambda: self.get_image(modality='FIB'))
         self.button_get_image_SEM.clicked.connect(lambda: self.get_image(modality='SEM'))
-        self.button_last_image_FIB.clicked.connect(lambda: self.get_last_image(modality='FIB'))
-        self.button_last_image_SEM.clicked.connect(lambda: self.get_last_image(modality='SEM'))
-        self.comboBox_resolution.currentTextChanged.connect(lambda: self.update_fibsem_settings())
-        self.lineEdit_dwell_time.textChanged.connect(lambda: self.update_fibsem_settings())
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
     def ask_user(self, image=None, message=None):
@@ -443,62 +439,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""
         try:
-            self.microscope = fibsem.initialize(ip_address=ip_address)
-            self.camera_settings = self.update_fibsem_settings()
+            self.microscope = initialise_fibsem(ip_address=ip_address)
         except Exception:
             display_error_message(traceback.format_exc())
 
-    def update_fibsem_settings(self):
-        if not self.microscope:
-            self.connect_to_microscope()
-        try:
-            dwell_time = float(self.lineEdit_dwell_time.text())*1.e-6
-            resolution = self.comboBox_resolution.currentText()
-            fibsem_settings = fibsem.update_camera_settings(dwell_time, resolution)
-            self.camera_settings = fibsem_settings
-            return fibsem_settings
-        except Exception:
-            display_error_message(traceback.format_exc())
-
-    def get_image(self, modality=None):
-        # Return random data if running in offline mode
-        if self.offline:
-            try:
-                self.image_SEM.data = np.random.rand(self.label_SEM.maximumHeight(), self.label_SEM.maximumWidth())
-                self.image_FIB.data = self.image_SEM
-                self.update_display(modality=modality)
-                return
-            except Exception:
-                display_error_message(traceback.format_exc())
-        try:
-            if modality == 'SEM':
-                self.image_SEM = fibsem.new_image(self.microscope, self.camera_settings, modality='SEM')
-                # self.array_list_FIBSEM = np.copy(self.image_fibsem.data)
-                # Also consider correlation and milling window displays
-                # self.array_list_FIBSEM = ndi.median_filter(self.array_list_FIBSEM, 2)
-                # update display
-                self.update_display('SEM')
-            elif modality == 'FIB':
-                if self.checkBox_Autocontrast.isChecked():
-                    self.image_FIB = fibsem.autocontrast(self.microscope)
-                else:
-                    self.image_FIB = fibsem.new_image(self.microscope, self.camera_settings, modality='FIB')
-                self.update_display(modality='FIB')
-            else:
-                raise ValueError
-        except Exception:
-            display_error_message(traceback.format_exc())
-
-    def get_last_image(self, modality=None):
-        try:
-            if modality == 'SEM':
-                self.image_SEM = fibsem.last_image(self.microscope, modality='SEM')
-                self.update_display(modality='SEM')
-            elif modality == 'FIB':
-                self.image_FIB = fibsem.last_image(self.microscope, modality='FIB')
-                self.update_display(modality='FIB')
-        except Exception:
-            display_error_message(traceback.format_exc())
 
     def update_display(self, modality):
         """Update the GUI display with the current image"""
