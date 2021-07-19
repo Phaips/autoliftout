@@ -37,7 +37,7 @@ import skimage.io
 
 from operator import itemgetter
 
-from liftout.calibration import setup
+# from liftout.calibration import setup
 from liftout.user_input import load_config, protocol_stage_settings
 # from liftout.milling import mill_lamella
 # from liftout.needle import liftout_lamella, land_lamella
