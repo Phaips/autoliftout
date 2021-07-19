@@ -16,74 +16,6 @@ import matplotlib.pyplot as plt
 _translate = QtCore.QCoreApplication.translate
 logger = logging.getLogger(__name__)
 
-# TODO: automate key list reading from protocol file
-key_list_protocol = [
-    'demo_mode',
-    'system',
-    'ip_address',
-    'application_file_rectangle',
-    'application_file_cleaning_cross_section',
-    'imaging',
-    'horizontal_field_width',
-    'dwell_time',
-    'resolution',
-    'imaging_current',
-    'reference_images',
-    'landing_post_ref_img_resolution',
-    'landing_post_ref_img_dwell_time',
-    'landing_post_ref_img_hfw_lowres',
-    'landing_post_ref_img_hfw_highres',
-    'trench_area_ref_img_resolution',
-    'trench_area_ref_img_dwell_time',
-    'trench_area_ref_img_hfw_lowres',
-    'trench_area_ref_img_hfw_highres',
-    'needle_ref_img_resolution',
-    'needle_ref_img_dwell_time',
-    'needle_ref_img_hfw_lowres',
-    'needle_ref_img_hfw_highres',
-    'needle_with_lamella_ref_img_resolution',
-    'needle_with_lamella_ref_img_hfw_highres',
-    'needle_with_lamella_ref_img_dwell_time_electron',
-    'needle_with_lamella_ref_img_dwell_time_ion',
-    'needle_with_lamella_shifted_img_lowres',
-    'needle_with_lamella_shifted_img_highres',
-    'lamella',
-    'lamella_width',
-    'lamella_height',
-    'total_cut_height',
-    'milling_depth',
-    'milling_current',
-    'protocol_stages',
-    'percentage_roi_height',
-    'percentage_from_lamella_surface',
-    'milling_current',
-    'percentage_from_lamella_surface',
-    'needle',
-    'horizontal_field_width',
-    'dwell_time',
-    'resolution',
-    'machine_learning',
-    'eb_brightness',
-    'eb_contrast',
-    'ib_brightness',
-    'ib_contrast',
-    'weights',
-    '',
-    '',
-    '',
-    'jcut',
-    'jcut_milling_current',
-    'jcut_angle',
-    'jcut_length',
-    'jcut_lamella_depth',
-    'jcut_trench_thickness',
-    'jcut_milling_depth',
-    'extra_bit',
-    'mill_lhs_jcut_pattern',
-    'mill_rhs_jcut_pattern',
-    'mill_top_jcut_pattern',
-]
-
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
 information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
@@ -127,6 +59,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.edit = None
         self.position = 0
         self.save_destination = None
+        self.key_list_protocol = list()
         self.params = {}
         for parameter in range(len(information_keys)):
             self.params[information_keys[parameter]] = 0
@@ -366,10 +299,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def load_template_protocol(self):
         with open(protocol_template_path, 'r') as file:
             _dict = yaml.safe_load(file)
-        # for key in _dict:
-        #     if key not in key_list_protocol:
-        #         print(f'Unexpected parameter in template file')
-        #         return
+
+        for key, value in _dict.items():
+            self.key_list_protocol.append(key)
+            if isinstance(value, dict):
+                for key2, value2 in value.items():
+                    if key2 not in self.key_list_protocol:
+                        self.key_list_protocol.append(key)
+                if isinstance(value, dict):
+                    for key3, value3 in value.items():
+                        if key3 not in self.key_list_protocol:
+                            self.key_list_protocol.append(key)
+                elif isinstance(value, list):
+                    for dictionary in value:
+                        for key4, value4 in dictionary.items():
+                            if key4 not in self.key_list_protocol:
+                                self.key_list_protocol.append(key)
+
         self.load_protocol_text(_dict)
 
     def load_protocol_text(self, dictionary):
@@ -377,6 +323,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         count = 0
         jcut = 0
         _dict = dictionary
+
+        for key in _dict:
+            if key not in self.key_list_protocol:
+                print(f'Unexpected parameter in template file')
+                return
 
         for key, value in _dict.items():
             if type(value) is dict:
@@ -458,7 +409,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             except Exception:
                 display_error_message(traceback.format_exc())
             for key in _dict:
-                if key not in key_list_protocol:
+                if key not in self.key_list_protocol:
                     if checked:
                         print(f'Unexpected parameter in protocol file')
                     checked = 0
