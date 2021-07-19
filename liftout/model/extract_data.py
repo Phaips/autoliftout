@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" extract images from folders and save to a common dataset. Preserve .tif metadata """
+""" Extract images from folders and save to a common dataset. Preserve .tif metadata """
 
 import glob
 import sys

@@ -1,3 +1,5 @@
+
+# TODO: REPLACE 
 import glob
 from random import shuffle
 
@@ -5,9 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 from matplotlib.widgets import Button, RectangleSelector
-
-from data_engine import relabel_img
-
 from utils import load_model, model_inference, detect_and_draw_lamella_and_needle, show_overlay_streamlit 
 
 

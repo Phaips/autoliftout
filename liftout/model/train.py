@@ -25,8 +25,6 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms, utils
 from tqdm import tqdm
 
-from utils import decode_output, decode_segmap
-
 # change this to pre-processing- and cache
 def load_images_and_masks_in_path(images_path, masks_path):
     images = []
@@ -47,14 +45,44 @@ def load_images_and_masks_in_path(images_path, masks_path):
     return np.array(images), np.array(masks)
 
 
+def decode_output(output):
+    """decodes the output of segmentation model to RGB mask"""
+    output = F.softmax(output, dim=1)
+    mask = torch.argmax(output.squeeze(), dim=0).detach().cpu().numpy()
+    mask = decode_segmap(mask)
+    return mask
+
+def decode_segmap(image, nc=3):
+
+    """ Decode segmentation class mask into an RGB image mask"""
+
+    # 0=background, 1=lamella, 2= needle
+    label_colors = np.array([(0, 0, 0), (255, 0, 0), (0, 255, 0)])
+
+    # pre-allocate r, g, b channels as zero
+    r = np.zeros_like(image, dtype=np.uint8)
+    g = np.zeros_like(image, dtype=np.uint8)
+    b = np.zeros_like(image, dtype=np.uint8)
+
+    # apply the class label colours to each pixel
+    for l in range(0, nc):
+        idx = image == l
+        r[idx] = label_colors[l, 0]
+        g[idx] = label_colors[l, 1]
+        b[idx] = label_colors[l, 2]
+
+    # stack rgb channels to form an image
+    rgb_mask = np.stack([r, g, b], axis=2)
+    return rgb_mask
+
 # transformations
 transformation = transforms.Compose(
     [
         transforms.ToPILImage(),
         transforms.Resize((1024 // 4, 1536 // 4)),
-        transforms.Lambda(
-            lambda img: transforms.functional.adjust_contrast(img, contrast_factor=2)
-        ),
+        # transforms.Lambda(
+        #     lambda img: transforms.functional.adjust_contrast(img, contrast_factor=2)
+        # ),
         transforms.ToTensor(),
     ]
 )
@@ -293,7 +321,7 @@ if __name__ == "__main__":
 
         # sanity check - model, imgs, masks
         output = model(imgs)
-        mask = decode_output(output)
+        pred = decode_output(output)
 
         print("imgs, masks, output")
         print(imgs.shape, masks.shape, output.shape)
@@ -304,7 +332,7 @@ if __name__ == "__main__":
             mask=np.zeros_like(masks[0].squeeze(0)),
             title="Sanity Checks (No Prediction)",
         )
-        show_img_and_mask(imgs, masks, mask, title="Checkpointed Model Predictions")
+        show_img_and_mask(imgs, masks, pred, title="Checkpointed Model Predictions")
 
     ################################## TRAINING ##################################
     print("----------------------- Begin Training -----------------------\n")

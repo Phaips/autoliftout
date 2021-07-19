@@ -10,9 +10,9 @@ import pandas as pd
 from datetime import datetime
 #
 # user functions
-from utils import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
-from detection import *
-from DetectionModel import *
+from liftout.detection.utils import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
+from liftout.detection.detection import *
+from liftout.detection.DetectionModel import *
 
 
 @st.cache(allow_output_mutation=True)
@@ -30,8 +30,8 @@ def main():
     st.title("AutoLiftout Model Evaluation")
 
     st.sidebar.subheader("Data Selection")
-    images_path = st.sidebar.text_input("Image Path", "**/*")
-    weights_file = st.sidebar.text_input("Model", "test_model.pt")
+    images_path = st.sidebar.text_input("Image Path", "test_images/**/*")
+    weights_file = st.sidebar.text_input("Model", "models/fresh_full_n10.pt")
     filenames, detector = cached_streamlit_setup(images_path, weights_file)
 
     st.sidebar.subheader("Filter Options")
