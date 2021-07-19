@@ -11,7 +11,7 @@
     - add a validation set to train.py?
 - requirements.txt / environment.yml
 - write proper readme for the model section
-
+- convert the dataset directly from the json? maybe
 
 # Labelling
 
@@ -32,10 +32,12 @@ To convert the labelled polygons into the training format please run label_to_da
 
 
 # Training
-
+To train the model run the following 
 
 `$ python3 train.py `
-
+--epochs: the number of epochs to train for
+--checkpoint: start training from a model checkpoint
+--debug: show visualisations for debugging during training
 
 
 # Evaluation
