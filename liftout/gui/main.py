@@ -1,7 +1,8 @@
 from liftout.gui.qtdesigner_files import main as gui_main
-from liftout.fibsem.acquire import *
-from liftout.fibsem.movement import *
-from liftout.fibsem.utils import *
+from liftout.fibsem import acquire
+from liftout.fibsem import utils as fibsem_utils
+from liftout.fibsem import movement
+# from liftout.fibsem.utils import *
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
 import traceback
@@ -13,6 +14,9 @@ import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
+
+# Required to not break imports
+BeamType = acquire.BeamType
 
 _translate = QtCore.QCoreApplication.translate
 logger = logging.getLogger(__name__)
@@ -82,11 +86,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.auto = AutoLiftout(microscope=self.microscope)
 
-        self.image_SEM = last_image(self.microscope, beam_type=BeamType.ELECTRON)
-        self.update_display("SEM")
+        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+        self.update_display(beam_type=BeamType.ELECTRON)
 
-        self.image_FIB = last_image(self.microscope, beam_type=BeamType.ION)
-        self.update_display("FIB")
+        self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
+        self.update_display(beam_type=BeamType.ION)
 
         self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
         if self.auto.response:
@@ -105,12 +109,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if image:
                     self.xclick = event.xdata
                     self.yclick = event.ydata
-                    x, y = pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                    x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
                     # print(f'Moving {modality} in x by {round(x*1e6, 2)}um')
                     # print(f'Moving {modality} in y by {round(y*1e6, 2)}um\n')
 
-                    move_relative(self.microscope, x, y)
-                    last_image(microscope=self.microscope, beam_type=beam_type)
+                    movement.move_relative(self.microscope, x, y)
+                    acquire.last_image(microscope=self.microscope, beam_type=beam_type)
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
@@ -120,7 +124,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_SEM.layout().addWidget(self.toolbar_SEM)
         self.label_SEM.layout().addWidget(self.canvas_SEM)
 
-        self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, modality='SEM'))
+        self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ELECTRON))
 
         self.figure_FIB = plt.figure()
         self.canvas_FIB = _FigureCanvas(self.figure_FIB)
@@ -129,7 +133,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_FIB.layout().addWidget(self.toolbar_FIB)
         self.label_FIB.layout().addWidget(self.canvas_FIB)
 
-        self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, modality='FIB'))
+        self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ION))
 
     def initialize_hardware(self, offline=False):
         if offline is False:
@@ -154,8 +158,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_random_data.clicked.connect(lambda: self.random_data())
 
         # FIBSEM methods
-        self.button_get_image_FIB.clicked.connect(lambda: self.get_image(modality='FIB'))
-        self.button_get_image_SEM.clicked.connect(lambda: self.get_image(modality='SEM'))
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
     def ask_user(self, image=None, message=None):
@@ -453,21 +455,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""
         try:
-            self.microscope = initialise_fibsem(ip_address=ip_address)
+            self.microscope = fibsem_utils.initialise_fibsem(ip_address=ip_address)
         except Exception:
             display_error_message(traceback.format_exc())
 
-
-    def update_display(self, modality):
+    def update_display(self, beam_type=BeamType.ELECTRON):
         """Update the GUI display with the current image"""
         try:
-            if modality == 'SEM':
+            if beam_type is BeamType.ELECTRON:
                 image_array = self.image_SEM.data
                 self.figure_SEM.clear()
                 self.ax_SEM = self.figure_SEM.add_subplot(111)
                 self.ax_SEM.imshow(image_array, cmap='gray')
                 self.canvas_SEM.draw()
-            elif modality == 'FIB':
+            if beam_type is BeamType.ION:
                 image_array = self.image_FIB.data
                 self.figure_FIB.clear()
                 self.ax_FIB = self.figure_FIB.add_subplot(111)

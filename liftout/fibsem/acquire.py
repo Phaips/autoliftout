@@ -40,7 +40,8 @@ def new_image(microscope, settings):
     image = acquire_image(microscope=microscope,
                           settings=frame_settings,
                           brightness=settings['brightness'],
-                          contrast=settings['contrast'])
+                          contrast=settings['contrast'],
+                          beam_type=settings['beam_type'])
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],
