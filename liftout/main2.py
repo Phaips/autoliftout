@@ -21,9 +21,11 @@ class AutoLiftout:
         self.save_path = utils.make_logging_directory(directory="log", prefix=run_name)  # TODO: fix pathing
         utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
         self.current_status = AutoLiftoutStatus.Setup
+        self.response = False
 
         self.settings = utils.load_config(config_filename)
-
+        self.pretilt_degrees = 27
+        # TODO: add pretilt_degrees to protocol
         self.microscope = microscope
         acquire.autocontrast(self.microscope, BeamType.ELECTRON)
         acquire.autocontrast(self.microscope, BeamType.ION)
@@ -36,4 +38,3 @@ class AutoLiftout:
                                'save_path': self.save_path}
 
         self.eb_image = acquire.new_image(self.microscope, self.image_settings)
-        print(self.eb_image)
