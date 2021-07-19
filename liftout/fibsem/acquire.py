@@ -49,6 +49,27 @@ def new_image(microscope, settings):
     return image
 
 
+def last_image(microscope, beam_type=BeamType.ELECTRON):
+    """Get the last previously acquired ion or electron beam image.
+
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    beam_type :
+
+    Returns
+    -------
+    AdornedImage
+        If the returned AdornedImage is named 'image', then:
+        image.data = a numpy array of the image pixels
+        image.metadata.binary_result.pixel_size.x = image pixel size in x
+        image.metadata.binary_result.pixel_size.y = image pixel size in y
+    """
+    microscope.imaging.set_active_view(beam_type.value)
+    image = microscope.imaging.get_image()
+    return image
+
+
 def acquire_image(microscope, settings=None, brightness=None, contrast=None, beam_type=BeamType.ELECTRON, save_path='', id=''):
     """Take new electron or ion beam image.
     Returns
