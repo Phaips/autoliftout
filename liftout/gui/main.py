@@ -93,7 +93,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
             print('Sputtering over whole grid')
 
-    def on_gui_click(self, event, modality):
+    def on_gui_click(self, event, beam_type=BeamType.ELECTRON):
         image = None
         if beam_type is BeamType.ELECTRON:
             image = self.image_SEM
