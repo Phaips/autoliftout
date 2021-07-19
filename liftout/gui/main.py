@@ -31,6 +31,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
+
+        # TODO: status bar update with prints from Autoliftout
         self.statusbar.setSizeGripEnabled(0)
         self.status = QtWidgets.QLabel(self.statusbar)
         self.status.setAlignment(QtCore.Qt.AlignRight)
@@ -87,6 +89,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display("FIB")
 
         self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
+        if self.auto.response:
+            # sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
+            print('Sputtering over whole grid')
 
     def on_gui_click(self, event, modality):
         image = None
@@ -154,7 +159,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
     def ask_user(self, image=None, message=None):
-        self.popup = QtWidgets.QWidget()
+        self.popup = QtWidgets.QDialog()
 
         if message is None:
             message = "ok?"
@@ -177,7 +182,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_layout = QtWidgets.QHBoxLayout()
         yes = QtWidgets.QPushButton('Yes')
         no = QtWidgets.QPushButton('No')
-
         yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
         no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
 
@@ -185,7 +189,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_box.layout().addWidget(yes)
         button_box.layout().addWidget(no)
 
+        no.clicked.connect(lambda: self.popup.close())
+        yes.clicked.connect(lambda: self.set_response(True))
+        yes.clicked.connect(lambda: self.popup.close())
+        no.clicked.connect(lambda: self.set_response(False))
+
         self.popup.setLayout(QtWidgets.QVBoxLayout())
+        self.setEnabled(False)
+        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
         if image:
             fig = plt.figure()
@@ -199,9 +210,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.popup.layout().addWidget(question, 1)
         self.popup.layout().addWidget(button_box, 1)
+        self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.popup.show()
+        self.popup.exec_()
 
-        print('5')
+    def set_response(self, response):
+        self.auto.response = response
+        self.setEnabled(True)
 
     def new_protocol(self):
         num_index = self.tabWidget_Protocol.__len__() + 1
@@ -409,7 +424,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     if checked:
                         print(f'Unexpected parameter in protocol file')
                     checked = 0
-
         root.destroy()
         print(_dict)
 
