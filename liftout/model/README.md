@@ -2,8 +2,7 @@
 
 This repository contains the code for preparing and labelling data and training the model used for autoliftout.
 
-
-# Additional Training
+## Additional Training
 
 To label additional images for training, use the following steps:
 - move all the images into an folder
@@ -14,7 +13,7 @@ To label additional images for training, use the following steps:
 
 For more information please see the detailed sections below.
 
-# TODO
+## TODO
 - create base dataset - DONE
 - write dataset documentation
 - write labelling documentation
@@ -27,14 +26,14 @@ For more information please see the detailed sections below.
 - write proper readme for the model section
 - convert the dataset directly from the json? maybe
 
-# Labelling
+## Labelling
 
 LabelMe was used to label the training images. 
 https://github.com/wkentaro/labelme 
 
 The dataset is available here: [TODO: LINK]
 
-# Data Preparation
+## Data Preparation
 Once the data has been labelled, there are a few steps to prepare the data for training.
 
 To convert the labelled polygons into the training format please run label_to_dataset.sh
@@ -43,7 +42,7 @@ the default path to the labelled data is: "data/train/raw*.json".
 
 `$ bash label_to_dataset.sh data/path`
 
-# Training
+## Training
 To train the model run the following 
 
 `$ python3 train.py `
@@ -54,7 +53,7 @@ To train the model run the following
 
 The training will also evaluate the data on a randomised hold out validatation set during training.
 
-# Evaluation
+## Evaluation
 The streamlit app can be used to evaluate the model quality, and calculated liftout features (e.g. lamella centre, needle tip). You can provide a path to a dataset (.tif images) as well as select different models. 
 
 To run the streamlit app:
