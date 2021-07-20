@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.nn import (Conv2d, Dropout2d, MaxPool2d, Module, ReLU, Sequential,
                       UpsamplingNearest2d)
-from torch.utils.data import DataLoader, Dataset, SubsetRandomSampler
+from torch.utils.data import DataLoader, Dataset, SubsetRandomSampler, dataloader
 from torchvision import transforms, utils
 from tqdm import tqdm
 
@@ -168,7 +168,7 @@ def save_model(model, epoch):
     print(f"Model saved to {model_save_file}")
 
 
-def train_model(model, device, data_loader, epochs, DEBUG=False):
+def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG=False):
     """ Helper function for training the model """
     # initialise loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
@@ -178,21 +178,22 @@ def train_model(model, device, data_loader, epochs, DEBUG=False):
     print(f"{epochs} epochs, {total_steps} total_steps per epoch")
 
     # accounting
-    losses = []
+    train_losses = []
+    val_losses = []
 
     # training loop
     for epoch in tqdm(range(epochs)):
-        i = 0
         print(f"------- Epoch {epoch+1} of {epochs}  --------")
-        for images, masks in tqdm(train_data_loader):
+        
+        train_loss = 0
+        val_loss = 0
+        
+        data_loader = tqdm(train_data_loader)
+
+        for i, (images, masks) in enumerate(data_loader):
 
             # set model to training mode
             model.train()
-
-            # debugging training data
-            # if DEBUG:
-            # print(images.shape, masks.shape)
-            # print("-"*50)
 
             # move img and mask to device, reshape mask
             images = images.to(device)
@@ -212,20 +213,16 @@ def train_model(model, device, data_loader, epochs, DEBUG=False):
             optimizer.step()
 
             # evaluation
-            model.eval()
-            with torch.no_grad():
-
-                outputs = model(images)
-                output_mask = decode_output(outputs)
+            train_loss += loss.item()
+            data_loader.set_description(f"Train Loss: {loss.item():.04f}")
 
             if i % 100 == 0:
-                print(
-                    f"Epoch [{epoch + 1}/{epochs}], Step [{i}/{total_steps}], Loss: {loss.item():4f}"
-                )
-
-                losses.append(loss.item())
-
                 if DEBUG:
+                    model.eval()
+                    with torch.no_grad():
+
+                        outputs = model(images)
+                        output_mask = decode_output(outputs)
                     show_memory_usage()  # show gpu usage
 
                     # show images and masks
@@ -235,16 +232,48 @@ def train_model(model, device, data_loader, epochs, DEBUG=False):
                         images, masks, output_mask, title=f"Epoch {epoch+1} Evaluation",
                     )
 
-            # print("-"*50)
-            i += 1
+            # if i ==2:
+            #     break
+        
+        
+        val_loader = tqdm(val_data_loader)
+        for i, (images, masks) in enumerate(val_loader):
+            
+            model.eval()
+            
+            # move img and mask to device, reshape mask
+            images = images.to(device)
+            masks = masks.type(torch.LongTensor)
+            masks = masks.reshape(
+                masks.shape[0], masks.shape[2], masks.shape[3]
+            )  # remove channel dim
+            masks = masks.to(device)
+
+            # forward pass
+            outputs = model(images).type(torch.FloatTensor).to(device)
+            loss = criterion(outputs, masks)
+
+            val_loss += loss.item()
+            val_loader.set_description(f"Val Loss: {loss.item():.04f}")
+
+            # if i ==2:
+            #     break
+
+
+        train_losses.append(train_loss / len(train_data_loader))
+        val_losses.append(val_loss / len(val_data_loader))
 
         # save model checkpoint
         save_model(model, epoch)
 
         # show loss plot
-        # plt.plot(losses)
-        # plt.title("Loss Plot")
-        # plt.show()
+        plt.plot(train_losses, label="train")
+        plt.plot(val_losses, label="val")
+        plt.legend(loc="best")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.title("Loss Plot")
+        plt.show()
 
     return model
 
@@ -319,9 +348,16 @@ if __name__ == "__main__":
 
     train_sampler =  SubsetRandomSampler(train_idx)
     val_sampler = SubsetRandomSampler(val_idx)
+
 # https://towardsdatascience.com/pytorch-basics-sampling-samplers-2a0f29f0bf2a
-    train_data_loader = DataLoader(seg_dataset, batch_size=batch_size, shuffle=True, sampler=train_sampler)
+
+    train_data_loader = DataLoader(seg_dataset, batch_size=batch_size, sampler=train_sampler) #shuffle=True,
     print(f"Train dataset has {len(train_data_loader)} batches of size {batch_size}")
+
+    val_data_loader = DataLoader(seg_dataset, batch_size=batch_size, sampler=val_sampler) #shuffle=True,
+    print(f"Validation dataset has {len(val_data_loader)} batches of size {batch_size}")
+
+    print("\n ------------------ Data Preprocessing Completed ------------------")
 
     # from smp
     model = smp.Unet(
@@ -364,7 +400,7 @@ if __name__ == "__main__":
     model.to(device)
 
     # train model
-    model = train_model(model, device, train_data_loader, epochs, DEBUG=DEBUG)
+    model = train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG=DEBUG)
 
     ################################## SAVE MODEL ##################################
 
