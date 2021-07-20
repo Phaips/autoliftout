@@ -1,5 +1,19 @@
 # Liftout Model
 
+This repository contains the code for preparing and labelling data and training the model used for autoliftout.
+
+
+# Additional Training
+
+To label additional images for training, use the following steps:
+- move all the images into an folder
+- run: `$ python3 extract_data.py` to extract all the images into an ordered dataset
+- label the immages using labelme `$ labelme data/path/ `
+- extract the labels as a dataset: `$ bash label_to_dataset.sh data/path/ `
+- train the model on the new dataset `$ python3 train --data data/path/ `
+
+For more information please see the detailed sections below.
+
 # TODO
 - create base dataset - DONE
 - write dataset documentation
@@ -18,21 +32,16 @@
 LabelMe was used to label the training images. 
 https://github.com/wkentaro/labelme 
 
-
 The dataset is available here: [TODO: LINK]
-
-Guide for labelling new images
-
 
 # Data Preparation
 Once the data has been labelled, there are a few steps to prepare the data for training.
 
 To convert the labelled polygons into the training format please run label_to_dataset.sh
 
-the default path to the labelled data is: "data/train/raw*.json". Edit t
+the default path to the labelled data is: "data/train/raw*.json".
 
-`$ bash label_to_dataset.sh`
-
+`$ bash label_to_dataset.sh data/path`
 
 # Training
 To train the model run the following 
