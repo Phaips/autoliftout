@@ -2,14 +2,18 @@
 
 echo "Running convert labels to dataset script..."
 
-
 # TODO: this doesn't work on windows
-
 # loop through each label
 
-LABEL_DIR="data/train/raw*.json"
+# set label directory
+if [ -z $1 ]
+then
+    LABEL_PATH="data/train/raw/*.json"
+else
+    LABEL_PATH=$1"/*.json"
+fi
 
-for FILE in $LABEL_DIR; 
+for FILE in $LABEL_PATH; 
     do echo $FILE; 
 
     # get basename of file
@@ -17,11 +21,11 @@ for FILE in $LABEL_DIR;
     echo "$fbname"
 
     # save into separate folder
-    OUT_DIR="data/train/"$fbname
-    echo "$OUT_DIR"
+    OUT_PATH="data/train/"$fbname
+    echo "$OUT_PATH"
 
     # # run labelme_json_to_dataset
-    labelme_json_to_dataset $FILE -o $OUT_DIR
+    labelme_json_to_dataset $FILE -o $OUT_PATH
 done
 
 
