@@ -1,163 +1,19 @@
 #!/usr/bin/env python3
 
-# ref:
-# https://towardsdatascience.com/train-a-lines-segmentation-model-using-pytorch-34d4adab8296
-# https://discuss.pytorch.org/t/multiclass-segmentation-u-net-masks-format/70979/14
-# https://github.com/qubvel/segmentation_models.pytorch
-
 import argparse
-import glob
-import logging
 from datetime import datetime
-# from torchsummary import summary
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import PIL
 import segmentation_models_pytorch as smp
 import torch
-import torch.nn.functional as F
-from PIL import Image
-from torch.nn import (Conv2d, Dropout2d, MaxPool2d, Module, ReLU, Sequential,
-                      UpsamplingNearest2d)
-from torch.utils.data import DataLoader, Dataset, SubsetRandomSampler, dataloader
-from torchvision import transforms, utils
+from liftout.model.dataset import *
+from liftout.model.utils import *
 from tqdm import tqdm
 
-
-# change this to pre-processing- and cache
-def load_images_and_masks_in_path(images_path, masks_path):
-    images = []
-    masks = []
-    sorted_img_filenames = sorted(glob.glob(images_path + ".png"))
-    sorted_mask_filenames = sorted(glob.glob(masks_path + ".png"))
-
-    for img_fname, mask_fname in tqdm(
-        list(zip(sorted_img_filenames, sorted_mask_filenames))
-    ):
-
-        image = np.asarray(Image.open(img_fname))
-        mask = np.asarray(Image.open(mask_fname))
-
-        images.append(image)
-        masks.append(mask)
-
-    return np.array(images), np.array(masks)
-
-
-def decode_output(output):
-    """decodes the output of segmentation model to RGB mask"""
-    output = F.softmax(output, dim=1)
-    mask = torch.argmax(output.squeeze(), dim=0).detach().cpu().numpy()
-    mask = decode_segmap(mask)
-    return mask
-
-def decode_segmap(image, nc=3):
-
-    """ Decode segmentation class mask into an RGB image mask"""
-
-    # 0=background, 1=lamella, 2= needle
-    label_colors = np.array([(0, 0, 0), (255, 0, 0), (0, 255, 0)])
-
-    # pre-allocate r, g, b channels as zero
-    r = np.zeros_like(image, dtype=np.uint8)
-    g = np.zeros_like(image, dtype=np.uint8)
-    b = np.zeros_like(image, dtype=np.uint8)
-
-    # apply the class label colours to each pixel
-    for l in range(0, nc):
-        idx = image == l
-        r[idx] = label_colors[l, 0]
-        g[idx] = label_colors[l, 1]
-        b[idx] = label_colors[l, 2]
-
-    # stack rgb channels to form an image
-    rgb_mask = np.stack([r, g, b], axis=2)
-    return rgb_mask
-
-# transformations
-transformation = transforms.Compose(
-    [
-        transforms.ToPILImage(),
-        transforms.Resize((1024 // 4, 1536 // 4)),
-        # transforms.Lambda(
-        #     lambda img: transforms.functional.adjust_contrast(img, contrast_factor=2)
-        # ),
-        transforms.ToTensor(),
-    ]
-)
-
-
-class SegmentationDataset(Dataset):
-    def __init__(self, images, masks, num_classes: int, transforms=None):
-        self.images = images
-        self.masks = masks
-        self.num_classes = num_classes
-        self.transforms = transforms
-
-    def __getitem__(self, idx):
-        image = self.images[idx]
-
-        if self.transforms:
-            image = self.transforms(image)
-
-        mask = self.masks[idx]
-
-        # - the problem was ToTensor was destroying the class index for the labels (rounding them to 0-1)
-        # need to to transformation manually
-        mask = Image.fromarray(mask).resize(
-            (1536 // 4, 1024 // 4), resample=PIL.Image.NEAREST
-        )
-        mask = torch.tensor(np.asarray(mask)).unsqueeze(0)
-
-        return image, mask
-
-    def __len__(self):
-        return len(self.images)
-
-
-# helper functions
-def show_img_and_mask(imgs, gts, mask, title="Image, Ground Truth and Mask"):
-
-    n_imgs = len(imgs)
-
-    fig, ax = plt.subplots(n_imgs, 3, figsize=(8, 6))
-    fig.suptitle(title)
-
-    for i in range(len(imgs)):
-
-        img = imgs[i].permute(1, 2, 0)
-        gt = decode_segmap(gts[i].permute(1, 2, 0).squeeze())  # convert to rgb mask
-
-        ax[0].imshow(img, cmap="gray")
-        ax[1].imshow(gt)
-        ax[1].set_title("Ground Truth")
-        ax[2].imshow(mask)
-        ax[2].set_title("Predicted Mask")
-
-    # TODO: improve when batch size is larger
-    plt.show()
-
-
-def show_memory_usage():
-    """Show total, reserved and allocated gpu memory"""
-    t = torch.cuda.get_device_properties(0).total_memory
-    r = torch.cuda.memory_reserved(0)
-    a = torch.cuda.memory_allocated(0)
-    f = r - a  # free inside reserved
-
-    print("GPU memory", t, r, a, f, f"{f/r:.3}")
-
-
-def show_values(ten):
-    """ Show tensor statistics for debugging """
-    unq = np.unique(ten.detach().cpu().numpy())
-    print(ten.shape, ten.min(), ten.max(), ten.mean(), ten.std(), unq)
-
-
 def save_model(model, epoch):
-
+    """Helper function for saving the model based on current time and epoch"""
+    
     # datetime object containing current date and time
     now = datetime.now()
     # format
@@ -166,7 +22,6 @@ def save_model(model, epoch):
     torch.save(model.state_dict(), model_save_file)
 
     print(f"Model saved to {model_save_file}")
-
 
 def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG=False):
     """ Helper function for training the model """
@@ -230,11 +85,7 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
                     masks = masks.detach().cpu().unsqueeze(1)
                     show_img_and_mask(
                         images, masks, output_mask, title=f"Epoch {epoch+1} Evaluation",
-                    )
-
-            # if i ==2:
-            #     break
-        
+                    )        
         
         val_loader = tqdm(val_data_loader)
         for i, (images, masks) in enumerate(val_loader):
@@ -255,10 +106,6 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
 
             val_loss += loss.item()
             val_loader.set_description(f"Val Loss: {loss.item():.04f}")
-
-            # if i ==2:
-            #     break
-
 
         train_losses.append(train_loss / len(train_data_loader))
         val_losses.append(val_loss / len(val_data_loader))
@@ -312,53 +159,25 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     data_path = args.data
-    DEBUG = args.debug
     model_checkpoint = args.checkpoint
     epochs = args.epochs
-
-    ################################## LOAD DATASET ##################################
-    print(
-        "\n----------------------- Loading and Preparing Data -----------------------\n"
-    )
-
-    img_path = f"{data_path}/train/**/img"
-    label_path = f"{data_path}/train/**/label"
-    print(f"Loading data set from {img_path}")
-
-    train_images, train_masks = load_images_and_masks_in_path(img_path, label_path)
-
+    DEBUG = args.debug
 
     # hyperparams
     num_classes = 3
     batch_size = 1
 
-    # load dataset
-    seg_dataset = SegmentationDataset(
-        train_images, train_masks, num_classes, transforms=transformation
+    ################################## LOAD DATASET ##################################
+    print(
+        "\n----------------------- Loading and Preparing Data -----------------------"
     )
 
-    # TODO: validation dataset
+    train_data_loader, val_data_loader = preprocess_data(data_path, num_classes=num_classes, batch_size=batch_size)
 
-    val_size = 0.2
-    dataset_size = len(seg_dataset)
-    dataset_idx = list(range(dataset_size))
-    split_idx = int(np.floor(val_size * dataset_size))
-    train_idx = dataset_idx[split_idx:]
-    val_idx = dataset_idx[:split_idx]
+    print("\n----------------------- Data Preprocessing Completed -----------------------")
 
-    train_sampler =  SubsetRandomSampler(train_idx)
-    val_sampler = SubsetRandomSampler(val_idx)
-
-# https://towardsdatascience.com/pytorch-basics-sampling-samplers-2a0f29f0bf2a
-
-    train_data_loader = DataLoader(seg_dataset, batch_size=batch_size, sampler=train_sampler) #shuffle=True,
-    print(f"Train dataset has {len(train_data_loader)} batches of size {batch_size}")
-
-    val_data_loader = DataLoader(seg_dataset, batch_size=batch_size, sampler=val_sampler) #shuffle=True,
-    print(f"Validation dataset has {len(val_data_loader)} batches of size {batch_size}")
-
-    print("\n ------------------ Data Preprocessing Completed ------------------")
-
+    ################################## LOAD MODEL ##################################
+    print("\n----------------------- Loading Model -----------------------")
     # from smp
     model = smp.Unet(
         encoder_name="resnet18",
@@ -366,13 +185,19 @@ if __name__ == "__main__":
         in_channels=1,  # grayscale images
         classes=3,  # background, needle, lamella
     )
+    
+    # Use gpu for training if available else use cpu
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     # load model checkpoint
     if model_checkpoint:
-        model.load_state_dict(torch.load(model_checkpoint))
+        model.load_state_dict(torch.load(model_checkpoint, map_location=device))
         print(f"Checkpoint file {model_checkpoint} loaded.")
 
     ################################## SANITY CHECK ##################################
+    print("\n----------------------- Begin Sanity Check -----------------------\n")
+
     for i in range(2):
         # testing dataloader
         imgs, masks = next(iter(train_data_loader))
@@ -393,15 +218,17 @@ if __name__ == "__main__":
         show_img_and_mask(imgs, masks, pred, title="Checkpointed Model Predictions")
 
     ################################## TRAINING ##################################
-    print("----------------------- Begin Training -----------------------\n")
-
-    # Use gpu for training if available else use cpu
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    print("\n----------------------- Begin Training -----------------------\n")
 
     # train model
     model = train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG=DEBUG)
 
     ################################## SAVE MODEL ##################################
 
-    # TODO: validation and test dataset
+
+
+
+# ref:
+# https://towardsdatascience.com/train-a-lines-segmentation-model-using-pytorch-34d4adab8296
+# https://discuss.pytorch.org/t/multiclass-segmentation-u-net-masks-format/70979/14
+# https://github.com/qubvel/segmentation_models.pytorch

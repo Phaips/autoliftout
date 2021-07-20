@@ -8,7 +8,7 @@
 - fix app.py for use with new utils
 - remove unused or consolidate files (exp_summary, mpl_click)
 - fix / refactor train.py (maybe refactor dataset)
-    - add a validation set to train.py?
+    - add a validation set to train.py? - DONE
 - requirements.txt / environment.yml
 - write proper readme for the model section
 - convert the dataset directly from the json? maybe
