@@ -15,8 +15,7 @@ import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
-from autoscript_sdb_microscope_client.structures import AdornedImage, \
-    GrabFrameSettings
+from autoscript_sdb_microscope_client.structures import StagePosition
 # Required to not break imports
 BeamType = acquire.BeamType
 
@@ -157,7 +156,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION)
 
             self.ask_user(image=self.image_FIB, message=f'Please centre the {feature_type} coordinate in the ion beam.\n'
-                                                        f'Press yes when the feature is centered')
+                                                        f'Press Yes when the feature is centered')
 
             self.auto.image_settings['beam_type'] = BeamType.ELECTRON
             acquire.new_image(microscope, self.auto.image_settings)
@@ -188,10 +187,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return coordinates, images
 
     def ensure_eucentricity(self, microscope):
-        calibration.ensure_eucentricity(microscope, pretilt_angle=pretilt)
-        # Call
-        # asks()
-        pass
+        calibration.validate_scanning_rotation(microscope)
+        # print("Rough eucentric alignment")  TODO: status
+        movement.flat_to_beam(microscope, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON)
+
+        self.auto.image_settings['hfw'] = 900e-6  # TODO: add to protocol
+        microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        acquire.autocontrast(microscope, beam_type=BeamType.ELECTRON)
+        acquire.autocontrast(microscope, beam_type=BeamType.ION)
+        self.user_based_eucentric_height_adjustment(microscope)
+
+        # print("Final eucentric alignment")  TODO: status
+        self.auto.image_settings['hfw'] = 200e-6  # TODO: add to protocol
+        microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.user_based_eucentric_height_adjustment(microscope)
+
+    def user_based_eucentric_height_adjustment(self, microscope):
+        self.auto.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
+        self.auto.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
+        self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+        self.image_SEM = acquire.new_image(microscope, settings=self.auto.image_settings)
+        self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
+                                                    f'Press Yes when the feature is centered')
+        if self.auto.response:
+            self.auto.image_settings['beam_type'] = BeamType.ION
+            self.image_FIB = acquire.new_image(microscope, settings=self.auto.image_settings)
+            self.ask_user(image=self.image_FIB,  message=f'Please click the same location in the ion beam\n'
+                                                         f'Press Yes when happy with the location')
+            # TODO: show users their click, they click Yes on single click
+        else:
+            print('SEM image not centered')
+            return
+
+        tilt_radians = microscope.specimen.stage.current_position.t
+        real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
+        delta_z = -np.cos(tilt_radians) * real_y
+        microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
+        # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
+        self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+        self.image_SEM = acquire.new_image(microscope, settings=self.auto.image_settings)
+        self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
+                                                    f'Press Yes when the feature is centered')
+        # TODO: can we remove this? not used
+        # resolution = storage.settings["reference_images"][
+        #     "needle_ref_img_resolution"]
+        # dwell_time = storage.settings["reference_images"][
+        #     "needle_ref_img_dwell_time"]
+        # image_settings = GrabFrameSettings(resolution=resolution,
+        #                                    dwell_time=dwell_time)
 
     def on_gui_click(self, event, beam_type=BeamType.ELECTRON):
         image = None
@@ -209,8 +254,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     # print(f'Moving {modality} in x by {round(x*1e6, 2)}um')
                     # print(f'Moving {modality} in y by {round(y*1e6, 2)}um\n')
 
-                    movement.move_relative(self.microscope, x, y)
-                    acquire.last_image(microscope=self.microscope, beam_type=beam_type)
+                    # movement.move_relative(self.microscope, x, y)
+                    # acquire.last_image(microscope=self.microscope, beam_type=beam_type)
+            else:
+                self.xclick = event.xdata
+                self.yclick = event.ydata
+                # Add crosshair
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
