@@ -106,21 +106,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: Add zooming of microscope to GUI control
         # Select landing points and check eucentric height
-        landing_coordinates, original_landing_images = self.select_initial_feature_coordinates(
-            self.microscope, feature_type='landing')
-        lamella_coordinates, original_trench_images = self.select_initial_feature_coordinates(
-            self.microscope, feature_type='lamella')
-        zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
+        landing_coordinates, original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
+        lamella_coordinates, original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
+        self.zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
 
-        # acquire.new_image()
-        # acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
-
-    def select_initial_feature_coordinates(self, microscope, feature_type=''):
+    def select_initial_feature_coordinates(self, feature_type=''):
         """
         Options are 'lamella' or 'landing'
-        :param microscope:
-        :param feature_type:
-        :return:
         """
 
         select_another_position = True
@@ -128,56 +120,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         images = []
 
         if feature_type == 'lamella':
-            movement.move_to_sample_grid(microscope)
+            movement.move_to_sample_grid(self.microscope, settings=self.auto.settings)
             # TODO: move_angle should be here, not repeated in while loop?
         elif feature_type == 'landing':
-            movement.move_to_landing_grid(microscope)
+            movement.move_to_landing_grid(self.microscope, settings=self.auto.settings)
             # TODO: move_angle should be here, not repeated in while loop?
-            self.ensure_eucentricity(microscope)
+            self.ensure_eucentricity()
             # TODO: why is this ensure_eucentricity not in while loop?
         else:
             raise ValueError(f'Expected "lamella" or "landing" as feature_type')
 
         while select_another_position:
             if feature_type == 'lamella':
-                self.ensure_eucentricity(microscope)
+                self.ensure_eucentricity()
                 # TODO: should this ensure_eucentricity be repeated?
-                movement.move_to_trenching_angle(microscope)
+                movement.move_to_trenching_angle(self.microscope)
             elif feature_type == 'landing':
-                self.ensure_eucentricity(microscope)
+                self.ensure_eucentricity()
             self.auto.image_settings['hfw'] = 400e-6  # TODO: set this value in protocol
 
             # refresh TODO: fix protocol structure
             self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-            acquire.new_image(microscope, self.auto.image_settings)
+            acquire.new_image(self.microscope, self.auto.image_settings)
             self.update_display(beam_type=BeamType.ELECTRON)
             self.auto.image_settings['beam_type'] = BeamType.ION
-            acquire.new_image(microscope, self.auto.image_settings)
+            acquire.new_image(self.microscope, self.auto.image_settings)
             self.update_display(beam_type=BeamType.ION)
 
             self.ask_user(image=self.image_FIB, message=f'Please centre the {feature_type} coordinate in the ion beam.\n'
                                                         f'Press Yes when the feature is centered')
 
             self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-            acquire.new_image(microscope, self.auto.image_settings)
+            acquire.new_image(self.microscope, self.auto.image_settings)
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
 
-            coordinates.append(microscope.specimen.stage.current_position)
+            coordinates.append(self.microscope.specimen.stage.current_position)
             self.auto.image_settings['save'] = False
             if feature_type == 'landing':
                 self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['landing_post_ref_img_resolution']
                 self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['landing_post_ref_img_dwell_time']
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_lowres']  # TODO: watch image settings through run
-                eb_lowres, ib_lowres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_highres']
-                eb_highres, ib_highres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
             elif feature_type == 'lamella':
                 self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
                 self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
-                eb_lowres, ib_lowres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
-                eb_highres, ib_highres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
 
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
 
@@ -186,34 +178,34 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             select_another_position = self.auto.response
         return coordinates, images
 
-    def ensure_eucentricity(self, microscope):
-        calibration.validate_scanning_rotation(microscope)
+    def ensure_eucentricity(self):
+        calibration.validate_scanning_rotation(self.microscope)
         # print("Rough eucentric alignment")  TODO: status
-        movement.flat_to_beam(microscope, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON)
+        movement.flat_to_beam(self.microscope, settings=self.auto.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON)
 
         self.auto.image_settings['hfw'] = 900e-6  # TODO: add to protocol
-        microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        acquire.autocontrast(microscope, beam_type=BeamType.ELECTRON)
-        acquire.autocontrast(microscope, beam_type=BeamType.ION)
-        self.user_based_eucentric_height_adjustment(microscope)
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
+        acquire.autocontrast(self.microscope, beam_type=BeamType.ION)
+        self.user_based_eucentric_height_adjustment()
 
         # print("Final eucentric alignment")  TODO: status
         self.auto.image_settings['hfw'] = 200e-6  # TODO: add to protocol
-        microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        self.user_based_eucentric_height_adjustment(microscope)
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.user_based_eucentric_height_adjustment()
 
-    def user_based_eucentric_height_adjustment(self, microscope):
+    def user_based_eucentric_height_adjustment(self):
         self.auto.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
         self.auto.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
         self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-        self.image_SEM = acquire.new_image(microscope, settings=self.auto.image_settings)
+        self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
         self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
                                                     f'Press Yes when the feature is centered')
         if self.auto.response:
             self.auto.image_settings['beam_type'] = BeamType.ION
-            self.image_FIB = acquire.new_image(microscope, settings=self.auto.image_settings)
+            self.image_FIB = acquire.new_image(self.microscope, settings=self.auto.image_settings)
             self.ask_user(image=self.image_FIB,  message=f'Please click the same location in the ion beam\n'
                                                          f'Press Yes when happy with the location')
             # TODO: show users their click, they click Yes on single click
@@ -221,13 +213,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             print('SEM image not centered')
             return
 
-        tilt_radians = microscope.specimen.stage.current_position.t
+        tilt_radians = self.microscope.specimen.stage.current_position.t
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(tilt_radians) * real_y
-        microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
+        self.microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
         # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
         self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-        self.image_SEM = acquire.new_image(microscope, settings=self.auto.image_settings)
+        self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
         self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
                                                     f'Press Yes when the feature is centered')
         # TODO: can we remove this? not used

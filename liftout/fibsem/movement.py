@@ -77,7 +77,7 @@ def pixel_to_realspace_coordinate(coord, image):
     return realspace_coord
 
 
-def move_to_trenching_angle(microscope, *, pretilt_angle=pretilt):
+def move_to_trenching_angle(microscope, settings, *, pretilt_angle=pretilt):
     """Tilt the sample stage to the correct angle for milling trenches.
     Assumes trenches should be milled with the sample surface flat to ion beam.
     Parameters
@@ -91,27 +91,27 @@ def move_to_trenching_angle(microscope, *, pretilt_angle=pretilt):
     autoscript_sdb_microscope_client.structures.StagePosition
         The position of the microscope stage after moving.
     """
-    flat_to_beam(microscope, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)
+    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)
     return microscope.specimen.stage.current_position
 
 
-def move_to_liftout_angle(microscope, *, liftout_angle=10, pretilt_angle=pretilt):
+def move_to_liftout_angle(microscope, settings, liftout_angle=10, pretilt_angle=pretilt):
     """Tilt the sample stage to the correct angle for liftout.
     """
-    flat_to_beam(microscope, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
+    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle)))
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_angle(microscope, *, landing_angle=18, pretilt_angle=pretilt):
+def move_to_landing_angle(microscope, settings, landing_angle=18, pretilt_angle=pretilt):
     """Tilt the sample stage to the correct angle for the landing posts.
     """
-    flat_to_beam(microscope, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)  # stage tilt 25
+    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)  # stage tilt 25
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(landing_angle)))  # more tilt by 18
     return microscope.specimen.stage.current_position
 
 
-def move_to_jcut_angle(microscope, *, jcut_angle=6., pretilt_angle=pretilt):
+def move_to_jcut_angle(microscope, settings, jcut_angle=6., pretilt_angle=pretilt):
     """Tilt the sample to the Jcut angle.
     Parameters
     ----------
@@ -126,16 +126,16 @@ def move_to_jcut_angle(microscope, *, jcut_angle=6., pretilt_angle=pretilt):
     autoscript_sdb_microscope_client.structures.StagePosition
         The position of the microscope stage after moving.
     """
-    flat_to_beam(microscope, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
+    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(jcut_angle)))
     return microscope.specimen.stage.current_position
 
 
-def move_to_sample_grid(microscope, settings, *, pretilt_angle=pretilt):
+def move_to_sample_grid(microscope, settings, pretilt_angle=pretilt):
     """Move stage and zoom out to see the whole sample grid.
     Assumes sample grid is mounted on the left hand side of the holder.
     """
-    flat_to_beam(microscope, settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
+    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     sample_grid_center = StagePosition(x=-0.0025868173, y=0.0031794167, z=0.0039457213)
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
@@ -144,7 +144,7 @@ def move_to_sample_grid(microscope, settings, *, pretilt_angle=pretilt):
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_grid(microscope, *, pretilt_angle=pretilt,
+def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
                          flat_to_sem=True):
     """Move stage and zoom out to see the whole landing post grid.
     Assumes the landing grid is mounted on the right hand side of the holder.
@@ -158,7 +158,7 @@ def move_to_landing_grid(microscope, *, pretilt_angle=pretilt,
         Whether to keep the landing post grid surface flat to the SEM.
     """
     if flat_to_sem:
-        flat_to_beam(microscope, beam_type=BeamType.ELECTRON)
+        flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
     else:
         move_to_landing_angle(microscope, pretilt_angle=pretilt_angle)
     landing_grid_position = StagePosition(x=-0.0034580609,
@@ -183,7 +183,7 @@ def move_sample_stage_out(microscope):
     return microscope.specimen.stage.current_position
 
 
-def flat_to_beam(microscope, settings, *, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON):
+def flat_to_beam(microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON):
     """Make the sample surface flat to the electron or ion beam.
     """
     stage = microscope.specimen.stage
