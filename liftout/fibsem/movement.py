@@ -1,9 +1,9 @@
-from liftout.old_functions.acquire import *
+from liftout.fibsem.acquire import *
 import numpy as np
 from autoscript_sdb_microscope_client.structures import (StagePosition,
                                                          MoveSettings)
 
-pretilt = 27
+pretilt = 27  # TODO: add to protocol
 
 
 def move_relative(microscope, x=0.0, y=0.0):

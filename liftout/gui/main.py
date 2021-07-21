@@ -2,6 +2,7 @@ from liftout.gui.qtdesigner_files import main as gui_main
 from liftout.fibsem import acquire
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem import movement
+from liftout.fibsem import calibration
 # from liftout.fibsem.utils import *
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
@@ -14,9 +15,12 @@ import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
-
+from autoscript_sdb_microscope_client.structures import AdornedImage, \
+    GrabFrameSettings
 # Required to not break imports
 BeamType = acquire.BeamType
+
+pretilt = 27  # TODO: put in protocol
 
 _translate = QtCore.QCoreApplication.translate
 logger = logging.getLogger(__name__)
