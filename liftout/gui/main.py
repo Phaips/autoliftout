@@ -92,10 +92,102 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         self.update_display(beam_type=BeamType.ION)
 
+        # Whole-grid platinum deposition
         self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
         if self.auto.response:
             # sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
             print('Sputtering over whole grid')
+            self.auto.image_settings['label'] = 'grid_Pt_deposition'
+            self.auto.image_settings['save'] = True
+            acquire.new_image(self.microscope, self.auto.image_settings)
+
+        # TODO: Add zooming of microscope to GUI control
+        # Select landing points and check eucentric height
+        landing_coordinates, original_landing_images = self.select_initial_feature_coordinates(
+            self.microscope, feature_type='landing')
+        lamella_coordinates, original_trench_images = self.select_initial_feature_coordinates(
+            self.microscope, feature_type='lamella')
+        zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
+
+        # acquire.new_image()
+        # acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
+
+    def select_initial_feature_coordinates(self, microscope, feature_type=''):
+        """
+        Options are 'lamella' or 'landing'
+        :param microscope:
+        :param feature_type:
+        :return:
+        """
+
+        select_another_position = True
+        coordinates = []
+        images = []
+
+        if feature_type == 'lamella':
+            movement.move_to_sample_grid(microscope)
+            # TODO: move_angle should be here, not repeated in while loop?
+        elif feature_type == 'landing':
+            movement.move_to_landing_grid(microscope)
+            # TODO: move_angle should be here, not repeated in while loop?
+            self.ensure_eucentricity(microscope)
+            # TODO: why is this ensure_eucentricity not in while loop?
+        else:
+            raise ValueError(f'Expected "lamella" or "landing" as feature_type')
+
+        while select_another_position:
+            if feature_type == 'lamella':
+                self.ensure_eucentricity(microscope)
+                # TODO: should this ensure_eucentricity be repeated?
+                movement.move_to_trenching_angle(microscope)
+            elif feature_type == 'landing':
+                self.ensure_eucentricity(microscope)
+            self.auto.image_settings['hfw'] = 400e-6  # TODO: set this value in protocol
+
+            # refresh TODO: fix protocol structure
+            self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+            acquire.new_image(microscope, self.auto.image_settings)
+            self.update_display(beam_type=BeamType.ELECTRON)
+            self.auto.image_settings['beam_type'] = BeamType.ION
+            acquire.new_image(microscope, self.auto.image_settings)
+            self.update_display(beam_type=BeamType.ION)
+
+            self.ask_user(image=self.image_FIB, message=f'Please centre the {feature_type} coordinate in the ion beam.\n'
+                                                        f'Press yes when the feature is centered')
+
+            self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+            acquire.new_image(microscope, self.auto.image_settings)
+            # TODO: does this need to be new image?  Can it be last?  Can it be view set?
+
+            coordinates.append(microscope.specimen.stage.current_position)
+            self.auto.image_settings['save'] = False
+            if feature_type == 'landing':
+                self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['landing_post_ref_img_resolution']
+                self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['landing_post_ref_img_dwell_time']
+                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                eb_lowres, ib_lowres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_highres']
+                eb_highres, ib_highres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+            elif feature_type == 'lamella':
+                self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
+                self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
+                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                eb_lowres, ib_lowres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
+                eb_highres, ib_highres = acquire.take_reference_images(microscope, settings=self.auto.image_settings)
+
+            images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
+
+            self.ask_user(message=f'Do you want to select another {feature_type} position?\n'
+                                  f'{len(coordinates)} positions selected so far.')
+            select_another_position = self.auto.response
+        return coordinates, images
+
+    def ensure_eucentricity(self, microscope):
+        calibration.ensure_eucentricity(microscope, pretilt_angle=pretilt)
+        # Call
+        # asks()
+        pass
 
     def on_gui_click(self, event, beam_type=BeamType.ELECTRON):
         image = None
