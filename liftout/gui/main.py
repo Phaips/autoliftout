@@ -3,6 +3,7 @@ from liftout.fibsem import acquire
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem import movement
 from liftout.fibsem import calibration
+from liftout.fibsem import milling
 # from liftout.fibsem.utils import *
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
@@ -15,9 +16,10 @@ import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
-from autoscript_sdb_microscope_client.structures import StagePosition
+from autoscript_sdb_microscope_client.structures import *
 # Required to not break imports
 BeamType = acquire.BeamType
+from liftout.main2 import AutoLiftoutStatus
 
 pretilt = 27  # TODO: put in protocol
 
@@ -230,7 +232,87 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # image_settings = GrabFrameSettings(resolution=resolution,
         #                                    dwell_time=dwell_time)
 
-    def on_gui_click(self, event, beam_type=BeamType.ELECTRON):
+    def run_liftout(self):
+
+        for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
+            self.liftout_counter += 1
+            landing_reference_images = self.original_landing_images[i]
+            lamella_area_reference_images = self.original_trench_images[i]
+            self.single_liftout(landing_coord, lamella_coord,
+                                landing_reference_images,
+                                lamella_area_reference_images)
+
+        self.auto.current_status = AutoLiftoutStatus.Cleanup
+
+    def single_liftout(self, landing_coordinates, lamella_coordinates,
+                       original_landing_images, original_lamella_area_images):
+        self.microscope.specimen.stage.absolute_move(lamella_coordinates)
+        calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_lamella_area_images, mode='eb')
+        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
+                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double')
+        if not self.auto.response:
+            print(f'Drift correction for sample {self.liftout_counter} did not work')
+            return
+
+        self.auto.image_settings['save'] = True
+        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+
+        # mill
+        self.auto.current_status = AutoLiftoutStatus.Milling
+        self.mill_lamella(confirm=True)
+
+    def mill_lamella(self, confirm=True):
+        stage_settings = MoveSettings(rotate_compucentric=True)
+        stage = self.microscope.specimen.stage
+
+        self.auto.image_settings['hfw'] = 100e-6 # TODO: add to protocol
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+
+        movement.move_to_trenching_angle(self.microscope)  # <----flat to the ion, stage tilt 25 (total image tilt 52)
+        # Take an ion beam image at the *milling current*
+        self.update_display(beam_type=BeamType.ION, image_type='new')
+        if confirm:
+            # TODO: ask Sergey if we can remove this step
+            self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
+                                                          f'If not, double click to center the lamella position', click='double')
+            if not self.auto.response:
+                return
+
+        milling.mill_trenches(self.microscope, self.auto.settings, confirm=confirm)
+
+        self.auto.image_settings['save'] = True
+        self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
+        self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
+        self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_low_res'  # TODO: add to protocol
+        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+
+        self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
+        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_high_res'  # TODO: add to protocol
+        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+
+        reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
+
+        movement.flat_to_beam(self.microscope, self.auto.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON, )
+        self.auto.image_settings['hfw'] = 400e-6   # TODO: can this be ignored?
+
+        calibration.correct_stage_drift(self.microscope, self.auto.settings, reference_images_low_and_high_res, self.liftout_counter, mode='ib')
+
+        # realign_with_ML
+        # tilt
+        # realign_with_ML
+        # tilt
+        # realign_with_ML
+
+        # jcut
+        # save reference images
+        # tilt to liftout
+        # realign
+
+    def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON):
         image = None
         if beam_type is BeamType.ELECTRON:
             image = self.image_SEM
