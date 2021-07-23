@@ -253,6 +253,45 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     new_electron_image(microscope)
 
 
+def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
+    """Stage movement in X.
+    ----------
+    expected_x : in meters
+    Returns
+    -------
+    StagePosition
+        Stage position to pass to relative movement function.
+    """
+    from autoscript_sdb_microscope_client.structures import StagePosition
+    return StagePosition(x=expected_x, y=0, z=0)
+
+
+def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTRON):
+    """Stage movement in Y, corrected for tilt of sample surface plane.
+    ----------
+    expected_y : in meters
+    stage_tilt : in radians        Can pass this directly microscope.specimen.stage.current_position.t
+    beam_type : BeamType, optional
+        BeamType.ELECTRON or BeamType.ION
+    Returns
+    -------
+    StagePosition
+        Stage position to pass to relative movement function.
+    """
+    from autoscript_sdb_microscope_client.structures import StagePosition
+    if beam_type == BeamType.ELECTRON:
+        tilt_adjustment = np.deg2rad(-pretilt)
+    elif beam_type == BeamType.ION:
+        tilt_adjustment = np.deg2rad(52 - pretilt)
+    tilt_radians = stage_tilt + tilt_adjustment
+    y_move = +np.cos(tilt_radians) * expected_y
+    z_move = -np.sin(tilt_radians) * expected_y
+    print(' ------------  drift correction ---------------  ')
+    print('the corrected Y shift is ', y_move, 'meters')
+    print('the corrected Z shift is ', z_move, 'meters')
+    return StagePosition(x=0, y=y_move, z=z_move)
+
+
 def z_corrected_stage_movement(expected_z, stage_tilt):
     """Stage movement in Z, corrected for tilt of sample surface plane.
     Parameters
