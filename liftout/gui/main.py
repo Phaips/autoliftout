@@ -40,6 +40,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
+        self.liftout_counter = 0
+        self.popup = None
 
         # TODO: status bar update with prints from Autoliftout
         self.statusbar.setSizeGripEnabled(0)
@@ -91,26 +93,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.auto = AutoLiftout(microscope=self.microscope)
 
-        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         self.update_display(beam_type=BeamType.ELECTRON)
-
-        self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         self.update_display(beam_type=BeamType.ION)
 
         # Whole-grid platinum deposition
-        self.ask_user(message='Do you want to sputter the whole sample grid with platinum?')
+        self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?')
         if self.auto.response:
             # sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
             print('Sputtering over whole grid')
             self.auto.image_settings['label'] = 'grid_Pt_deposition'
             self.auto.image_settings['save'] = True
-            acquire.new_image(self.microscope, self.auto.image_settings)
+            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
-        # TODO: Add zooming of microscope to GUI control
-        # Select landing points and check eucentric height
-        landing_coordinates, original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
-        lamella_coordinates, original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
-        self.zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
+        # # TODO: Add zooming of microscope to GUI control
+        # # Select landing points and check eucentric height
+        # landing_coordinates, original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
+        # lamella_coordinates, original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
+        # self.zipped_coordinates = list(zip(lamella_coordinates, landing_coordinates))
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -142,35 +141,35 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.auto.image_settings['hfw'] = 400e-6  # TODO: set this value in protocol
 
             # refresh TODO: fix protocol structure
-            self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-            acquire.new_image(self.microscope, self.auto.image_settings)
-            self.update_display(beam_type=BeamType.ELECTRON)
-            self.auto.image_settings['beam_type'] = BeamType.ION
-            acquire.new_image(self.microscope, self.auto.image_settings)
-            self.update_display(beam_type=BeamType.ION)
+            self.auto.image_settings['save'] = False
+            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+            self.update_display(beam_type=BeamType.ION, image_type='new')
 
-            self.ask_user(image=self.image_FIB, message=f'Please centre the {feature_type} coordinate in the ion beam.\n'
-                                                        f'Press Yes when the feature is centered')
+            self.ask_user(beam_type=BeamType.ION, message=f'Please centre the {feature_type} coordinate in the ion beam.\n'
+                                                        f'Press Yes when the feature is centered', click='double')
 
-            self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-            acquire.new_image(self.microscope, self.auto.image_settings)
+            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
 
             coordinates.append(self.microscope.specimen.stage.current_position)
-            self.auto.image_settings['save'] = False
+            self.auto.image_settings['save'] = True
             if feature_type == 'landing':
                 self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['landing_post_ref_img_resolution']
                 self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['landing_post_ref_img_dwell_time']
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_low_res'  # TODO: add to protocol
                 eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_highres']
+                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_high_res'  # TODO: add to protocol
                 eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
             elif feature_type == 'lamella':
                 self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
                 self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_low_res'  # TODO: add to protocol
                 eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
                 self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
+                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_high_res'  # TODO: add to protocol
                 eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
 
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
@@ -202,14 +201,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.auto.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
         self.auto.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
         self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+        self.auto.image_settings['save'] = False
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
-        self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
-                                                    f'Press Yes when the feature is centered')
+        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
+                                                    f'Press Yes when the feature is centered', click='double')
         if self.auto.response:
             self.auto.image_settings['beam_type'] = BeamType.ION
-            self.image_FIB = acquire.new_image(self.microscope, settings=self.auto.image_settings)
-            self.ask_user(image=self.image_FIB,  message=f'Please click the same location in the ion beam\n'
-                                                         f'Press Yes when happy with the location')
+            self.update_display(beam_type=BeamType.ION, image_type='new')
+            self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
+                                                         f'Press Yes when happy with the location', click='single')
             # TODO: show users their click, they click Yes on single click
         else:
             print('SEM image not centered')
@@ -221,9 +222,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
         # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
         self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-        self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
-        self.ask_user(image=self.image_SEM, message=f'Please double click to centre a feature in the SEM\n'
-                                                    f'Press Yes when the feature is centered')
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
+                                                    f'Press Yes when the feature is centered', click='double')
         # TODO: can we remove this? not used
         # resolution = storage.settings["reference_images"][
         #     "needle_ref_img_resolution"]
@@ -320,23 +321,26 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             image = self.image_FIB
 
         if event.button == 1:
-            if event.dblclick:
+            if event.dblclick and (click in ('double', 'all')):
                 if image:
                     self.xclick = event.xdata
                     self.yclick = event.ydata
                     x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
-                    # print(f'Moving {modality} in x by {round(x*1e6, 2)}um')
-                    # print(f'Moving {modality} in y by {round(y*1e6, 2)}um\n')
-
+                    print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
+                    print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
+                    # TODO: turn off moving with double click on some images
                     # movement.move_relative(self.microscope, x, y)
                     # acquire.last_image(microscope=self.microscope, beam_type=beam_type)
-            else:
+            elif click in ('single', 'all'):
                 self.xclick = event.xdata
                 self.yclick = event.ydata
                 # Add crosshair
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
+        plt.axis('off')
+        plt.tight_layout()
+        plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
         self.canvas_SEM = _FigureCanvas(self.figure_SEM)
         self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
         self.label_SEM.setLayout(QtWidgets.QVBoxLayout())
@@ -346,6 +350,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ELECTRON))
 
         self.figure_FIB = plt.figure()
+        plt.axis('off')
+        plt.tight_layout()
         self.canvas_FIB = _FigureCanvas(self.figure_FIB)
         self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
         self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
@@ -379,14 +385,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # FIBSEM methods
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
-    def ask_user(self, image=None, message=None):
+    def ask_user(self, beam_type=None, message=None, click=None):
         self.popup = QtWidgets.QDialog()
 
         if message is None:
             message = "ok?"
 
         question = QtWidgets.QLabel(self.popup)
-        print('1')
         font = QtGui.QFont()
         font.setPointSize(24)
         question.setText(message)
@@ -395,9 +400,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         question.setAlignment(QtCore.Qt.AlignCenter)
         question_layout = QtWidgets.QHBoxLayout()
         question.setLayout(question_layout)
-        print('2')
-        print('3')
-        print('4')
 
         button_box = QtWidgets.QWidget(self.popup)
         button_layout = QtWidgets.QHBoxLayout()
@@ -418,8 +420,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.setLayout(QtWidgets.QVBoxLayout())
         self.setEnabled(False)
         self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        image = None
+        if beam_type is not None:
+            if beam_type is BeamType.ELECTRON:
+                image = self.image_SEM
+            elif beam_type is BeamType.ION:
+                image = self.image_FIB
+            else:
+                raise ValueError('BeamType entered incorrectly')
 
-        if image:
             fig = plt.figure()
             canvas = _FigureCanvas(fig)
             image_array = image.data
@@ -429,6 +438,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             canvas.draw()
             self.popup.layout().addWidget(canvas, 4)
 
+            if click:
+                canvas.mpl_connect('button_press_event',
+                                        lambda event: self.on_gui_click(event, beam_type=beam_type))
+        self.popup.destroyed.connect(lambda: self.setEnabled(True))
         self.popup.layout().addWidget(question, 1)
         self.popup.layout().addWidget(button_box, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -678,19 +691,34 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         except Exception:
             display_error_message(traceback.format_exc())
 
-    def update_display(self, beam_type=BeamType.ELECTRON):
+    def update_display(self, beam_type=BeamType.ELECTRON, image_type='last'):
         """Update the GUI display with the current image"""
         try:
             if beam_type is BeamType.ELECTRON:
+                if image_type == 'new':
+                    self.auto.image_settings['beam_type'] = beam_type
+                    self.image_SEM = acquire.new_image(self.microscope, self.auto.image_settings)
+                else:
+                    self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
                 image_array = self.image_SEM.data
                 self.figure_SEM.clear()
+                self.figure_SEM.patch.set_facecolor('xkcd:mint green')
                 self.ax_SEM = self.figure_SEM.add_subplot(111)
+                self.ax_SEM.get_xaxis().set_visible(False)
+                self.ax_SEM.get_yaxis().set_visible(False)
                 self.ax_SEM.imshow(image_array, cmap='gray')
                 self.canvas_SEM.draw()
             if beam_type is BeamType.ION:
+                if image_type == 'new':
+                    self.auto.image_settings['beam_type'] = beam_type
+                    self.image_FIB = acquire.new_image(self.microscope, self.auto.image_settings)
+                else:
+                    self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
                 image_array = self.image_FIB.data
                 self.figure_FIB.clear()
                 self.ax_FIB = self.figure_FIB.add_subplot(111)
+                self.ax_FIB.get_xaxis().set_visible(False)
+                self.ax_FIB.get_yaxis().set_visible(False)
                 self.ax_FIB.imshow(image_array, cmap='gray')
                 self.canvas_FIB.draw()
 
