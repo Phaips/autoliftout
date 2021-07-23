@@ -37,8 +37,10 @@ def new_image(microscope, settings):
 
     if settings['beam_type'] == BeamType.ELECTRON:
         microscope.beams.electron_beam.horizontal_field_width.value = settings['hfw']
+        settings['label'] += '_eb'
     else:
         microscope.beams.ion_beam.horizontal_field_width.value = settings['hfw']
+        settings['label'] += '_ib'
 
     if settings['autocontrast']:
         autocontrast(microscope, beam_type=settings['beam_type'])
