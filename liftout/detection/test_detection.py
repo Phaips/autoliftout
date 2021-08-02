@@ -2,10 +2,9 @@
 
 import glob
 from random import shuffle
-import detection
+from liftout.detection import detection
 import argparse
-
-import utils
+from liftout.detection import utils
 
 if __name__ == "__main__":
 
@@ -17,10 +16,11 @@ if __name__ == "__main__":
 
     # weights_file = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/patrick/test_model.pt"
     # weights_file = r"\\ad.monash.edu\home\User007\prcle2\Documents\demarco\autoliftout\patrick\models\fresh_full_n10.pt"
+    weights_file = "C:/Users/Admin/Github/autoliftout/liftout/model/models/fresh_full_n10_old.pt"
 
     # cmd line arguments
     validate = args.validate
-    weights_file = args.model
+    # weights_file = args.model
     data_path = args.data
 
     # data
@@ -40,11 +40,11 @@ if __name__ == "__main__":
 
         supported_shift_types = [
             # "needle_tip_to_lamella_centre",
-            # "lamella_centre_to_image_centre",
+            "lamella_centre_to_image_centre",
             # "lamella_edge_to_landing_post",
             # "needle_tip_to_image_centre",
-            "trim_lamella_top_to_centre",
-            "trim_lamella_bottom_to_centre"
+            # "thin_lamella_top_to_centre",
+            # "thin_lamella_bottom_to_centre"
         ]
 
         print(f"image: {fname}")
@@ -52,9 +52,11 @@ if __name__ == "__main__":
         for shift_type in supported_shift_types:
 
             print("shift_type: ", shift_type)
-            x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=True, validate=validate)
-            print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+            # x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=True, validate=validate)
+            # print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+            #
+            # x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance, df_metadata)
+            # print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
-            x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance, df_metadata)
-            print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
+            ret = detector.locate_shift_between_features(img, shift_type=shift_type, show=True)
 

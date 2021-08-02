@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1618</width>
+    <width>1800</width>
     <height>895</height>
    </rect>
   </property>
@@ -18,8 +18,8 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>1618</width>
-    <height>909</height>
+    <width>1800</width>
+    <height>1000</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -43,7 +43,7 @@
       </property>
       <property name="maximumSize">
        <size>
-        <width>1600</width>
+        <width>1800</width>
         <height>850</height>
        </size>
       </property>
@@ -307,6 +307,18 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="minimumSize">
+             <size>
+              <width>675</width>
+              <height>450</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>675</width>
+              <height>450</height>
+             </size>
+            </property>
             <property name="font">
              <font>
               <pointsize>10</pointsize>
@@ -347,14 +359,14 @@
                </property>
                <property name="minimumSize">
                 <size>
-                 <width>567</width>
-                 <height>425</height>
+                 <width>675</width>
+                 <height>450</height>
                 </size>
                </property>
                <property name="maximumSize">
                 <size>
-                 <width>600</width>
-                 <height>600</height>
+                 <width>675</width>
+                 <height>450</height>
                 </size>
                </property>
                <property name="font">
@@ -377,6 +389,18 @@
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>675</width>
+              <height>450</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>675</width>
+              <height>450</height>
+             </size>
             </property>
             <property name="font">
              <font>
@@ -412,14 +436,14 @@
                </property>
                <property name="minimumSize">
                 <size>
-                 <width>567</width>
-                 <height>425</height>
+                 <width>675</width>
+                 <height>450</height>
                 </size>
                </property>
                <property name="maximumSize">
                 <size>
-                 <width>600</width>
-                 <height>600</height>
+                 <width>675</width>
+                 <height>450</height>
                 </size>
                </property>
                <property name="font">
@@ -960,9 +984,23 @@
               </widget>
              </item>
              <item row="1" column="6">
-              <widget class="QPushButton" name="pushButton_random_data">
+              <widget class="QPushButton" name="pushButton_autoliftout">
                <property name="text">
-                <string>Random Data</string>
+                <string>Run autoliftout</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="5">
+              <widget class="QPushButton" name="pushButton_initialise">
+               <property name="text">
+                <string>Initialise</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="4">
+              <widget class="QPushButton" name="pushButton_load_sample_data">
+               <property name="text">
+                <string>Load Sample Data</string>
                </property>
               </widget>
              </item>
@@ -982,7 +1020,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1618</width>
+     <width>1800</width>
      <height>21</height>
     </rect>
    </property>

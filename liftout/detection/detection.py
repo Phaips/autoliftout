@@ -17,7 +17,7 @@ from scipy.spatial import distance
 
 import liftout.detection.DetectionModel as DetectionModel
 
-from liftout.detection.utils import *
+from liftout.detection.utils_old import *
 # from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
 # import liftout.liftout.main as liftout_main
 
@@ -128,8 +128,45 @@ class Detector:
             feature_1_color = "blue"
             feature_2_color = "white"
 
-
         return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
+
+    def locate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
+        """
+        Calculate the distance between two features in the image coordinate system (as a proportion of the image).
+
+        args:
+            adorned_img: input image (AdornedImage, or np.array)
+            shift_type: the type of feature detection shift to calculation
+            show: display a plot of feature detections over the input image (bool)
+            validate: enable manual validation of the feature detections (bool)
+
+        return:
+            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple)
+
+        """
+        # TODO: fix display colours for this?
+
+        # check image type
+        if hasattr(adorned_img, 'data'):
+            img = adorned_img.data # extract image data from AdornedImage
+        if isinstance(adorned_img, np.ndarray):
+            img = adorned_img # adorned image is just numpy array
+
+        # run image through model
+        mask = self.detection_model.model_inference(img)
+
+        # detect features for calculation
+        feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color = self.detect_features(img, mask, shift_type)
+
+        # display features for validation
+        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px, color_1=feature_1_color, color_2=feature_2_color)
+        img_blend = draw_overlay(img, mask_combined, show=show, title=shift_type)
+
+        # # need to use the same scale images for both detection selections
+        img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+
+        return img_blend, img_downscale, feature_1_px, feature_1_type, feature_2_px, feature_2_type
+
 
     def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
         """
@@ -147,7 +184,7 @@ class Detector:
         """
         # TODO: fix display colours for this?
 
-        # check image type
+        # # check image type
         if hasattr(adorned_img, 'data'):
             img = adorned_img.data # extract image data from AdornedImage
         if isinstance(adorned_img, np.ndarray):
@@ -468,6 +505,7 @@ def detect_closest_edge(img, landing_px):
 
     return landing_edge_px, edges
 
+
 def detect_landing_edge(img, landing_px):
     """ Detect the landing edge point closest to the initial point using canny edge detection
 
@@ -487,7 +525,6 @@ def detect_landing_edge(img, landing_px):
     landing_mask = draw_overlay(img, edges_mask, alpha=0.5)
 
     return landing_edge_px, landing_mask
-
 
 
 def detect_bounding_box(mask, color, threshold):
@@ -535,6 +572,7 @@ def detect_bounding_box(mask, color, threshold):
     bbox = (x0, y0, x1, y1)
 
     return [top_px, bottom_px, left_px, right_px], bbox
+
 
 def detect_thin_region(img, mask, top=True):
     """Detect the region of the lamella to thin"""

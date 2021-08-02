@@ -1,5 +1,69 @@
 import logging
 from autoscript_core.common import ApplicationServerException
+import numpy as np
+
+
+def mill_jcut(microscope, settings):
+    """Create and mill the rectangle patter to sever the jcut completely.
+    Parmaters
+    ---------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    jcut_settings : dict
+        Dictionary of J-cut parameter settings.
+    confrim : bool, optional
+        Whether to ask the user to confirm before milling.
+    """
+    jcut_milling_patterns(microscope, settings)
+    microscope.patterning.mode = 'Serial'
+
+
+def jcut_severing_pattern(microscope, settings):
+    """Create J-cut milling pattern in the center of the ion beam field of view.
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    jcut_settings : dict
+        Sample surface angle for J-cut in degrees, by default 6
+    pretilt_degrees : int, optional
+        Pre-tilt of sample holder in degrees, by default 27
+    Returns
+    -------
+    autoscript_sdb_microscope_client.structures.RectanglePattern
+        Rectangle milling pattern used to sever the remaining bit of the J-cut.
+    """
+    # Unpack settings
+    jcut_angle_degrees = settings['jcut']['jcut_angle']
+    jcut_lamella_depth = settings['jcut']['jcut_lamella_depth']
+    jcut_length = settings['jcut']['jcut_length']
+    jcut_trench_thickness = settings['jcut']['jcut_trench_thickness']
+    jcut_milling_depth = settings['jcut']['jcut_milling_depth']
+    extra_bit = settings['jcut']['extra_bit']
+    # Setup
+    setup_ion_milling(microscope)
+    # Create milling pattern - right hand side of J-cut
+    angle_correction_factor = np.sin(np.deg2rad(52 - jcut_angle_degrees))
+    center_x = +((jcut_length - jcut_trench_thickness) / 2)
+    center_y = ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction_factor  # noqa: E501
+    width = jcut_trench_thickness
+    height = (jcut_lamella_depth + extra_bit) * angle_correction_factor
+    jcut_severing_pattern = microscope.patterning.create_rectangle(
+        center_x, center_y, width, height, jcut_milling_depth)
+    return jcut_severing_pattern
+
+
+def run_milling(microscope, settings, *, imaging_current=20e-12):
+    if settings["imaging"]["imaging_current"]:
+        imaging_current = settings["imaging"]["imaging_current"]
+    print("Ok, running ion beam milling now...")
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.beams.ion_beam.beam_current.value = settings['jcut']['jcut_milling_current']
+    microscope.patterning.run()
+    print("Returning to the ion beam imaging current now.")
+    microscope.patterning.clear_patterns()
+    microscope.beams.ion_beam.beam_current.value = imaging_current
+    print("Ion beam milling complete.")
 
 
 def mill_trenches(microscope, settings, confirm=True):
@@ -17,7 +81,7 @@ def mill_trenches(microscope, settings, confirm=True):
             stage_number + 1, len(protocol_stages)))
         mill_single_stage(microscope, settings, stage_settings, stage_number)
     # Restore ion beam imaging current (20 pico-Amps)
-    microscope.beams.ion_beam.beam_current.value = 30e-12  # TODO: add to protocol?
+    microscope.beams.ion_beam.beam_current.value = settings['imaging']['imaging_current']#30e-12  # TODO: add to protocol?
 
 
 def mill_single_stage(microscope, settings, stage_settings, stage_number):
@@ -41,30 +105,13 @@ def _upper_milling_coords(microscope, stage_settings):
     lamella_center_x = 0
     lamella_center_y = 0
     milling_depth = stage_settings["milling_depth"]
-    center_y = (
-        lamella_center_y
-        + (0.5 * stage_settings["lamella_height"])
-        + (
-            stage_settings["total_cut_height"]
-            * stage_settings["percentage_from_lamella_surface"]
-        )
-        + (
-            0.5
-            * stage_settings["total_cut_height"]
-            * stage_settings["percentage_roi_height"]
-        )
-    )
-    height = float(
-        stage_settings["total_cut_height"] *
-        stage_settings["percentage_roi_height"]
-    )
-    milling_roi = microscope.patterning.create_cleaning_cross_section(
-        lamella_center_x,
-        center_y,
-        stage_settings["lamella_width"],
-        height,
-        milling_depth,
-    )
+    center_y = (lamella_center_y + (0.5 * stage_settings["lamella_height"])
+                + (stage_settings["total_cut_height"] * stage_settings["percentage_from_lamella_surface"])
+        + (0.5 * stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]))
+    height = float(stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"])
+    milling_roi = microscope.patterning.create_cleaning_cross_section(lamella_center_x, center_y,
+                                                                      stage_settings["lamella_width"],
+                                                                      height, milling_depth)
     milling_roi.scan_direction = "TopToBottom"
     return milling_roi
 
@@ -75,30 +122,13 @@ def _lower_milling_coords(microscope, stage_settings):
     lamella_center_x = 0
     lamella_center_y = 0
     milling_depth = stage_settings["milling_depth"]
-    center_y = (
-        lamella_center_y
-        - (0.5 * stage_settings["lamella_height"])
-        - (
-            stage_settings["total_cut_height"]
-            * stage_settings["percentage_from_lamella_surface"]
-        )
-        - (
-            0.5
-            * stage_settings["total_cut_height"]
-            * stage_settings["percentage_roi_height"]
-        )
-    )
-    height = float(
-        stage_settings["total_cut_height"] *
-        stage_settings["percentage_roi_height"]
-    )
-    milling_roi = microscope.patterning.create_cleaning_cross_section(
-        lamella_center_x,
-        center_y,
-        stage_settings["lamella_width"],
-        height,
-        milling_depth,
-    )
+    center_y = (lamella_center_y - (0.5 * stage_settings["lamella_height"])
+        - (stage_settings["total_cut_height"] * stage_settings["percentage_from_lamella_surface"])
+        - (0.5 * stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]))
+    height = float(stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"])
+    milling_roi = microscope.patterning.create_cleaning_cross_section(lamella_center_x, center_y,
+                                                                      stage_settings["lamella_width"],
+                                                                      height, milling_depth)
     milling_roi.scan_direction = "BottomToTop"
     return milling_roi
 
@@ -179,3 +209,168 @@ def protocol_stage_settings(settings):
         tmp_settings.update(stage_settings)
         protocol_stages.append(tmp_settings)
     return protocol_stages
+
+
+def jcut_milling_patterns(microscope, settings):
+    """Create J-cut milling pattern in the center of the ion beam field of view.
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    settings["jcut"] : dict
+        Dictionary of J-cut parameter settings.
+    pretilt_degrees : int, optional
+        Pre-tilt of sample holder in degrees, by default 27
+    Returns
+    -------
+    (autoscript_sdb_microscope_client.structures.RectanglePattern,
+     autoscript_sdb_microscope_client.structures.RectanglePattern,
+     autoscript_sdb_microscope_client.structures.RectanglePattern)
+        Tuple containing the three milling patterns comprising the J-cut.
+    """
+    jcut_top = None
+    jcut_lhs = None
+    jcut_rhs = None
+
+    # Unpack settings
+    jcut_angle_degrees = settings["jcut"]['jcut_angle']
+    jcut_lamella_depth = settings["jcut"]['jcut_lamella_depth']
+    jcut_length = settings["jcut"]['jcut_length']
+    jcut_trench_thickness = settings["jcut"]['jcut_trench_thickness']
+    jcut_milling_depth = settings["jcut"]['jcut_milling_depth']
+    extra_bit = settings["jcut"]['extra_bit']
+
+    # Setup
+    setup_ion_milling(microscope)
+    # Create milling patterns
+    angle_correction = np.sin(np.deg2rad(52 - jcut_angle_degrees))
+    # Top bar of J-cut
+    if bool(settings["jcut"]['mill_top_jcut_pattern']) is True:
+        print('Creating top J-cut pattern')
+        jcut_top = microscope.patterning.create_rectangle(
+            0.0,                                    # center_x
+            jcut_lamella_depth * angle_correction,  # center_y
+            jcut_length,                            # width
+            jcut_trench_thickness,                  # height
+            jcut_milling_depth)                     # depth
+    # Left hand side of J-cut (long side)
+    if bool(settings["jcut"]['mill_lhs_jcut_pattern']) is True:
+        print('Creating LHS J-cut pattern')
+        jcut_lhs = microscope.patterning.create_rectangle(
+            -((jcut_length - jcut_trench_thickness) / 2),           # center_x
+            ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction,  # center_y
+            jcut_trench_thickness,                                  # width
+            (jcut_lamella_depth + extra_bit) * angle_correction,    # height
+            jcut_milling_depth)                                     # depth
+    # Right hand side of J-cut (short side)
+    if bool(settings["jcut"]['mill_rhs_jcut_pattern']) is True:
+        print('Creating RHS J-cut pattern')
+        jcut_rightside_remaining = 1.5e-6  # in microns, how much to leave attached
+        height = (jcut_lamella_depth - jcut_rightside_remaining) * angle_correction
+        center_y = jcut_rightside_remaining + (height / 2)
+        jcut_rhs = microscope.patterning.create_rectangle(
+            +((jcut_length - jcut_trench_thickness) / 2),  # center_x
+            center_y,                                      # center_y
+            jcut_trench_thickness,                         # width
+            height,                                        # height
+            jcut_milling_depth)                            # depth
+    if jcut_top is None and jcut_lhs is None and jcut_rhs is None:
+        raise RuntimeError('No J-cut patterns created, check your protocol file')
+    return jcut_top, jcut_lhs, jcut_rhs
+
+
+def setup_ion_milling(microscope, *,
+                      application_file="Si_Alex",
+                      patterning_mode="Parallel",
+                      ion_beam_field_of_view=100e-6):
+    """Setup for rectangle ion beam milling patterns.
+
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    application_file : str, optional
+        Application file for ion beam milling, by default "Si_Alex"
+    patterning_mode : str, optional
+        Ion beam milling pattern mode, by default "Parallel".
+        The available options are "Parallel" or "Serial".
+    ion_beam_field_of_view : float, optional
+        Width of ion beam field of view in meters, by default 59.2e-6
+    """
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_beam_type(2)  # ion beam default
+    microscope.patterning.set_default_application_file(application_file)
+    microscope.patterning.mode = patterning_mode
+    microscope.patterning.clear_patterns()  # clear any existing patterns
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
+
+
+
+def weld_to_landing_post(microscope, *, milling_current=20e-12, confirm=True):
+    """Create and mill the sample to the landing post.
+    Stick the lamella to the landing post by melting the ice with ion milling.
+    Parmaters
+    ---------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    milling_current : float, optional
+        The ion beam milling current, in Amps.
+    confirm : bool, optional
+        Whether to wait for user confirmation before milling.
+    """
+    pattern = _create_welding_pattern(microscope)
+    # confirm_and_run_milling(microscope, milling_current, confirm=confirm)
+
+def _create_welding_pattern(microscope, *,
+                            center_x=0,
+                            center_y=0,
+                            width=3.5e-6,
+                            height=10e-6,
+                            depth=5e-9):
+    """Create milling pattern for welding liftout sample to the landing post.
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+        The AutoScript microscope object instance.
+    center_x : float
+        Center position of the milling pattern along x-axis, in meters.
+        Zero coordinate is at the centerpoint of the image field of view.
+    center_y : float
+        Center position of the milling pattern along x-axis, in meters.
+        Zero coordinate is at the centerpoint of the image field of view.
+    width : float
+        Width of the milling pattern, in meters.
+    height: float
+        Height of the milling pattern, in meters.
+    depth : float
+        Depth of the milling pattern, in meters.
+    """
+    # TODO: user input yaml for welding pattern parameters
+    setup_ion_milling(microscope)
+    pattern = microscope.patterning.create_rectangle(
+        center_x, center_y, width, height, depth)
+    return pattern
+
+
+
+def cut_off_needle(microscope, cut_coord, milling_current=0.74e-9):
+    pattern = _create_mill_pattern(microscope,
+                                     center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
+                                     width=cut_coord["width"], height=cut_coord["height"],
+                                     depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["hfw"])
+    # confirm_and_run_milling(microscope, milling_current, confirm=confirm)
+
+
+def _create_mill_pattern(microscope, *,
+                           center_x=-10.5e-6,
+                           center_y=-5e-6,
+                           width=8e-6,
+                           height=2e-6,
+                           depth=1e-6,
+                           rotation_degrees=40,
+                           ion_beam_field_of_view=100e-6):
+    setup_ion_milling(microscope, ion_beam_field_of_view=ion_beam_field_of_view)
+    pattern = microscope.patterning.create_rectangle(
+        center_x, center_y, width, height, depth)
+    pattern.rotation = np.deg2rad(rotation_degrees)
+    return pattern

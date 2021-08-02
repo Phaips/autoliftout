@@ -40,6 +40,8 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
         horizontal_field_width = 30e-6
         line_pattern_length = 7e-6
 
+        # do we ever call the pixel_to_realspace function?
+
     # Setup
     original_active_view = microscope.imaging.get_active_view()
     microscope.imaging.set_active_view(1)  # the electron beam view
@@ -78,6 +80,3 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     microscope.patterning.set_default_beam_type(2)  # set ion beam
     multichem.retract()
     logging.info("Sputtering finished.")
-
-    if whole_grid:
-        auto_link_stage(microscope)

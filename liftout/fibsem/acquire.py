@@ -24,17 +24,19 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
 
 
 def take_reference_images(microscope, settings):
+    tmp_beam_type = settings["beam_type"]
     settings['beam_type'] = BeamType.ELECTRON
     eb_image = new_image(microscope, settings)
     settings['beam_type'] = BeamType.ION
     ib_image = new_image(microscope, settings)
+    settings["beam_type"] = tmp_beam_type # reset to original beam type
     return eb_image, ib_image
 
 
 def new_image(microscope, settings):
     frame_settings = GrabFrameSettings(resolution=settings['resolution'],
                                        dwell_time=settings['dwell_time'])
-
+    tmp_settings = settings
     if settings['beam_type'] == BeamType.ELECTRON:
         microscope.beams.electron_beam.horizontal_field_width.value = settings['hfw']
         settings['label'] += '_eb'
@@ -57,6 +59,7 @@ def new_image(microscope, settings):
         utils.save_image(image=image, save_path=settings['save_path'],
                          label=settings['label'])
 
+    settings = tmp_settings # reset the settings to original
     return image
 
 

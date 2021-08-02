@@ -1973,6 +1973,7 @@ def mill_lamella(microscope, settings, confirm=True):
 
     print("Done, ready for liftout!")
 
+
 def land_lamella(microscope, landing_coord, original_landing_images):
     from autoscript_sdb_microscope_client import SdbMicroscopeClient
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
@@ -2087,6 +2088,7 @@ def land_lamella(microscope, landing_coord, original_landing_images):
 
     # cut off needle tip
     cut_off_needle(microscope, cut_coord=cut_coord, confirm=True)
+
     landing_eb_highres3, landing_ib_highres3 = take_electron_and_ion_reference_images(
         microscope, hor_field_width=80e-6, image_settings=image_settings,
         save=True, save_label="F_landing_lamella_final_cut")
@@ -2247,7 +2249,6 @@ def thinning_lamella(microscope):
 #         thinning_lamella_patterns.append(pattern)
 
 #     return thinning_lamella_patterns
-
 
 
 def sharpen_needle(microscope):
@@ -2451,8 +2452,6 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
         sharpen_patterns.append(pattern)
 
     return sharpen_patterns
-
-
 
 
 def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):

@@ -2,11 +2,11 @@ from liftout.fibsem.acquire import *
 import numpy as np
 from autoscript_sdb_microscope_client.structures import (StagePosition,
                                                          MoveSettings)
-
+import time
 pretilt = 27  # TODO: add to protocol
 
 
-def move_relative(microscope, x=0.0, y=0.0):
+def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     """Move the sample stage in ion or electron beam view and take new image
 
     Parameters
@@ -33,8 +33,8 @@ def move_relative(microscope, x=0.0, y=0.0):
     if current_position_x > 10e-3 or current_position_x < -10e-3:
         print('Not under electron microscope, please reposition')
         return
-    new_position = StagePosition(x=x, y=y, z=0, r=0, t=0)
-    microscope.specimen.stage.relative_move(new_position)
+    new_position = StagePosition(x=x, y=y, z=z, r=r, t=t)
+    microscope.specimen.stage.relative_move(new_position, settings=settings)
     print(f'Old pos ition: {current_position_x*1e6}, {current_position_y*1e6}')
     print(f'Moving by: {x*1e6}, {y*1e6}')
     print(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
@@ -56,6 +56,7 @@ def pixel_to_realspace_coordinate(coord, image):
     image : AdornedImage
         Image the coordinate came from.
 
+        # do we have a sample image somewhere?
     Returns
     -------
     realspace_coord
@@ -159,12 +160,12 @@ def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
     """
     if flat_to_sem:
         flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
+        landing_grid_position = StagePosition(x=0.0034580609,
+                                              y=0.0032461667,
+                                              z=0.0039338733)
+        microscope.specimen.stage.absolute_move(landing_grid_position)
     else:
-        move_to_landing_angle(microscope, pretilt_angle=pretilt_angle)
-    landing_grid_position = StagePosition(x=-0.0034580609,
-                                          y=-0.0032461667,
-                                          z=0.0039338733)
-    microscope.specimen.stage.absolute_move(landing_grid_position)
+        move_to_landing_angle(microscope, settings=settings, pretilt_angle=pretilt_angle)
     # Zoom out so you can see the whole landing grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
@@ -181,6 +182,129 @@ def move_sample_stage_out(microscope):
                                      z=0.0039559049)
     microscope.specimen.stage.absolute_move(sample_stage_out)
     return microscope.specimen.stage.current_position
+
+
+def move_needle_to_liftout_position(microscope):
+    """Move the needle into position, ready for liftout.
+    """
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope)
+    multichem = microscope.gas.get_multichem()
+    multichem.insert()
+    return park_position
+
+def move_needle_to_landing_position(microscope):
+    """Move the needle into position, ready for landing.
+    """
+    park_position = insert_needle(microscope)
+    move_needle_closer(microscope, x_shift=-25e-6)
+    return park_position
+
+def insert_needle(microscope):
+    """Insert the needle and return the needle parking position.
+    Returns
+    -------
+    park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
+        The parking position for the needle manipulator when inserted.
+    """
+    needle = microscope.specimen.manipulator
+    needle.insert()
+    park_position = needle.current_position
+    return park_position
+
+
+def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
+    """Move the needle closer to the sample surface, after inserting.
+    Parameters
+    ----------
+    microscope : autoscript_sdb_microscope_client.sdb_microscope.SdbMicroscopeClient
+        The Autoscript microscope object.
+    x_shift : float
+        Distance to move the needle from the parking position in x, in meters.
+    z_shift : float
+        Distance to move the needle towards the sample in z, in meters.
+        Negative values move the needle TOWARDS the sample surface.
+    """
+    needle = microscope.specimen.manipulator
+    stage = microscope.specimen.stage
+    # Needle starts from the parking position (after inserting it)
+    # Move the needle back a bit in x, so the needle is not overlapping target
+    x_move = x_corrected_needle_movement(x_shift)
+    needle.relative_move(x_move)
+    # Then move the needle towards the sample surface.
+    z_move = z_corrected_needle_movement(z_shift, stage.current_position.t)
+    needle.relative_move(z_move)
+    # The park position is always the same,
+    # so the needletip will end up about 20 microns from the surface.
+    return needle.current_position
+
+
+def x_corrected_needle_movement(expected_x, stage_tilt=None):
+    """Needle movement in X, XTGui coordinates (Electron coordinate).
+    Parameters
+    ----------
+    expected_x : float
+        in meters
+    Returns
+    -------
+    ManipulatorPosition
+    """
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    return ManipulatorPosition(x=expected_x, y=0, z=0)  # no adjustment needed
+
+
+def y_corrected_needle_movement(expected_y, stage_tilt):
+    """Needle movement in Y, XTGui coordinates (Electron coordinate).
+    Parameters
+    ----------
+    expected_y : in meters
+    stage_tilt : in radians
+    Returns
+    -------
+    ManipulatorPosition
+    """
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    y_move = +np.cos(stage_tilt) * expected_y
+    z_move = +np.sin(stage_tilt) * expected_y
+    return ManipulatorPosition(x=0, y=y_move, z=z_move)
+
+
+def z_corrected_needle_movement(expected_z, stage_tilt):
+    """Needle movement in Z, XTGui coordinates (Electron coordinate).
+    Parameters
+    ----------
+    expected_z : in meters
+    stage_tilt : in radians
+    Returns
+    -------
+    ManipulatorPosition
+    """
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    y_move = -np.sin(stage_tilt) * expected_z
+    z_move = +np.cos(stage_tilt) * expected_z
+    return ManipulatorPosition(x=0, y=y_move, z=z_move)
+
+
+def retract_needle(microscope, park_position):
+    """Retract the needle and multichem, preserving the correct park position.
+    park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
+        The parking position for the needle manipulator when inserted.
+    """
+    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+    # Retract the multichem
+    multichem = microscope.gas.get_multichem()
+    multichem.retract()
+    # Retract the needle, preserving the correct parking postiion
+    needle = microscope.specimen.manipulator
+    current_position = needle.current_position
+    # To prevent collisions with the sample; first retract in z, then y, then x
+    needle.relative_move(ManipulatorPosition(z=park_position.z - current_position.z))  # noqa: E501
+    needle.relative_move(ManipulatorPosition(y=park_position.y - current_position.y))  # noqa: E501
+    needle.relative_move(ManipulatorPosition(x=park_position.x - current_position.x))  # noqa: E501
+    time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
+    needle.retract()
+    retracted_position = needle.current_position
+    return retracted_position
 
 
 def flat_to_beam(microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON):
@@ -250,7 +374,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
         print(microscope.specimen.stage.current_position.z)
     # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
-    new_electron_image(microscope)
+    # new_electron_image(microscope)
 
 
 def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):

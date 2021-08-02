@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime
 #
 # user functions
-from liftout.detection.utils import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
+from liftout.detection.utils_old import load_image, parse_metadata, match_filenames_from_path, load_image_from_file
 from liftout.detection.detection import *
 from liftout.detection.DetectionModel import *
 

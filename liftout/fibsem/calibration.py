@@ -3,7 +3,9 @@ from autoscript_sdb_microscope_client.structures import GrabFrameSettings
 import scipy.ndimage as ndi
 from scipy import fftpack, misc
 from PIL import Image, ImageDraw
-
+from liftout.fibsem import acquire
+from liftout.detection import detection
+BeamType = acquire.BeamType
 
 def validate_scanning_rotation(microscope):
     """Ensure the scanning rotation is set to zero."""
@@ -19,7 +21,8 @@ def validate_scanning_rotation(microscope):
         )
 
 
-def correct_stage_drift(microscope, settings, reference_images, liftout_counter, mode='eb'):
+def correct_stage_drift(microscope, image_settings, reference_images, liftout_counter, mode='eb'):
+
     ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
 
     lowres_count = 1
@@ -30,11 +33,15 @@ def correct_stage_drift(microscope, settings, reference_images, liftout_counter,
         lowres_count = 2
         ref_lowres = rotate_AdornedImage(ref_ib_lowres)
         ref_highres = rotate_AdornedImage(ref_ib_highres)
+    elif mode == "land":
+        lowres_count = 1
+        ref_lowres = ref_ib_lowres
+        ref_highres = ref_ib_highres
 
     stage = microscope.specimen.stage
     # TODO: user input resolution, must match (protocol)
-    settings['resolution'] = '1536x1024'
-    settings['dwell_time'] = 1e-6
+    image_settings['resolution'] = '1536x1024'
+    image_settings['dwell_time'] = 1e-6
 
     pixelsize_x_lowres = ref_lowres.metadata.binary_result.pixel_size.x
     field_width_lowres = pixelsize_x_lowres * ref_lowres.width
@@ -43,35 +50,65 @@ def correct_stage_drift(microscope, settings, reference_images, liftout_counter,
     microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
 
+
     # TODO: 'coarse alignment' status
-    settings['hfw'] = field_width_lowres
-    settings['save'] = True
-    settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_low_res'  # TODO: add to protocol
+    image_settings['hfw'] = field_width_lowres
+    image_settings['save'] = True
+    # image_settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_low_res'  # TODO: add to protocol
 
-    for i in range(lowres_count):
-        if i == 1:
-            settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_low_res_2'  # TODO: add to protocol
-        new_eb_lowres, new_ib_lowres = take_reference_images(microscope, settings=settings)
-        align_using_reference_images(ref_lowres, new_eb_lowres, stage)
+    if mode == "land":
+        image_settings['label'] = f'{liftout_counter:02d}_{mode}_drift_correction_landing_low_res'  # TODO: add to protocol
+        new_eb_lowres, new_ib_lowres = take_reference_images(microscope, settings=image_settings)
+        align_using_reference_images(ref_lowres, new_ib_lowres, stage, mode=mode)
 
-    # TODO: 'fine alignment' status
-    settings['hfw'] = field_width_highres
-    settings['save'] = True
-    settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_high_res'  # TODO: add to protocol
+        # TODO: 'fine alignment' status
+        image_settings['hfw'] = field_width_highres
+        image_settings['save'] = True
 
-    new_eb_highres, new_ib_highres = take_reference_images(microscope, settings=settings)
+        image_settings['label'] = f'{liftout_counter:02d}_drift_correction_landing_high_res'  # TODO: add to protocol
+        new_eb_highres, new_ib_highres = take_reference_images(microscope, settings=image_settings)
+        align_using_reference_images(ref_highres, new_ib_highres, stage, mode=mode)
+        # TODO: deduplicate this bit ^
+    else:
+        for i in range(lowres_count):
+            # if i == 1:
+            image_settings['label'] = f'{liftout_counter:02d}_{mode}_drift_correction_lamella_low_res_{i}'  # TODO: add to protocol
+            new_eb_lowres, new_ib_lowres = take_reference_images(microscope, settings=image_settings)
+            align_using_reference_images(ref_lowres, new_eb_lowres, stage)
 
-    align_using_reference_images(ref_highres, new_eb_highres, stage)
+        # TODO: 'fine alignment' status
+        image_settings['hfw'] = field_width_highres
+        image_settings['save'] = True
+
+        image_settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_high_res'  # TODO: add to protocol
+        new_eb_highres, new_ib_highres = take_reference_images(microscope, settings=image_settings)
+        align_using_reference_images(ref_highres, new_eb_highres, stage)
 
 
-def align_using_reference_images(ref_image, new_image, stage):
+def align_using_reference_images(ref_image, new_image, stage, mode=None):
+
+    #TODO: add to protocol
+    if mode == "land":
+        lp_ratio = 6
+        hp_ratio = 64
+        sigma_factor = 10
+        sigma_ratio = 1536
+        beam_type = BeamType.ION
+    else:
+        lp_ratio = 12
+        hp_ratio = 256
+        sigma_factor = 2
+        sigma_ratio = 1536
+        beam_type = BeamType.ELECTRON
+
+
     # TODO: possibly hard-code these numbers at fixed resolutions?
     lowpass_pixels = int(max(
-        new_image.data.shape) / 12)  # =128 @ 1536x1024, good for e-beam images
+        new_image.data.shape) / lp_ratio)  # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int(max(
-        new_image.data.shape) / 256)  # =6 @ 1536x1024, good for e-beam images
-    sigma = int(2 * max(
-        new_image.data.shape) / 1536)  # =2 @ 1536x1024, good for e-beam images
+        new_image.data.shape) / hp_ratio)  # =6 @ 1536x1024, good for e-beam images
+    sigma = int(sigma_factor * max(
+        new_image.data.shape) / sigma_ratio)  # =2 @ 1536x1024, good for e-beam images
     # TODO: ask Sergey about maths/check if we can use pixel_to_real_value on dx
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
         new_image, ref_image, lowpass=lowpass_pixels,
@@ -79,9 +116,51 @@ def align_using_reference_images(ref_image, new_image, stage):
     x_move = x_corrected_stage_movement(-dx_ei_meters)
     yz_move = y_corrected_stage_movement(dy_ei_meters,
                                          stage.current_position.t,
-                                         beam_type=BeamType.ELECTRON)  # check electron/ion movement
+                                         beam_type=beam_type)  # check electron/ion movement
     stage.relative_move(x_move)
     stage.relative_move(yz_move)
+
+
+# TODO: figure out a better name
+def identify_shift_using_machine_learning(microscope, image_settings, settings, liftout_counter, shift_type):
+    if image_settings['beam_type'] == BeamType.ION:
+        image_settings['brightness'] = settings["machine_learning"]["ib_brightness"]
+        image_settings['contrast'] = settings["machine_learning"]["ib_contrast"]
+    elif image_settings['beam_type'] == BeamType.ELECTRON:
+        image_settings['brightness'] = settings["machine_learning"]["eb_brightness"]
+        image_settings['contrast'] = settings["machine_learning"]["eb_contrast"]
+
+    eb_image,  ib_image = take_reference_images(microscope, image_settings)
+    weights_file = settings["machine_learning"]["weights"]
+    detector = detection.Detector(weights_file)
+
+    if image_settings['beam_type'] == BeamType.ION:
+        image = ib_image
+    else:
+        image = eb_image
+    image_w_overlay, downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = detector.locate_shift_between_features(image, shift_type=shift_type, show=False)
+    return image, np.array(image_w_overlay), np.array(downscaled_image), feature_1_px, feature_1_type, feature_2_px, feature_2_type
+
+
+def calculate_shift_between_features(settings):
+    """
+    in m
+    :return:
+    """
+    # detector class (model)
+    weights_file = settings["machine_learning"]["weights"]
+    detector = detection.Detector(weights_file)
+
+    print("shift_type: ", shift_type)
+    x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=show, validate=validate)
+    print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+
+    x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance)
+    print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
+
+    return x_shift, y_shift
+
+
 
 
 def shift_from_correlation_electronBeam_and_ionBeam(eb_image, ib_image, lowpass=128, highpass=6, sigma=2):
@@ -98,6 +177,7 @@ def rotate_AdornedImage(image):
     reference = AdornedImage(data=data)
     reference.metadata = image.metadata
     return reference
+
 
 def shift_from_crosscorrelation_AdornedImages(img1, img2, lowpass=128, highpass=6, sigma=6):
     pixelsize_x_1 = img1.metadata.binary_result.pixel_size.x
@@ -186,5 +266,3 @@ def circ_mask(size=(128, 128), radius=32, sigma=3):
     else:
         mask = tmp
     return mask
-
-

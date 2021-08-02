@@ -2,6 +2,7 @@ from enum import Enum
 from liftout import utils
 from liftout.fibsem import acquire
 from liftout.fibsem.acquire import BeamType
+from liftout.fibsem import movement
 from autoscript_sdb_microscope_client.structures import *
 
 
@@ -27,6 +28,9 @@ class AutoLiftout:
         self.pretilt_degrees = 27
         # TODO: add pretilt_degrees to protocol
         self.microscope = microscope
+
+        # movement.move_to_sample_grid(self.microscope, self.settings)
+
         acquire.autocontrast(self.microscope, BeamType.ELECTRON)
         acquire.autocontrast(self.microscope, BeamType.ION)
 
