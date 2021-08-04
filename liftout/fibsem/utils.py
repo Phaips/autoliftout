@@ -63,6 +63,7 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     if microscope.patterning.state == "Idle":
         print('Sputtering with platinum for {} seconds...'.format(sputter_time))
         microscope.patterning.start()  # asynchronous patterning
+        time.sleep(sputter_time)
     else:
         raise RuntimeError(
             "Can't sputter platinum, patterning state is not ready."

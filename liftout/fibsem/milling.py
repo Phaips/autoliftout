@@ -1,7 +1,7 @@
 import logging
 from autoscript_core.common import ApplicationServerException
 import numpy as np
-
+import math
 
 def mill_jcut(microscope, settings):
     """Create and mill the rectangle patter to sever the jcut completely.
@@ -66,7 +66,7 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
     print("Ion beam milling complete.")
 
 
-def mill_trenches(microscope, settings, confirm=True):
+def mill_trenches(microscope, settings):
     """Mill the trenches for thinning the lamella.
     Parameters
     ----------
@@ -374,3 +374,127 @@ def _create_mill_pattern(microscope, *,
         center_x, center_y, width, height, depth)
     pattern.rotation = np.deg2rad(rotation_degrees)
     return pattern
+
+
+
+
+def calculate_sharpen_needle_pattern(microscope, settings, x_0, y_0):
+
+    height = settings["sharpen"]["height"]
+    width = settings["sharpen"]["width"]
+    depth = settings["sharpen"]["depth"]
+    bias = settings["sharpen"]["bias"]
+    hfw = settings["sharpen"]["hfw"]
+    tip_angle = settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
+    needle_angle = settings["sharpen"][
+        "needle_angle"
+    ]  # needle tilt on the screen 45 deg +/-
+    milling_current = settings["sharpen"]["sharpen_milling_current"]
+
+    alpha = tip_angle / 2  # half of NA of the needletip
+    beta = np.rad2deg(
+        np.arctan(width / height)
+    )  # box's width and length, beta is the diagonal angle
+    D = np.sqrt(width ** 2 + height ** 2) / 2  # half of box diagonal
+    rotation_1 = -(needle_angle + alpha)
+    rotation_2 = -(needle_angle - alpha) - 180
+
+    ############################################################################
+    # dx_1 = D * math.cos( np.deg2rad(needle_angle + alpha) )
+    # dy_1 = D * math.sin( np.deg2rad(needle_angle + alpha) )
+    # x_1 = x_0 - dx_1 # centre of the bottom box
+    # y_1 = y_0 - dy_1 # centre of the bottom box
+
+    # dx_2 = D * math.cos( np.deg2rad(needle_angle - alpha - beta) )
+    # dy_2 = D * math.sin( np.deg2rad(needle_angle - alpha - beta) )
+    # x_2 = x_0 - dx_2 # centre of the top box
+    # y_2 = y_0 - dy_2 # centre of the top box
+
+    # x_1_origin = x_1 - x_0
+    # y_1_origin = y_1 - y_0 # shift the x1,y1 to the origin
+    # x_2_origin_rot, y_2_origin_rot = Rotate( x_1_origin, y_1_origin, 360-(2*alpha+2*beta) ) # rotate to get the x2,y2 point
+    # x_2_rot = x_2_origin_rot + x_0 # shift to the old centre at x0,y0
+    # y_2_rot = y_2_origin_rot + y_0
+
+    ############################################################################
+    dx_1 = (width / 2) * math.cos(np.deg2rad(needle_angle + alpha))
+    dy_1 = (width / 2) * math.sin(np.deg2rad(needle_angle + alpha))
+    ddx_1 = (height / 2) * math.sin(np.deg2rad(needle_angle + alpha))
+    ddy_1 = (height / 2) * math.cos(np.deg2rad(needle_angle + alpha))
+    x_1 = x_0 - dx_1 + ddx_1  # centre of the bottom box
+    y_1 = y_0 - dy_1 - ddy_1  # centre of the bottom box
+
+    dx_2 = D * math.cos(np.deg2rad(needle_angle - alpha))
+    dy_2 = D * math.sin(np.deg2rad(needle_angle - alpha))
+    ddx_2 = (height / 2) * math.sin(np.deg2rad(needle_angle - alpha))
+    ddy_2 = (height / 2) * math.cos(np.deg2rad(needle_angle - alpha))
+    x_2 = x_0 - dx_2 - ddx_2  # centre of the top box
+    y_2 = y_0 - dy_2 + ddy_2  # centre of the top box
+
+    print("needletip xshift offcentre: ", x_0, "; needletip yshift offcentre: ", y_0)
+    print("width: ", width)
+    print("height: ", height)
+    print("depth: ", depth)
+    print("needle_angle: ", needle_angle)
+    print("tip_angle: ", tip_angle)
+    print("rotation1 :", rotation_1)
+    print("rotation2 :", rotation_2)
+    print("=================================================")
+    print("centre of bottom box: x1 = ", x_1, "; y1 = ", y_1)
+    print("centre of top box:    x2 = ", x_2, "; y2 = ", y_2)
+    print("=================================================")
+
+    # pattern = microscope.patterning.create_rectangle(x_3, y_3, width+2*bias, height+2*bias, depth)
+    # pattern.rotation = np.deg2rad(rotation_1)
+    # pattern = microscope.patterning.create_rectangle(x_4, y_4, width+2*bias, height+2*bias, depth)
+    # pattern.rotation = np.deg2rad(rotation_2)
+
+    # bottom cut pattern
+    cut_coord_bottom = {
+        "center_x": x_1,
+        "center_y": y_1,
+        "width": width,
+        "height": height - bias,
+        "depth": depth,
+        "rotation": rotation_1,
+        "hfw": hfw,
+    }
+
+    # top cut pattern
+    cut_coord_top = {
+        "center_x": x_2,
+        "center_y": y_2,
+        "width": width,
+        "height": height - bias,
+        "depth": depth,
+        "rotation": rotation_2,
+        "hfw": hfw,
+    }
+
+    # setup ion milling
+    # setup_ion_milling(microscope, ion_beam_field_of_view=hfw, patterning_mode="Serial")
+
+    return cut_coord_bottom, cut_coord_top
+
+
+def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
+    sharpen_patterns = []
+
+    setup_ion_milling(microscope, ion_beam_field_of_view=cut_coord_top["hfw"])
+
+    for cut_coord in [cut_coord_bottom, cut_coord_top]:
+        center_x = cut_coord["center_x"]
+        center_y = cut_coord["center_y"]
+        width = cut_coord["width"]
+        height = cut_coord["height"]
+        depth = cut_coord["depth"]
+        rotation_degrees = cut_coord["rotation"]
+        ion_beam_field_of_view = cut_coord["hfw"]
+
+        # create patterns
+        pattern = microscope.patterning.create_rectangle(
+            center_x, center_y, width, height, depth)
+        pattern.rotation = np.deg2rad(rotation_degrees)
+        sharpen_patterns.append(pattern)
+
+    return sharpen_patterns

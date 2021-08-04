@@ -450,3 +450,29 @@ def linked_within_z_tolerance(microscope, expected_z=3.9e-3, tolerance=1e-6):
         return True
     else:
         return False
+
+
+def move_sample_stage_out(microscope):
+    """Move stage completely out of the way, so it is not visible at all.
+    """
+    # Must set tilt to zero, so we don't see reflections from metal stage base
+    microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
+    sample_stage_out = StagePosition(x=-0.002507,
+                                     y=0.025962792,
+                                     z=0.0039559049)
+    microscope.specimen.stage.absolute_move(sample_stage_out)
+    return microscope.specimen.stage.current_position
+
+
+
+def insert_needle(microscope):
+    """Insert the needle and return the needle parking position.
+    Returns
+    -------
+    park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
+        The parking position for the needle manipulator when inserted.
+    """
+    needle = microscope.specimen.manipulator
+    needle.insert()
+    park_position = needle.current_position
+    return park_position

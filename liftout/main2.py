@@ -29,7 +29,7 @@ class AutoLiftout:
         # TODO: add pretilt_degrees to protocol
         self.microscope = microscope
 
-        # movement.move_to_sample_grid(self.microscope, self.settings)
+        movement.move_to_sample_grid(self.microscope, self.settings)
 
         acquire.autocontrast(self.microscope, BeamType.ELECTRON)
         acquire.autocontrast(self.microscope, BeamType.ION)

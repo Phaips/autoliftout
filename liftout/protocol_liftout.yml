@@ -73,8 +73,8 @@ sharpen:
   depth: 1e-6
   bias: 0.25e-6
   hfw: 150e-6
-  tip_angle: 15
-  needle_angle: 41
+  tip_angle: 10
+  needle_angle: 40
   sharpen_milling_current: 0.74e-9 # in Amps
 cut:
   width: 8e-6

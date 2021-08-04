@@ -31,6 +31,8 @@ class DetectionModel:
             ]
         )
 
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # TODO: support GPU
+
         self.load_model()
 
     def preprocess_image(self, img):
@@ -45,6 +47,7 @@ class DetectionModel:
         self.model = smp.Unet(encoder_name="resnet18", in_channels=1, classes=3,)
         # load model weights
         self.model.load_state_dict(torch.load(self.weights_file, map_location="cpu"))
+        # self.model.to(self.device) #TODO: GPU support
         self.model.eval()
 
         # return model
@@ -78,7 +81,9 @@ class DetectionModel:
         """ Decode segmentation class mask into an RGB image mask"""
 
         # 0=background, 1=lamella, 2= needle
-        label_colors = np.array([(0, 0, 0), (255, 0, 0), (0, 255, 0)])
+        label_colors = np.array([(0, 0, 0),
+                                 (255, 0, 0),
+                                 (0, 255, 0)])
 
         # pre-allocate r, g, b channels as zero
         r = np.zeros_like(image, dtype=np.uint8)
