@@ -168,7 +168,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
 
-            coordinates.append(self.microscope.specimen.stage.current_position)
+            coordinates.append(self.stage.current_position)
             self.auto.image_settings['save'] = True
             if feature_type == 'landing':
                 self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['landing_post_ref_img_resolution']
@@ -237,10 +237,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             print('SEM image not centered')
             return
 
-        tilt_radians = self.microscope.specimen.stage.current_position.t
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
-        delta_z = -np.cos(tilt_radians) * real_y
-        self.microscope.specimen.stage.relative_move(StagePosition(z=delta_z))
+        delta_z = -np.cos(self.stage.current_position.t) * real_y
+        self.stage.relative_move(StagePosition(z=delta_z))
         if self.auto.response:
             self.update_display(beam_type=BeamType.ION, image_type='new')
         # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
@@ -301,7 +300,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
-        # self.microscope.specimen.stage.absolute_move(lamella_coordinates)
+        # self.stage.absolute_move(lamella_coordinates)
         # calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
         # self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         # # TODO: possibly new image
@@ -330,7 +329,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def mill_lamella(self):
         self.auto.current_status = AutoLiftoutStatus.Milling
         stage_settings = MoveSettings(rotate_compucentric=True)
-        stage = self.microscope.specimen.stage
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
         movement.move_to_trenching_angle(self.microscope, self.auto.settings)
@@ -381,13 +379,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: deal with resetting label requirement
         self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
         # then using ML, tilting/correcting in steps so drift isn't too large
-        self.correct_stage_drift_with_ML(stage)
+        self.correct_stage_drift_with_ML()
         movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
         self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
-        self.correct_stage_drift_with_ML(stage)
+        self.correct_stage_drift_with_ML()
         movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
         self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
-        self.correct_stage_drift_with_ML(stage)
+        self.correct_stage_drift_with_ML()
 
         # now we are at the angle for jcut, perform jcut
         # milling.mill_jcut(self.microscope, self.auto.settings)
@@ -410,7 +408,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.auto.image_settings)
         print('done, ready for liftout')  # TODO: status  bar
 
-    def correct_stage_drift_with_ML(self, stage):
+    def correct_stage_drift_with_ML(self):
         # TODO: add this autocontrast to a protocol? (because it changes depending on sample)
         # correct stage drift using machine learning
         label = self.auto.image_settings['label']
@@ -421,11 +419,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # TODO: make moves consistent from moving to stationary
             # yz-correction
-            tilt_radians = stage.current_position.t
-            x_move = movement.x_corrected_stage_movement(-distance_x_m, stage_tilt=tilt_radians)
-            yz_move = movement.y_corrected_stage_movement(distance_y_m, stage_tilt=tilt_radians, beam_type=beamType)
-            stage.relative_move(x_move)
-            stage.relative_move(yz_move)
+            x_move = movement.x_corrected_stage_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
+            yz_move = movement.y_corrected_stage_movement(distance_y_m, stage_tilt=self.stage.current_position.t, beam_type=beamType)
+            self.stage.relative_move(x_move)
+            self.stage.relative_move(yz_move)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
 
@@ -443,10 +440,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_liftout_angle(self.microscope, self.auto.settings)
 
         needle = self.microscope.specimen.manipulator
-        stage = self.microscope.specimen.stage
 
         # correct stage drift from mill_lamella stage
-        self.correct_stage_drift_with_ML(stage)
+        self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
         park_position = movement.move_needle_to_liftout_position(self.microscope)
@@ -480,9 +476,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.auto.image_settings)
 
         # Raise needle 30um
-        stage_tilt = self.stage.current_position.t
         # TODO: status
-        # print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
+        # print('Stage tilt is ', np.rad2deg(self.stage.current_position.t), ' deg...')
 
         for i in range(3):
             # print("Moving out of trench by 10um")
@@ -501,7 +496,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_needle_on_milled_lamella(self):
         needle = self.microscope.specimen.manipulator
-        stage = self.microscope.specimen.stage  # TODO: refactor to self.stage, just neater
         # setup and take reference images of liftout starting position
         self.auto.image_settings['resolution'] = self.auto.settings["reference_images"]["needle_ref_img_resolution"]
         self.auto.image_settings['dwell_time'] = self.auto.settings["reference_images"]["needle_ref_img_dwell_time"]
@@ -524,9 +518,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_lowres"]
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
-        tilt_radians = stage.current_position.t
-        x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=tilt_radians)
-        yz_move = movement.y_corrected_needle_movement(distance_y_m, stage_tilt=tilt_radians)
+        x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
+        yz_move = movement.y_corrected_needle_movement(distance_y_m, stage_tilt=self.stage.current_position.t)
         needle.relative_move(x_move)
         needle.relative_move(yz_move)
 
@@ -535,16 +528,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # calculate shift between lamella centre and needle tip in the ion view
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
         # calculate shift in xyz coordinates
-        stage_tilt = stage.current_position.t
         # TODO: status
-        # print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
-        # print('cos(t) = ', np.cos(stage_tilt))
-        z_distance = distance_y_m / np.cos(stage_tilt)
+        # print('Stage tilt is ', np.rad2deg(self.stage.current_position.t), ' deg...')
+        # print('cos(t) = ', np.cos(self.stage.current_position.t))
+        z_distance = distance_y_m / np.cos(self.stage.current_position.t)
 
         # Calculate movement
         # print('Needle approach from i-beam low res - Z: landing')
         # print('Needle move in Z by half the distance...', z_distance)
-        zy_move_half = movement.z_corrected_needle_movement(-z_distance / 2, stage_tilt)
+        zy_move_half = movement.z_corrected_needle_movement(-z_distance / 2, self.stage.current_position.t)
         needle.relative_move(zy_move_half)
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
@@ -556,9 +548,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
             # calculate shift in xyz coordinates
-            stage_tilt = self.stage.current_position.t
 
-            z_distance = distance_y_m / np.cos(stage_tilt)
+            z_distance = distance_y_m / np.cos(self.stage.current_position.t)
 
             # Calculate movement
             # move in x
@@ -567,7 +558,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle.relative_move(x_move)
             # move in z
             gap = 0.5e-6
-            zy_move_gap = movement.z_corrected_needle_movement(-z_distance - gap, stage_tilt)
+            zy_move_gap = movement.z_corrected_needle_movement(-z_distance - gap, self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
             # print('Needle move in Z minus gap ... LANDED')
 
@@ -637,10 +628,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         print("Hello Landing")
 
         stage_settings = MoveSettings(rotate_compucentric=True)
-        self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
         # move to landing coordinate
-        self.microscope.specimen.stage.absolute_move(landing_coord)
+        self.stage.absolute_move(landing_coord)
         # TODO: image settings?
         calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_landing_images, self.liftout_counter, mode="land")
         park_position = movement.move_needle_to_landing_position(self.microscope)
@@ -670,7 +661,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.auto.image_settings["beam_type"] = BeamType.ION
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.auto.image_settings["beam_type"])
 
-        stage_tilt = self.stage.current_position.t
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
@@ -888,9 +878,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
                     # TODO: turn off moving with double click on some images
 
-                    tilt_radians = self.stage.current_position.t
-                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=tilt_radians)
-                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=tilt_radians, beam_type=beam_type)
+                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
+                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
                     self.stage.relative_move(x_move)
                     self.stage.relative_move(yz_move)
                     # TODO: refactor beam type here
