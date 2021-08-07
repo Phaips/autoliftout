@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
 information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
-
+test_image = np.random.randint(0, 255, size=(1000, 1000))
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
@@ -100,8 +100,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.initialize_hardware(offline=offline)
 
-        self.stage = self.microscope.specimen.stage
-        self.needle = self.microscope.specimen.manipulator
+        if self.microscope:
+            self.stage = self.microscope.specimen.stage
+            self.needle = self.microscope.specimen.manipulator
         # TODO: check needle creation
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -857,41 +858,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def cleanup_lamella(self):
 
-
         return NotImplemented
-
-
-    def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON):
-        image = None
-        if beam_type is BeamType.ELECTRON:
-            image = self.image_SEM
-        if beam_type is BeamType.ION:
-            image = self.image_FIB
-
-        if event.button == 1:
-            if event.dblclick and (click in ('double', 'all')):
-                if image:
-                    self.xclick = event.xdata
-                    self.yclick = event.ydata
-                    x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
-                    print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
-                    print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
-                    # TODO: turn off moving with double click on some images
-
-                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
-                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
-                    self.stage.relative_move(x_move)
-                    self.stage.relative_move(yz_move)
-                    # TODO: refactor beam type here
-                    acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
-                    self.update_display(beam_type=beam_type, image_type='last')
-                    self.update_popup_display(beam_type=beam_type, click=click, image=None)
-
-            elif click in ('single', 'all'):
-                self.xclick = event.xdata
-                self.yclick = event.ydata
-
-                # Add crosshair
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
@@ -948,6 +915,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
+
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single'))
+
     def ask_user(self, image=None, beam_type=None, message=None, click=None):
         self.popup = QtWidgets.QDialog()
         self.popup_canvas = None
@@ -994,6 +964,57 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.show()
         self.popup.exec_()
 
+    def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON):
+        image = None
+        if beam_type is BeamType.ELECTRON:
+            image = self.image_SEM
+        if beam_type is BeamType.ION:
+            image = self.image_FIB
+
+        if event.button == 1:
+            if event.dblclick and (click in ('double', 'all')):
+                if image:
+                    self.xclick = event.xdata
+                    self.yclick = event.ydata
+                    x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                    print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
+                    print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
+                    # TODO: turn off moving with double click on some images
+
+                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
+                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
+                    self.stage.relative_move(x_move)
+                    self.stage.relative_move(yz_move)
+                    # TODO: refactor beam type here
+                    acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
+                    self.update_display(beam_type=beam_type, image_type='last')
+                    self.update_popup_display(beam_type=beam_type, click=click, image=None)
+
+            elif click in ('single', 'all'):
+                self.xclick = event.xdata
+                self.yclick = event.ydata
+
+                cross_size = 120
+                half_cross = cross_size/2
+                cross_thickness = 8
+                half_thickness = cross_thickness/2
+
+                h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
+                h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
+
+                v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
+                v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
+
+                self.ax.patches = []
+                self.ax.add_patch(h_rect)
+                self.ax.add_patch(v_rect)
+                self.ax.add_patch(h_rect2)
+                self.ax.add_patch(v_rect2)
+                self.popup_canvas.draw()
+                self.update_popup_display(beam_type=beam_type, click=click, image=None)
+
+                # Add crosshair
+
     def update_popup_display(self, beam_type, click, image):
         if beam_type or (image is not None):
             if beam_type is BeamType.ELECTRON:
@@ -1030,14 +1051,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             midy = int(yshape / 2)
             thresh = 2
             mult = 25
+
             image_array_crosshair[midx - (thresh * mult):midx + (thresh * mult), midy - thresh:midy + thresh] = (255, 255, 0)
             image_array_crosshair[midx - thresh:midx + thresh, midy - (thresh * mult):midy + (thresh * mult)] = (255, 255, 0)
 
             # todo: CONVERT TO RGB IMAGE
             fig.clear()
-            ax = fig.add_subplot(111)
-            ax.imshow(image_array_crosshair)
-
+            self.ax = fig.add_subplot(111)
+            self.ax.imshow(image_array_crosshair)
             self.popup_canvas.draw()
             # plt.show()
 
@@ -1294,38 +1315,39 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def update_display(self, beam_type=BeamType.ELECTRON, image_type='last'):
         """Update the GUI display with the current image"""
-        try:
-            if beam_type is BeamType.ELECTRON:
-                if image_type == 'new':
-                    self.auto.image_settings['beam_type'] = beam_type
-                    self.image_SEM = acquire.new_image(self.microscope, self.auto.image_settings)
-                else:
-                    self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
-                image_array = self.image_SEM.data
-                self.figure_SEM.clear()
-                self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
-                self.ax_SEM = self.figure_SEM.add_subplot(111)
-                self.ax_SEM.get_xaxis().set_visible(False)
-                self.ax_SEM.get_yaxis().set_visible(False)
-                self.ax_SEM.imshow(image_array, cmap='gray')
-                self.canvas_SEM.draw()
-            if beam_type is BeamType.ION:
-                if image_type == 'new':
-                    self.auto.image_settings['beam_type'] = beam_type
-                    self.image_FIB = acquire.new_image(self.microscope, self.auto.image_settings)
-                else:
-                    self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
-                image_array = self.image_FIB.data
-                self.figure_FIB.clear()
-                self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
-                self.ax_FIB = self.figure_FIB.add_subplot(111)
-                self.ax_FIB.get_xaxis().set_visible(False)
-                self.ax_FIB.get_yaxis().set_visible(False)
-                self.ax_FIB.imshow(image_array, cmap='gray')
-                self.canvas_FIB.draw()
+        if self.microscope:
+            try:
+                if beam_type is BeamType.ELECTRON:
+                    if image_type == 'new':
+                        self.auto.image_settings['beam_type'] = beam_type
+                        self.image_SEM = acquire.new_image(self.microscope, self.auto.image_settings)
+                    else:
+                        self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
+                    image_array = self.image_SEM.data
+                    self.figure_SEM.clear()
+                    self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
+                    self.ax_SEM = self.figure_SEM.add_subplot(111)
+                    self.ax_SEM.get_xaxis().set_visible(False)
+                    self.ax_SEM.get_yaxis().set_visible(False)
+                    self.ax_SEM.imshow(image_array, cmap='gray')
+                    self.canvas_SEM.draw()
+                if beam_type is BeamType.ION:
+                    if image_type == 'new':
+                        self.auto.image_settings['beam_type'] = beam_type
+                        self.image_FIB = acquire.new_image(self.microscope, self.auto.image_settings)
+                    else:
+                        self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
+                    image_array = self.image_FIB.data
+                    self.figure_FIB.clear()
+                    self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
+                    self.ax_FIB = self.figure_FIB.add_subplot(111)
+                    self.ax_FIB.get_xaxis().set_visible(False)
+                    self.ax_FIB.get_yaxis().set_visible(False)
+                    self.ax_FIB.imshow(image_array, cmap='gray')
+                    self.canvas_FIB.draw()
 
-        except Exception:
-            display_error_message(traceback.format_exc())
+            except Exception:
+                display_error_message(traceback.format_exc())
 
     def disconnect(self):
         print('Running cleanup/teardown')
@@ -1372,5 +1394,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
     sys.exit(app.exec_())
 
 
-main(offline='False')
-# main(offline='True')
+# main(offline='False')
+main(offline='True')
