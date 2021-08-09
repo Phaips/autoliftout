@@ -29,6 +29,13 @@ class AutoLiftout:
         # TODO: add pretilt_degrees to protocol
         self.microscope = microscope
 
+        self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
+                               'hfw': 2750e-6, 'brightness': None,
+                               'contrast': None, 'autocontrast': True,
+                               'save': True, 'label': 'grid',
+                               'beam_type': BeamType.ELECTRON,
+                               'save_path': self.save_path}
+
         if self.microscope:
             movement.move_to_sample_grid(self.microscope, self.settings)
 

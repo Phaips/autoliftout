@@ -931,7 +931,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single', crosshairs=False, filter_strength=3))
 
-    def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0):
+    def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0, reimaging=True):
         self.setEnabled(False)
         self.popup = QtWidgets.QDialog()
         self.popup.setLayout(QtWidgets.QGridLayout())
@@ -988,8 +988,40 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         filter_frame.layout().addWidget(self.filter_check, 0, 1, 1, 1)
         filter_frame.layout().addWidget(self.filter_box, 1, 0, 1, 2)
 
+        new_image = QtWidgets.QPushButton()
+        new_image.setFixedHeight(self.button_height)
+        new_image.setFixedWidth(self.button_width)
+        new_image.setText('New Image')
+
         question_frame.layout().addWidget(question)
         question_frame.layout().addWidget(filter_frame)
+        question_frame.layout().addWidget(new_image)
+
+        # HFW changing
+        hfw_widget = QtWidgets.QWidget()
+        hfw_widget_layout = QtWidgets.QGridLayout()
+        hfw_widget.setLayout(hfw_widget_layout)
+
+        hfw_slider = QtWidgets.QSlider()
+        hfw_slider.setOrientation(QtCore.Qt.Horizontal)
+        hfw_slider.setMinimum(1)
+        hfw_slider.setMaximum(900)
+        hfw_slider.setValue(self.auto.image_settings['hfw']*1e6)
+
+        hfw_spinbox = QtWidgets.QSpinBox()
+        hfw_spinbox.setMinimum(1)
+        hfw_spinbox.setMaximum(900)
+        hfw_spinbox.setValue(self.auto.image_settings['hfw']*1e6)
+
+        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
+        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
+
+        hfw_spinbox.valueChanged.connect(lambda: hfw_slider.setValue(hfw_spinbox.value()))
+
+        hfw_widget.layout().addWidget(hfw_spinbox)
+        hfw_widget.layout().addWidget(hfw_slider)
+
+        new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6))
 
         # Button space
         button_box = QtWidgets.QWidget(self.popup)
@@ -1026,11 +1058,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
         self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
-        self.popup.layout().addWidget(button_box, 7, 1, 1, 1)
+        self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
+        self.popup.layout().addWidget(button_box, 8, 1, 1, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         self.popup.show()
         self.popup.exec_()
+
+    def image_from_popup(self, hfw):
+        self.auto.image_settings['hfw'] = hfw
+        print(self.auto.image_settings['hfw']*1e6)
+        # image = acquire.new_image(self.microscope, self.auto.image_settings)
+        # self.update_popup_display(beam_type=beam_type, click=click, image=image, crosshairs=crosshairs)
 
     def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON, crosshairs=True):
         image = None
