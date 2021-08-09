@@ -11,7 +11,8 @@ import numpy as np
 
 @pytest.fixture
 def weights_file():
-    yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
+    # yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
+    yield "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/model/models/fresh_full_n10.pt"
 
 @pytest.fixture
 def detector(weights_file):
@@ -31,14 +32,6 @@ def test_Detector_init(detector):
             "thin_lamella_top_to_centre",
             "thin_lamella_bottom_to_centre"
         ]
-
-
-def test_image():
-
-    img = np.zeros(shape=(254, 364, 3))
-
-    assert img.shape == (254, 364, 3)
-
 
 def test_extract_class_pixels_is_null():
 
@@ -61,15 +54,62 @@ def test_extract_class_pixels():
     class_mask, idx = detection.extract_class_pixels(mask, color)
 
     assert np.all(class_mask == (255, 0, 0))
-    assert len(idx[0]) == class_mask.shape # empty tuple
+    assert len(idx[0]) == class_mask.shape[0] * class_mask.shape[1] # full tuple
 
 
-# def test_scale_invariant_coordinates():
-#
-#     mask = np.ones(256, 384, 3)
-#     px = mask.shape[0]//2, mask.shape[1]//2
-#
-#     scaled_px =
+def test_scale_invariant_coordinates():
+
+    mask = np.ones((256, 384, 3))
+    px = mask.shape[0]//2, mask.shape[1]//2
+
+    scaled_px = utils.scale_invariant_coordinates(px, mask)
+
+    assert scaled_px == (0.5, 0.5)
 
 
+def test_scale_invariant_coordinates_is_zeros():
 
+    mask = np.ones((256, 384, 3))
+    px = (0, 0)
+    
+    scaled_px = utils.scale_invariant_coordinates(px, mask)
+
+    assert scaled_px == (0.0, 0.0)
+
+def test_detect_centre_point():
+
+    # red mask
+    mask = np.zeros(shape=(256, 384, 3))
+    mask[:, :, :] = (255, 0, 0)
+    color = (255, 0, 0)
+
+    centre_px = detection.detect_centre_point(mask, color)
+    
+    # check that centre detection is within 1px of image centre
+    assert np.isclose(centre_px[0], mask.shape[1]//2,  1.0)
+    assert np.isclose(centre_px[1], mask.shape[0]//2, 1.0)
+
+
+def test_detect_centre_point_is_zero():
+
+    # zero mask
+    mask = np.zeros(shape=(256, 384, 3))
+    color = (255, 0, 0)
+
+    centre_px = detection.detect_centre_point(mask, color)
+    
+    # check that centre px is (0, 0)
+    assert centre_px == (0, 0)
+
+def test_detect_right_edge():
+
+    # red mask
+    mask = np.zeros(shape=(256, 384, 3))
+    mask[:, :, :] = (255, 0, 0)
+    color = (255, 0, 0)
+
+    right_edge_px = detection.detect_right_edge(mask, color)
+    left_edge_px = detection.detect_right_edge(mask, color, left=True)
+    
+    assert right_edge_px[1] ==  mask.shape[1] - 1
+    assert left_edge_px[1] == 0
