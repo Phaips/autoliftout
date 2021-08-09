@@ -21,12 +21,19 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanva
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
 from autoscript_sdb_microscope_client.structures import *
-# Required to not break imports
-BeamType = acquire.BeamType
 from liftout.main2 import AutoLiftout
 from liftout.main2 import AutoLiftoutStatus
 import scipy.ndimage as ndi
 import skimage
+import PIL
+from PIL import Image
+
+# Required to not break imports
+BeamType = acquire.BeamType
+
+test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
+test_image = np.array(test_image)
+# test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
 
 pretilt = 27  # TODO: put in protocol
 
@@ -36,12 +43,6 @@ logger = logging.getLogger(__name__)
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
 information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
-
-import PIL
-from PIL import Image
-test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
-test_image = np.array(test_image)
-# test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
 
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
@@ -59,6 +60,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.downscaled_image = None
 
         self.filter_strength = 2
+        self.button_height = 50
+        self.button_width = 100
 
         # TODO: status bar update with prints from Autoliftout
         self.statusbar.setSizeGripEnabled(0)
@@ -929,48 +932,66 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single', crosshairs=False))
 
     def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0):
+        self.setEnabled(False)
         self.popup = QtWidgets.QDialog()
+        self.popup.setLayout(QtWidgets.QGridLayout())
+        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.popup_canvas = None
 
         if message is None:
             message = "ok?"
 
+        # Question space
         question = QtWidgets.QLabel(self.popup)
-        font = QtGui.QFont()
-        font.setPointSize(24)
+        question_layout = QtWidgets.QHBoxLayout()
+        question.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        question.setFixedHeight(50)
+
         question.setText(message)
+
+        font = QtGui.QFont()
+        font.setPointSize(16)
         question.setFont(font)
 
         question.setAlignment(QtCore.Qt.AlignCenter)
-        question_layout = QtWidgets.QHBoxLayout()
         question.setLayout(question_layout)
 
+        # Button space
         button_box = QtWidgets.QWidget(self.popup)
-        button_layout = QtWidgets.QHBoxLayout()
+        button_box.setFixedHeight(int(self.button_height*1.2))
+        button_layout = QtWidgets.QGridLayout()
         yes = QtWidgets.QPushButton('Yes')
-        no = QtWidgets.QPushButton('No')
         yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
-        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
-
-        button_box.setLayout(button_layout)
-        button_box.layout().addWidget(yes)
-        button_box.layout().addWidget(no)
-
+        yes.setFixedHeight(self.button_height)
+        yes.setFixedWidth(self.button_width)
         yes.clicked.connect(lambda: self.set_response(True))
-        no.clicked.connect(lambda: self.set_response(False))
         yes.clicked.connect(lambda: self.popup.close())
+
+        no = QtWidgets.QPushButton('No')
+        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        no.setFixedHeight(self.button_height)
+        no.setFixedWidth(self.button_width)
+        no.clicked.connect(lambda: self.set_response(False))
         no.clicked.connect(lambda: self.popup.close())
 
-        self.popup.setLayout(QtWidgets.QGridLayout())
-        self.setEnabled(False)
-        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        h_spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
-        self.update_popup_display(beam_type=beam_type, click=click, image=image, crosshairs=crosshairs, filter_strength=filter_strength)
+        button_box.setLayout(button_layout)
+        button_box.layout().addItem(h_spacer, 0, 0, 1, 1)
+        button_box.layout().addWidget(yes, 0, 1, 1, 1)
+        button_box.layout().addWidget(no, 0, 2, 1, 1)
+        button_box.layout().addItem(h_spacer2, 0, 3, 1, 1)
+
+        # image space
+        self.update_popup_display(beam_type=beam_type, click=click, image=image,
+                                  crosshairs=crosshairs, filter_strength=filter_strength)
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
         self.popup.layout().addWidget(question, 6, 1, 1, 1)
         self.popup.layout().addWidget(button_box, 7, 1, 1, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
         self.popup.show()
         self.popup.exec_()
 
@@ -1056,20 +1077,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.popup_canvas.deleteLater()
             self.popup_canvas = _FigureCanvas(fig)
 
+
+
             image_array = image.data
 
             if filter_strength:
                 image_array = ndi.median_filter(image_array, filter_strength)
 
             image_array_crosshair = np.array(np.copy(image_array), dtype=np.uint8)
-
-            self.ax = fig.add_subplot(111)
-            self.ax.imshow(image_array_crosshair)
-            self.popup_canvas.draw()
-
             if image_array_crosshair.ndim != 3:
                 image_array_crosshair = np.stack((image_array_crosshair,) * 3, axis=-1)
 
+            # Cross hairs
             xshape = image_array_crosshair.shape[0]
             yshape = image_array_crosshair.shape[1]
             midx = int(xshape / 2)
