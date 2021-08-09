@@ -1,6 +1,6 @@
 # Liftout Model
 
-This repository contains the code for preparing and labelling data and training the model used for autoliftout.
+This directory contains the code for preparing and labelling data and training the model used for autoliftout.
 
 ## Additional Training
 
@@ -11,20 +11,7 @@ To label additional images for training, use the following steps:
 - extract the labels as a dataset: `$ bash label_to_dataset.sh data/path/ `
 - train the model on the new dataset `$ python3 train --data data/path/ `
 
-For more information please see the detailed sections below.
-
-## TODO
-- create base dataset - DONE
-- write dataset documentation
-- write labelling documentation
-- improve data scripts
-- fix app.py for use with new utils
-- remove unused or consolidate files (exp_summary, mpl_click)
-- fix / refactor train.py (maybe refactor dataset)
-    - add a validation set to train.py? - DONE
-- requirements.txt / environment.yml
-- write proper readme for the model section
-- convert the dataset directly from the json? maybe
+For more information please see the detailed section
 
 ## Labelling
 

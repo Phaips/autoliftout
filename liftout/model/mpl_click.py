@@ -110,7 +110,7 @@ class Index:
         plt.draw()
 
 
-class DataEngine:
+class MPL_Click:
     def __init__(self, images):
         
         fig, ax = plt.subplots()
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     images = [PIL.Image.open(fname) for fname in filenames]
 
     # run data engine
-    data_engine = DataEngine(images)
+    data_engine = MPL_Click(images)
 
 
 

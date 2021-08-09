@@ -60,20 +60,20 @@ def main():
 
         # show images
         st.subheader(fname)
-        cols_raw = st.beta_columns(2)
+        cols_raw = st.columns(2)
         cols_raw[0].image(img, caption="base_img")
         cols_raw[1].image(mask, caption="label_img") # TODO: replace with label if available?
 
-        cols_mask = st.beta_columns(2)
+        cols_mask = st.columns(2)
         cols_mask[0].image(lamella_mask, caption="lamella_mask")
         cols_mask[1].image(needle_mask, caption="needle_mask")
 
-        cols_detection = st.beta_columns(3)
+        cols_detection = st.columns(3)
         cols_detection[0].image(lamella_centre_detection, caption="lamella_centre")
         cols_detection[1].image(needle_tip_detection, caption="needle_tip")
         cols_detection[2].image(lamella_edge_detection, caption="lamella_edge")
 
-        cols_combined = st.beta_columns(2)
+        cols_combined = st.columns(2)
         cols_combined[0].image(mask_combined, caption="combined_mask")
         cols_combined[1].image(img_blend, caption="combined_overlay")
 

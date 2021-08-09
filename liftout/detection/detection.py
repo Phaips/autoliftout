@@ -168,83 +168,86 @@ class Detector:
         return img_blend, img_downscale, feature_1_px, feature_1_type, feature_2_px, feature_2_type
 
 
-    def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
-        """
-        Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
-        args:
-            adorned_img: input image (AdornedImage, or np.array)
-            shift_type: the type of feature detection shift to calculation
-            show: display a plot of feature detections over the input image (bool)
-            validate: enable manual validation of the feature detections (bool)
+# NB: calculate_shift_between_features and calculate_shift_distance_in_metres are depreceated and will be removed
+    # def calculate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
+    #     """
+    #     Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
-        return:
-            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple)
+    #     args:
+    #         adorned_img: input image (AdornedImage, or np.array)
+    #         shift_type: the type of feature detection shift to calculation
+    #         show: display a plot of feature detections over the input image (bool)
+    #         validate: enable manual validation of the feature detections (bool)
 
-        """
-        # TODO: fix display colours for this?
+    #     return:
+    #         (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple)
 
-        # # check image type
-        if hasattr(adorned_img, 'data'):
-            img = adorned_img.data # extract image data from AdornedImage
-        if isinstance(adorned_img, np.ndarray):
-            img = adorned_img # adorned image is just numpy array
+    #     """
+    #     # TODO: fix display colours for this?
 
-        # load image from file
-        mask = self.detection_model.model_inference(img)
+    #     # # check image type
+    #     if hasattr(adorned_img, 'data'):
+    #         img = adorned_img.data # extract image data from AdornedImage
+    #     if isinstance(adorned_img, np.ndarray):
+    #         img = adorned_img # adorned image is just numpy array
 
-        # detect features for calculation
-        feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color = self.detect_features(img, mask, shift_type)
+    #     # load image from file
+    #     mask = self.detection_model.model_inference(img)
 
-        # display features for validation
-        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px, color_1=feature_1_color, color_2=feature_2_color)
-        img_blend = draw_overlay(img, mask_combined, show=show, title=shift_type)
+    #     # detect features for calculation
+    #     feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color = self.detect_features(img, mask, shift_type)
 
-        # # need to use the same scale images for both detection selections
-        img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+    #     # display features for validation
+    #     mask_combined = draw_two_features(mask, feature_1_px, feature_2_px, color_1=feature_1_color, color_2=feature_2_color)
+    #     img_blend = draw_overlay(img, mask_combined, show=show, title=shift_type)
 
-        # validate detection
-        if validate:
-            feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
-            feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
+    #     # # need to use the same scale images for both detection selections
+    #     img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
 
-        # scale invariant coordinatesss
-        scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
-        scaled_feature_2_px = scale_invariant_coordinates_NEW(feature_2_px, mask_combined)
+    #     # validate detection
+    #     if validate:
+    #         feature_1_px = validate_detection(img_downscale, img, feature_1_px, feature_1_type)
+    #         feature_2_px = validate_detection(img_downscale, img, feature_2_px, feature_2_type)
 
-        # if no detection is found, something has gone wrong
-        if scaled_feature_1_px is None or scaled_feature_2_px is None:
-            raise ValueError("No detections available")
+    #     # scale invariant coordinatesss
+    #     scaled_feature_1_px = scale_invariant_coordinates_NEW(feature_1_px, mask_combined)
+    #     scaled_feature_2_px = scale_invariant_coordinates_NEW(feature_2_px, mask_combined)
 
-        # x, y distance (proportional)
-        return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0]
-        #TODO: this will probably be wrong now for most, need to re-validate
+    #     # if no detection is found, something has gone wrong
+    #     if scaled_feature_1_px is None or scaled_feature_2_px is None:
+    #         raise ValueError("No detections available")
 
-# REFACTOR DETECTION AND DRAWING TOOLS
+    #     # x, y distance (proportional)
+    #     return scaled_feature_2_px[1] - scaled_feature_1_px[1], scaled_feature_2_px[0] - scaled_feature_1_px[0]
+    #     #TODO: this will probably be wrong now for most, need to re-validate
 
-def calculate_shift_distance_in_metres(img, distance_x, distance_y, metadata=None):
-    """Convert the shift distance from proportion of img to metres using image metadata"""
 
-    # check image type
-    if isinstance(img, np.ndarray):
-        # use extracted metadata
-        pixelsize_x = float(metadata["[Scan].PixelWidth"])
-        width = img.shape[1]
-        height = img.shape[0]
-    else:
-        # use embedded metadata in Adorned Image
-        pixelsize_x = img.metadata.binary_result.pixel_size.x #5.20833e-008
-        width = img.width
-        height = img.height
 
-    # scale distances by pixelsize
-    field_width   = pixelsize_x  * width
-    field_height  = pixelsize_x  * height
-    x_shift_metres = distance_x * field_width
-    y_shift_metres = distance_y * field_height
+# def calculate_shift_distance_in_metres(img, distance_x, distance_y, metadata=None):
+#     """Convert the shift distance from proportion of img to metres using image metadata"""
 
-    return x_shift_metres, y_shift_metres
+#     # check image type
+#     if isinstance(img, np.ndarray):
+#         # use extracted metadata
+#         pixelsize_x = float(metadata["[Scan].PixelWidth"])
+#         width = img.shape[1]
+#         height = img.shape[0]
+#     else:
+#         # use embedded metadata in Adorned Image
+#         pixelsize_x = img.metadata.binary_result.pixel_size.x #5.20833e-008
+#         width = img.width
+#         height = img.height
 
+#     # scale distances by pixelsize
+#     field_width   = pixelsize_x  * width
+#     field_height  = pixelsize_x  * height
+#     x_shift_metres = distance_x * field_width
+#     y_shift_metres = distance_y * field_height
+
+#     return x_shift_metres, y_shift_metres
+
+# Detection and Drawing Tools
 
 def extract_class_pixels(mask, color):
     # TODO: get a better name for this
@@ -397,7 +400,7 @@ def detect_centre_point(mask, color, threshold=25):
 
 # - detect_right_edge(mask, color, threshold)
 
-def detect_right_edge(mask, color, threshold, left=False):
+def detect_right_edge(mask, color, threshold=25, left=False):
     """ Detect the right edge point of the mask for a given color (label)
 
     args:
