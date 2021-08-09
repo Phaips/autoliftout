@@ -929,7 +929,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single', crosshairs=False))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single', crosshairs=False, filter_strength=3))
 
     def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0):
         self.setEnabled(False)
@@ -942,19 +942,54 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             message = "ok?"
 
         # Question space
-        question = QtWidgets.QLabel(self.popup)
+        question_frame = QtWidgets.QWidget(self.popup)
+        question = QtWidgets.QLabel()
         question_layout = QtWidgets.QHBoxLayout()
+        question_frame.setLayout(question_layout)
+
         question.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         question.setFixedHeight(50)
-
         question.setText(message)
-
         font = QtGui.QFont()
         font.setPointSize(16)
         question.setFont(font)
-
         question.setAlignment(QtCore.Qt.AlignCenter)
-        question.setLayout(question_layout)
+
+        # filter combo box
+
+        filter_label = QtWidgets.QLabel('Median Filter')
+        self.filter_check = QtWidgets.QCheckBox()
+        self.filter_check.clicked.connect(lambda: self.filter_box.setEnabled(self.filter_check.isChecked()))
+
+        self.filter_box = QtWidgets.QComboBox(self.popup)
+        self.filter_box.addItem('2 x 2')
+        self.filter_box.addItem('3 x 3')
+        self.filter_box.addItem('4 x 4')
+
+        if filter_strength == 2:
+            self.filter_box.setCurrentIndex(0)
+            self.filter_check.setChecked(True)
+        elif filter_strength == 3:
+            self.filter_box.setCurrentIndex(1)
+            self.filter_check.setChecked(True)
+        elif filter_strength == 4:
+            self.filter_box.setCurrentIndex(2)
+            self.filter_check.setChecked(True)
+        else:
+            self.filter_box.setEnabled(False)
+
+        self.filter_box.currentIndexChanged.connect(lambda: self.update_popup_display(beam_type=beam_type, click=click, image=image,
+                                  crosshairs=crosshairs, filter_strength=self.filter_box.currentIndex() + 2))
+
+        filter_frame = QtWidgets.QWidget()
+        filter_frame_layout = QtWidgets.QGridLayout()
+        filter_frame.setLayout(filter_frame_layout)
+        filter_frame.layout().addWidget(filter_label, 0, 0, 1, 1)
+        filter_frame.layout().addWidget(self.filter_check, 0, 1, 1, 1)
+        filter_frame.layout().addWidget(self.filter_box, 1, 0, 1, 2)
+
+        question_frame.layout().addWidget(question)
+        question_frame.layout().addWidget(filter_frame)
 
         # Button space
         button_box = QtWidgets.QWidget(self.popup)
@@ -974,21 +1009,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         no.clicked.connect(lambda: self.set_response(False))
         no.clicked.connect(lambda: self.popup.close())
 
+        # spacers
         h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         h_spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
+        # button layout
         button_box.setLayout(button_layout)
-        button_box.layout().addItem(h_spacer, 0, 0, 1, 1)
-        button_box.layout().addWidget(yes, 0, 1, 1, 1)
-        button_box.layout().addWidget(no, 0, 2, 1, 1)
-        button_box.layout().addItem(h_spacer2, 0, 3, 1, 1)
+        button_box.layout().addItem(h_spacer, 0, 0, 2, 1)
+        button_box.layout().addWidget(yes, 0, 1, 2, 1)
+        button_box.layout().addWidget(no, 0, 2, 2, 1)
+        button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
 
         # image space
         self.update_popup_display(beam_type=beam_type, click=click, image=image,
                                   crosshairs=crosshairs, filter_strength=filter_strength)
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
-        self.popup.layout().addWidget(question, 6, 1, 1, 1)
+        self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
         self.popup.layout().addWidget(button_box, 7, 1, 1, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
@@ -1058,6 +1095,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 # Add crosshair
 
     def update_popup_display(self, beam_type, click, image, crosshairs=True, filter_strength=0):
+        print(filter_strength)
         if beam_type or (image is not None):
             if beam_type is BeamType.ELECTRON:
                 image = self.image_SEM
