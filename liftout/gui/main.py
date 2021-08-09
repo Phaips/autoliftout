@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
 information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
-test_image = np.random.randint(0, 255, size=(1000, 1000))
+
+# test_image = np.load('C:/Users/David/images/mask_test.tif', allow_pickle=False)
+test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
+
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
@@ -971,51 +974,61 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if beam_type is BeamType.ION:
             image = self.image_FIB
 
-        if event.button == 1:
-            if event.dblclick and (click in ('double', 'all')):
-                if image:
+        if event.inaxes:
+            if event.button == 1:
+                if event.dblclick and (click in ('double', 'all')):
+                    if image:
+                        self.xclick = event.xdata
+                        self.yclick = event.ydata
+                        x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                        print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
+                        print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
+                        # TODO: turn off moving with double click on some images
+
+                        x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
+                        yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
+                        self.stage.relative_move(x_move)
+                        self.stage.relative_move(yz_move)
+                        # TODO: refactor beam type here
+                        acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
+                        self.update_display(beam_type=beam_type, image_type='last')
+                        self.update_popup_display(beam_type=beam_type, click=click, image=None)
+
+                elif click in ('single', 'all'):
                     self.xclick = event.xdata
                     self.yclick = event.ydata
-                    x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
-                    print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
-                    print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
-                    # TODO: turn off moving with double click on some images
 
-                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
-                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
-                    self.stage.relative_move(x_move)
-                    self.stage.relative_move(yz_move)
-                    # TODO: refactor beam type here
-                    acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
-                    self.update_display(beam_type=beam_type, image_type='last')
+                    cross_size = 120
+                    half_cross = cross_size/2
+                    cross_thickness = 2
+                    half_thickness = cross_thickness/2
+
+                    h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
+                    h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
+
+                    v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
+                    v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
+
+                    h_rect.set_color('xkcd:yellow')
+                    h_rect2.set_color('xkcd:yellow')
+                    v_rect.set_color('xkcd:yellow')
+                    v_rect2.set_color('xkcd:yellow')
+
+                    self.ax.patches = []
+                    self.ax.add_patch(self.h_rect)
+                    self.ax.add_patch(self.v_rect)
+                    self.ax.add_patch(self.h_rect2)
+                    self.ax.add_patch(self.v_rect2)
+                    self.ax.add_patch(h_rect)
+                    self.ax.add_patch(v_rect)
+                    self.ax.add_patch(h_rect2)
+                    self.ax.add_patch(v_rect2)
+                    self.popup_canvas.draw()
                     self.update_popup_display(beam_type=beam_type, click=click, image=None)
-
-            elif click in ('single', 'all'):
-                self.xclick = event.xdata
-                self.yclick = event.ydata
-
-                cross_size = 120
-                half_cross = cross_size/2
-                cross_thickness = 8
-                half_thickness = cross_thickness/2
-
-                h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
-                h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
-
-                v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
-                v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
-
-                self.ax.patches = []
-                self.ax.add_patch(h_rect)
-                self.ax.add_patch(v_rect)
-                self.ax.add_patch(h_rect2)
-                self.ax.add_patch(v_rect2)
-                self.popup_canvas.draw()
-                self.update_popup_display(beam_type=beam_type, click=click, image=None)
 
                 # Add crosshair
 
-    def update_popup_display(self, beam_type, click, image):
+    def update_popup_display(self, beam_type, click, image, filter='None'):
         if beam_type or (image is not None):
             if beam_type is BeamType.ELECTRON:
                 image = self.image_SEM
@@ -1036,9 +1049,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_canvas = _FigureCanvas(fig)
 
 
-
+            filter = True
             image_array = image.data
-            image_array = ndi.median_filter(image_array, 2)
+            if filter:
+                image_array = ndi.median_filter(image_array, 2)
+
             image_array_crosshair = np.array(np.copy(image_array), dtype=np.uint8)
 
             # if crosshairs:
@@ -1049,16 +1064,45 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             yshape = image_array_crosshair.shape[1]
             midx = int(xshape / 2)
             midy = int(yshape / 2)
-            thresh = 2
-            mult = 25
+            # thresh = 2
+            # mult = 25
+            #
+            # image_array_crosshair[midx - (thresh * mult):midx + (thresh * mult), midy - thresh:midy + thresh] = (255, 255, 0)
+            # image_array_crosshair[midx - thresh:midx + thresh, midy - (thresh * mult):midy + (thresh * mult)] = (255, 255, 0)
 
-            image_array_crosshair[midx - (thresh * mult):midx + (thresh * mult), midy - thresh:midy + thresh] = (255, 255, 0)
-            image_array_crosshair[midx - thresh:midx + thresh, midy - (thresh * mult):midy + (thresh * mult)] = (255, 255, 0)
+            cross_size = 120
+            half_cross = cross_size / 2
+            cross_thickness = 2
+            half_thickness = cross_thickness / 2
 
-            # todo: CONVERT TO RGB IMAGE
+            self.h_rect = plt.Rectangle((midx, midy - half_thickness),
+                                   half_cross, cross_thickness)
+
+            self.h_rect2 = plt.Rectangle(
+                (midx - half_cross, midy - half_thickness),
+                half_cross, cross_thickness)
+
+            self.v_rect = plt.Rectangle((midx - half_thickness, midy),
+                                   cross_thickness, half_cross)
+            self.v_rect2 = plt.Rectangle(
+                (midx - half_thickness, midy - half_cross),
+                cross_thickness, half_cross)
+
+            self.h_rect.set_color('xkcd:yellow')
+            self.h_rect2.set_color('xkcd:yellow')
+            self.v_rect.set_color('xkcd:yellow')
+            self.v_rect2.set_color('xkcd:yellow')
+
             fig.clear()
             self.ax = fig.add_subplot(111)
             self.ax.imshow(image_array_crosshair)
+            self.ax.patches = []
+
+            self.ax.add_patch(self.h_rect)
+            self.ax.add_patch(self.v_rect)
+            self.ax.add_patch(self.h_rect2)
+            self.ax.add_patch(self.v_rect2)
+
             self.popup_canvas.draw()
             # plt.show()
 
