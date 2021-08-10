@@ -4,6 +4,11 @@ import numpy as np
 from PIL import Image
 import re
 
+import glob
+from random import shuffle
+import shutil
+ 
+
 def scale_invariant_coordinates(px, mask):
     """ Return the scale invariant coordinates of the features in the given mask
 
@@ -20,7 +25,10 @@ def scale_invariant_coordinates(px, mask):
 
     return scaled_px
 
-
+def draw_crosshairs(draw, mask, idx, color="white"):
+    """ helper function for drawing crosshairs on an image"""
+    draw.line([0, idx[0], mask.size[0], idx[0]], color)
+    draw.line([idx[1], 0, idx[1], mask.size[1]], color)
 
 def load_image_from_file(fname):
 
@@ -29,6 +37,15 @@ def load_image_from_file(fname):
     img = np.asarray(Image.open(fname))
 
     return img
+
+def match_filenames_from_path(filepath, pattern=".tif"):
+
+    # load image filenames, randomise
+    filenames = sorted(glob.glob(filepath + ".tif"))
+    shuffle(filenames)
+
+    return filenames
+
 
 
 def parse_metadata(filename):
@@ -63,3 +80,22 @@ def parse_metadata(filename):
     df = pd.DataFrame.from_dict(metadata_dict, orient="index").T
 
     return df
+
+def extract_img_for_labelling(path, logfile="logfile"):
+    """Extract all the images that have been identified for retraining"""
+
+    log_dir = path+f"{logfile}/"
+    label_dir = path+"label"
+    dest_dir = path
+    # identify images with _label postfix
+    filenames = glob.glob(log_dir+ "*label*.tif")
+
+
+    for fname in filenames:
+        # print(fname)
+        basename = fname.split("/")[-1]
+        print(fname, basename)
+        shutil.copyfile(fname, path+"label/"+basename)
+
+    # zip the image folder
+    shutil.make_archive(f"{path}/images", 'zip', label_dir)
