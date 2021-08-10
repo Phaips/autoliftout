@@ -60,24 +60,7 @@ def test_extract_class_pixels():
     assert len(idx[0]) == class_mask.shape[0] * class_mask.shape[1]  # full tuple
 
 
-def test_scale_invariant_coordinates():
 
-    mask = np.ones((256, 384, 3))
-    px = mask.shape[0] // 2, mask.shape[1] // 2
-
-    scaled_px = utils.scale_invariant_coordinates(px, mask)
-
-    assert scaled_px == (0.5, 0.5)
-
-
-def test_scale_invariant_coordinates_is_zeros():
-
-    mask = np.ones((256, 384, 3))
-    px = (0, 0)
-
-    scaled_px = utils.scale_invariant_coordinates(px, mask)
-
-    assert scaled_px == (0.0, 0.0)
 
 
 def test_detect_centre_point():

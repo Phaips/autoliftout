@@ -88,3 +88,4 @@ liftout/model/data/*
 liftout/model/example/*
 *images.zip
 *sample.yaml
+!*test_image.tif

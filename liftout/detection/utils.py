@@ -38,11 +38,13 @@ def load_image_from_file(fname):
 
     return img
 
-def match_filenames_from_path(filepath, pattern=".tif"):
+def match_filenames_from_path(filepath, pattern=".tif", sort=True):
 
     # load image filenames, randomise
-    filenames = sorted(glob.glob(filepath + ".tif"))
-    shuffle(filenames)
+    filenames = sorted(glob.glob(filepath + pattern))
+    
+    if not sort:
+        shuffle(filenames)
 
     return filenames
 
