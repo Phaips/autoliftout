@@ -21,12 +21,19 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanva
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
 from autoscript_sdb_microscope_client.structures import *
-# Required to not break imports
-BeamType = acquire.BeamType
 from liftout.main2 import AutoLiftout
 from liftout.main2 import AutoLiftoutStatus
 import scipy.ndimage as ndi
 import skimage
+import PIL
+from PIL import Image
+
+# Required to not break imports
+BeamType = acquire.BeamType
+
+test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
+test_image = np.array(test_image)
+# test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
 
 pretilt = 27  # TODO: put in protocol
 
@@ -36,7 +43,7 @@ logger = logging.getLogger(__name__)
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
 information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
-test_image = np.random.randint(0, 255, size=(1000, 1000))
+
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
@@ -51,6 +58,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.raw_image = None
         self.overlay_image = None
         self.downscaled_image = None
+
+        self.filter_strength = 2
+        self.button_height = 50
+        self.button_width = 100
 
         # TODO: status bar update with prints from Autoliftout
         self.statusbar.setSizeGripEnabled(0)
@@ -115,7 +126,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # Whole-grid platinum deposition
-        self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', click='double')
+        self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', click='double', filter_strength=self.filter_strength)
         if self.auto.response:
             fibsem_utils.sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
             print('Sputtering over whole grid')
@@ -164,7 +175,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION, image_type='new')
 
             self.ask_user(beam_type=BeamType.ION, message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
-                                                          f'Press Yes when the feature is centered', click='double')
+                                                          f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
 
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
@@ -193,7 +204,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
 
             self.ask_user(message=f'Do you want to select another {feature_type} position?\n'
-                                  f'{len(coordinates)} positions selected so far.')
+                                  f'{len(coordinates)} positions selected so far.', crosshairs=False)
             select_another_position = self.auto.response
         return coordinates, images
 
@@ -226,12 +237,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double')
+                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
         if self.auto.response:
             self.auto.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
-                                                           f'Press Yes when happy with the location', click='single')
+                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength)
 
             # TODO: show users their click, they click Yes on single click
         else:
@@ -247,7 +258,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.auto.image_settings['beam_type'] = BeamType.ELECTRON
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double')
+                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
         # TODO: can we remove this? not used
         # resolution = storage.settings["reference_images"][
         #     "needle_ref_img_resolution"]
@@ -306,7 +317,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         # # TODO: possibly new image
         # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
-        #                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double')
+        #                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
         # if not self.auto.response:
         #     print(f'Drift correction for sample {self.liftout_counter} did not work')
         #     return
@@ -341,7 +352,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
         self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
-                                                      f'If not, double click to center the lamella position', click='double')
+                                                      f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
 
         # mills trenches for lamella
         # milling.mill_trenches(self.microscope, self.auto.settings)
@@ -393,7 +404,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: adjust hfw? check why it changes to 100?
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?')
+        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.auto.response:
             milling.run_milling(self.microscope, self.auto.settings)
         self.microscope.patterning.mode = 'Parallel'
@@ -466,7 +477,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         milling.jcut_severing_pattern(self.microscope, self.auto.settings) #TODO: tune jcut severing pattern
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?')
+        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.auto.response:
             milling.run_milling(self.microscope, self.auto.settings)
         else:
@@ -543,7 +554,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
-        self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None)
+        self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
+        # TODO: crosshairs here?
         if self.auto.response:
             self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['needle_with_lamella_shifted_img_highres']
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
@@ -593,30 +605,32 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return distance_x_m, distance_y_m
 
     def validate_detection(self, feature_1_px=None, feature_1_type=None, feature_2_px=None, feature_2_type=None):
-        self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None)
+        self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
 
         # if something wasn't correctly identified
         if not self.auto.response:
             utils.save_image(image=self.raw_image, save_path=self.auto.image_settings['save_path'], label=self.auto.image_settings['label'] + '_label')
 
-            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None)
+            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
 
             # if feature 1 wasn't correctly identified
             if not self.auto.response:
                 self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_1_type} position.'
-                                                                   f'Press Yes button when happy with the position', click='single')
+                                                                   f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                # TODO: do we want filtering on this image?
 
                 # if new feature position selected
                 if self.auto.response:
                     # TODO: check x/y here
                     feature_1_px = (self.yclick, self.xclick)
 
-            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None)
+            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
 
             # if feature 2 wasn't correctly identified
             if not self.auto.response:
                 self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_2_type} position.'
-                                                                   f'Press Yes button when happy with the position', click='single')
+                                                                   f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                # TODO: do we want filtering on this image?
 
                 # if new feature position selected
                 if self.auto.response:
@@ -706,7 +720,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?')
+        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.auto.response:
             milling.run_milling(self.microscope, self.auto.settings)
         self.microscope.patterning.mode = 'Parallel'
@@ -745,7 +759,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?')
+        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.auto.response:
             milling.run_milling(self.microscope, self.auto.settings)
         self.microscope.patterning.mode = 'Parallel'
@@ -842,7 +856,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # confirm and run milling
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?')
+        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.auto.response:
             milling.run_milling(self.microscope, self.auto.settings)
         self.microscope.patterning.mode = 'Parallel'
@@ -915,107 +929,212 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single', crosshairs=False, filter_strength=3))
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, message='test message\n single click', click='single'))
-
-    def ask_user(self, image=None, beam_type=None, message=None, click=None):
+    def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0, reimaging=True):
+        self.setEnabled(False)
         self.popup = QtWidgets.QDialog()
+        self.popup.setLayout(QtWidgets.QGridLayout())
+        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.popup_canvas = None
 
         if message is None:
             message = "ok?"
 
-        question = QtWidgets.QLabel(self.popup)
-        font = QtGui.QFont()
-        font.setPointSize(24)
-        question.setText(message)
-        question.setFont(font)
-
-        question.setAlignment(QtCore.Qt.AlignCenter)
+        # Question space
+        question_frame = QtWidgets.QWidget(self.popup)
+        question = QtWidgets.QLabel()
         question_layout = QtWidgets.QHBoxLayout()
-        question.setLayout(question_layout)
+        question_frame.setLayout(question_layout)
 
+        question.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        question.setFixedHeight(50)
+        question.setText(message)
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        question.setFont(font)
+        question.setAlignment(QtCore.Qt.AlignCenter)
+
+        # filter combo box
+
+        filter_label = QtWidgets.QLabel('Median Filter')
+        self.filter_check = QtWidgets.QCheckBox()
+        self.filter_check.clicked.connect(lambda: self.filter_box.setEnabled(self.filter_check.isChecked()))
+
+        self.filter_box = QtWidgets.QComboBox(self.popup)
+        self.filter_box.addItem('2 x 2')
+        self.filter_box.addItem('3 x 3')
+        self.filter_box.addItem('4 x 4')
+
+        if filter_strength == 2:
+            self.filter_box.setCurrentIndex(0)
+            self.filter_check.setChecked(True)
+        elif filter_strength == 3:
+            self.filter_box.setCurrentIndex(1)
+            self.filter_check.setChecked(True)
+        elif filter_strength == 4:
+            self.filter_box.setCurrentIndex(2)
+            self.filter_check.setChecked(True)
+        else:
+            self.filter_box.setEnabled(False)
+
+        self.filter_box.currentIndexChanged.connect(lambda: self.update_popup_display(beam_type=beam_type, click=click, image=image,
+                                  crosshairs=crosshairs, filter_strength=self.filter_box.currentIndex() + 2))
+
+        filter_frame = QtWidgets.QWidget()
+        filter_frame_layout = QtWidgets.QGridLayout()
+        filter_frame.setLayout(filter_frame_layout)
+        filter_frame.layout().addWidget(filter_label, 0, 0, 1, 1)
+        filter_frame.layout().addWidget(self.filter_check, 0, 1, 1, 1)
+        filter_frame.layout().addWidget(self.filter_box, 1, 0, 1, 2)
+
+        new_image = QtWidgets.QPushButton()
+        new_image.setFixedHeight(self.button_height)
+        new_image.setFixedWidth(self.button_width)
+        new_image.setText('New Image')
+
+        question_frame.layout().addWidget(question)
+        question_frame.layout().addWidget(filter_frame)
+        question_frame.layout().addWidget(new_image)
+
+        # HFW changing
+        hfw_widget = QtWidgets.QWidget()
+        hfw_widget_layout = QtWidgets.QGridLayout()
+        hfw_widget.setLayout(hfw_widget_layout)
+
+        hfw_slider = QtWidgets.QSlider()
+        hfw_slider.setOrientation(QtCore.Qt.Horizontal)
+        hfw_slider.setMinimum(1)
+        hfw_slider.setMaximum(900)
+        hfw_slider.setValue(self.auto.image_settings['hfw']*1e6)
+
+        hfw_spinbox = QtWidgets.QSpinBox()
+        hfw_spinbox.setMinimum(1)
+        hfw_spinbox.setMaximum(900)
+        hfw_spinbox.setValue(self.auto.image_settings['hfw']*1e6)
+
+        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
+        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
+
+        hfw_spinbox.valueChanged.connect(lambda: hfw_slider.setValue(hfw_spinbox.value()))
+
+        hfw_widget.layout().addWidget(hfw_spinbox)
+        hfw_widget.layout().addWidget(hfw_slider)
+
+        new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6))
+
+        # Button space
         button_box = QtWidgets.QWidget(self.popup)
-        button_layout = QtWidgets.QHBoxLayout()
+        button_box.setFixedHeight(int(self.button_height*1.2))
+        button_layout = QtWidgets.QGridLayout()
         yes = QtWidgets.QPushButton('Yes')
-        no = QtWidgets.QPushButton('No')
-        yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
-        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
-
-        button_box.setLayout(button_layout)
-        button_box.layout().addWidget(yes)
-        button_box.layout().addWidget(no)
-
+        yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        yes.setFixedHeight(self.button_height)
+        yes.setFixedWidth(self.button_width)
         yes.clicked.connect(lambda: self.set_response(True))
-        no.clicked.connect(lambda: self.set_response(False))
         yes.clicked.connect(lambda: self.popup.close())
+
+        no = QtWidgets.QPushButton('No')
+        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        no.setFixedHeight(self.button_height)
+        no.setFixedWidth(self.button_width)
+        no.clicked.connect(lambda: self.set_response(False))
         no.clicked.connect(lambda: self.popup.close())
 
-        self.popup.setLayout(QtWidgets.QGridLayout())
-        self.setEnabled(False)
-        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        # spacers
+        h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        h_spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
-        self.update_popup_display(beam_type=beam_type, click=click, image=image)
+        # button layout
+        button_box.setLayout(button_layout)
+        button_box.layout().addItem(h_spacer, 0, 0, 2, 1)
+        button_box.layout().addWidget(yes, 0, 1, 2, 1)
+        button_box.layout().addWidget(no, 0, 2, 2, 1)
+        button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
+
+        # image space
+        self.update_popup_display(beam_type=beam_type, click=click, image=image,
+                                  crosshairs=crosshairs, filter_strength=filter_strength)
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
-        self.popup.layout().addWidget(question, 6, 1, 1, 1)
-        self.popup.layout().addWidget(button_box, 7, 1, 1, 1)
+        self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
+        self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
+        self.popup.layout().addWidget(button_box, 8, 1, 1, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
         self.popup.show()
         self.popup.exec_()
 
-    def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON):
+    def image_from_popup(self, hfw):
+        self.auto.image_settings['hfw'] = hfw
+        print(self.auto.image_settings['hfw']*1e6)
+        # image = acquire.new_image(self.microscope, self.auto.image_settings)
+        # self.update_popup_display(beam_type=beam_type, click=click, image=image, crosshairs=crosshairs)
+
+    def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON, crosshairs=True):
         image = None
         if beam_type is BeamType.ELECTRON:
             image = self.image_SEM
         if beam_type is BeamType.ION:
             image = self.image_FIB
 
-        if event.button == 1:
-            if event.dblclick and (click in ('double', 'all')):
-                if image:
+        if event.inaxes:
+            if event.button == 1:
+                if event.dblclick and (click in ('double', 'all')):
+                    if image:
+                        self.xclick = event.xdata
+                        self.yclick = event.ydata
+                        x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+                        print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
+                        print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
+                        # TODO: turn off moving with double click on some images
+
+                        x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
+                        yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
+                        self.stage.relative_move(x_move)
+                        self.stage.relative_move(yz_move)
+                        # TODO: refactor beam type here
+                        acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
+                        self.update_display(beam_type=beam_type, image_type='last')
+                        self.update_popup_display(beam_type=beam_type, click=click, image=None, crosshairs=crosshairs)
+
+                elif click in ('single', 'all'):
                     self.xclick = event.xdata
                     self.yclick = event.ydata
-                    x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
-                    print(f'Moving {beam_type.name} in x by {round(x*1e6, 2)}um')
-                    print(f'Moving {beam_type.name} in y by {round(y*1e6, 2)}um\n')
-                    # TODO: turn off moving with double click on some images
 
-                    x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
-                    yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
-                    self.stage.relative_move(x_move)
-                    self.stage.relative_move(yz_move)
-                    # TODO: refactor beam type here
-                    acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
-                    self.update_display(beam_type=beam_type, image_type='last')
-                    self.update_popup_display(beam_type=beam_type, click=click, image=None)
+                    cross_size = 120
+                    half_cross = cross_size/2
+                    cross_thickness = 2
+                    half_thickness = cross_thickness/2
 
-            elif click in ('single', 'all'):
-                self.xclick = event.xdata
-                self.yclick = event.ydata
+                    h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
+                    h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
 
-                cross_size = 120
-                half_cross = cross_size/2
-                cross_thickness = 8
-                half_thickness = cross_thickness/2
+                    v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
+                    v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
 
-                h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
-                h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
+                    h_rect.set_color('xkcd:yellow')
+                    h_rect2.set_color('xkcd:yellow')
+                    v_rect.set_color('xkcd:yellow')
+                    v_rect2.set_color('xkcd:yellow')
 
-                v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
-                v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
-
-                self.ax.patches = []
-                self.ax.add_patch(h_rect)
-                self.ax.add_patch(v_rect)
-                self.ax.add_patch(h_rect2)
-                self.ax.add_patch(v_rect2)
-                self.popup_canvas.draw()
-                self.update_popup_display(beam_type=beam_type, click=click, image=None)
+                    self.ax.patches = []
+                    if crosshairs:
+                        self.ax.add_patch(self.h_rect)
+                        self.ax.add_patch(self.v_rect)
+                        self.ax.add_patch(self.h_rect2)
+                        self.ax.add_patch(self.v_rect2)
+                        self.ax.add_patch(h_rect)
+                        self.ax.add_patch(v_rect)
+                        self.ax.add_patch(h_rect2)
+                        self.ax.add_patch(v_rect2)
+                    self.popup_canvas.draw()
+                    self.update_popup_display(beam_type=beam_type, click=click, image=None, crosshairs=crosshairs)
 
                 # Add crosshair
 
-    def update_popup_display(self, beam_type, click, image):
+    def update_popup_display(self, beam_type, click, image, crosshairs=True, filter_strength=0):
+        print(filter_strength)
         if beam_type or (image is not None):
             if beam_type is BeamType.ELECTRON:
                 image = self.image_SEM
@@ -1038,29 +1157,55 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
             image_array = image.data
-            image_array = ndi.median_filter(image_array, 2)
+
+            if filter_strength:
+                image_array = ndi.median_filter(image_array, filter_strength)
+
             image_array_crosshair = np.array(np.copy(image_array), dtype=np.uint8)
+            if image_array_crosshair.ndim != 3:
+                image_array_crosshair = np.stack((image_array_crosshair,) * 3, axis=-1)
 
-            # if crosshairs:
-            image_array_crosshair = skimage.color.gray2rgb(image_array_crosshair)
-
-            # image_array_crosshair = np.stack((image_array_crosshair,) * 3, axis=-1)
+            # Cross hairs
             xshape = image_array_crosshair.shape[0]
             yshape = image_array_crosshair.shape[1]
             midx = int(xshape / 2)
             midy = int(yshape / 2)
-            thresh = 2
-            mult = 25
 
-            image_array_crosshair[midx - (thresh * mult):midx + (thresh * mult), midy - thresh:midy + thresh] = (255, 255, 0)
-            image_array_crosshair[midx - thresh:midx + thresh, midy - (thresh * mult):midy + (thresh * mult)] = (255, 255, 0)
+            cross_size = 120
+            half_cross = cross_size / 2
+            cross_thickness = 2
+            half_thickness = cross_thickness / 2
 
-            # todo: CONVERT TO RGB IMAGE
+            self.h_rect = plt.Rectangle((midx, midy - half_thickness),
+                                   half_cross, cross_thickness)
+
+            self.h_rect2 = plt.Rectangle(
+                (midx - half_cross, midy - half_thickness),
+                half_cross, cross_thickness)
+
+            self.v_rect = plt.Rectangle((midx - half_thickness, midy),
+                                   cross_thickness, half_cross)
+            self.v_rect2 = plt.Rectangle(
+                (midx - half_thickness, midy - half_cross),
+                cross_thickness, half_cross)
+
+            self.h_rect.set_color('xkcd:yellow')
+            self.h_rect2.set_color('xkcd:yellow')
+            self.v_rect.set_color('xkcd:yellow')
+            self.v_rect2.set_color('xkcd:yellow')
+
             fig.clear()
             self.ax = fig.add_subplot(111)
             self.ax.imshow(image_array_crosshair)
+
+            self.ax.patches = []
+            if crosshairs:
+                self.ax.add_patch(self.h_rect)
+                self.ax.add_patch(self.v_rect)
+                self.ax.add_patch(self.h_rect2)
+                self.ax.add_patch(self.v_rect2)
+
             self.popup_canvas.draw()
-            # plt.show()
 
             self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
             self.popup.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
@@ -1068,7 +1213,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             if click:
                 self.popup_canvas.mpl_connect('button_press_event',
-                                              lambda event: self.on_gui_click(event, beam_type=beam_type, click=click))
+                                              lambda event: self.on_gui_click(event, beam_type=beam_type, click=click, crosshairs=crosshairs))
 
     def set_response(self, response):
         self.auto.response = response
