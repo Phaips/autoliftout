@@ -113,3 +113,13 @@ def test_detect_right_edge():
     
     assert right_edge_px[1] ==  mask.shape[1] - 1
     assert left_edge_px[1] == 0
+
+def test_detect_bounding_box():
+        
+    mask = np.zeros(shape=(256, 384, 3))
+    mask[:, :, :] = (255, 0, 0)
+    color = (255, 0, 0)
+    
+    bbox = detection.detect_bounding_box(mask=mask, color=color)
+
+    assert bbox == (0, 0, mask.shape[0] - 1, mask.shape[1] - 1)

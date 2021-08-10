@@ -16,10 +16,8 @@ from skimage import feature
 from scipy.spatial import distance
 
 import liftout.detection.DetectionModel as DetectionModel
+from liftout.detection.utils import *
 
-from liftout.detection.utils_old import *
-# from utils import load_image, draw_crosshairs, scale_invariant_coordinates_NEW, parse_metadata, validate_detection, select_point_new
-# import liftout.liftout.main as liftout_main
 
 class Detector:
 
@@ -530,7 +528,7 @@ def detect_landing_edge(img, landing_px):
     return landing_edge_px, landing_mask
 
 
-def detect_bounding_box(mask, color, threshold):
+def detect_bounding_box(mask, color, threshold=25):
     """ Detect the bounding edge points of the mask for a given color (label)
 
     args:
@@ -574,7 +572,7 @@ def detect_bounding_box(mask, color, threshold):
 
     bbox = (x0, y0, x1, y1)
 
-    return [top_px, bottom_px, left_px, right_px], bbox
+    return bbox
 
 
 def detect_thin_region(img, mask, top=True):
@@ -591,7 +589,7 @@ def detect_thin_region(img, mask, top=True):
     centre_px, centre_mask = detect_lamella_centre(img, mask)
 
     # detect bounding box around lamella
-    pts, bbox = detect_bounding_box(mask, color, threshold=threshold) #top, bot, left, right
+    bbox = detect_bounding_box(mask, color, threshold=threshold) #top, bot, left, right
 
     mask_draw = draw_feature(img, bbox[:2], color="blue", crosshairs=True)
     landing_mask = draw_overlay(img, mask_draw, alpha=0.5)
