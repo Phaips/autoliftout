@@ -87,6 +87,4 @@ liftout/zzz_temp_test.py
 liftout/model/data/*
 liftout/model/example/*
 *images.zip
-*sample_.yml
-*sample_.yaml
 *sample.yaml
