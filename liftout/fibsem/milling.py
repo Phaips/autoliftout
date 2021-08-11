@@ -239,9 +239,10 @@ def jcut_milling_patterns(microscope, settings):
     jcut_trench_thickness = settings["jcut"]['jcut_trench_thickness']
     jcut_milling_depth = settings["jcut"]['jcut_milling_depth']
     extra_bit = settings["jcut"]['extra_bit']
+    jcut_hfw = microscope.beams.ion_beam.horizontal_field_width.value # dont change the hfw from previous step
 
     # Setup
-    setup_ion_milling(microscope)
+    setup_ion_milling(microscope, ion_beam_field_of_view=jcut_hfw)
     # Create milling patterns
     angle_correction = np.sin(np.deg2rad(52 - jcut_angle_degrees))
     # Top bar of J-cut

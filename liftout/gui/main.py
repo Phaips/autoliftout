@@ -28,12 +28,14 @@ import skimage
 import PIL
 from PIL import Image
 
+from liftout.fibsem.sample import Sample
+
 # Required to not break imports
 BeamType = acquire.BeamType
 
-test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
+# test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
+test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
 test_image = np.array(test_image)
-# test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
 
 pretilt = 27  # TODO: put in protocol
 
@@ -133,7 +135,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.auto.image_settings['label'] = 'grid_Pt_deposition'
             self.auto.image_settings['save'] = True
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        movement.auto_link_stage(self.microscope)
+        # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
         # # TODO: Add zooming of microscope to GUI control
         # Select landing points and check eucentric height
         movement.move_to_landing_grid(self.microscope, self.auto.settings, flat_to_sem=True)
@@ -143,6 +145,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
+
+        # # save
+        for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
+            sample = Sample(self.auto.save_path, i)
+            sample.lamella_coordinates = lamella_coordinates
+            sample.landing_coordinates = landing_coordinates
+            sample.save_data()
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -242,7 +251,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.auto.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
-                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength)
+                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=True)
 
             # TODO: show users their click, they click Yes on single click
         else:
@@ -269,6 +278,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_liftout(self):
 
+        # list of Sample
+        # self.current_sample = sample
+        # add milling_coordinates, jcut_coordinates, liftout_coordinates to Sample
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
             self.liftout_counter += 1
             landing_reference_images = self.original_landing_images[i]
@@ -281,62 +293,92 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.cleanup_lamella()
 
     def load_coords(self):
-        timestamp="20210804.151912"
 
-        self.landing_coordinates = [StagePosition(x=-0.0033364968,y=-0.003270375,z=0.0039950765,t=0.75048248,r=4.0317333)]
+        # need to manually enter the save path...
+        r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run\20210811.114230"
 
-        self.lamella_coordinates = [StagePosition(x=0.0028992212,y=-0.0033259583,z=0.0039267467,t=0.43632805,r=4.0318009)]
-        # self.zipped_coordinates = None
+        save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
+                                                               directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run")
+        print(save_path)
+        sample = Sample(save_path, 1)
+        lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
+
+
+        # TODO: this needs to change for multiple samples
+        self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
-        original_landing_images = ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb.tif',
-                                    f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb.tif',
-                                    f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb_ib.tif',
-                                    f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb_ib.tif'))
-        self.original_landing_images = list()
-        for image in original_landing_images:
-            self.original_landing_images.append(AdornedImage.load(image))
+        #
+        print("hello")
 
 
-        original_trench_images= ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb.tif',
-                                  f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb.tif',
-                                  f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb_ib.tif',
-                                  f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb_ib.tif'))
-        self.original_trench_images = list()
-        for image in original_trench_images:
-            self.original_trench_images.append(AdornedImage.load(image))
 
-        self.original_landing_images = [self.original_landing_images]
-        self.original_trench_images = [self.original_trench_images]
+
+        #
+        # timestamp="20210804.151912"
+        #
+        # self.landing_coordinates = [StagePosition(x=-0.0033364968,y=-0.003270375,z=0.0039950765,t=0.75048248,r=4.0317333)]
+        #
+        # self.lamella_coordinates = [StagePosition(x=0.0028992212,y=-0.0033259583,z=0.0039267467,t=0.43632805,r=4.0318009)]
+        # # self.zipped_coordinates = None
+        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
+        #
+        # original_landing_images = ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb.tif',
+        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb.tif',
+        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb_ib.tif',
+        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb_ib.tif'))
+        # self.original_landing_images = list()
+        # for image in original_landing_images:
+        #     self.original_landing_images.append(AdornedImage.load(image))
+        #
+        #
+        # original_trench_images= ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb.tif',
+        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb.tif',
+        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb_ib.tif',
+        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb_ib.tif'))
+        # self.original_trench_images = list()
+        # for image in original_trench_images:
+        #     self.original_trench_images.append(AdornedImage.load(image))
+
+        # self.original_landing_images = [self.original_landing_images]
+        # self.original_trench_images = [self.original_trench_images]
         # TODO: not this
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
-        # self.stage.absolute_move(lamella_coordinates)
-        # calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
-        # self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
-        # # TODO: possibly new image
-        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
-        #                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
-        # if not self.auto.response:
-        #     print(f'Drift correction for sample {self.liftout_counter} did not work')
-        #     return
-        #
-        # self.auto.image_settings['save'] = True
-        # self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        #
-        # # mill
-        # self.mill_lamella()
-        #
-        # # liftout
-        # self.liftout_lamella()
-        #
-        # # landing
-        # self.land_lamella(landing_coordinates, original_landing_images)
+        self.stage.absolute_move(lamella_coordinates)
+        calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
+        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+        # TODO: possibly new image
+        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
+                                                           f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
+        if not self.auto.response:
+            print(f'Drift correction for sample {self.liftout_counter} did not work')
+            return
+
+        self.auto.image_settings['save'] = True
+        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+
+        # mill
+        self.ask_user(message="Do you want to start milling?", crosshairs=False)
+        if self.auto.response:
+            self.mill_lamella()
+
+        # liftout
+        self.ask_user(message="Do you want to start liftout?", crosshairs=False)
+        if self.auto.response:
+            self.liftout_lamella()
+
+        # landing
+        self.ask_user(message="Do you want to start landing?", crosshairs=False)
+        if self.auto.response:
+            self.land_lamella(landing_coordinates, original_landing_images)
 
         # reset
-        self.reset_needle()
+        self.ask_user(message="Do you want to start reset?", crosshairs=False)
+        if self.auto.response:
+            self.reset_needle()
 
     def mill_lamella(self):
         self.auto.current_status = AutoLiftoutStatus.Milling
@@ -355,7 +397,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                       f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
 
         # mills trenches for lamella
-        # milling.mill_trenches(self.microscope, self.auto.settings)
+        milling.mill_trenches(self.microscope, self.auto.settings)
 
         # reference images of milled trenches
         self.auto.image_settings['save'] = True
@@ -400,7 +442,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.correct_stage_drift_with_ML()
 
         # now we are at the angle for jcut, perform jcut
-        # milling.mill_jcut(self.microscope, self.auto.settings)
+        milling.mill_jcut(self.microscope, self.auto.settings)
         # TODO: adjust hfw? check why it changes to 100?
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
@@ -467,7 +509,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # sputter platinum
         # TODO: protocol sputter
-        fibsem_utils.sputter_platinum(self.microscope, self.auto.settings, whole_grid=False, sputter_time=30) # TODO: check sputter time
+        fibsem_utils.sputter_platinum(self.microscope, self.auto.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
 
         self.auto.image_settings['save'] = True
         self.auto.image_settings['autocontrast'] = True
@@ -605,7 +647,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return distance_x_m, distance_y_m
 
     def validate_detection(self, feature_1_px=None, feature_1_type=None, feature_2_px=None, feature_2_type=None):
-        self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
+        self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False, filter_strength=2)
 
         # if something wasn't correctly identified
         if not self.auto.response:
@@ -716,7 +758,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
         # WELD TO LANDING POST
-
+        # TODO: this is not joining the lamella to the post
         milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
@@ -978,6 +1020,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             self.filter_box.setEnabled(False)
 
+        # self.filter_check.clicked.connect(lambda: self.update_popup_display(beam_type=beam_type, click=click, image=image,
+        #                           crosshairs=crosshairs, filter_strength=self.filter_box.currentIndex() + 2))
+
         self.filter_box.currentIndexChanged.connect(lambda: self.update_popup_display(beam_type=beam_type, click=click, image=image,
                                   crosshairs=crosshairs, filter_strength=self.filter_box.currentIndex() + 2))
 
@@ -1021,7 +1066,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         hfw_widget.layout().addWidget(hfw_spinbox)
         hfw_widget.layout().addWidget(hfw_slider)
 
-        new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6))
+        new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6, beam_type=beam_type, click=click, crosshairs=crosshairs))
 
         # Button space
         button_box = QtWidgets.QWidget(self.popup)
@@ -1065,11 +1110,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.show()
         self.popup.exec_()
 
-    def image_from_popup(self, hfw):
+    def image_from_popup(self, hfw, beam_type, click, crosshairs):
         self.auto.image_settings['hfw'] = hfw
         print(self.auto.image_settings['hfw']*1e6)
-        # image = acquire.new_image(self.microscope, self.auto.image_settings)
-        # self.update_popup_display(beam_type=beam_type, click=click, image=image, crosshairs=crosshairs)
+        image = acquire.new_image(self.microscope, self.auto.image_settings)
+        self.update_popup_display(beam_type=None, click=click, image=image, crosshairs=crosshairs)
 
     def on_gui_click(self, event, click, beam_type=BeamType.ELECTRON, crosshairs=True):
         image = None
@@ -1166,8 +1211,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 image_array_crosshair = np.stack((image_array_crosshair,) * 3, axis=-1)
 
             # Cross hairs
-            xshape = image_array_crosshair.shape[0]
-            yshape = image_array_crosshair.shape[1]
+            xshape = image_array_crosshair.shape[1]
+            yshape = image_array_crosshair.shape[0]
             midx = int(xshape / 2)
             midy = int(yshape / 2)
 
@@ -1199,11 +1244,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ax.imshow(image_array_crosshair)
 
             self.ax.patches = []
-            if crosshairs:
-                self.ax.add_patch(self.h_rect)
-                self.ax.add_patch(self.v_rect)
-                self.ax.add_patch(self.h_rect2)
-                self.ax.add_patch(self.v_rect2)
+            # if crosshairs:
+            self.ax.add_patch(self.h_rect)
+            self.ax.add_patch(self.v_rect)
+            self.ax.add_patch(self.h_rect2)
+            self.ax.add_patch(self.v_rect2)
 
             self.popup_canvas.draw()
 
@@ -1539,5 +1584,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
     sys.exit(app.exec_())
 
 
-# main(offline='False')
-main(offline='True')
+main(offline='False')
+# main(offline='True')
