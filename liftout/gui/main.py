@@ -931,6 +931,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(beam_type=BeamType.ION, image=test_image, message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
 
     def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0):
+        self.crosshairs = crosshairs
         self.setEnabled(False)
         self.popup = QtWidgets.QDialog()
         self.popup.setLayout(QtWidgets.QGridLayout())
@@ -959,7 +960,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             filter_label = QtWidgets.QLabel('Median Filter')
             self.filter_check = QtWidgets.QCheckBox()
             self.filter_check.setChecked(1)
-            self.filter_check.clicked.connect(lambda: (self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=crosshairs, filter_strength=filter_strength*int(self.filter_check.checkState()/2))))
+            self.filter_check.clicked.connect(lambda: (self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength*int(self.filter_check.checkState()/2))))
 
             filter_frame = QtWidgets.QWidget()
             filter_frame_layout = QtWidgets.QGridLayout()
@@ -972,6 +973,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         new_image.setFixedWidth(self.button_width)
         new_image.setText('New Image')
 
+        if self.crosshairs:
+            crosshair_label = QtWidgets.QLabel()
+            crosshair_label.setText('Central Crosshair')
+
+            crosshair_check = QtWidgets.QCheckBox()
+            crosshair_check.setChecked(1)
+            crosshair_check.clicked.connect(lambda: update_crosshair_value())
+            crosshair_check.clicked.connect(lambda: self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength))
+
+        def update_crosshair_value():
+            self.crosshairs = not self.crosshairs
+
+
+        if self.crosshairs:
+            question_frame.layout().addWidget(crosshair_label)
+            question_frame.layout().addWidget(crosshair_check)
         question_frame.layout().addWidget(question)
         if filter_strength:
             question_frame.layout().addWidget(filter_frame)
@@ -1009,7 +1026,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         hfw_widget.layout().addWidget(hfw_slider)
 
         new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6, beam_type=beam_type,
-                                  click=click, crosshairs=crosshairs, filter_strength=filter_strength))
+                                  click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
 
         # Button space
         button_box = QtWidgets.QWidget(self.popup)
@@ -1041,7 +1058,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
 
         # image space
-        self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=crosshairs, filter_strength=filter_strength)
+        self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength)
 
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
@@ -1062,7 +1079,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         elif beam_type == BeamType.ION:
             self.image_FIB = image
 
-        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=crosshairs, filter_strength=filter_strength)
+        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
 
     def on_gui_click(self, event, click,  image, beam_type=None, crosshairs=True, filter_strength=0):
         if event.inaxes:
@@ -1081,7 +1098,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
                         if beam_type:
                             self.update_display(beam_type=beam_type, image_type='last')
-                        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=crosshairs, filter_strength=filter_strength)
+                        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
 
                 elif click in ('single', 'all'):
                     self.xclick = event.xdata
@@ -1105,7 +1122,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                     click_crosshair = (h_rect, h_rect2, v_rect, v_rect2)
                     print(click_crosshair)
-                    self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=crosshairs, filter_strength=filter_strength, click_crosshair=click_crosshair)
+                    self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength, click_crosshair=click_crosshair)
 
     def update_popup_display(self, click, image, beam_type=None, crosshairs=True, filter_strength=0, click_crosshair=None):
         print(f'Filter strength: {filter_strength} x {filter_strength}')
@@ -1122,7 +1139,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_canvas = _FigureCanvas(fig)
 
         if click:
-            self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=crosshairs, filter_strength=filter_strength))
+            self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
         image_array = image.data
 
         if filter_strength:
@@ -1165,7 +1182,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ax.imshow(image_array)
 
         self.ax.patches = []
-        if crosshairs:
+        if self.crosshairs:
             self.ax.add_patch(self.h_rect)
             self.ax.add_patch(self.v_rect)
             self.ax.add_patch(self.h_rect2)
