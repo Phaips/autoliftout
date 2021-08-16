@@ -20,6 +20,7 @@ class DetectionModel:
 
     def __init__(self, weights_file) -> None:
 
+        # TODO: make the path os agnostic
         self.weights_file = weights_file
 
         # transformations
@@ -31,13 +32,13 @@ class DetectionModel:
             ]
         )
 
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # TODO: support GPU
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # TODO: support GPU
 
         self.load_model()
 
     def preprocess_image(self, img):
         """ preprocess an image for model inference """
-        img_t = self.transformation(img).unsqueeze(0).to(self.device)
+        img_t = self.transformation(img).unsqueeze(0)#.to(self.device)
         return img_t
 
     def load_model(self):
@@ -47,7 +48,7 @@ class DetectionModel:
         self.model = smp.Unet(encoder_name="resnet18", in_channels=1, classes=3,)
         # load model weights
         self.model.load_state_dict(torch.load(self.weights_file, map_location="cpu"))
-        self.model.to(self.device) #TODO: GPU support
+        # self.model.to(self.device) #TODO: GPU support
         self.model.eval()
 
     def model_inference(self, img):

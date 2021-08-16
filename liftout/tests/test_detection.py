@@ -11,6 +11,7 @@ from liftout.detection import detection, utils
 
 @pytest.fixture
 def weights_file():
+    # yield  "liftout\model\models\fresh_full_n10.pt"
     yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
     # yield "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/model/models/fresh_full_n10.pt"
 

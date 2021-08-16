@@ -39,6 +39,7 @@ class Sample:
         self.milling_coordinates = StagePosition()
         self.jcut_coordinates = StagePosition()
         self.liftout_coordinates = StagePosition()
+        self.park_position = ManipulatorPosition()
         self.landing_ref_images = list()
         self.lamella_ref_images = list()
         self.status = NotImplemented
@@ -114,6 +115,13 @@ class Sample:
             "t": self.liftout_coordinates.t,
         }
 
+        park_position_dict = {
+            "x": self.park_position.x,
+            "y": self.park_position.y,
+            "z": self.park_position.z,
+            "r": self.park_position.r
+        }
+
         # save stage position to yml file
         save_dict = {
             "timestamp": self.timestamp,
@@ -123,6 +131,7 @@ class Sample:
             "milling_coordinates": milling_coordinates_dict,
             "jcut_coordinates": jcut_coordinates_dict,
             "liftout_coordinates": liftout_coordinates_dict,
+            "park_position": park_position_dict
             # "data_path": self.data_path
         }
 
@@ -174,6 +183,12 @@ class Sample:
                                                  z=sample_dict["liftout_coordinates"]["z"],
                                                  r=sample_dict["liftout_coordinates"]["r"],
                                                  t=sample_dict["liftout_coordinates"]["t"])
+
+        self.park_position = ManipulatorPosition(x=sample_dict["park_position"]["x"],
+                                                 y=sample_dict["park_position"]["y"],
+                                                 z=sample_dict["park_position"]["z"],
+                                                 r=sample_dict["park_position"]["r"]
+                                                 )
 
         # TODO: improve this
         # load images from disk

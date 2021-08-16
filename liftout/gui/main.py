@@ -40,7 +40,7 @@ test_image = np.array(test_image)
 pretilt = 27  # TODO: put in protocol
 
 _translate = QtCore.QCoreApplication.translate
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
@@ -120,25 +120,71 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
+
         self.auto = AutoLiftout(microscope=self.microscope)
 
+        config_filename = '../protocol_liftout.yml'
+        run_name = "run"
+
+        self.save_path = utils.make_logging_directory(directory="log", prefix=run_name)  # TODO: fix pathing
+        utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
+
+        self.response = False
+
+        self.settings = utils.load_config(config_filename)
+        self.pretilt_degrees = 27
+        # TODO: add pretilt_degrees to protocol
+        # self.microscope = microscope
+
+        # initial image settings
+        self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
+                               'hfw': 2750e-6, 'brightness': None,
+                               'contrast': None, 'autocontrast': True,
+                               'save': True, 'label': 'grid',
+                               'beam_type': BeamType.ELECTRON,
+                               'save_path': self.save_path}
+
+        self.current_status = AutoLiftoutStatus.Initialisation
+        logging.info(f"Status: {self.current_status}")
+
     def initialise_autoliftout(self):
+
+        self.current_status = AutoLiftoutStatus.Setup
+        logging.info(f"Status: {self.current_status}")
+
+        # move to the initial sample grid position
+        self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
+                               'hfw': 2750e-6, 'brightness': None,
+                               'contrast': None, 'autocontrast': True,
+                               'save': True, 'label': 'grid',
+                               'beam_type': BeamType.ELECTRON,
+                               'save_path': self.save_path}
+
+        movement.move_to_sample_grid(self.microscope, self.settings)
+
+        acquire.autocontrast(self.microscope, BeamType.ELECTRON)
+        acquire.autocontrast(self.microscope, BeamType.ION)
+
+        acquire.new_image(self.microscope, self.image_settings)
+
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # Whole-grid platinum deposition
         self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', click='double', filter_strength=self.filter_strength)
-        if self.auto.response:
-            fibsem_utils.sputter_platinum(self.auto.microscope, self.auto.settings, whole_grid=True)
+        if self.response:
+            fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             print('Sputtering over whole grid')
-            self.auto.image_settings['label'] = 'grid_Pt_deposition'
-            self.auto.image_settings['save'] = True
+            self.image_settings['label'] = 'grid_Pt_deposition'
+            self.image_settings['save'] = True
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        logging.info(f"Sputter Platinum: {self.response}")
+
         # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
-        # # TODO: Add zooming of microscope to GUI control
+
         # Select landing points and check eucentric height
-        movement.move_to_landing_grid(self.microscope, self.auto.settings, flat_to_sem=True)
+        movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
         self.ensure_eucentricity()
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -148,10 +194,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # # save
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
-            sample = Sample(self.auto.save_path, i)
+            sample = Sample(self.save_path, i)
             sample.lamella_coordinates = lamella_coordinates
             sample.landing_coordinates = landing_coordinates
             sample.save_data()
+        logging.info(f"Sample data saved to {self.save_path}")
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -163,9 +210,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         images = []
 
         if feature_type == 'lamella':
-            movement.move_to_sample_grid(self.microscope, settings=self.auto.settings)
+            movement.move_to_sample_grid(self.microscope, settings=self.settings)
         elif feature_type == 'landing':
-            movement.move_to_landing_grid(self.microscope, settings=self.auto.settings, flat_to_sem=False)
+            movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
             self.ensure_eucentricity(flat_to_sem=False)
         else:
             raise ValueError(f'Expected "lamella" or "landing" as feature_type')
@@ -173,13 +220,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         while select_another_position:
             if feature_type == 'lamella':
                 self.ensure_eucentricity()
-                movement.move_to_trenching_angle(self.microscope, settings=self.auto.settings)
-            # elif feature_type == 'landing':
-            # self.ensure_eucentricity()
-            self.auto.image_settings['hfw'] = 400e-6  # TODO: set this value in protocol
+                movement.move_to_trenching_angle(self.microscope, settings=self.settings)
+
+            self.image_settings['hfw'] = 400e-6  # TODO: set this value in protocol
 
             # refresh TODO: fix protocol structure
-            self.auto.image_settings['save'] = False
+            self.image_settings['save'] = False
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             self.update_display(beam_type=BeamType.ION, image_type='new')
 
@@ -190,68 +236,70 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
 
             coordinates.append(self.stage.current_position)
-            self.auto.image_settings['save'] = True
+            self.image_settings['save'] = True
             if feature_type == 'landing':
-                self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['landing_post_ref_img_resolution']
-                self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['landing_post_ref_img_dwell_time']
-                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_lowres']  # TODO: watch image settings through run
-                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_low_res'  # TODO: add to protocol
-                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
-                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['landing_post_ref_img_hfw_highres']
-                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_high_res'  # TODO: add to protocol
-                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+                self.image_settings['resolution'] = self.settings['reference_images']['landing_post_ref_img_resolution']
+                self.image_settings['dwell_time'] = self.settings['reference_images']['landing_post_ref_img_dwell_time']
+                self.image_settings['hfw'] = self.settings['reference_images']['landing_post_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                self.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_low_res'  # TODO: add to protocol
+                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+                self.image_settings['hfw'] = self.settings['reference_images']['landing_post_ref_img_hfw_highres']
+                self.image_settings['label'] = f'{len(coordinates):02d}_ref_landing_high_res'  # TODO: add to protocol
+                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
             elif feature_type == 'lamella':
-                self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
-                self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
-                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
-                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_low_res'  # TODO: add to protocol
-                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
-                self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
-                self.auto.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_high_res'  # TODO: add to protocol
-                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+                self.image_settings['resolution'] = self.settings['reference_images']['trench_area_ref_img_resolution']
+                self.image_settings['dwell_time'] = self.settings['reference_images']['trench_area_ref_img_dwell_time']
+                self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+                self.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_low_res'  # TODO: add to protocol
+                eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+                self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_highres']
+                self.image_settings['label'] = f'{len(coordinates):02d}_ref_lamella_high_res'  # TODO: add to protocol
+                eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
 
             self.ask_user(message=f'Do you want to select another {feature_type} position?\n'
                                   f'{len(coordinates)} positions selected so far.', crosshairs=False)
-            select_another_position = self.auto.response
+            select_another_position = self.response
+
+        logging.info(f"Finished selecting {len(coordinates)} {feature_type} points.")
+
         return coordinates, images
 
     def ensure_eucentricity(self, flat_to_sem=True):
         calibration.validate_scanning_rotation(self.microscope)
-        # print("Rough eucentric alignment")  TODO: status
         if flat_to_sem:
-            movement.flat_to_beam(self.microscope, settings=self.auto.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON)
+            movement.flat_to_beam(self.microscope, settings=self.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON)
 
-        self.auto.image_settings['hfw'] = 900e-6  # TODO: add to protocol
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.image_settings['hfw'] = 900e-6  # TODO: add to protocol
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
         acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         acquire.autocontrast(self.microscope, beam_type=BeamType.ION)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         self.user_based_eucentric_height_adjustment()
 
-        # print("Final eucentric alignment")  TODO: status
-        self.auto.image_settings['hfw'] = 200e-6  # TODO: add to protocol
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        # TODO: status
+        self.image_settings['hfw'] = 200e-6  # TODO: add to protocol
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.user_based_eucentric_height_adjustment()
 
     def user_based_eucentric_height_adjustment(self):
-        self.auto.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
-        self.auto.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
-        self.auto.image_settings['beam_type'] = BeamType.ELECTRON
-        self.auto.image_settings['save'] = False
+        self.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
+        self.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
+        self.image_settings['beam_type'] = BeamType.ELECTRON
+        self.image_settings['save'] = False
         # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.image_SEM = acquire.new_image(self.microscope, settings=self.auto.image_settings)
+        self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
-        if self.auto.response:
-            self.auto.image_settings['beam_type'] = BeamType.ION
+        if self.response:
+            self.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
-                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=True)
+                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
 
             # TODO: show users their click, they click Yes on single click
         else:
@@ -261,214 +309,213 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(self.stage.current_position.t) * real_y
         self.stage.relative_move(StagePosition(z=delta_z))
-        if self.auto.response:
+        if self.response:
             self.update_display(beam_type=BeamType.ION, image_type='new')
         # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
-        self.auto.image_settings['beam_type'] = BeamType.ELECTRON
+        self.image_settings['beam_type'] = BeamType.ELECTRON
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
-        # TODO: can we remove this? not used
-        # resolution = storage.settings["reference_images"][
-        #     "needle_ref_img_resolution"]
-        # dwell_time = storage.settings["reference_images"][
-        #     "needle_ref_img_dwell_time"]
-        # image_settings = GrabFrameSettings(resolution=resolution,
-        #                                    dwell_time=dwell_time)
+
 
     def run_liftout(self):
 
-        # list of Sample
-        # self.current_sample = sample
-        # add milling_coordinates, jcut_coordinates, liftout_coordinates to Sample
+        # recalibrate park position coordinates
+
+
+
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
             self.liftout_counter += 1
+
+
+            self.current_sample = Sample(self.sample_save_path, i+1)
+            self.current_sample.load_data_from_file()
+
+
+
             landing_reference_images = self.original_landing_images[i]
             lamella_area_reference_images = self.original_trench_images[i]
+
+
             self.single_liftout(landing_coord, lamella_coord,
                                 landing_reference_images,
                                 lamella_area_reference_images)
 
-        self.auto.current_status = AutoLiftoutStatus.Cleanup
+        self.current_status = AutoLiftoutStatus.Cleanup
         self.cleanup_lamella()
 
     def load_coords(self):
 
-        # need to manually enter the save path...
-        r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run\20210811.114230"
-
+        # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run")
-        print(save_path)
         sample = Sample(save_path, 1)
         lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
 
-
+        self.sample_save_path = save_path # TODO: need to clear up this logging path reference, should the updates go to the current log path or old?
         # TODO: this needs to change for multiple samples
         self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
-        #
+
+
+        # # recalibrating needle park position
+        # # move sample stage out
+        movement.move_sample_stage_out(self.microscope)
+
+        # move needle in
+        movement.insert_needle(self.microscope)
         print("hello")
+        # move needle to save location
+        self.microscope.specimen.manipulator.absolute_move(sample.park_position) # TODO: get safe absolute coordinates
 
+        # # retract needle
+        self.microscope.specimen.manipulator.retract()
 
-
-
-        #
-        # timestamp="20210804.151912"
-        #
-        # self.landing_coordinates = [StagePosition(x=-0.0033364968,y=-0.003270375,z=0.0039950765,t=0.75048248,r=4.0317333)]
-        #
-        # self.lamella_coordinates = [StagePosition(x=0.0028992212,y=-0.0033259583,z=0.0039267467,t=0.43632805,r=4.0318009)]
-        # # self.zipped_coordinates = None
-        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
-        #
-        # original_landing_images = ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb.tif',
-        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb.tif',
-        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_low_res_eb_ib.tif',
-        #                             f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_landing_high_res_eb_ib.tif'))
-        # self.original_landing_images = list()
-        # for image in original_landing_images:
-        #     self.original_landing_images.append(AdornedImage.load(image))
-        #
-        #
-        # original_trench_images= ((f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb.tif',
-        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb.tif',
-        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_low_res_eb_ib.tif',
-        #                           f'C:/Users/Admin/Github/autoliftout/liftout/gui/log/run/{timestamp}/img/01_ref_lamella_high_res_eb_ib.tif'))
-        # self.original_trench_images = list()
-        # for image in original_trench_images:
-        #     self.original_trench_images.append(AdornedImage.load(image))
-
-        # self.original_landing_images = [self.original_landing_images]
-        # self.original_trench_images = [self.original_trench_images]
-        # TODO: not this
+        logging.info(f"Load Coordinates complete from {save_path}")
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
+        logging.info(f"Starting Liftout No {self.liftout_counter}")
         self.stage.absolute_move(lamella_coordinates)
-        calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
+        calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         # TODO: possibly new image
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
-        if not self.auto.response:
+        if not self.response:
             print(f'Drift correction for sample {self.liftout_counter} did not work')
             return
 
-        self.auto.image_settings['save'] = True
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
+        self.image_settings['save'] = True
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # mill
         self.ask_user(message="Do you want to start milling?", crosshairs=False)
-        if self.auto.response:
+        logging.info(f"Perform Milling: {self.response}")
+        if self.response:
             self.mill_lamella()
 
         # liftout
         self.ask_user(message="Do you want to start liftout?", crosshairs=False)
-        if self.auto.response:
+        logging.info(f"Perform Liftout: {self.response}")
+        if self.response:
             self.liftout_lamella()
 
         # landing
         self.ask_user(message="Do you want to start landing?", crosshairs=False)
-        if self.auto.response:
+        logging.info(f"Perform Landing: {self.response}")
+        if self.response:
             self.land_lamella(landing_coordinates, original_landing_images)
 
         # reset
         self.ask_user(message="Do you want to start reset?", crosshairs=False)
-        if self.auto.response:
+        logging.info(f"Perform Reset: {self.response}")
+        if self.response:
             self.reset_needle()
 
     def mill_lamella(self):
-        self.auto.current_status = AutoLiftoutStatus.Milling
+        self.current_status = AutoLiftoutStatus.Milling
+        logging.info(f"Status: {self.current_status}")
         stage_settings = MoveSettings(rotate_compucentric=True)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-        movement.move_to_trenching_angle(self.microscope, self.auto.settings)
+        movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
-        self.auto.image_settings['hfw'] = 100e-6  # TODO: add to protocol
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.auto.image_settings['hfw']
+        self.image_settings['hfw'] = 100e-6  # TODO: add to protocol
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
         self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
                                                       f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
 
         # mills trenches for lamella
-        milling.mill_trenches(self.microscope, self.auto.settings)
+        milling.mill_trenches(self.microscope, self.settings)
+
+        self.current_sample.milling_coordinates = self.stage.current_position
+        self.current_sample.save_data()
+        logging.info(f"Mill Trenches Complete")
 
         # reference images of milled trenches
-        self.auto.image_settings['save'] = True
-        self.auto.image_settings['resolution'] = self.auto.settings['reference_images']['trench_area_ref_img_resolution']
-        self.auto.image_settings['dwell_time'] = self.auto.settings['reference_images']['trench_area_ref_img_dwell_time']
+        self.image_settings['save'] = True
+        self.image_settings['resolution'] = self.settings['reference_images']['trench_area_ref_img_resolution']
+        self.image_settings['dwell_time'] = self.settings['reference_images']['trench_area_ref_img_dwell_time']
 
-        self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_low_res'  # TODO: add to protocol
-        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+        self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_low_res'  # TODO: add to protocol
+        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
-        self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['trench_area_ref_img_hfw_highres']
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_high_res'  # TODO: add to protocol
-        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.auto.image_settings)
+        self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_highres']
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_high_res'  # TODO: add to protocol
+        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
 
         # move flat to electron beam
-        movement.flat_to_beam(self.microscope, self.auto.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON, )
-        # self.auto.image_settings['hfw'] = 400e-6   # TODO: can this be ignored?
+        movement.flat_to_beam(self.microscope, self.settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON, )
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        calibration.correct_stage_drift(self.microscope, self.auto.image_settings, reference_images_low_and_high_res, self.liftout_counter, mode='ib')
+        calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.liftout_counter, mode='ib')
+        logging.info("Finished Cross Correlation")
 
         # TODO: check dwell time value/add to protocol
         # TODO: check artifact of 0.5 into 1 dwell time
         # setup for ML drift correction
-        self.auto.image_settings['resolution'] = '1536x1024'
-        self.auto.image_settings['dwell_time'] = 1e-6
-        self.auto.image_settings['hfw'] = 80e-6
-        self.auto.image_settings['autocontrast'] = True
-        self.auto.image_settings['save'] = True
+        self.image_settings['resolution'] = '1536x1024'
+        self.image_settings['dwell_time'] = 1e-6
+        self.image_settings['hfw'] = 80e-6
+        self.image_settings['autocontrast'] = True
+        self.image_settings['save'] = True
         # TODO: deal with resetting label requirement
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML()
-        movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
+        movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) #  TODO: test movement by 6 deg
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
         self.correct_stage_drift_with_ML()
-        movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
-        self.correct_stage_drift_with_ML()
+        # movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
+        # self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
+        # self.correct_stage_drift_with_ML()
+
+        # save jcut position
+        self.current_sample.jcut_coordinates = self.stage.current_position
+        self.current_sample.save_data()
 
         # now we are at the angle for jcut, perform jcut
-        # milling.mill_jcut(self.microscope, self.auto.settings)
+        milling.mill_jcut(self.microscope, self.settings)
+
         # TODO: adjust hfw? check why it changes to 100?
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
-        if self.auto.response:
-            milling.run_milling(self.microscope, self.auto.settings)
+        if self.response:
+            milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
-        # take reference images of the jcut
-        self.auto.image_settings['save'] = True
-        self.auto.image_settings['label'] = 'jcut_lowres'
-        self.auto.image_settings['hfw'] = 150e-6  # TODO: add to protocol
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        logging.info(f"Mill J-Cut Complete")
 
-        self.auto.image_settings['label'] = 'jcut_highres'
-        self.auto.image_settings['hfw'] = 50e-6  # TODO: add to protocol
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
-        print('done, ready for liftout')  # TODO: status  bar
+        # take reference images of the jcut
+        self.image_settings['save'] = True
+        self.image_settings['label'] = 'jcut_lowres'
+        self.image_settings['hfw'] = 150e-6  # TODO: add to protocol
+        acquire.take_reference_images(self.microscope, self.image_settings)
+
+        self.image_settings['label'] = 'jcut_highres'
+        self.image_settings['hfw'] = 50e-6  # TODO: add to protocol
+        acquire.take_reference_images(self.microscope, self.image_settings)
+        logging.info("Milling Complete. Ready for Liftout")
 
     def correct_stage_drift_with_ML(self):
         # TODO: add this autocontrast to a protocol? (because it changes depending on sample)
         # correct stage drift using machine learning
-        label = self.auto.image_settings['label']
+        label = self.image_settings['label']
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
             # TODO: more elegant labelling convention
-            self.auto.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+            self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=beamType)
 
             # TODO: make moves consistent from moving to stationary
@@ -481,58 +528,69 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION, image_type="new")
 
         # take reference images after drift correction
-        self.auto.image_settings['save'] = True
-        self.auto.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML_final'
-        self.auto.image_settings['autocontrast'] = True
-        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['save'] = True
+        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML_final'
+        self.image_settings['autocontrast'] = True
+        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
     def liftout_lamella(self):
-        self.auto.current_status = AutoLiftoutStatus.Liftout
+        self.current_status = AutoLiftoutStatus.Liftout
+        logging.info(f"Status: {self.current_status}")
+
         # get ready to do liftout by moving to liftout angle
-        movement.move_to_liftout_angle(self.microscope, self.auto.settings)
+        movement.move_to_liftout_angle(self.microscope, self.settings)
 
         needle = self.microscope.specimen.manipulator
 
+        # TODO: if starting from liftout need to use a wider hfw to see lamella because calibration is poor
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
         park_position = movement.move_needle_to_liftout_position(self.microscope)
 
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new")
+        # TODO: saved park position is too high (out of frame)
+
+        # save liftout position
+        self.current_sample.park_position = park_position
+        self.current_sample.liftout_coordinates = self.stage.current_position
+        self.current_sample.save_data()
+
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        # self.update_display(beam_type=BeamType.ION, image_type="new")
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
 
         # sputter platinum
         # TODO: protocol sputter
-        fibsem_utils.sputter_platinum(self.microscope, self.auto.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
+        fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
+        logging.info(f"Lamella to needle welding complete")
 
-        self.auto.image_settings['save'] = True
-        self.auto.image_settings['autocontrast'] = True
-        self.auto.image_settings['hfw'] = 100e-6
-        self.auto.image_settings['label'] = 'landed_Pt_sputter'
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['save'] = True
+        self.image_settings['autocontrast'] = True
+        self.image_settings['hfw'] = 100e-6
+        self.image_settings['label'] = 'landed_Pt_sputter'
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
-        milling.jcut_severing_pattern(self.microscope, self.auto.settings) #TODO: tune jcut severing pattern
+        milling.jcut_severing_pattern(self.microscope, self.settings) #TODO: tune jcut severing pattern
         self.update_display(beam_type=BeamType.ION, image_type='last')
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
-        if self.auto.response:
-            milling.run_milling(self.microscope, self.auto.settings)
+        if self.response:
+            milling.run_milling(self.microscope, self.settings)
         else:
-            print('Not happy with the pattern')
+            logging.warning('Not happy with the pattern')
             return
 
-        self.auto.image_settings['label'] = 'jcut_sever'
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['label'] = 'jcut_sever'
+        acquire.take_reference_images(self.microscope, self.image_settings)
+        logging.info(f"JCut Severing Milling Complete")
 
         # Raise needle 30um
         # TODO: status
-        # print('Stage tilt is ', np.rad2deg(self.stage.current_position.t), ' deg...')
-
+        logging.info(f"Removing needle from trench")
         for i in range(3):
             # print("Moving out of trench by 10um")
             z_move_out_from_trench = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
@@ -542,34 +600,37 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             time.sleep(1)
 
         # reference images after liftout complete
-        self.auto.image_settings['label'] = 'liftout_of_trench'
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['label'] = 'liftout_of_trench'
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
+        logging.info(f"Needle retracted. Liftout Complete")
+
+
     def land_needle_on_milled_lamella(self):
         needle = self.microscope.specimen.manipulator
         # setup and take reference images of liftout starting position
-        self.auto.image_settings['resolution'] = self.auto.settings["reference_images"]["needle_ref_img_resolution"]
-        self.auto.image_settings['dwell_time'] = self.auto.settings["reference_images"]["needle_ref_img_dwell_time"]
-        self.auto.image_settings['autocontrast'] = True
-        self.auto.image_settings['save'] = True
+        self.image_settings['resolution'] = self.settings["reference_images"]["needle_ref_img_resolution"]
+        self.image_settings['dwell_time'] = self.settings["reference_images"]["needle_ref_img_dwell_time"]
+        self.image_settings['autocontrast'] = True
+        self.image_settings['save'] = True
 
         # low res
-        self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_lowres"]
-        self.auto.image_settings['label'] = 'needle_liftout_start_position_lowres'
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+        self.image_settings['label'] = 'needle_liftout_start_position_lowres'
+        acquire.take_reference_images(self.microscope, self.image_settings)
         # high res
-        self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_highres"]
-        self.auto.image_settings['label'] = 'needle_liftout_start_position_highres'
-        acquire.take_reference_images(self.microscope, self.auto.image_settings)
+        self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_highres"]
+        self.image_settings['label'] = 'needle_liftout_start_position_highres'
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
         # calculate shift between lamella centre and needle tip in the electron view
-        self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+        self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -579,17 +640,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
+
         # calculate shift between lamella centre and needle tip in the ion view
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
         # calculate shift in xyz coordinates
         # TODO: status
-        # print('Stage tilt is ', np.rad2deg(self.stage.current_position.t), ' deg...')
-        # print('cos(t) = ', np.cos(self.stage.current_position.t))
+
         z_distance = distance_y_m / np.cos(self.stage.current_position.t)
 
         # Calculate movement
-        # print('Needle approach from i-beam low res - Z: landing')
-        # print('Needle move in Z by half the distance...', z_distance)
         zy_move_half = movement.z_corrected_needle_movement(-z_distance / 2, self.stage.current_position.t)
         needle.relative_move(zy_move_half)
 
@@ -598,8 +657,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         # TODO: crosshairs here?
-        if self.auto.response:
-            self.auto.image_settings['hfw'] = self.auto.settings['reference_images']['needle_with_lamella_shifted_img_highres']
+        if self.response:
+            self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
             # calculate shift in xyz coordinates
@@ -617,19 +676,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle.relative_move(zy_move_gap)
             # print('Needle move in Z minus gap ... LANDED')
 
-            self.auto.image_settings['save'] = True
-            self.auto.image_settings['autocontrast'] = True
-            self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_lowres"]
-            self.auto.image_settings['label'] = 'needle_ref_img_lowres'
-            acquire.take_reference_images(self.microscope, self.auto.image_settings)
-            self.auto.image_settings['hfw'] = self.auto.settings["reference_images"]["needle_ref_img_hfw_highres"]
-            self.auto.image_settings['label'] = 'needle_ref_img_highres'
-            acquire.take_reference_images(self.microscope, self.auto.image_settings)
+            self.image_settings['save'] = True
+            self.image_settings['autocontrast'] = True
+            self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+            self.image_settings['label'] = 'needle_ref_img_lowres'
+            acquire.take_reference_images(self.microscope, self.image_settings)
+            self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_highres"]
+            self.image_settings['label'] = 'needle_ref_img_highres'
+            acquire.take_reference_images(self.microscope, self.image_settings)
+            logging.info(f"Land Needle on Lamella complete.")
 
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
-        self.auto.image_settings['beam_type'] = beamType
+        self.image_settings['beam_type'] = beamType
         self.raw_image, self.overlay_image, self.downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = \
-            calibration.identify_shift_using_machine_learning(self.microscope, self.auto.image_settings, self.auto.settings, self.liftout_counter,
+            calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.liftout_counter,
                                                               shift_type=shift_type)
         feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
         # scaled features
@@ -650,32 +710,32 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
 
         # if something wasn't correctly identified
-        if not self.auto.response:
-            utils.save_image(image=self.raw_image, save_path=self.auto.image_settings['save_path'], label=self.auto.image_settings['label'] + '_label')
+        if not self.response:
+            utils.save_image(image=self.raw_image, save_path=self.image_settings['save_path'], label=self.image_settings['label'] + '_label')
 
             self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
 
             # if feature 1 wasn't correctly identified
-            if not self.auto.response:
+            if not self.response:
                 self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_1_type} position.'
-                                                                   f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                                                                   f'Press Yes button when happy with the position', click='single', crosshairs=False)
                 # TODO: do we want filtering on this image?
 
                 # if new feature position selected
-                if self.auto.response:
+                if self.response:
                     # TODO: check x/y here
                     feature_1_px = (self.yclick, self.xclick)
 
             self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
 
             # if feature 2 wasn't correctly identified
-            if not self.auto.response:
+            if not self.response:
                 self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_2_type} position.'
                                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
                 # TODO: do we want filtering on this image?
 
                 # if new feature position selected
-                if self.auto.response:
+                if self.response:
                     feature_2_px = (self.yclick, self.xclick)
 
         return feature_1_px, feature_2_px
@@ -690,21 +750,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to landing coordinate
         self.stage.absolute_move(landing_coord)
         # TODO: image settings?
-        calibration.correct_stage_drift(self.microscope, self.auto.image_settings, original_landing_images, self.liftout_counter, mode="land")
+        calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.liftout_counter, mode="land")
         park_position = movement.move_needle_to_landing_position(self.microscope)
 
 
         # # Y-MOVE
-        self.auto.image_settings["resolution"] = self.auto.settings["reference_images"]["landing_post_ref_img_resolution"]
-        self.auto.image_settings["dwell_time"] = self.auto.settings["reference_images"]["landing_post_ref_img_dwell_time"]
-        self.auto.image_settings["hfw"]  = 150e-6 # self.auto.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.auto.image_settings["beam_type"] = BeamType.ELECTRON
-        self.auto.image_settings["save"] = True
-        self.auto.image_settings["label"] = "landing_needle_land_sample_lowres"
+        self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
+        self.image_settings["dwell_time"] = self.settings["reference_images"]["landing_post_ref_img_dwell_time"]
+        self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        self.image_settings["beam_type"] = BeamType.ELECTRON
+        self.image_settings["save"] = True
+        self.image_settings["label"] = "landing_needle_land_sample_lowres"
 
-        # needle_eb_lowres, needle_ib_lowres = acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        # needle_eb_lowres, needle_ib_lowres = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.auto.image_settings["beam_type"])
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
 
         y_move = movement.y_corrected_needle_movement(-distance_y_m, self.stage.current_position.t)
         self.needle.relative_move(y_move)
@@ -714,9 +774,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # Z-MOVE
-        self.auto.image_settings["label"] = "landing_needle_land_sample_lowres_after_y_move"
-        self.auto.image_settings["beam_type"] = BeamType.ION
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.auto.image_settings["beam_type"])
+        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_y_move"
+        self.image_settings["beam_type"] = BeamType.ION
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
 
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
@@ -727,10 +787,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         ## X-HALF-MOVE
-        self.auto.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
-        self.auto.image_settings["beam_type"] = BeamType.ELECTRON
-        self.auto.image_settings["hfw"] = 150e-6
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.auto.image_settings["beam_type"])
+        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
+        self.image_settings["beam_type"] = BeamType.ELECTRON
+        self.image_settings["hfw"] = 150e-6
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
 
         # half move
         x_move = movement.x_corrected_needle_movement(distance_x_m / 2)
@@ -740,20 +800,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="new")
 
         ## X-MOVE
-        self.auto.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
-        self.auto.image_settings["beam_type"] = BeamType.ELECTRON
-        self.auto.image_settings["hfw"] = 80e-6
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.auto.image_settings["beam_type"])
+        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
+        self.image_settings["beam_type"] = BeamType.ELECTRON
+        self.image_settings["hfw"] = 80e-6
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
 
         # TODO: gap?
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
 
         # final reference images
-        self.auto.image_settings["save"] = True
-        self.auto.image_settings["hfw"]  = 80e-6 # self.auto.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.auto.image_settings["label"] = "E_landing_lamella_final_weld_highres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["save"] = True
+        self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        self.image_settings["label"] = "E_landing_lamella_final_weld_highres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -763,15 +823,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
-        if self.auto.response:
-            milling.run_milling(self.microscope, self.auto.settings)
+        if self.response:
+            milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
         # final reference images
 
-        self.auto.image_settings["hfw"]  = 100e-6 # self.auto.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.auto.image_settings["label"] = "landing_lamella_final_weld_highres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["hfw"]  = 100e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        self.image_settings["label"] = "landing_lamella_final_weld_highres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -779,16 +839,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # CUT OFF NEEDLE
 
-        self.auto.image_settings["hfw"]  = self.auto.settings["cut"]["hfw"]
-        self.auto.image_settings["label"] = "landing_lamella_pre_cut_off"
-        self.auto.image_settings["beam_type"] = BeamType.ION
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.auto.image_settings["beam_type"])
+        self.image_settings["hfw"]  = self.settings["cut"]["hfw"]
+        self.image_settings["label"] = "landing_lamella_pre_cut_off"
+        self.image_settings["beam_type"] = BeamType.ION
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
 
-        height = self.auto.settings["cut"]["height"]
-        width = self.auto.settings["cut"]["width"]
-        depth = self.auto.settings["cut"]["depth"]
-        rotation = self.auto.settings["cut"]["rotation"]
-        hfw = self.auto.settings["cut"]["hfw"]
+        height = self.settings["cut"]["height"]
+        width = self.settings["cut"]["width"]
+        depth = self.settings["cut"]["depth"]
+        rotation = self.settings["cut"]["rotation"]
+        hfw = self.settings["cut"]["hfw"]
 
         cut_coord = {"center_x": -distance_x_m,
                      "center_y": distance_y_m,
@@ -802,20 +862,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
-        if self.auto.response:
-            milling.run_milling(self.microscope, self.auto.settings)
+        if self.response:
+            milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
 
         # reference images
-        self.auto.image_settings["hfw"]  = 150e-6 # self.auto.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.auto.image_settings["label"] = "landing_lamella_final_cut_lowres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        self.image_settings["label"] = "landing_lamella_final_cut_lowres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
 
-        self.auto.image_settings["hfw"]  = 80e-6 # self.auto.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.auto.image_settings["label"] = "landing_lamella_final_cut_highres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        self.image_settings["label"] = "landing_lamella_final_cut_highres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         # move needle out of trench slowly at first
         for i in range(3):
@@ -829,13 +889,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.retract_needle(self.microscope, park_position)
 
         # reference images
-        self.auto.image_settings["hfw"]  = 150e-6 #TODO: fix protocol
-        self.auto.image_settings["label"] = "landing_lamella_final_lowres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["hfw"]  = 150e-6 #TODO: fix protocol
+        self.image_settings["label"] = "landing_lamella_final_lowres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        self.auto.image_settings["hfw"]  = 80e-6  #TODO: fix protocol
-        self.auto.image_settings["label"] = "landing_lamella_final_highres"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["hfw"]  = 80e-6  #TODO: fix protocol
+        self.image_settings["label"] = "landing_lamella_final_highres"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         # TODO: test this
     def reset_needle(self):
@@ -851,17 +911,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.needle.relative_move(z_move_in)
 
         # needle images
-        self.auto.image_settings["resolution"] = self.auto.settings["imaging"]["resolution"]
-        self.auto.image_settings["dwell_time"] = self.auto.settings["imaging"]["dwell_time"]
-        self.auto.image_settings["hfw"] = self.auto.settings["imaging"]["horizontal_field_width"]
-        self.auto.image_settings["save"] = True
-        self.auto.image_settings["label"] = "sharpen_needle_initial"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["resolution"] = self.settings["imaging"]["resolution"]
+        self.image_settings["dwell_time"] = self.settings["imaging"]["dwell_time"]
+        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        self.image_settings["save"] = True
+        self.image_settings["label"] = "sharpen_needle_initial"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
-        self.auto.image_settings["beam_type"] = BeamType.ION
+        self.image_settings["beam_type"] = BeamType.ION
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.auto.image_settings["beam_type"])
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
@@ -869,27 +929,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
 
-        self.auto.image_settings["label"] = "sharpen_needle_centre"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["label"] = "sharpen_needle_centre"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.auto.image_settings["beam_type"])
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
 
         # sharpening parameters
-        # height = self.auto.settings["sharpen"]["height"]
-        # width = self.auto.settings["sharpen"]["width"]
-        # depth = self.auto.settings["sharpen"]["depth"]
-        # bias = self.auto.settings["sharpen"]["bias"]
-        # hfw = self.auto.settings["sharpen"]["hfw"]
-        # tip_angle = self.auto.settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
-        # needle_angle = self.auto.settings["sharpen"][
+        # height = self.settings["sharpen"]["height"]
+        # width = self.settings["sharpen"]["width"]
+        # depth = self.settings["sharpen"]["depth"]
+        # bias = self.settings["sharpen"]["bias"]
+        # hfw = self.settings["sharpen"]["hfw"]
+        # tip_angle = self.settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
+        # needle_angle = self.settings["sharpen"][
         #     "needle_angle"
         # ]  # needle tilt on the screen 45 deg +/-
-        # milling_current = self.auto.settings["sharpen"]["sharpen_milling_current"]
+        # milling_current = self.settings["sharpen"]["sharpen_milling_current"]
 
         # create sharpening patterns
-        cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.auto.settings, x_0=distance_x_m, y_0=distance_y_m)
+        cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=distance_x_m, y_0=distance_y_m)
 
         milling.create_sharpen_needle_patterns(
             self.microscope, cut_coord_bottom, cut_coord_top
@@ -899,13 +959,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
-        if self.auto.response:
-            milling.run_milling(self.microscope, self.auto.settings)
+        if self.response:
+            milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
         # take reference images
-        self.auto.image_settings["label"] = "sharpen_needle_final"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.auto.image_settings)
+        self.image_settings["label"] = "sharpen_needle_final"
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -913,6 +973,81 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.retract_needle(self.microscope, park_position)
 
     def cleanup_lamella(self):
+        #
+        # #TODO: re-implement this
+        # stage = microscope.specimen.stage
+        # needle = microscope.specimen.manipulator
+        #
+        # move to landing coord
+        # microscope.specimen.stage.absolute_move(landing_coord)
+        #
+        # # tilt to 0 rotate 180 move to 21 deg
+        #
+        # # tilt to zero, to prevent hitting anything
+        # stage_settings = MoveSettings(rotate_compucentric=True)
+        # microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        #
+        # # thinning position
+        # thinning_rotation_angle = 180
+        # thinning_tilt_angle = 21
+        #
+        # # rotate to thinning angle
+        # microscope.specimen.stage.relative_move(StagePosition(r=np.deg2rad(thinning_rotation_angle)), stage_settings)
+        #
+        # # tilt to thinning angle
+        # microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(thinning_tilt_angle)), stage_settings)
+        #
+        # # lamella images
+        # resolution = storage.settings["imaging"]["resolution"]
+        # dwell_time = storage.settings["imaging"]["dwell_time"]
+        # image_settings = GrabFrameSettings(resolution=resolution, dwell_time=dwell_time)
+        # hfw_lowres = 100e-6  # storage.settings["imaging"]["horizontal_field_width"]
+        #
+        # lamella_eb, lamella_ib = take_electron_and_ion_reference_images(
+        #     microscope, hor_field_width=hfw_lowres, image_settings=image_settings,
+        #     save=True, save_label="A_thinning_lamella_21deg_tilt")
+        #
+        # # realign lamella to image centre
+        # image_settings_ML = GrabFrameSettings(resolution="1536x1024", dwell_time=0.5e-6)  # TODO: user input resolution
+        # realign_eucentric_with_machine_learning(microscope, image_settings=image_settings_ML, hor_field_width=100e-6)
+        #
+        # # LAMELLA EDGE TO IMAGE CENTRE?
+        # # x-movement
+        # storage.step_counter += 1
+        # lamella_eb, lamella_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
+        #                                                                 image_settings=image_settings,
+        #                                                                 save=True, save_label="A_lamella_pre_thinning")
+        #
+        # x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, "lamella_edge_to_landing_post")
+        #
+        # # z-movement (shouldnt really be needed if eucentric calibration is correct)
+        # stage_tilt = stage.current_position.t
+        # print('Stage tilt is ', np.rad2deg(stage.current_position.t), ' deg...')
+        # z_distance = y_shift / np.sin(np.deg2rad(52))
+        # z_move = z_corrected_stage_movement(z_distance, stage_tilt)
+        # print('z_move = ', z_move)
+        # stage.relative_move(z_move)
+        #
+        # # x-move the rest of the way
+        # x_move = x_corrected_stage_movement(-x_shift)
+        #
+        # stage.relative_move(x_move)
+        #
+        # width = settings["thin_lamella"]["lamella_width"]
+        # x_move_half_width = x_corrected_stage_movement(-width / 2)
+        # stage.relative_move(x_move_half_width)
+        #
+        # # lamella edge needs to be centred in image...
+        # # mill thin lamella pattern
+        # mill_thin_lamella(microscope, settings, confirm=True)
+        #
+        # # take reference images after cleaning
+        # lamella_eb, lamella_ib = take_electron_and_ion_reference_images(microscope, hor_field_width=80e-6,
+        #                                                                 image_settings=image_settings,
+        #                                                                 save=True, save_label="A_lamella_post_thinning")
+        #
+        # # cleaning finished
+        print("Trim Lamella Finished.")
 
         return NotImplemented
 
@@ -970,9 +1105,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(beam_type=BeamType.ION, image=test_image, message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image,  message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
 
-    def ask_user(self, image=None, beam_type=None, message=None, click=None, crosshairs=True, filter_strength=0):
+    def ask_user(self, image=None, beam_type=None, message="test message", click=None, crosshairs=True, filter_strength=0):
 
         if beam_type == BeamType.ELECTRON:
             image = self.image_SEM
@@ -985,9 +1120,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.setLayout(QtWidgets.QGridLayout())
         self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.popup_canvas = None
-
-        if message is None:
-            message = "ok?"
 
         # Question space
         question_frame = QtWidgets.QWidget(self.popup)
@@ -1002,78 +1134,46 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         font.setPointSize(16)
         question.setFont(font)
         question.setAlignment(QtCore.Qt.AlignCenter)
-        if filter_strength:
-            # filter combo box
-
-            filter_label = QtWidgets.QLabel('Median Filter')
-            self.filter_check = QtWidgets.QCheckBox()
-            self.filter_check.setChecked(1)
-            self.filter_check.clicked.connect(lambda: (self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength*int(self.filter_check.checkState()/2))))
-
-            filter_frame = QtWidgets.QWidget()
-            filter_frame_layout = QtWidgets.QGridLayout()
-            filter_frame.setLayout(filter_frame_layout)
-            filter_frame.layout().addWidget(filter_label, 0, 0, 1, 1)
-            filter_frame.layout().addWidget(self.filter_check, 0, 1, 1, 1)
-
-        new_image = QtWidgets.QPushButton()
-        new_image.setFixedHeight(self.button_height)
-        new_image.setFixedWidth(self.button_width)
-        new_image.setText('New Image')
-
-        if self.crosshairs:
-            crosshair_label = QtWidgets.QLabel()
-            crosshair_label.setText('Central Crosshair')
-
-            crosshair_check = QtWidgets.QCheckBox()
-            crosshair_check.setChecked(1)
-            crosshair_check.clicked.connect(lambda: update_crosshair_value())
-            crosshair_check.clicked.connect(lambda: self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength))
-
-        def update_crosshair_value():
-            self.crosshairs = not self.crosshairs
-
-
-        if self.crosshairs:
-            question_frame.layout().addWidget(crosshair_label)
-            question_frame.layout().addWidget(crosshair_check)
         question_frame.layout().addWidget(question)
-        if filter_strength:
-            question_frame.layout().addWidget(filter_frame)
-        question_frame.layout().addWidget(new_image)
 
-        # HFW changing
-        hfw_widget = QtWidgets.QWidget()
-        hfw_widget_layout = QtWidgets.QGridLayout()
-        hfw_widget.setLayout(hfw_widget_layout)
+        if image is not None:
 
-        hfw_slider = QtWidgets.QSlider()
-        hfw_slider.setOrientation(QtCore.Qt.Horizontal)
-        hfw_slider.setMinimum(1)
-        if beam_type == BeamType.ELECTRON:
-            hfw_slider.setMaximum(2700)
-        else:
-            hfw_slider.setMaximum(900)
-        hfw_slider.setValue(self.auto.image_settings['hfw']*1e6)
+            # new image button
+            self.new_image = QtWidgets.QPushButton()
+            self.new_image.setFixedHeight(self.button_height)
+            self.new_image.setFixedWidth(self.button_width)
+            self.new_image.setText('New Image')
+            question_frame.layout().addWidget(self.new_image)
 
-        hfw_spinbox = QtWidgets.QSpinBox()
-        hfw_spinbox.setMinimum(1)
-        if beam_type == BeamType.ELECTRON:
-            hfw_spinbox.setMaximum(2700)
-        else:
-            hfw_spinbox.setMaximum(900)
-        hfw_spinbox.setValue(self.auto.image_settings['hfw']*1e6)
+            # HFW changing
+            hfw_widget = QtWidgets.QWidget()
+            hfw_widget_layout = QtWidgets.QGridLayout()
+            hfw_widget.setLayout(hfw_widget_layout)
 
-        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
-        hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(hfw_slider.value()))
+            self.hfw_slider = QtWidgets.QSlider()
+            self.hfw_slider.setOrientation(QtCore.Qt.Horizontal)
+            self.hfw_slider.setMinimum(1)
+            if beam_type == BeamType.ELECTRON:
+                self.hfw_slider.setMaximum(2700)
+            else:
+                self.hfw_slider.setMaximum(900)
+            self.hfw_slider.setValue(self.image_settings['hfw']*1e6)
 
-        hfw_spinbox.valueChanged.connect(lambda: hfw_slider.setValue(hfw_spinbox.value()))
+            hfw_spinbox = QtWidgets.QSpinBox()
+            hfw_spinbox.setMinimum(1)
+            if beam_type == BeamType.ELECTRON:
+                hfw_spinbox.setMaximum(2700)
+            else:
+                hfw_spinbox.setMaximum(900)
+            hfw_spinbox.setValue(self.image_settings['hfw']*1e6)
 
-        hfw_widget.layout().addWidget(hfw_spinbox)
-        hfw_widget.layout().addWidget(hfw_slider)
+            self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
+            self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
 
-        new_image.clicked.connect(lambda: self.image_from_popup(hfw=hfw_slider.value()*1e-6, beam_type=beam_type,
-                                  click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
+            hfw_spinbox.valueChanged.connect(lambda: self.hfw_slider.setValue(hfw_spinbox.value()))
+
+            hfw_widget.layout().addWidget(hfw_spinbox)
+            hfw_widget.layout().addWidget(self.hfw_slider)
 
         # Button space
         button_box = QtWidgets.QWidget(self.popup)
@@ -1104,13 +1204,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_box.layout().addWidget(no, 0, 2, 2, 1)
         button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
 
-        # image space
-        self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength)
+        # image space (need to check for not None as sometimes it is np.ndarray)
+        if image is not None:
+            self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength)
 
 
         self.popup.destroyed.connect(lambda: self.setEnabled(True))
         self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
-        self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
+        if image is not None:
+            self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
         self.popup.layout().addWidget(button_box, 8, 1, 1, 1)
         self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
@@ -1118,9 +1220,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.exec_()
 
     def image_from_popup(self, hfw, beam_type=None, click=None, crosshairs=False, filter_strength=0):
-        self.auto.image_settings['hfw'] = hfw
-        # print(self.auto.image_settings['hfw']*1e6)
-        image = acquire.new_image(self.microscope, self.auto.image_settings)
+        self.image_settings['hfw'] = hfw
+        # print(self.image_settings['hfw']*1e6)
+        image = acquire.new_image(self.microscope, self.image_settings)
         if beam_type == BeamType.ELECTRON:
             self.image_SEM = image
         elif beam_type == BeamType.ION:
@@ -1142,7 +1244,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         self.stage.relative_move(x_move)
                         self.stage.relative_move(yz_move)
                         # TODO: refactor beam type here
-                        acquire.new_image(microscope=self.microscope, settings=self.auto.image_settings)
+                        image = acquire.new_image(microscope=self.microscope, settings=self.image_settings)
                         if beam_type:
                             self.update_display(beam_type=beam_type, image_type='last')
                         self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
@@ -1168,14 +1270,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     v_rect2.set_color('xkcd:yellow')
 
                     click_crosshair = (h_rect, h_rect2, v_rect, v_rect2)
-                    print(click_crosshair)
                     self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength, click_crosshair=click_crosshair)
 
     def update_popup_display(self, click, image, beam_type=None, crosshairs=True, filter_strength=0, click_crosshair=None):
-        print(f'Filter strength: {filter_strength} x {filter_strength}')
-        # if self.popup.canvas:
-        #     for i in reversed(range(self.popup.layout.count())):
-        #         self.popup.layout.itemAt(i).widget().setParent(None)
 
         fig = plt.figure(99)
         if self.popup_canvas:
@@ -1185,12 +1282,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_toolbar.deleteLater()
         self.popup_canvas = _FigureCanvas(fig)
 
+        self.new_image.clicked.connect(lambda: print(''))
+        self.new_image.clicked.disconnect()
+        self.new_image.clicked.connect(lambda: self.image_from_popup(hfw=self.hfw_slider.value() * 1e-6, beam_type=beam_type,
+                                                                     click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
+
         if click:
             self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
-        image_array = (image.data).astype(np.uint8)
+
+        if type(image) == np.ndarray:
+            image_array = image.astype(np.uint8)
+        else:
+            image_array = (image.data).astype(np.uint8)
 
         if filter_strength:
-
             image_array = ndi.median_filter(image_array, size=filter_strength)
 
         if image_array.ndim != 3:
@@ -1208,14 +1313,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         half_thickness = cross_thickness / 2
 
         self.h_rect = plt.Rectangle((midx, midy - half_thickness),
-                               half_cross, cross_thickness)
+                                    half_cross, cross_thickness)
 
         self.h_rect2 = plt.Rectangle(
             (midx - half_cross, midy - half_thickness),
             half_cross, cross_thickness)
 
         self.v_rect = plt.Rectangle((midx - half_thickness, midy),
-                               cross_thickness, half_cross)
+                                    cross_thickness, half_cross)
         self.v_rect2 = plt.Rectangle(
             (midx - half_thickness, midy - half_cross),
             cross_thickness, half_cross)
@@ -1245,7 +1350,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
     def set_response(self, response):
-        self.auto.response = response
+        self.response = response
         self.setEnabled(True)
 
     def new_protocol(self):
@@ -1493,8 +1598,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             try:
                 if beam_type is BeamType.ELECTRON:
                     if image_type == 'new':
-                        self.auto.image_settings['beam_type'] = beam_type
-                        self.image_SEM = acquire.new_image(self.microscope, self.auto.image_settings)
+                        self.image_settings['beam_type'] = beam_type
+                        self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_SEM.data
@@ -1507,8 +1612,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     self.canvas_SEM.draw()
                 if beam_type is BeamType.ION:
                     if image_type == 'new':
-                        self.auto.image_settings['beam_type'] = beam_type
-                        self.image_FIB = acquire.new_image(self.microscope, self.auto.image_settings)
+                        self.image_settings['beam_type'] = beam_type
+                        self.image_FIB = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_FIB.data
@@ -1546,10 +1651,10 @@ def display_error_message(message):
 
 def main(offline='True'):
     if offline.lower() == 'false':
-        logging.basicConfig(level=logging.WARNING)
+        # logging.basicConfig(level=logging.DEBUG)
         launch_gui(ip_address='10.0.0.1', offline=False)
     elif offline.lower() == 'true':
-        logging.basicConfig(level=logging.DEBUG)
+        # logging.basicConfig(level=logging.DEBUG)
         with mock.patch.dict('os.environ', {'PYLON_CAMEMU': '1'}):
             try:
                 launch_gui(ip_address='localhost', offline=True)
