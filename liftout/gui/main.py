@@ -20,6 +20,8 @@ import yaml
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 from autoscript_sdb_microscope_client.structures import *
 from liftout.main2 import AutoLiftout
 from liftout.main2 import AutoLiftoutStatus
@@ -1673,5 +1675,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
     sys.exit(app.exec_())
 
 
-main(offline='False')
-# main(offline='True')
+# main(offline='False')
+main(offline='True')
