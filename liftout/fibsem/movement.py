@@ -476,3 +476,31 @@ def insert_needle(microscope):
     needle.insert()
     park_position = needle.current_position
     return park_position
+
+
+
+def reset_needle_park_position(microscope, new_park_position):
+    """ Reset the needle to a safe park position to prevent crashes when inserted.
+    
+    This function is required as the insert() api call does not allow us to specify 
+    an insert position. The needle will return to the previously retracted positions. 
+
+    If the programs stops while the need is inserted and near the stage there is a chance 
+    it will hit the stage when reinserted if we do not do this.
+
+    TODO: Determine the initial park position after needle calibration and use that as a default
+    TODO: Call this before liftout starts to prevent crashing.
+    
+        """
+    # # recalibrating needle park position
+    # # move sample stage out
+    move_sample_stage_out(microscope)
+
+    # move needle in
+    insert_needle(microscope)
+    
+    # move needle to save location
+    microscope.specimen.manipulator.absolute_move(new_park_position) # TODO: get safe absolute coordinates
+
+    # # retract needle
+    microscope.specimen.manipulator.retract()

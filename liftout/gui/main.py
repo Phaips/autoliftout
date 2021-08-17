@@ -313,7 +313,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.stage.relative_move(StagePosition(z=delta_z))
         if self.response:
             self.update_display(beam_type=BeamType.ION, image_type='new')
-        # Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
+        # TODO: Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
@@ -323,7 +323,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def run_liftout(self):
 
         # recalibrate park position coordinates
-
+        # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
 
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
@@ -350,7 +350,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run")
+                                                               directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run") # TODO: make this path not hard coded
         sample = Sample(save_path, 1)
         lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
 
@@ -359,20 +359,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
+        # TODO: move to single_liftout
+        movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
-
-        # # recalibrating needle park position
-        # # move sample stage out
-        movement.move_sample_stage_out(self.microscope)
-
-        # move needle in
-        movement.insert_needle(self.microscope)
-        print("hello")
-        # move needle to save location
-        self.microscope.specimen.manipulator.absolute_move(sample.park_position) # TODO: get safe absolute coordinates
-
-        # # retract needle
-        self.microscope.specimen.manipulator.retract()
 
         logging.info(f"Load Coordinates complete from {save_path}")
 
