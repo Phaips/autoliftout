@@ -5,7 +5,7 @@ import pytest
 import segmentation_models_pytorch as smp
 import torch
 from liftout.detection import DetectionModel
-from liftout import model
+from liftout.model import models
 import os
 
 # TODO: replace weights file with something stable
@@ -14,7 +14,7 @@ import os
 def weights_file():
     # yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
     # yield "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/model/models/fresh_full_n10.pt"
-    yield os.path.dirname(model.__file__) + "/models/fresh_full_n10.pt"
+    yield os.path.dirname(models.__file__) + "/fresh_full_n10.pt"
 
 
 @pytest.fixture

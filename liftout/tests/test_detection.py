@@ -8,14 +8,14 @@ import numpy as np
 import pytest
 from liftout.detection import detection, utils
 import os
-from liftout import model
+from liftout.model import models
 
 @pytest.fixture
 def weights_file():
     # yield  "liftout\model\models\fresh_full_n10.pt"
     # yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
     # yield "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/model/models/fresh_full_n10.pt"
-    yield os.path.dirname(model.__file__) + "/models/fresh_full_n10.pt"
+    yield os.path.dirname(models.__file__) + "/fresh_full_n10.pt"
 
 
 @pytest.fixture
