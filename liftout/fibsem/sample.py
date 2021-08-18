@@ -1,12 +1,13 @@
-from autoscript_sdb_microscope_client.structures import *
 import glob
 from enum import Enum
 from pprint import pprint
 import random
+import PIL
+from attr import dataclass
 import matplotlib.pyplot as plt
 import yaml
-from liftout.detection import utils
 
+import numpy as np
 
 class SampleStatus(Enum):
     Setup = 0
@@ -17,29 +18,23 @@ class SampleStatus(Enum):
     Cleanup = 5
     Finished = 6
 
-
-class FakeStagePosition():
-    """ Mock StagePosition because dont have access to autoscript"""
-
-    def __init__(self, x=0, y=0, z=0, r=0, t=0) -> None:
-        self.x = x
-        self.y = y
-        self.z = z
-        self.r = r
-        self.t = t
-
-    def __repr__(self) -> str:
-        return f"x={self.x}, y={self.y}, z={self.z}, r={self.r}, t={self.t}"
-
+try:
+    from autoscript_sdb_microscope_client.structures import *
+except:
+   from liftout.tests.mock_autoscript_sdb_microscope_client import *
 
 class Sample:
     def __init__(self, data_path, sample_no):
-        self.landing_coordinates = StagePosition()  # FakeStagePosition()
-        self.lamella_coordinates = StagePosition()  # FakeStagePosition()
+        self.landing_coordinates = StagePosition()  
+        self.lamella_coordinates = StagePosition() 
         self.milling_coordinates = StagePosition()
         self.jcut_coordinates = StagePosition()
         self.liftout_coordinates = StagePosition()
         self.park_position = ManipulatorPosition()
+
+        self.last_stage_position = StagePosition() 
+        self.last_needle_position = ManipulatorPosition()
+
         self.landing_ref_images = list()
         self.lamella_ref_images = list()
         self.status = NotImplemented
@@ -122,6 +117,22 @@ class Sample:
             "r": self.park_position.r
         }
 
+
+        last_stage_position_dict = {
+            "x": self.last_stage_position.x,
+            "y": self.last_stage_position.y,
+            "z": self.last_stage_position.z,
+            "r": self.last_stage_position.r,
+            "t": self.last_stage_position.t,
+        }
+
+        last_needle_position_dict = {
+            "x": self.last_needle_position.x,
+            "y": self.last_needle_position.y,
+            "z": self.last_needle_position.z,
+            "r": self.last_needle_position.r
+        }
+
         # save stage position to yml file
         save_dict = {
             "timestamp": self.timestamp,
@@ -131,7 +142,9 @@ class Sample:
             "milling_coordinates": milling_coordinates_dict,
             "jcut_coordinates": jcut_coordinates_dict,
             "liftout_coordinates": liftout_coordinates_dict,
-            "park_position": park_position_dict
+            "park_position": park_position_dict,
+            "last_stage_position": last_stage_position_dict,
+            "last_needle_position": last_needle_position_dict
             # "data_path": self.data_path
         }
 
@@ -205,20 +218,14 @@ class Sample:
         # load the adorned images and format
         for fname in [ref_landing_lowres_eb, ref_landing_highres_eb, ref_landing_lowres_ib, ref_landing_highres_ib]:
             img = AdornedImage.load(fname)
-            # img = utils.load_image_from_file(fname)
 
-            self.landing_ref_images.append(img)  # TODO: change to AdornedImage
+            self.landing_ref_images.append(img)
 
         for fname in [ref_lamella_lowres_eb, ref_lamella_highres_eb, ref_lamella_lowres_ib, ref_lamella_highres_ib]:
             img = AdornedImage.load(fname)
-            # img = utils.load_image_from_file(fname)
 
-            self.lamella_ref_images.append(img)  # TODO: change to AdornedImage
+            self.lamella_ref_images.append(img)
 
-        # for img in self.landing_ref_images + self.lamella_ref_images:
-        #     plt.title(fname.split("/")[-1])
-        #     plt.imshow(img)
-        #     plt.show()
 
     def get_sample_data(self):
         """Return the sample data formatted for liftout from the specificed data_path. """
@@ -227,37 +234,25 @@ class Sample:
         return (self.lamella_coordinates, self.landing_coordinates, self.lamella_ref_images, self.landing_ref_images)
 
 
+    def save_current_position(self, stage_position: StagePosition, needle_position: ManipulatorPosition, ):
+        """Save the current sample stage and needle positions and state for recovery """
+        
+        # save the current sample positions
+        self.last_stage_position = stage_position
+        self.last_needle_position = needle_position
+        self.last_status = self.status
+
+        # save to disk
+        self.save_data() 
+
+
 if __name__ == "__main__":
-    # data_path = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/gui/log/run/20210804.151912/"
 
-    # data_path = r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run\20210804.151912/".replace("\\", "/")
-    #
-    # sample = Sample(data_path=data_path, sample_no=1)
-    #
-    # # create fake data
-    # sample.lamella_coordinates.x = sample.sample_no
-    # sample.lamella_coordinates.y = sample.sample_no
-    # sample.lamella_coordinates.z = sample.sample_no
-    # sample.lamella_coordinates.r = sample.sample_no
-    # sample.lamella_coordinates.t = sample.sample_no
-    #
-    # sample.save_data()
-    #
-    # data_path = r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run\20210804.151912/".replace("\\", "/")
-    #
-    # sample_new = Sample(data_path=data_path, sample_no=sample.sample_no)
-    #
-    # lamella_coordinates, land_coordinates, ref_land_imgs, ref_lamella_imgs = sample_new.get_sample_data()
-    #
-    # print(f"Sample {sample_new.sample_no:02d}:", sample_new.timestamp)
-    # print("Land: ", land_coordinates)
-    # print("Lamella: ", lamella_coordinates)
-    # print(len(ref_land_imgs), len(ref_lamella_imgs))
-
+    data_path = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/gui/log/run/20210804.151912/"
     lam_coord = [StagePosition(x=1, y=1, z=1, r=1, t=1)]
     land_coord = [StagePosition(x=2, y=2, z=2, r=2, t=2)]
     zipped_coordinates = list(zip(lam_coord, land_coord))
-    save_path = r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run\20210811.143118"
+    save_path = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/gui/log/run/20210804.151914"
 
     for i, (lamella_coordinates, landing_coordinates) in enumerate(zipped_coordinates, 1):
         sample = Sample(save_path, i)
@@ -273,25 +268,19 @@ if __name__ == "__main__":
     print(sample.milling_coordinates)
     print(sample.jcut_coordinates)
     print(sample.liftout_coordinates)
-# # save
-# for i, lamella_coordinates, landing_coordinates in enumerate(zipped_coordinates):
-#     sample = Sample(log_path, sample_no)
-#     sample.lamella_coordinates = lamella_coordinates
-#     sample.landing_coord = landing_coordinates
-#     sample.save_data()
-#
-# # load
-#
-# sample = Smaple(log_path, sample_no)
-# lamella_coordinates, ref_lamella_imgs, landing_coordinates, ref_land_imgs  sample.get_sample_data()
-#
-#
+    print(sample.park_position)
+    print(sample.last_needle_position)
+    print(sample.last_stage_position)
 
+    _, _, lamella_imgs, landing_imgs = sample.get_sample_data()
+    for img in lamella_imgs:
+        plt.imshow(img.data)
+        plt.show()
+    for img in landing_imgs:
+        plt.imshow(img.data)
+        plt.show()
 
-# folder structure
-# log/run/timestamp/
-#   sample.yaml
-#   img/
+# TODO: resolve the naming bug with the labels will need to be fixed here as well..
 
 # the names of the images are fixed, wiht a sample_no prefix.
 # so we dont need to save the fnames, just the timestamp...
@@ -309,8 +298,3 @@ if __name__ == "__main__":
 #       2: Sample()
 #       3: Sample()
 #       ...
-
-
-# TODO:
-# might be worth adding .current_sample to Liftout
-# then we can change the status and display to user?
