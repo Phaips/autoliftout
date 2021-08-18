@@ -53,14 +53,18 @@ def initial_test_setup():
 
     # init microscope
     # microscope = utils.initialise_fibsem()
+    microscope = None
 
     # read protocol settings
     # settings = utils.load_config("../protocol_liftout.yml")
+    settings = dict()
 
     # move to start position
     # movement.move_to_sample_grid(microscope=microscpe, settings = settings)
     st.write("Running Setup")
     st.success("Microscope Setup Complete")
+
+    return microscope, settings
 
 
 # TODO: setup the target coordinats to compare too
@@ -358,7 +362,9 @@ def main():
     st.header("Microscope Verification")
 
     # initial setup
-    initial_test_setup()
+    microscope, settings = initial_test_setup()
+
+    st.write(settings)
 
     buttons_cols = st.columns(4)
 

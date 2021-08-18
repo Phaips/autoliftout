@@ -138,7 +138,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: add pretilt_degrees to protocol
         # self.microscope = microscope
 
-        # initial image settings
+        # initial image settings # TODO: add to protocol
         self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
                                'hfw': 2750e-6, 'brightness': None,
                                'contrast': None, 'autocontrast': True,
