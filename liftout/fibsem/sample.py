@@ -39,7 +39,7 @@ class Sample:
         self.lamella_ref_images = list()
         self.status = NotImplemented
         if data_path[-1] != "/":
-            data_path += "/"
+            data_path += "/" # TODO: do this smarter
         self.data_path = data_path.replace("\\", "/")
         self.timestamp = self.data_path.split("/")[-2]
         self.sample_no = sample_no
