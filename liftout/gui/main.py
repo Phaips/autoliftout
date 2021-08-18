@@ -195,12 +195,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
         # # save
+        # TODO: TEST THIS
+        self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
             sample.lamella_coordinates = lamella_coordinates
             sample.landing_coordinates = landing_coordinates
             sample.save_data()
-        logging.info(f"Sample data saved to {self.save_path}")
+            self.samples.append(sample)
+        
+        logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -325,6 +329,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # recalibrate park position coordinates
         # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
+        # refactor using Sample class: self.samples = List(Sample)
+
+        # for sample in self.samples:
+
+        #     self.current_sample = sample
+        #     self.liftout_counter = self.current_sample.sample_no
+        #     (lamella_coord, landing_coord, 
+        #         lamella_area_reference_images, 
+        #         landing_reference_images) = self.current_sample.get_sample_data() 
+
+        #   TODO: this can probably just use self.current_sample rather than passing arguments?
+        #     self.single_liftout(landing_coord, lamella_coord,
+        #             landing_reference_images,
+        #             lamella_area_reference_images)
+
+
+        # TODO: remove below once the above is tested
 
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
             self.liftout_counter += 1
@@ -351,6 +372,30 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run") # TODO: make this path not hard coded
+        
+
+        ##########
+        # read the sample.yaml: get how many samples in there, loop through
+        # TODO: maybe change sample to start at no. 0 for consistency?
+        # TODO: assume all sample no are consecutive?
+        # TODO: it doesnt really matter what number a sample is, just store them in a list... 
+        # and have a browser for them? as long as they are consistently in the same place so we can retrieve the images too?
+        # sample = Sample(save_path, 1)
+        # yaml_file = sample.setup_yaml_file()
+
+        # num_of_samples = len(yaml_file["sample"])
+        # if num_of_samples == 0:
+        #     # error out if no sample.yaml found... 
+        #     logging.warning("NO SAMPLES STORED IN THIS FOLDER")
+        # else:
+        #     # load the samples 
+        #     self.samples = []
+        #     for sample_no in range(num_of_samples):
+        #         sample = Sample(save_path, sample_no+1) # TODO: watch out for this kind of thing with the numbering... improve
+        #         sample.load_data_from_file()
+        #         self.samples.append(sample)
+        #######
+        
         sample = Sample(save_path, 1)
         lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
 
