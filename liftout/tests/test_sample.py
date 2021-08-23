@@ -25,7 +25,7 @@ def test_create_new_sample(tmp_data_path):
     sample_no = 1
     sample = Sample(data_path=tmp_data_path, sample_no=sample_no)
 
-    assert sample.data_path == tmp_data_path + "/"
+    assert sample.data_path == os.path.join(tmp_data_path, "/") #TODO: make this os agnostic
     assert sample.sample_no == sample_no
 
 

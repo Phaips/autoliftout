@@ -29,18 +29,14 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
         Default application file, to return to after the platinum sputtering.
     """
 
-    # TODO: Check if auto_link used outside sputter_whole_grid with Sergey
-
     # TODO: add whole_grid sputter parameters to protocol
     if whole_grid:
         stage = microscope.specimen.stage
         move_to_sample_grid(microscope, settings)
-        auto_link_stage(microscope, expected_z=5e-3)
+        # auto_link_stage(microscope, expected_z=5e-3)
         sputter_time = 20
         horizontal_field_width = 30e-6
         line_pattern_length = 7e-6
-
-        # do we ever call the pixel_to_realspace function?
 
     # Setup
     original_active_view = microscope.imaging.get_active_view()

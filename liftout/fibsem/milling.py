@@ -56,14 +56,14 @@ def jcut_severing_pattern(microscope, settings):
 def run_milling(microscope, settings, *, imaging_current=20e-12):
     if settings["imaging"]["imaging_current"]:
         imaging_current = settings["imaging"]["imaging_current"]
-    print("Ok, running ion beam milling now...")
+    logging.info("milling: running ion beam milling now...")
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.beams.ion_beam.beam_current.value = settings['jcut']['jcut_milling_current']
     microscope.patterning.run()
-    print("Returning to the ion beam imaging current now.")
+    logging.info("milling: returning to the ion beam imaging current now.")
     microscope.patterning.clear_patterns()
     microscope.beams.ion_beam.beam_current.value = imaging_current
-    print("Ion beam milling complete.")
+    logging.info("milling: ion beam milling complete.")
 
 
 def mill_trenches(microscope, settings):
@@ -359,7 +359,6 @@ def cut_off_needle(microscope, cut_coord, milling_current=0.74e-9):
                                      center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
                                      width=cut_coord["width"], height=cut_coord["height"],
                                      depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["hfw"])
-    # confirm_and_run_milling(microscope, milling_current, confirm=confirm)
 
 
 def _create_mill_pattern(microscope, *,
