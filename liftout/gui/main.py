@@ -356,7 +356,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                            f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
 
         else:
-            print('SEM image not centered')
+            logging.warn('calibration: electron image not centered')
             return
 
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
@@ -372,7 +372,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
     def run_liftout(self):
-        print("hello")
+        logging.info("gui: run liftout started")
         # recalibrate park position coordinates
         # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
@@ -469,7 +469,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
         if not self.response:
-            print(f'Drift correction for sample {self.liftout_counter} did not work')
+            logging.warn(f'calibration: drift correction for sample {self.liftout_counter} did not work')
             return
 
         self.image_settings['save'] = True
@@ -626,12 +626,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def liftout_lamella(self):
         self.current_status = AutoLiftoutStatus.Liftout
-        logging.info(f"Status: {self.current_status}")
+        logging.info(f"{self.current_status.name}: liftout started.")
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
+        logging.info(f"{self.current_status.name}: move to liftout angle.")
 
-        #needle = self.microscope.specimen.manipulator
 
         # TODO: if starting from liftout need to use a wider hfw to see lamella because calibration is poor
         # correct stage drift from mill_lamella stage
@@ -639,7 +639,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # move needle to liftout start position
         park_position = movement.move_needle_to_liftout_position(self.microscope)
-
+        logging.info(f"{self.current_status.name}: needle inserted to park positon: {park_position}")
         # TODO: saved park position is too high (out of frame)
 
         # save liftout position
@@ -656,7 +656,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # sputter platinum
         # TODO: protocol sputter
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
-        logging.info(f"Lamella to needle welding complete")
+        logging.info(f"liftout: lamella to needle welding complete.")
 
         self.image_settings['save'] = True
         self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
@@ -670,22 +670,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         else:
-            logging.warning('Not happy with the pattern')
+            logging.warning('liftout: user not happy with jcut sever milling pattern')
             return
 
         self.image_settings['label'] = 'jcut_sever'
         acquire.take_reference_images(self.microscope, self.image_settings)
-        logging.info(f"JCut Severing Milling Complete")
+        logging.info(f"liftout: jcut sever milling complete.")
 
-        # Raise needle 30um
-        # TODO: status
-        logging.info(f"Removing needle from trench")
+        # Raise needle 30um from trench
+        logging.info(f"liftout: start removing needle from trench")
         for i in range(3):
-            # print("Moving out of trench by 10um")
             z_move_out_from_trench = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_trench)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
+            logging.info(f"liftout: removing needle from trench at {z_move_out_from_trench}")
             time.sleep(1)
 
         # reference images after liftout complete
@@ -695,10 +694,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
-        logging.info(f"Needle retracted. Liftout Complete")
+        logging.info(f"liftout: needle retracted. ")
+        logging.info(f"liftout: liftout complete.")
 
 
     def land_needle_on_milled_lamella(self):
+
+        logging.info(f"{self.current_status.name}: land needle on lamella started.")
+
         needle = self.microscope.specimen.manipulator
         # setup and take reference images of liftout starting position
         self.image_settings['resolution'] = self.settings["reference_images"]["needle_ref_img_resolution"]
@@ -726,6 +729,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         yz_move = movement.y_corrected_needle_movement(distance_y_m, stage_tilt=self.stage.current_position.t)
         needle.relative_move(x_move)
         needle.relative_move(yz_move)
+        logging.info(f"{self.current_status.name}: needle x-move: {x_move}")
+        logging.info(f"{self.current_status.name}: needle yz-move: {yz_move}")
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
@@ -740,6 +745,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # Calculate movement
         zy_move_half = movement.z_corrected_needle_movement(-z_distance / 2, self.stage.current_position.t)
         needle.relative_move(zy_move_half)
+        logging.info(f"{self.current_status.name}: needle z-half-move: {zy_move_half}")
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -757,13 +763,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # Calculate movement
             # move in x
             x_move = movement.x_corrected_needle_movement(-distance_x_m)
-            # print('x_move = ', x_move)
             self.needle.relative_move(x_move)
             # move in z
             gap = 0.5e-6
             zy_move_gap = movement.z_corrected_needle_movement(-z_distance - gap, self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
-            # print('Needle move in Z minus gap ... LANDED')
+
+            logging.info(f"{self.current_status.name}: needle x-move: {x_move}")
+            logging.info(f"{self.current_status.name}: needle zy-move: {zy_move_gap}")
+
 
             self.image_settings['save'] = True
             self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
@@ -773,7 +781,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_highres"]
             self.image_settings['label'] = 'needle_ref_img_highres'
             acquire.take_reference_images(self.microscope, self.image_settings)
-            logging.info(f"Land Needle on Lamella complete.")
+            logging.info(f"{self.current_status.name}: land needle on lamella complete.")
+        else:
+            logging.warn(f"{self.current_status.name}: needle not safe to move onto lamella.")
+            logging.warn(f"{self.current_status.name}: needle landing cancelled by user.")
+            return
 
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
         self.image_settings['beam_type'] = beamType
@@ -831,7 +843,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_lamella(self, landing_coord, original_landing_images):
 
-        logging.info("landing: stage started")
+        logging.info(f"{self.current_status.name}: land lamella stage started")
         self.current_status = AutoLiftoutStatus.Landing
 
         stage_settings = MoveSettings(rotate_compucentric=True)
@@ -841,9 +853,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.stage.absolute_move(landing_coord)
         # TODO: image settings?
         calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.liftout_counter, mode="land")
-        logging.info("landing: initial landing calibration complete.")
+        logging.info(f"{self.current_status.name}: initial landing calibration complete.")
         park_position = movement.move_needle_to_landing_position(self.microscope)
-        logging.info(f"landing: needle inserted to park_position: {park_position}")
+        logging.info(f"{self.current_status.name}: needle inserted to park_position: {park_position}")
 
         # # Y-MOVE
         self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
@@ -859,7 +871,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         y_move = movement.y_corrected_needle_movement(-distance_y_m, self.stage.current_position.t)
         self.needle.relative_move(y_move)
-        logging.info(f"landing: y-move complete: {y_move}")
+        logging.info(f"{self.current_status.name}: y-move complete: {y_move}")
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
@@ -873,7 +885,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
-        logging.info(f"landing: z-move complete: {z_move}")
+        logging.info(f"{self.current_status.name}: z-move complete: {z_move}")
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
@@ -888,7 +900,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # half move
         x_move = movement.x_corrected_needle_movement(distance_x_m / 2)
         self.needle.relative_move(x_move)
-        logging.info(f"landing: x-half-move complete: {x_move}")
+        logging.info(f"{self.current_status.name}: x-half-move complete: {x_move}")
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
@@ -902,7 +914,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: gap?
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
-        logging.info(f"landing: x-move complete: {x_move}")
+        logging.info(f"{self.current_status.name}: x-move complete: {x_move}")
 
         # final reference images
         self.image_settings["save"] = True
@@ -919,9 +931,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
+            logging.info(f"{self.current_status.name}: welding to post started.")
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
-        logging.info("landing: weld to post complete")
+        logging.info("{self.current_status.name}: weld to post complete")
 
         # final reference images
 
@@ -952,7 +965,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                      "depth": depth,  # TODO: might need more to get through needle
                      "rotation": rotation, "hfw": hfw}  # TODO: check rotation
 
-        logging.info("landing: calculating needle cut-off pattern")
+        logging.info("{self.current_status.name}: calculating needle cut-off pattern")
 
         # cut off needle tip
         milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
@@ -960,11 +973,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
+            logging.info(f"{self.current_status.name}: needle cut-off started")
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
-        logging.info(f"landing: needle cut-off: {self.response}")
-        logging.info(f"landing: needle cut off complete")
+        logging.info(f"{self.current_status.name}: needle cut-off complete")
 
         # reference images
         self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
@@ -976,19 +989,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["label"] = "landing_lamella_final_cut_highres"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        logging.info(f"landing: removing needle from landing post")
+        logging.info(f"{self.current_status.name}: removing needle from landing post")
         # move needle out of trench slowly at first
         for i in range(3):
             z_move_out_from_post = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_post)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
-            logging.info(f"landing: moving needle out: {z_move_out_from_post} ({i+1} / 3")
+            logging.info(f"{self.current_status.name}: moving needle out: {z_move_out_from_post} ({i+1} / 3")
             time.sleep(1)
 
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
-        logging.info(f"landing: needle retracted.")
+        logging.info(f"{self.current_status.name}: needle retracted.")
 
         # reference images
         self.image_settings["hfw"]  = 150e-6 #TODO: fix protocol
@@ -999,24 +1012,24 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["label"] = "landing_lamella_final_highres"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        logging.info(f"landing: landing stage complete")
+        logging.info(f"{self.current_status.name}: landing stage complete")
         # TODO: test this
 
 
     def reset_needle(self):
 
-        logging.info(f"reset: reset stage started")
         self.current_status = AutoLiftoutStatus.Reset
+        logging.info(f"{self.current_status.name}: reset stage started")
 
         # move sample stage out
         movement.move_sample_stage_out(self.microscope)
-        logging.info(f"reset: moved sample stage out")
+        logging.info(f"{self.current_status.name}: moved sample stage out")
 
         # move needle in
         park_position = movement.insert_needle(self.microscope)
         z_move_in = movement.z_corrected_needle_movement(-180e-6, self.stage.current_position.t)
         self.needle.relative_move(z_move_in)
-        logging.info(f"reset: insert needle for reset")
+        logging.info(f"{self.current_status.name}: insert needle for reset")
 
         # needle images
         self.image_settings["resolution"] = self.settings["imaging"]["resolution"]
@@ -1036,7 +1049,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
-        logging.info(f"reset: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
+        logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
 
         self.image_settings["label"] = "sharpen_needle_centre"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1059,7 +1072,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # create sharpening patterns
         cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=distance_x_m, y_0=distance_y_m)
-        logging.info(f"reset: calculate needle sharpen pattern")
+        logging.info(f"{self.current_status.name}: calculate needle sharpen pattern")
 
         milling.create_sharpen_needle_patterns(
             self.microscope, cut_coord_bottom, cut_coord_top
@@ -1070,9 +1083,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: return image with patterning marks
         self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
+            logging.info(f"{self.current_status.name}: needle sharpening milling started")
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
-        logging.info(f"reset: needle sharpening milling complete")
+        logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
 
         # take reference images
@@ -1083,13 +1097,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # retract needle
         movement.retract_needle(self.microscope, park_position)
-        logging.info(f"reset: needle retracted")
-        logging.info(f"reset: reset stage complete")
+        logging.info(f"{self.current_status.name}: needle retracted")
+        logging.info(f"{self.current_status.name}: reset stage complete")
 
     def cleanup_lamella(self, landing_coord):
 
-        logging.info(f"cleanup: cleanup stage started")
         self.current_status = AutoLiftoutStatus.Cleanup
+        logging.info(f"{self.current_status.name}: cleanup stage started")
 
         # #TODO: re-implement this
         # stage = microscope.specimen.stage
@@ -1097,7 +1111,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #
         # move to landing coord
         self.microscope.specimen.stage.absolute_move(landing_coord)
-
+        logging.info(f"{self.current_status.name}: move to landing coordinates: {landing_coord}")
 
         # tilt to 0 rotate 180 move to 21 deg
         # tilt to zero, to prevent hitting anything
@@ -1113,6 +1127,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # tilt to thinning angle
         self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(thinning_tilt_angle)), stage_settings)
+        logging.info(f"{self.current_status.name}: rotate to thinning angle: {thinning_rotation_angle}")
+        logging.info(f"{self.current_status.name}: tilt to thinning angle: {thinning_tilt_angle}")
+
 
         # lamella images # TODO: check and add to protocol
         self.image_settings["resolution"] = self.settings["imaging"]["resolution"]
@@ -1186,9 +1203,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #                                                                 save=True, save_label="A_lamella_post_thinning")
         #
         # # cleaning finished
-        logging.info(f"cleanup: thin lamella {self.current_sample.sample_no} complete.")
-
-        return NotImplemented
+        logging.info(f"{self.current_status.name}: thin lamella {self.current_sample.sample_no} complete.")
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
@@ -1360,7 +1375,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def image_from_popup(self, hfw, beam_type=None, click=None, crosshairs=False, filter_strength=0):
         self.image_settings['hfw'] = hfw
-        # print(self.image_settings['hfw']*1e6)
+
         image = acquire.new_image(self.microscope, self.image_settings)
         if beam_type == BeamType.ELECTRON:
             self.image_SEM = image
