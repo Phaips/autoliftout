@@ -66,6 +66,39 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
     logging.info("milling: ion beam milling complete.")
 
 
+
+# TODO: this and mill_trenches can probably be consolidated
+def mill_thin_lamella(microscope, settings):
+    """Mill the trenches for thinning the lamella.
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    confirm : bool, optional
+        Whether to ask the user to confirm before milling.
+    """
+    protocol_stages = []
+
+    for stage_settings in settings["thin_lamella"]["protocol_stages"]:
+        tmp_settings = settings["thin_lamella"].copy()
+        tmp_settings.update(stage_settings)
+
+        protocol_stages.append(tmp_settings)
+
+    # protocol_stages = protocol_stage_settings(settings)
+    for stage_number, stage_settings in enumerate(protocol_stages):
+        logging.info("milling: protocol stage {} of {}".format(
+            stage_number + 1, len(protocol_stages)))
+        mill_single_stage(
+            microscope,
+            settings,
+            stage_settings,
+            stage_number)
+    # Restore ion beam imaging current (20 pico-Amps)
+    microscope.beams.ion_beam.beam_current.value = 30e-12
+
+
+
 def mill_trenches(microscope, settings):
     """Mill the trenches for thinning the lamella.
     Parameters
@@ -77,7 +110,7 @@ def mill_trenches(microscope, settings):
     """
     protocol_stages = protocol_stage_settings(settings)
     for stage_number, stage_settings in enumerate(protocol_stages):
-        print("Protocol stage {} of {}".format(
+        logging.info("milling: protocol stage {} of {}".format(
             stage_number + 1, len(protocol_stages)))
         mill_single_stage(microscope, settings, stage_settings, stage_number)
     # Restore ion beam imaging current (20 pico-Amps)
@@ -142,7 +175,7 @@ def lamella_region_milling(microscope, settings, stage_settings, region, demo_mo
     elif region == 'upper':
         _upper_milling_coords(microscope, stage_settings)
     if not demo_mode:
-        print("Milling pattern...")
+        logging.info(f"milling: milling {region} lamella pattern...")
         microscope.imaging.set_active_view(2)  # the ion beam view
         try:
             microscope.patterning.run()
@@ -247,7 +280,7 @@ def jcut_milling_patterns(microscope, settings):
     angle_correction = np.sin(np.deg2rad(52 - jcut_angle_degrees))
     # Top bar of J-cut
     if bool(settings["jcut"]['mill_top_jcut_pattern']) is True:
-        print('Creating top J-cut pattern')
+        logging.info('milling: creating top J-cut pattern')
         jcut_top = microscope.patterning.create_rectangle(
             0.0,                                    # center_x
             jcut_lamella_depth * angle_correction,  # center_y
@@ -256,7 +289,7 @@ def jcut_milling_patterns(microscope, settings):
             jcut_milling_depth)                     # depth
     # Left hand side of J-cut (long side)
     if bool(settings["jcut"]['mill_lhs_jcut_pattern']) is True:
-        print('Creating LHS J-cut pattern')
+        logging.info('milling: creating LHS J-cut pattern')
         jcut_lhs = microscope.patterning.create_rectangle(
             -((jcut_length - jcut_trench_thickness) / 2),           # center_x
             ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction,  # center_y
@@ -265,7 +298,7 @@ def jcut_milling_patterns(microscope, settings):
             jcut_milling_depth)                                     # depth
     # Right hand side of J-cut (short side)
     if bool(settings["jcut"]['mill_rhs_jcut_pattern']) is True:
-        print('Creating RHS J-cut pattern')
+        logging.info('milling: creating RHS J-cut pattern')
         jcut_rightside_remaining = 1.5e-6  # in microns, how much to leave attached
         height = (jcut_lamella_depth - jcut_rightside_remaining) * angle_correction
         center_y = jcut_rightside_remaining + (height / 2)
