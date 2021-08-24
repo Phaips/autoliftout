@@ -101,3 +101,4 @@ class DetectionModel:
         return rgb_mask
 
 
+# TODO: convert to ABC
