@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+from liftout.tests.mock_autoscript_sdb_microscope_client import ManipulatorPosition
 from liftout.fibsem import movement
 from liftout.fibsem import acquire
 from liftout.fibsem import utils
@@ -18,113 +19,32 @@ import streamlit as st
 
 st.set_page_config("Microscope Verification", layout="wide", page_icon=":microscope:")
 
-#
-# class FakeStagePosition:
-#     """Mock StagePosition because dont have access to autoscript"""
-#
-#     def __init__(self, x=0, y=0, z=0, r=0, t=0) -> None:
-#         self.x = x
-#         self.y = y
-#         self.z = z
-#         self.r = r
-#         self.t = t
-#
-#     def __repr__(self) -> str:
-#         return str(f"x={self.x}, y={self.y}, z={self.z}, r={self.r}, t={self.t}")
-#
-#
-# class FakeManipulatorPosition:
-#     """Mock StagePosition because dont have access to autoscript"""
-#
-#     def __init__(self, x=0, y=0, z=0, r=0, t=0) -> None:
-#         self.x = x
-#         self.y = y
-#         self.z = z
-#         self.r = r
-#
-#     def __repr__(self) -> str:
-#         return str(f"x={self.x}, y={self.y}, z={self.z}, r={self.r}")
-
-
 logging.basicConfig(level=logging.INFO)
 
 
 def initial_test_setup():
     # setup
+    st.write("Running Setup")
 
     # init microscope
     microscope = utils.initialise_fibsem()
-    # microscope = None
 
     # read protocol settings
     settings = utils.load_config("../protocol_liftout.yml")
-    # settings = dict()
 
     # move to start position
     movement.move_to_sample_grid(microscope=microscope, settings = settings)
-    st.write("Running Setup")
     st.success("Microscope Setup Complete")
 
     return microscope, settings
 
 
-# TODO: setup the target coordinats to compare too
+# TODO: setup the target coordinates to compare too
 
-
-def rotation_test(microscope, test_name="Rotation"):
-    # repeat movements
-
-    df = pd.DataFrame(columns=["timestamp", "x", "y", "z", "r", "t", "type", "img"])
-
-    NUM_REPEATS = 10
-    TAKE_IMAGES = False
-    types = ["FLAT_TO_ELECTRON", "FLAT_TO_ION"]
-
-    # get the initial coordinates: the stage shouldnt move only rotate and tilt...
-
-    st.write(f"Running {test_name} test for {NUM_REPEATS} cycles.")
-    progress_bar = st.progress(0)
-
-    for i in range(NUM_REPEATS):
-
-        progress_bar.progress((i + 1) / NUM_REPEATS)
-
-            movement.flat_to_beam(microscope=microscope, settings=settings, beam_type=BeamType.ELECTRON)
-            stage_position = microscope.stage.current_position
-        #
-        # stage_position = FakeStagePosition(
-        #     x=np.random.random(),
-        #     y=np.random.random(),
-        #     z=np.random.random(),
-        #     r=np.random.random(),
-        #     t=np.random.random(),
-        # )
-
-        df = record_stage_position(df, stage_position, type=types[0], idx=i)
-
-        movement.flat_to_beam(microscope=microscope, settings=settings, beam_type=BeamType.ION)
-        stage_position = microscope.stage.current_position
-
-        # stage_position = FakeStagePosition(
-        #     x=np.random.random(),
-        #     y=np.random.random(),
-        #     z=np.random.random(),
-        #     r=np.random.random(),
-        #     t=np.random.random(),
-        # )
-
-        df = record_stage_position(df, stage_position, type=types[1], idx=i)
-
-        time.sleep(1)
-        # TODO: take and save images?
-
-    # save csv
-    df.to_csv("rotation._data.csv")
-    return df
-
-
-def record_stage_position(df, stage_position, type, idx):
+def record_stage_position(microscope, df, type, idx):
     """Format as dict, and append to dataframe"""
+    stage_position = microscope.specimen.stage.current_position
+
     position_dict = {
         "timestamp": datetime.now().strftime("%Y%m%d.%H%M%S"),
         "x": stage_position.x,
@@ -140,8 +60,11 @@ def record_stage_position(df, stage_position, type, idx):
     return df
 
 
-def record_needle_position(df, needle_position, type, idx):
+def record_needle_position(microscope, df, type, idx):
     """Format as dict, and append to dataframe"""
+    needle_position = microscope.specimen.manipulator.position
+
+
     position_dict = {
         "timestamp": datetime.now().strftime("%Y%m%d.%H%M%S"),
         "x": needle_position.x,
@@ -155,20 +78,40 @@ def record_needle_position(df, needle_position, type, idx):
     df = df.append(pd.DataFrame.from_records([position_dict]))
     return df
 
+def rotation_test(microscope, settings, test_name="Rotation"):
+    # repeat movements
 
-# take reference images
-# from liftout.fibsem.acquire import BeamType
+    df = pd.DataFrame(columns=["timestamp", "x", "y", "z", "r", "t", "type", "img"])
 
-# image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
-#                         'hfw': 150-6, 'brightness': None,
-#                         'contrast': None, 'autocontrast': True,
-#                         'save': True, 'label': f"rotation_test",
-#                         'beam_type': BeamType.ELECTRON,
-#                         'save_path': "."}
-# acquire.take_reference_images(microscope=microscope, settings=image_settings)
+    NUM_REPEATS = 10
+    types = ["FLAT_TO_ELECTRON", "FLAT_TO_ION"]
 
+    # get the initial coordinates: the stage shouldnt move only rotate and tilt...
 
-def movement_test(test_name="movement", NUM_REPEATS=10, TAKE_IMAGES=False):
+    st.write(f"Running {test_name} test for {NUM_REPEATS} cycles.")
+    progress_bar = st.progress(0)
+
+    for i in range(NUM_REPEATS):
+
+        progress_bar.progress((i + 1) / NUM_REPEATS)
+
+        movement.flat_to_beam(microscope=microscope, settings=settings, beam_type=acquire.BeamType.ELECTRON)
+        stage_position = microscope.stage.current_position
+
+        df = record_stage_position(microscope, df, type=types[0], idx=i)
+
+        movement.flat_to_beam(microscope=microscope, settings=settings, beam_type=acquire.BeamType.ION)
+        stage_position = microscope.stage.current_position
+
+        df = record_stage_position(microscope, df, type=types[1], idx=i)
+
+        time.sleep(1)
+
+    # save csv
+    df.to_csv("rotation._data.csv")
+    return df
+
+def movement_test(microscope, settings, test_name="movement", NUM_REPEATS=10):
 
     df = pd.DataFrame(columns=["x", "y", "z", "r", "t", "type", "img"])
 
@@ -184,44 +127,23 @@ def movement_test(test_name="movement", NUM_REPEATS=10, TAKE_IMAGES=False):
         progress_bar.progress((i + 1) / NUM_REPEATS)
 
         # move sample stage out
-        # movement.move_sample_stage_out()
-        # stage_position = microscope.stage.current_position
+        movement.move_sample_stage_out()
+        stage_position = microscope.stage.current_position
 
-        stage_position = FakeStagePosition(
-            x=np.random.random(),
-            y=np.random.random(),
-            z=np.random.random(),
-            r=np.random.random(),
-            t=np.random.random(),
-        )
-
-        df = record_stage_position(df, stage_position, type=types[0], idx=i)
+        df = record_stage_position(microscope, df, type=types[0], idx=i)
 
         # move to sample grid
-        # movement.move_to_sample_grid(microscope=microscpe, settings = settings)
-        # stage_position = microscope.stage.current_position
-        stage_position = FakeStagePosition(
-            x=np.random.random(),
-            y=np.random.random(),
-            z=np.random.random(),
-            r=np.random.random(),
-            t=np.random.random(),
-        )
+        movement.move_to_sample_grid(microscope=microscope, settings = settings)
+        stage_position = microscope.stage.current_position
 
-        df = record_stage_position(df, stage_position, type=types[1], idx=i)
+
+        df = record_stage_position(microscope, df, type=types[1], idx=i)
 
         # move to landing grid
-        # movement.move_to_landing_grid(microscope=microscope, settings=settings)
-        # stage_position = microscope.stage.current_position
-        stage_position = FakeStagePosition(
-            x=np.random.random(),
-            y=np.random.random(),
-            z=np.random.random(),
-            r=np.random.random(),
-            t=np.random.random(),
-        )
+        movement.move_to_landing_grid(microscope=microscope, settings=settings)
+        stage_position = microscope.stage.current_position
 
-        df = record_stage_position(df, stage_position, type=types[2], idx=i)
+        df = record_stage_position(microscope, df, type=types[2], idx=i)
 
         time.sleep(1)
 
@@ -231,8 +153,8 @@ def movement_test(test_name="movement", NUM_REPEATS=10, TAKE_IMAGES=False):
     return df
 
 
-def needle_movement_test(microscope,
-    test_name="Needle Movement", NUM_REPEATS=10, TAKE_IMAGES=False
+def needle_movement_test(microscope, settings,
+    test_name="Needle Movement", NUM_REPEATS=10
 ):
 
     df = pd.DataFrame(columns=["x", "y", "z", "r", "t", "type", "img"])
@@ -242,7 +164,7 @@ def needle_movement_test(microscope,
     # get the initial coordinates: the stage shouldnt move only rotate and tilt...
 
     st.write("Moving stage out for needle testing")
-    # movement.move_sample_stage_out(microscope=microscope, settings=settings) # setup
+    movement.move_sample_stage_out(microscope=microscope, settings=settings) # setup
 
     st.write(f"Running {test_name} test for {NUM_REPEATS} cycles.")
     progress_bar = st.progress(0)
@@ -252,49 +174,29 @@ def needle_movement_test(microscope,
         progress_bar.progress((i + 1) / NUM_REPEATS)
 
         # move needle in
-        # park_position = movement.insert_needle(microscope)
+        park_position = movement.insert_needle(microscope)
+        needle_position = microscope.specimen.manipulator.current_position
 
-        needle_position = FakeManipulatorPosition(
-            x=np.random.random(),
-            y=np.random.random(),
-            z=np.random.random(),
-            r=np.random.random(),
-        )
+        df = record_needle_position(microscope, df, type=types[0], idx=i)
 
-        df = record_needle_position(df, needle_position, type=types[0], idx=i)
+        # move needle to safe location
+        safe_position = ManipulatorPosition()
+        microscope.specimen.manipulator.absolute_move(safe_position) # TODO: get safe absolute coordinates
+        needle_position = microscope.specimen.manipulator.position
 
-        # move needle to save location
-        # microscope.specimen.manipulator.absolute_move(safe_position) # TODO: get safe absolute coordinates
-        # needle_position = FakeManipulatorPosition(
-        #     x=np.random.random(),
-        #     y=np.random.random(),
-        #     z=np.random.random(),
-        #     r=np.random.random(),
-        # )
-
-        df = record_needle_position(df, needle_position, type=types[1], idx=i)
+        df = record_needle_position(microscope, df, type=types[1], idx=i)
 
         # move back to park position
         microscope.specimen.manipulator.absolute_move(park_position)
         needle_position = microscope.specimen.manipulator.position
-        # needle_position = FakeManipulatorPosition(
-        #     x=np.random.random(),
-        #     y=np.random.random(),
-        #     z=np.random.random(),
-        #     r=np.random.random(),
-        # )
 
-        df = record_needle_position(df, needle_position, type=types[2], idx=i)
-        # # retract needle
+        df = record_needle_position(microscope, df, type=types[2], idx=i)
+        
+        # retract needle
         microscope.specimen.manipulator.retract()
-        # needle_position = FakeManipulatorPosition(
-        #     x=np.random.random(),
-        #     y=np.random.random(),
-        #     z=np.random.random(),
-        #     r=np.random.random(),
-        # )
+        needle_position = microscope.specimen.manipulator.current_position
 
-        df = record_needle_position(df, needle_position, type=types[3], idx=i)
+        df = record_needle_position(microscope, df, type=types[3], idx=i)
 
         time.sleep(1)
 
@@ -303,7 +205,7 @@ def needle_movement_test(microscope,
     return df
 
 
-def autocontrast_test(microscope, TEST_NAME="AutoContrast"):
+def autocontrast_test(microscope, settings, TEST_NAME="AutoContrast"):
 
     autocontrast_imgs = []
     raw_imgs = []
@@ -318,7 +220,6 @@ def autocontrast_test(microscope, TEST_NAME="AutoContrast"):
 
 
     st.write(f"Running {TEST_NAME} test on {len(hfws)} horizontal field widths. {hfws}")
-
 
     # take reference images with autocontrast
     st.write("Taking AutoContrast Images")
@@ -340,14 +241,13 @@ def autocontrast_test(microscope, TEST_NAME="AutoContrast"):
 
     for i, hfw in enumerate(hfws, 1):
         raw_progress_bar.progress(i / len(hfws))
-        # image_settings["autocontrast"] = False
-        # image_settings["brightness"] = settings["machine_learning"]["brightness"]
-        # image_settings["contrast"] = settings["machine_learning"]["contrast"]
+        image_settings["autocontrast"] = False
+        image_settings["brightness"] = settings["machine_learning"]["brightness"]
+        image_settings["contrast"] = settings["machine_learning"]["contrast"]
         image_settings["hfw"] = hfw
 
-        # eb_image, ib_image= acquire.take_reference_images(microscope=microscope, settings=image_settings)
-        eb_image, ib_image = np.array(np.random.randint(0, 255, size=(1024, 1536, 3))), np.array(np.random.randint(0, 255, size=(1024, 1536, 3)))
-
+        eb_image, ib_image= acquire.take_reference_images(microscope=microscope, settings=image_settings)
+        # eb_image, ib_image = np.array(np.random.randint(0, 255, size=(1024, 1536, 3))), np.array(np.random.randint(0, 255, size=(1024, 1536, 3)))
         
         raw_imgs.append((eb_image, ib_image))
         time.sleep(0.5)
@@ -372,22 +272,22 @@ def main():
 
     if buttons_cols[0].button("Run Rotation Test"):
 
-        df = rotation_test(microscope)
+        df = rotation_test(microscope, settings)
         st.success("Rotation Test Finished")
 
     if buttons_cols[1].button("Run Movement Test"):
 
-        df = movement_test(microscope)
+        df = movement_test(microscope, settings)
         st.success("Movement Test Finished")
 
     if buttons_cols[2].button("Run Needle Movement Test"):
 
-        df = needle_movement_test(microscope)
+        df = needle_movement_test(microscope, settings)
         st.success("Needle Movement Test Finished")
 
     if buttons_cols[3].button("Run AutoContrast Test"):
 
-        auto_imgs, raw_imgs, hfws = autocontrast_test(microscope)
+        auto_imgs, raw_imgs, hfws = autocontrast_test(microscope, settings)
         st.success("AutoContrast Test Finished")
 
     # display results and charts
@@ -426,7 +326,8 @@ def main():
             img_cols[1].image(eb_image, caption=f"Fixed Electron Beam Image at {hfws[i]:e} hfw")
             img_cols[1].image(ib_image, caption=f"Fixed Ion Beam Image at {hfws[i]:e} hfw")
 
-            
+
+# TODO: filter results            
 
 if __name__ == "__main__":
     main()
