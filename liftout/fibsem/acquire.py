@@ -59,7 +59,7 @@ def new_image(microscope, settings):
         utils.save_image(image=image, save_path=settings['save_path'],
                          label=settings['label'])
 
-    settings = tmp_settings # reset the settings to original
+    settings = tmp_settings # reset the settings to original # TODO: this doesnt work, need to reset
     return image
 
 
@@ -84,7 +84,7 @@ def last_image(microscope, beam_type=BeamType.ELECTRON):
     return image
 
 
-def acquire_image(microscope, settings=None, brightness=None, contrast=None, beam_type=BeamType.ELECTRON, save_path='', id=''):
+def acquire_image(microscope, settings=None, brightness=None, contrast=None, beam_type=BeamType.ELECTRON):
     """Take new electron or ion beam image.
     Returns
     -------

@@ -57,7 +57,7 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     # Run sputtering
     microscope.beams.electron_beam.blank()
     if microscope.patterning.state == "Idle":
-        print('Sputtering with platinum for {} seconds...'.format(sputter_time))
+        logging.info('Sputtering with platinum for {} seconds...'.format(sputter_time))
         microscope.patterning.start()  # asynchronous patterning
         time.sleep(sputter_time)
     else:

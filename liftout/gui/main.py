@@ -149,6 +149,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.settings = utils.load_config(config_filename)
         self.pretilt_degrees = 27  # TODO: add pretilt_degrees to protocol
 
+        # TODO: need to consolidate this so there arent multiple different paths, its too confusing
+        # currently needed to stop it crashing running immediately after init
+        self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
+
+
+
 
         # TODO: implement check for this and manual setting
         # I think we should only need to set it once, and it should stay, because we dont ever set the contrast / brightness again..
@@ -317,7 +323,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                   f'{len(coordinates)} positions selected so far.', crosshairs=False)
             select_another_position = self.response
 
-        logging.info(f"Finished selecting {len(coordinates)} {feature_type} points.")
+        logging.info(f"{self.current_status.name}: finished selecting {len(coordinates)} {feature_type} points.")
 
         return coordinates, images
 
@@ -357,7 +363,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                            f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
 
         else:
-            logging.warn('calibration: electron image not centered')
+            logging.warning('calibration: electron image not centered')
             return
 
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
@@ -399,7 +405,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
             self.liftout_counter += 1
 
-
+            # TODO: I think this is what is crashing when immediately initalising...
+            # Should be fixed, by initialising self.sample_save_path
             self.current_sample = Sample(self.sample_save_path, i+1)
             self.current_sample.load_data_from_file()
 
@@ -425,8 +432,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run") # TODO: make this path not hard coded
-        
-
+        if not save_path:
+            logging.warning("Load Coordinates: No Folder selected.")
+            display_error_message("Load Coordinates: No Folder selected.")
+            return
         ##########
         # read the sample.yaml: get how many samples in there, loop through
         # TODO: maybe change sample to start at no. 0 for consistency?
@@ -459,7 +468,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: move to single_liftout
         # TODO: check if there is a park position first
-        # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
+        movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
 
         logging.info(f"Load Coordinates complete from {save_path}")
@@ -474,7 +483,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
         if not self.response:
-            logging.warn(f'calibration: drift correction for sample {self.liftout_counter} did not work')
+            logging.warning(f'calibration: drift correction for sample {self.liftout_counter} did not work')
             return
 
         self.image_settings['save'] = True
@@ -788,8 +797,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name}: land needle on lamella complete.")
         else:
-            logging.warn(f"{self.current_status.name}: needle not safe to move onto lamella.")
-            logging.warn(f"{self.current_status.name}: needle landing cancelled by user.")
+            logging.warning(f"{self.current_status.name}: needle not safe to move onto lamella.")
+            logging.warning(f"{self.current_status.name}: needle landing cancelled by user.")
             return
 
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
@@ -939,7 +948,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
-        logging.info("{self.current_status.name}: weld to post complete")
+        logging.info(f"{self.current_status.name}: weld to post complete")
 
         # final reference images
 
@@ -970,7 +979,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                      "depth": depth,  # TODO: might need more to get through needle
                      "rotation": rotation, "hfw": hfw}  # TODO: check rotation
 
-        logging.info("{self.current_status.name}: calculating needle cut-off pattern")
+        logging.info(f"{self.current_status.name}: calculating needle cut-off pattern")
 
         # cut off needle tip
         milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
@@ -1828,5 +1837,11 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
     sys.exit(app.exec_())
 
 
-main(offline='False')
+# main(offline='False')
 # main(offline='True')
+
+
+# TODO: use this instead of above,
+if __name__ == "__main__":
+    offline_mode = "False" # TODO: change offline to bool not str
+    main(offline=offline_mode)

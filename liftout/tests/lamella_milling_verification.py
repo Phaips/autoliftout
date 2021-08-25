@@ -168,6 +168,16 @@ LAMELLA_WIDTH_PX, LAMELLA_HEIGHT_PX, CUT_BOTTOM_PX, CUT_TOP_PX = calc_milling_dr
 draw_milling_stage(draw, img_centre_x, img_centre_y, CUT_TOP_PX, CUT_BOTTOM_PX, "blue")
 
 
+# draw crosshairs
+def draw_crosshairs(draw, mask, idx, color="white"):
+    """ helper function for drawing crosshairs on an image"""
+    draw.line([0, idx[0], mask.size[0], idx[0]], color, width=5)
+    draw.line([idx[1], 0, idx[1], mask.size[1]], color, width=5)
+
+
+draw_crosshairs(draw, mask, idx=(img_centre_y, img_centre_x), color="white")
+
+
 # SHOW IMAGE
 # blend image
 alpha = 0.3
@@ -175,3 +185,14 @@ alpha_img = PIL.Image.blend(rgbimg, mask, alpha)
 
 # make interactive
 st.image(alpha_img, caption="test image", use_column_width=True)
+
+
+# TODO:
+#   - J-Cut version
+#   - J-Cut sever version
+#   - cut-off needle version
+#   - sharpen needle version
+#   - generalise this to show in gui
+#   - dont duplicate the code here..
+#   - do the conversion from metres to pixels properly
+#   - create test images for each stage...
