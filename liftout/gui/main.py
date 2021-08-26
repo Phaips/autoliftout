@@ -153,7 +153,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # currently needed to stop it crashing running immediately after init
         self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
 
-
+        # popup initialisations
+        self.popup_window = None
+        self.new_image = None
+        self.hfw_slider = None
+        self.popup_settings = {'image': None,
+                               'second_image': None,
+                               'beam_type': None,
+                               'message': 'startup',
+                               'hfw': False,
+                               'new_image': False,
+                               'contrast': False,
+                               'multiple_images': False,
+                               'click': None,
+                               'filter_strength': 0,
+                               'crosshairs': True,
+                               'click_crosshair': None}
 
 
         # TODO: implement check for this and manual setting
@@ -1269,77 +1284,54 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.connect_microscope.clicked.connect(lambda: self.connect_to_microscope(ip_address=self.ip_address))
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image,  message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
 
-    def ask_user(self, image=None, beam_type=None, message="test message", click=None, crosshairs=True, filter_strength=0):
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image,  message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
 
-        if beam_type == BeamType.ELECTRON:
-            image = self.image_SEM
-        elif beam_type == BeamType.ION:
-            image = self.image_FIB
+        self.pushButton_test_popup.clicked.connect(lambda: self.popup_settings.update({'click': 'single'}))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image))
 
-        self.crosshairs = crosshairs
+    def ask_user2(self, image=None, second_image=None):
+        if image is not None:
+            self.popup_settings['image'] = image
+        if image is self.image_FIB:
+            self.image_settings['beam_type'] = BeamType.ION
+        elif image is self.image_SEM:
+            self.image_settings['beam_type'] = BeamType.ELECTRON
+        else:
+            beam_type = None
+
+        # turn off main window while popup window in use
         self.setEnabled(False)
-        self.popup = QtWidgets.QDialog()
-        self.popup.setLayout(QtWidgets.QGridLayout())
-        self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+        # settings of the popup window
+        self.popup_window = QtWidgets.QDialog()
+        self.popup_window.setLayout(QtWidgets.QGridLayout())
+        self.popup_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.popup_window.destroyed.connect(lambda: self.setEnabled(True))
+        self.popup_window.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
         self.popup_canvas = None
 
-        # Question space
-        question_frame = QtWidgets.QWidget(self.popup)
-        question = QtWidgets.QLabel()
-        question_layout = QtWidgets.QHBoxLayout()
-        question_frame.setLayout(question_layout)
+        if self.popup_settings['message']:
+            # set up message
+            message_frame = QtWidgets.QWidget(self.popup_window)
+            message_layout = QtWidgets.QHBoxLayout()
+            message_frame.setLayout(message_layout)
+            font = QtGui.QFont()
+            font.setPointSize(16)
 
-        question.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        question.setFixedHeight(50)
-        question.setText(message)
-        font = QtGui.QFont()
-        font.setPointSize(16)
-        question.setFont(font)
-        question.setAlignment(QtCore.Qt.AlignCenter)
-        question_frame.layout().addWidget(question)
+            message = QtWidgets.QLabel()
+            message.setText(self.popup_settings['message'])
+            message.setFont(font)
+            message.setFixedHeight(50)
+            message.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            message.setAlignment(QtCore.Qt.AlignCenter)
+            message_frame.layout().addWidget(message)
+        else:
+            logging.warning('Popup called without a message')
+            return
 
-        if image is not None:
-
-            # new image button
-            self.new_image = QtWidgets.QPushButton()
-            self.new_image.setFixedHeight(self.button_height)
-            self.new_image.setFixedWidth(self.button_width)
-            self.new_image.setText('New Image')
-            question_frame.layout().addWidget(self.new_image)
-
-            # HFW changing
-            hfw_widget = QtWidgets.QWidget()
-            hfw_widget_layout = QtWidgets.QGridLayout()
-            hfw_widget.setLayout(hfw_widget_layout)
-
-            self.hfw_slider = QtWidgets.QSlider()
-            self.hfw_slider.setOrientation(QtCore.Qt.Horizontal)
-            self.hfw_slider.setMinimum(1)
-            if beam_type == BeamType.ELECTRON:
-                self.hfw_slider.setMaximum(2700)
-            else:
-                self.hfw_slider.setMaximum(900)
-            self.hfw_slider.setValue(self.image_settings['hfw']*1e6)
-
-            hfw_spinbox = QtWidgets.QSpinBox()
-            hfw_spinbox.setMinimum(1)
-            if beam_type == BeamType.ELECTRON:
-                hfw_spinbox.setMaximum(2700)
-            else:
-                hfw_spinbox.setMaximum(900)
-            hfw_spinbox.setValue(self.image_settings['hfw']*1e6)
-
-            self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
-            self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
-
-            hfw_spinbox.valueChanged.connect(lambda: self.hfw_slider.setValue(hfw_spinbox.value()))
-
-            hfw_widget.layout().addWidget(hfw_spinbox)
-            hfw_widget.layout().addWidget(self.hfw_slider)
-
-        # Button space
+        # yes/no buttons
         button_box = QtWidgets.QWidget(self.popup)
         button_box.setFixedHeight(int(self.button_height*1.2))
         button_layout = QtWidgets.QGridLayout()
@@ -1368,31 +1360,331 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_box.layout().addWidget(no, 0, 2, 2, 1)
         button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
 
-        # image space (need to check for not None as sometimes it is np.ndarray)
+        # set up the rest of the window and update display
         if image is not None:
-            self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength)
+            self.popup_settings['image'] = image
 
 
-        self.popup.destroyed.connect(lambda: self.setEnabled(True))
-        self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
-        if image is not None:
-            self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
-        self.popup.layout().addWidget(button_box, 8, 1, 1, 1)
-        self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+                # extra check in case new_image set on ML images
+            if self.popup_settings['new_image'] and beam_type:
+                self.new_image = QtWidgets.QPushButton()
+                self.new_image.setFixedHeight(self.button_height)
+                self.new_image.setFixedWidth(self.button_width)
+                self.new_image.setText('New Image')
+                message_frame.layout().addWidget(self.new_image)
 
+            if self.popup_settings['hfw'] and beam_type:
+                # extra check in case hfw set on ML images
+                hfw_widget = QtWidgets.QWidget()
+                hfw_widget_layout = QtWidgets.QGridLayout()
+                hfw_widget.setLayout(hfw_widget_layout)
+
+                # slider (set as a property so it can be accessed to set hfw)
+                self.hfw_slider = QtWidgets.QSlider()
+                self.hfw_slider.setOrientation(QtCore.Qt.Horizontal)
+                self.hfw_slider.setMinimum(1)
+                if beam_type == BeamType.ELECTRON:
+                    self.hfw_slider.setMaximum(2700)
+                else:
+                    self.hfw_slider.setMaximum(900)
+                self.hfw_slider.setValue(self.image_settings['hfw']*1e6)
+
+                # spinbox (not a property as only slider value needed)
+                hfw_spinbox = QtWidgets.QSpinBox()
+                hfw_spinbox.setMinimum(1)
+                if beam_type == BeamType.ELECTRON:
+                    hfw_spinbox.setMaximum(2700)
+                else:
+                    hfw_spinbox.setMaximum(900)
+                hfw_spinbox.setValue(self.image_settings['hfw'] * 1e6)
+
+            self.update_popup_display2()
+
+            self.popup_window.layout().addWidget(hfw_widget, 7, 1, 1, 1)
+
+        self.popup_window.layout().addWidget(message_frame, 6, 1, 1, 1)
+        self.popup_window.layout().addWidget(button_box, 8, 1, 1, 1)
+
+        # show window
         self.popup.show()
         self.popup.exec_()
 
-    def image_from_popup(self, hfw, beam_type=None, click=None, crosshairs=False, filter_strength=0):
-        self.image_settings['hfw'] = hfw
+    def update_popup_display2(self):
 
-        image = acquire.new_image(self.microscope, self.image_settings)
-        if beam_type == BeamType.ELECTRON:
-            self.image_SEM = image
-        elif beam_type == BeamType.ION:
-            self.image_FIB = image
+        figure = plt.figure(1)
 
-        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
+        # reset the canvas and toolbar if they exist
+        if self.popup_canvas:
+            self.popup.layout().removeWidget(self.popup_canvas)
+            self.popup.layout().removeWidget(self.popup_toolbar)
+            self.popup_canvas.deleteLater()
+            self.popup_toolbar.deleteLater()
+        self.popup_canvas = _FigureCanvas(figure)
+
+        if self.popup_settings['new_image'] and self.popup_settings['beam_type']:
+            # reset function connection
+            self.new_image.clicked.connect(lambda: print(''))
+            self.new_image.clicked.disconnect()
+
+            # connect button to functions
+            self.new_image.clicked.connect(lambda: self.image_settings.update(
+                {'hfw': self.hfw_slider.value()*1e6}))
+            self.new_image.clicked.connect(lambda: self.popup_settings.update(
+                {'image': acquire.new_image(self.microscope, self.image_settings)}))
+            self.new_image.clicked.connect(lambda: self.update_popup_display2())
+
+        if self.popup_settings['click']:
+            self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click2(event))
+
+        if self.popup_settings['image']:
+            if type(self.popup_settings['image']) == np.ndarray:
+                image_array = self.popup_settings['image'].astype(np.uint8)
+            else:
+                image_array = self.popup_settings['image'].data.astype(np.uint8)
+
+            if self.popup_settings['filter_strength']:
+                image_array = ndi.median_filter(image_array,
+                                                size=self.popup_settings['filter_strength'])
+
+            if image_array.ndim != 3:
+                image_array = np.stack((image_array,) * 3, axis=-1)
+
+            # Cross hairs
+            xshape = image_array.shape[1]
+            yshape = image_array.shape[0]
+            midx = int(xshape / 2)
+            midy = int(yshape / 2)
+
+            cross_size = 120
+            half_cross = cross_size / 2
+            cross_thickness = 2
+            half_thickness = cross_thickness / 2
+
+            self.h_rect = plt.Rectangle((midx, midy - half_thickness),
+                                        half_cross, cross_thickness)
+
+            self.h_rect2 = plt.Rectangle(
+                (midx - half_cross, midy - half_thickness),
+                half_cross, cross_thickness)
+
+            self.v_rect = plt.Rectangle((midx - half_thickness, midy),
+                                        cross_thickness, half_cross)
+            self.v_rect2 = plt.Rectangle(
+                (midx - half_thickness, midy - half_cross),
+                cross_thickness, half_cross)
+
+            self.h_rect.set_color('xkcd:yellow')
+            self.h_rect2.set_color('xkcd:yellow')
+            self.v_rect.set_color('xkcd:yellow')
+            self.v_rect2.set_color('xkcd:yellow')
+
+            figure.clear()
+            self.ax = figure.add_subplot(111)
+            self.ax.imshow(image_array)
+
+            self.ax.patches = []
+            if self.crosshairs:
+                self.ax.add_patch(self.h_rect)
+                self.ax.add_patch(self.v_rect)
+                self.ax.add_patch(self.h_rect2)
+                self.ax.add_patch(self.v_rect2)
+            if self.popup_settings['click_crosshair']:
+                for patch in self.popup_settings['click_crosshair']:
+                    self.ax.add_patch(patch)
+            self.popup_canvas.draw()
+
+            self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
+            self.popup.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
+            self.popup.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
+
+    def on_gui_click2(self, event):
+        click = self.popup_settings['click']
+        image = self.popup_settings['image']
+        beam_type = self.image_settings['beam_type']
+
+        if event.inaxes:
+            if event.button == 1:
+                if event.dblclick and (click in ('double', 'all')):
+                    if image:
+                        self.xclick = event.xdata
+                        self.yclick = event.ydata
+                        x, y = movement.pixel_to_realspace_coordinate(
+                            [self.xclick, self.yclick], image)
+
+                        x_move = movement.x_corrected_stage_movement(x,
+                                                                     stage_tilt=self.stage.current_position.t)
+                        yz_move = movement.y_corrected_stage_movement(
+                            y,
+                            stage_tilt=self.stage.current_position.t,
+                            beam_type=beam_type)
+                        self.stage.relative_move(x_move)
+                        self.stage.relative_move(yz_move)
+                        # TODO: refactor beam type here
+                        self.popup_settings['image'] = acquire.new_image(
+                            microscope=self.microscope,
+                            settings=self.image_settings)
+                        if beam_type:
+                            self.update_display(beam_type=beam_type,
+                                                image_type='last')
+                        self.update_popup_display2()
+
+                elif click in ('single', 'all'):
+                    self.xclick = event.xdata
+                    self.yclick = event.ydata
+
+                    cross_size = 120
+                    half_cross = cross_size / 2
+                    cross_thickness = 2
+                    half_thickness = cross_thickness / 2
+
+                    h_rect = plt.Rectangle(
+                        (event.xdata, event.ydata - half_thickness),
+                        half_cross, cross_thickness)
+                    h_rect2 = plt.Rectangle((event.xdata - half_cross,
+                                             event.ydata - half_thickness),
+                                            half_cross,
+                                            cross_thickness)
+
+                    v_rect = plt.Rectangle(
+                        (event.xdata - half_thickness, event.ydata),
+                        cross_thickness, half_cross)
+                    v_rect2 = plt.Rectangle((
+                                            event.xdata - half_thickness,
+                                            event.ydata - half_cross),
+                                            cross_thickness,
+                                            half_cross)
+
+                    h_rect.set_color('xkcd:yellow')
+                    h_rect2.set_color('xkcd:yellow')
+                    v_rect.set_color('xkcd:yellow')
+                    v_rect2.set_color('xkcd:yellow')
+
+                    self.popup_settings['click_crosshair'] = (h_rect, h_rect2, v_rect, v_rect2)
+                    self.update_popup_display2()
+
+    def ask_user(self, image=None, beam_type=None, message="test message", click=None, crosshairs=True, filter_strength=0):
+
+        # if beam_type == BeamType.ELECTRON:
+        #     image = self.image_SEM
+        # elif beam_type == BeamType.ION:
+        #     image = self.image_FIB
+        #
+        # self.crosshairs = crosshairs
+        # self.setEnabled(False)
+        # self.popup = QtWidgets.QDialog()
+        # self.popup.setLayout(QtWidgets.QGridLayout())
+        # self.popup.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        # self.popup_canvas = None
+
+        # Question space
+        # question_frame = QtWidgets.QWidget(self.popup)
+        # question = QtWidgets.QLabel()
+        # question_layout = QtWidgets.QHBoxLayout()
+        # question_frame.setLayout(question_layout)
+        #
+        # question.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        # question.setFixedHeight(50)
+        # question.setText(message)
+        # font = QtGui.QFont()
+        # font.setPointSize(16)
+        # question.setFont(font)
+        # question.setAlignment(QtCore.Qt.AlignCenter)
+        # question_frame.layout().addWidget(question)
+
+        # if image is not None:
+        #
+        #     # # new image button
+        #     # self.new_image = QtWidgets.QPushButton()
+        #     # self.new_image.setFixedHeight(self.button_height)
+        #     # self.new_image.setFixedWidth(self.button_width)
+        #     # self.new_image.setText('New Image')
+        #     # question_frame.layout().addWidget(self.new_image)
+        #
+        #     # HFW changing
+        #     hfw_widget = QtWidgets.QWidget()
+        #     hfw_widget_layout = QtWidgets.QGridLayout()
+        #     hfw_widget.setLayout(hfw_widget_layout)
+        #
+        #     self.hfw_slider = QtWidgets.QSlider()
+        #     self.hfw_slider.setOrientation(QtCore.Qt.Horizontal)
+        #     self.hfw_slider.setMinimum(1)
+        #     if beam_type == BeamType.ELECTRON:
+        #         self.hfw_slider.setMaximum(2700)
+        #     else:
+        #         self.hfw_slider.setMaximum(900)
+        #     self.hfw_slider.setValue(self.image_settings['hfw']*1e6)
+        #
+        #     hfw_spinbox = QtWidgets.QSpinBox()
+        #     hfw_spinbox.setMinimum(1)
+        #     if beam_type == BeamType.ELECTRON:
+        #         hfw_spinbox.setMaximum(2700)
+        #     else:
+        #         hfw_spinbox.setMaximum(900)
+        #     hfw_spinbox.setValue(self.image_settings['hfw']*1e6)
+        #
+        #     self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
+        #     self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
+        #
+        #     hfw_spinbox.valueChanged.connect(lambda: self.hfw_slider.setValue(hfw_spinbox.value()))
+        #
+        #     hfw_widget.layout().addWidget(hfw_spinbox)
+        #     hfw_widget.layout().addWidget(self.hfw_slider)
+
+        # # Button space
+        # button_box = QtWidgets.QWidget(self.popup)
+        # button_box.setFixedHeight(int(self.button_height*1.2))
+        # button_layout = QtWidgets.QGridLayout()
+        # yes = QtWidgets.QPushButton('Yes')
+        # yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        # yes.setFixedHeight(self.button_height)
+        # yes.setFixedWidth(self.button_width)
+        # yes.clicked.connect(lambda: self.set_response(True))
+        # yes.clicked.connect(lambda: self.popup.close())
+        #
+        # no = QtWidgets.QPushButton('No')
+        # no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
+        # no.setFixedHeight(self.button_height)
+        # no.setFixedWidth(self.button_width)
+        # no.clicked.connect(lambda: self.set_response(False))
+        # no.clicked.connect(lambda: self.popup.close())
+        #
+        # # spacers
+        # h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        # h_spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        #
+        # # button layout
+        # button_box.setLayout(button_layout)
+        # button_box.layout().addItem(h_spacer, 0, 0, 2, 1)
+        # button_box.layout().addWidget(yes, 0, 1, 2, 1)
+        # button_box.layout().addWidget(no, 0, 2, 2, 1)
+        # button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
+
+        # image space (need to check for not None as sometimes it is np.ndarray)
+        # if image is not None:
+            # self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength)
+
+
+        # self.popup.destroyed.connect(lambda: self.setEnabled(True))
+        # self.popup.layout().addWidget(question_frame, 6, 1, 1, 1)
+        # if image is not None:
+        #     self.popup.layout().addWidget(hfw_widget, 7, 1, 1, 1)
+        # self.popup.layout().addWidget(button_box, 8, 1, 1, 1)
+        # self.popup.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        #
+        # self.popup.show()
+        # self.popup.exec_()
+        pass
+    #
+    # def image_from_popup(self, hfw, beam_type=None, click=None, crosshairs=False, filter_strength=0):
+    #     self.image_settings['hfw'] = hfw
+    #
+    #     image = acquire.new_image(self.microscope, self.image_settings)
+    #     if beam_type == BeamType.ELECTRON:
+    #         self.image_SEM = image
+    #     elif beam_type == BeamType.ION:
+    #         self.image_FIB = image
+    #
+    #     self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
 
     def on_gui_click(self, event, click,  image, beam_type=None, crosshairs=True, filter_strength=0):
         if event.inaxes:
@@ -1451,7 +1743,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.new_image.clicked.connect(lambda: self.image_from_popup(hfw=self.hfw_slider.value() * 1e-6, beam_type=beam_type,
                                                                      click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
 
-        if click:
+        if self.popup_settings['click']:
             self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
 
         if type(image) == np.ndarray:
