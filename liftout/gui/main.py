@@ -1283,8 +1283,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
         self.pushButton_test_popup.clicked.connect(lambda: self.popup_settings.update({'click': 'single'}))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image))
 
     def ask_user2(self, image=None, second_image=None):
         self.image_settings['beam_type'] = None
@@ -1421,6 +1421,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         second_image_array = None
 
         figure = plt.figure(1)
+        plt.axis('off')
+        # plt.tight_layout()
+        # plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
 
         # reset the canvas and toolbar if they exist
         if self.popup_canvas:
@@ -1505,7 +1508,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             figure.clear()
             if self.popup_settings['second_image'] is not None:
                 self.ax = figure.add_subplot(122)
-                self.ax.set_title('Image 1')
+                self.ax.set_title(' ')
                 self.ax.imshow(image_array)
                 ax2 = figure.add_subplot(121)
                 ax2.imshow(second_image_array)
@@ -1514,7 +1517,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             else:
                 self.ax = figure.add_subplot(111)
                 self.ax.imshow(image_array)
-                # self.ax.set_title('Image 1')
+                self.ax.set_title(' ')
 
             self.ax.patches = []
             if self.popup_settings['crosshairs']:
