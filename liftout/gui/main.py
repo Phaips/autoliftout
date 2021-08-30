@@ -71,7 +71,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
         self.liftout_counter = 0
-        self.popup = None
+        self.popup_window = None
         self.popup_canvas = None
         self.raw_image = None
         self.overlay_image = None
@@ -157,9 +157,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_window = None
         self.new_image = None
         self.hfw_slider = None
-        self.popup_settings = {'image': None,
-                               'second_image': None,
-                               'beam_type': None,
+        self.popup_settings = {'beam_type': None,
                                'message': 'startup',
                                'hfw': False,
                                'new_image': False,
@@ -167,8 +165,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'multiple_images': False,
                                'click': None,
                                'filter_strength': 0,
-                               'crosshairs': True,
-                               'click_crosshair': None}
+                               'crosshairs': True}
 
 
         # TODO: implement check for this and manual setting
@@ -1288,20 +1285,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image,  message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
 
         self.pushButton_test_popup.clicked.connect(lambda: self.popup_settings.update({'click': 'single'}))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
 
     def ask_user2(self, image=None, second_image=None):
         if image is not None:
             self.popup_settings['image'] = image
+
+        self.image_settings['beam_type'] = None
+        beam_type = None
+
         if image is self.image_FIB:
             self.image_settings['beam_type'] = BeamType.ION
         elif image is self.image_SEM:
             self.image_settings['beam_type'] = BeamType.ELECTRON
-        else:
-            beam_type = None
+
+        if second_image is not None:
+            self.popup_settings['second_image'] = second_image
 
         # turn off main window while popup window in use
         self.setEnabled(False)
+
+        self.popup_settings['click_crosshair'] = None
 
         # settings of the popup window
         self.popup_window = QtWidgets.QDialog()
@@ -1332,7 +1336,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             return
 
         # yes/no buttons
-        button_box = QtWidgets.QWidget(self.popup)
+        button_box = QtWidgets.QWidget(self.popup_window)
         button_box.setFixedHeight(int(self.button_height*1.2))
         button_layout = QtWidgets.QGridLayout()
         yes = QtWidgets.QPushButton('Yes')
@@ -1340,14 +1344,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         yes.setFixedHeight(self.button_height)
         yes.setFixedWidth(self.button_width)
         yes.clicked.connect(lambda: self.set_response(True))
-        yes.clicked.connect(lambda: self.popup.close())
+        yes.clicked.connect(lambda: self.popup_window.close())
 
         no = QtWidgets.QPushButton('No')
         no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
         no.setFixedHeight(self.button_height)
         no.setFixedWidth(self.button_width)
         no.clicked.connect(lambda: self.set_response(False))
-        no.clicked.connect(lambda: self.popup.close())
+        no.clicked.connect(lambda: self.popup_window.close())
 
         # spacers
         h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -1363,7 +1367,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # set up the rest of the window and update display
         if image is not None:
             self.popup_settings['image'] = image
-
 
                 # extra check in case new_image set on ML images
             if self.popup_settings['new_image'] and beam_type:
@@ -1397,17 +1400,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 else:
                     hfw_spinbox.setMaximum(900)
                 hfw_spinbox.setValue(self.image_settings['hfw'] * 1e6)
+                self.popup_window.layout().addWidget(hfw_widget, 7, 1, 1, 1)
 
             self.update_popup_display2()
-
-            self.popup_window.layout().addWidget(hfw_widget, 7, 1, 1, 1)
 
         self.popup_window.layout().addWidget(message_frame, 6, 1, 1, 1)
         self.popup_window.layout().addWidget(button_box, 8, 1, 1, 1)
 
         # show window
-        self.popup.show()
-        self.popup.exec_()
+        self.popup_window.show()
+        self.popup_window.exec_()
 
     def update_popup_display2(self):
 
@@ -1415,8 +1417,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reset the canvas and toolbar if they exist
         if self.popup_canvas:
-            self.popup.layout().removeWidget(self.popup_canvas)
-            self.popup.layout().removeWidget(self.popup_toolbar)
+            self.popup_window.layout().removeWidget(self.popup_canvas)
+            self.popup_window.layout().removeWidget(self.popup_toolbar)
             self.popup_canvas.deleteLater()
             self.popup_toolbar.deleteLater()
         self.popup_canvas = _FigureCanvas(figure)
@@ -1426,6 +1428,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.new_image.clicked.connect(lambda: print(''))
             self.new_image.clicked.disconnect()
 
+            # TODO: account for HFW and New image being together
             # connect button to functions
             self.new_image.clicked.connect(lambda: self.image_settings.update(
                 {'hfw': self.hfw_slider.value()*1e6}))
@@ -1436,7 +1439,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.popup_settings['click']:
             self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click2(event))
 
-        if self.popup_settings['image']:
+        if self.popup_settings['image'] is not None:
             if type(self.popup_settings['image']) == np.ndarray:
                 image_array = self.popup_settings['image'].astype(np.uint8)
             else:
@@ -1483,7 +1486,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ax.imshow(image_array)
 
             self.ax.patches = []
-            if self.crosshairs:
+            if self.popup_settings['crosshairs']:
                 self.ax.add_patch(self.h_rect)
                 self.ax.add_patch(self.v_rect)
                 self.ax.add_patch(self.h_rect2)
@@ -1494,8 +1497,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_canvas.draw()
 
             self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
-            self.popup.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
-            self.popup.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
+            self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
+            self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
     def on_gui_click2(self, event):
         click = self.popup_settings['click']
@@ -1562,7 +1565,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     self.popup_settings['click_crosshair'] = (h_rect, h_rect2, v_rect, v_rect2)
                     self.update_popup_display2()
 
-    def ask_user(self, image=None, beam_type=None, message="test message", click=None, crosshairs=True, filter_strength=0):
+    # def ask_user(self, image=None, beam_type=None, message="test message", click=None, crosshairs=True, filter_strength=0):
 
         # if beam_type == BeamType.ELECTRON:
         #     image = self.image_SEM
@@ -1673,7 +1676,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #
         # self.popup.show()
         # self.popup.exec_()
-        pass
+        # pass
     #
     # def image_from_popup(self, hfw, beam_type=None, click=None, crosshairs=False, filter_strength=0):
     #     self.image_settings['hfw'] = hfw
@@ -1685,125 +1688,125 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     #         self.image_FIB = image
     #
     #     self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
-
-    def on_gui_click(self, event, click,  image, beam_type=None, crosshairs=True, filter_strength=0):
-        if event.inaxes:
-            if event.button == 1:
-                if event.dblclick and (click in ('double', 'all')):
-                    if image:
-                        self.xclick = event.xdata
-                        self.yclick = event.ydata
-                        x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
-
-                        x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
-                        yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
-                        self.stage.relative_move(x_move)
-                        self.stage.relative_move(yz_move)
-                        # TODO: refactor beam type here
-                        image = acquire.new_image(microscope=self.microscope, settings=self.image_settings)
-                        if beam_type:
-                            self.update_display(beam_type=beam_type, image_type='last')
-                        self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
-
-                elif click in ('single', 'all'):
-                    self.xclick = event.xdata
-                    self.yclick = event.ydata
-
-                    cross_size = 120
-                    half_cross = cross_size/2
-                    cross_thickness = 2
-                    half_thickness = cross_thickness/2
-
-                    h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
-                    h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
-
-                    v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
-                    v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
-
-                    h_rect.set_color('xkcd:yellow')
-                    h_rect2.set_color('xkcd:yellow')
-                    v_rect.set_color('xkcd:yellow')
-                    v_rect2.set_color('xkcd:yellow')
-
-                    click_crosshair = (h_rect, h_rect2, v_rect, v_rect2)
-                    self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength, click_crosshair=click_crosshair)
-
-    def update_popup_display(self, click, image, beam_type=None, crosshairs=True, filter_strength=0, click_crosshair=None):
-
-        fig = plt.figure(99)
-        if self.popup_canvas:
-            self.popup.layout().removeWidget(self.popup_canvas)
-            self.popup.layout().removeWidget(self.popup_toolbar)
-            self.popup_canvas.deleteLater()
-            self.popup_toolbar.deleteLater()
-        self.popup_canvas = _FigureCanvas(fig)
-
-        self.new_image.clicked.connect(lambda: print(''))
-        self.new_image.clicked.disconnect()
-        self.new_image.clicked.connect(lambda: self.image_from_popup(hfw=self.hfw_slider.value() * 1e-6, beam_type=beam_type,
-                                                                     click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
-
-        if self.popup_settings['click']:
-            self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
-
-        if type(image) == np.ndarray:
-            image_array = image.astype(np.uint8)
-        else:
-            image_array = (image.data).astype(np.uint8)
-
-        if filter_strength:
-            image_array = ndi.median_filter(image_array, size=filter_strength)
-
-        if image_array.ndim != 3:
-            image_array = np.stack((image_array,) * 3, axis=-1)
-
-        # Cross hairs
-        xshape = image_array.shape[1]
-        yshape = image_array.shape[0]
-        midx = int(xshape / 2)
-        midy = int(yshape / 2)
-
-        cross_size = 120
-        half_cross = cross_size / 2
-        cross_thickness = 2
-        half_thickness = cross_thickness / 2
-
-        self.h_rect = plt.Rectangle((midx, midy - half_thickness),
-                                    half_cross, cross_thickness)
-
-        self.h_rect2 = plt.Rectangle(
-            (midx - half_cross, midy - half_thickness),
-            half_cross, cross_thickness)
-
-        self.v_rect = plt.Rectangle((midx - half_thickness, midy),
-                                    cross_thickness, half_cross)
-        self.v_rect2 = plt.Rectangle(
-            (midx - half_thickness, midy - half_cross),
-            cross_thickness, half_cross)
-
-        self.h_rect.set_color('xkcd:yellow')
-        self.h_rect2.set_color('xkcd:yellow')
-        self.v_rect.set_color('xkcd:yellow')
-        self.v_rect2.set_color('xkcd:yellow')
-
-        fig.clear()
-        self.ax = fig.add_subplot(111)
-        self.ax.imshow(image_array)
-
-        self.ax.patches = []
-        if self.crosshairs:
-            self.ax.add_patch(self.h_rect)
-            self.ax.add_patch(self.v_rect)
-            self.ax.add_patch(self.h_rect2)
-            self.ax.add_patch(self.v_rect2)
-        if click_crosshair:
-            for patch in click_crosshair:
-                self.ax.add_patch(patch)
-        self.popup_canvas.draw()
-
-        self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
-        self.popup.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
-        self.popup.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
+    #
+    # def on_gui_click(self, event, click,  image, beam_type=None, crosshairs=True, filter_strength=0):
+    #     if event.inaxes:
+    #         if event.button == 1:
+    #             if event.dblclick and (click in ('double', 'all')):
+    #                 if image:
+    #                     self.xclick = event.xdata
+    #                     self.yclick = event.ydata
+    #                     x, y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], image)
+    #
+    #                     x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
+    #                     yz_move = movement.y_corrected_stage_movement(y, stage_tilt=self.stage.current_position.t, beam_type=beam_type)
+    #                     self.stage.relative_move(x_move)
+    #                     self.stage.relative_move(yz_move)
+    #                     # TODO: refactor beam type here
+    #                     image = acquire.new_image(microscope=self.microscope, settings=self.image_settings)
+    #                     if beam_type:
+    #                         self.update_display(beam_type=beam_type, image_type='last')
+    #                     self.update_popup_display(click=click, beam_type=beam_type, image=image, crosshairs=self.crosshairs, filter_strength=filter_strength)
+    #
+    #             elif click in ('single', 'all'):
+    #                 self.xclick = event.xdata
+    #                 self.yclick = event.ydata
+    #
+    #                 cross_size = 120
+    #                 half_cross = cross_size/2
+    #                 cross_thickness = 2
+    #                 half_thickness = cross_thickness/2
+    #
+    #                 h_rect = plt.Rectangle((event.xdata, event.ydata-half_thickness), half_cross, cross_thickness)
+    #                 h_rect2 = plt.Rectangle((event.xdata-half_cross, event.ydata-half_thickness), half_cross, cross_thickness)
+    #
+    #                 v_rect = plt.Rectangle((event.xdata-half_thickness, event.ydata), cross_thickness, half_cross)
+    #                 v_rect2 = plt.Rectangle((event.xdata-half_thickness, event.ydata-half_cross), cross_thickness, half_cross)
+    #
+    #                 h_rect.set_color('xkcd:yellow')
+    #                 h_rect2.set_color('xkcd:yellow')
+    #                 v_rect.set_color('xkcd:yellow')
+    #                 v_rect2.set_color('xkcd:yellow')
+    #
+    #                 click_crosshair = (h_rect, h_rect2, v_rect, v_rect2)
+    #                 self.update_popup_display(click=click, image=image, beam_type=beam_type, crosshairs=self.crosshairs, filter_strength=filter_strength, click_crosshair=click_crosshair)
+    #
+    # def update_popup_display(self, click, image, beam_type=None, crosshairs=True, filter_strength=0, click_crosshair=None):
+    #
+    #     fig = plt.figure(99)
+    #     if self.popup_canvas:
+    #         self.popup.layout().removeWidget(self.popup_canvas)
+    #         self.popup.layout().removeWidget(self.popup_toolbar)
+    #         self.popup_canvas.deleteLater()
+    #         self.popup_toolbar.deleteLater()
+    #     self.popup_canvas = _FigureCanvas(fig)
+    #
+    #     self.new_image.clicked.connect(lambda: print(''))
+    #     self.new_image.clicked.disconnect()
+    #     self.new_image.clicked.connect(lambda: self.image_from_popup(hfw=self.hfw_slider.value() * 1e-6, beam_type=beam_type,
+    #                                                                  click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
+    #
+    #     if self.popup_settings['click']:
+    #         self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, image=image, beam_type=beam_type, click=click, crosshairs=self.crosshairs, filter_strength=filter_strength))
+    #
+    #     if type(image) == np.ndarray:
+    #         image_array = image.astype(np.uint8)
+    #     else:
+    #         image_array = (image.data).astype(np.uint8)
+    #
+    #     if filter_strength:
+    #         image_array = ndi.median_filter(image_array, size=filter_strength)
+    #
+    #     if image_array.ndim != 3:
+    #         image_array = np.stack((image_array,) * 3, axis=-1)
+    #
+    #     # Cross hairs
+    #     xshape = image_array.shape[1]
+    #     yshape = image_array.shape[0]
+    #     midx = int(xshape / 2)
+    #     midy = int(yshape / 2)
+    #
+    #     cross_size = 120
+    #     half_cross = cross_size / 2
+    #     cross_thickness = 2
+    #     half_thickness = cross_thickness / 2
+    #
+    #     self.h_rect = plt.Rectangle((midx, midy - half_thickness),
+    #                                 half_cross, cross_thickness)
+    #
+    #     self.h_rect2 = plt.Rectangle(
+    #         (midx - half_cross, midy - half_thickness),
+    #         half_cross, cross_thickness)
+    #
+    #     self.v_rect = plt.Rectangle((midx - half_thickness, midy),
+    #                                 cross_thickness, half_cross)
+    #     self.v_rect2 = plt.Rectangle(
+    #         (midx - half_thickness, midy - half_cross),
+    #         cross_thickness, half_cross)
+    #
+    #     self.h_rect.set_color('xkcd:yellow')
+    #     self.h_rect2.set_color('xkcd:yellow')
+    #     self.v_rect.set_color('xkcd:yellow')
+    #     self.v_rect2.set_color('xkcd:yellow')
+    #
+    #     fig.clear()
+    #     self.ax = fig.add_subplot(111)
+    #     self.ax.imshow(image_array)
+    #
+    #     self.ax.patches = []
+    #     if self.crosshairs:
+    #         self.ax.add_patch(self.h_rect)
+    #         self.ax.add_patch(self.v_rect)
+    #         self.ax.add_patch(self.h_rect2)
+    #         self.ax.add_patch(self.v_rect2)
+    #     if click_crosshair:
+    #         for patch in click_crosshair:
+    #             self.ax.add_patch(patch)
+    #     self.popup_canvas.draw()
+    #
+    #     self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
+    #     self.popup.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
+    #     self.popup.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
     def set_response(self, response):
         self.response = response
@@ -2135,5 +2138,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 # TODO: use this instead of above,
 if __name__ == "__main__":
-    offline_mode = "False" # TODO: change offline to bool not str
+    offline_mode = "True" # TODO: change offline to bool not str
     main(offline=offline_mode)
