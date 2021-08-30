@@ -444,7 +444,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=r"C:\Users\Admin\Github\autoliftout\liftout\gui\log\run") # TODO: make this path not hard coded
+                                                               directory=r"C:\Users\Admin\Github\autoliftout\liftout\log\run") # TODO: make this path not hard coded
         if not save_path:
             logging.warning("Load Coordinates: No Folder selected.")
             display_error_message("Load Coordinates: No Folder selected.")
