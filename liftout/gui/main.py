@@ -157,12 +157,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_window = None
         self.new_image = None
         self.hfw_slider = None
-        self.popup_settings = {'beam_type': None,
-                               'message': 'startup',
-                               'hfw': False,
-                               'new_image': False,
-                               'contrast': False,
-                               'multiple_images': False,
+        # TODO: remove hfw flag
+        self.popup_settings = {'message': 'startup',
+                               'allow_new_image': False,
                                'click': None,
                                'filter_strength': 0,
                                'crosshairs': True}
@@ -211,7 +208,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # Whole-grid platinum deposition
-        self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', crosshairs=False, filter_strength=self.filter_strength)
+
+        self.update_popup_settings()
+
+        self.ask_user(image=self.image_SEM)
+        # self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', crosshairs=False, filter_strength=self.filter_strength)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             logging.info("setup: sputtering platinum over the whole grid")
@@ -1282,9 +1283,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.popup_settings.update({'click': 'single'}))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single'))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
 
     def ask_user(self, image=None, second_image=None):
         self.image_settings['beam_type'] = None
@@ -1375,14 +1376,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_settings['image'] = image
 
                 # extra check in case new_image set on ML images
-            if self.popup_settings['new_image'] and beam_type:
+            if self.popup_settings['allow_new_image'] and beam_type:
                 self.new_image = QtWidgets.QPushButton()
                 self.new_image.setFixedHeight(self.button_height)
                 self.new_image.setFixedWidth(self.button_width)
                 self.new_image.setText('New Image')
                 message_frame.layout().addWidget(self.new_image)
-
-            if self.popup_settings['hfw'] and beam_type:
                 # extra check in case hfw set on ML images
                 hfw_widget = QtWidgets.QWidget()
                 hfw_widget_layout = QtWidgets.QGridLayout()
@@ -1433,7 +1432,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_toolbar.deleteLater()
         self.popup_canvas = _FigureCanvas(figure)
 
-        if self.popup_settings['new_image'] and self.popup_settings['beam_type']:
+        if self.popup_settings['allow_new_image'] and self.popup_settings['beam_type']:
             # reset function connection
             self.new_image.clicked.connect(lambda: print(''))
             self.new_image.clicked.disconnect()
@@ -1533,6 +1532,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
             self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
             self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
+
+    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True):
+        self.popup_settings["message"] = message
+        self.popup_settings['allow_new_image'] = allow_new_image
+        self.popup_settings['click'] = click
+        self.popup_settings['filter_strength'] = filter_strength
+        self.popup_settings['crosshairs'] = crosshairs
 
     def on_gui_click(self, event):
         click = self.popup_settings['click']
