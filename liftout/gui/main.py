@@ -1282,10 +1282,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image,  message='test message\n single click', click='single', crosshairs=False, filter_strength=0))
-
         self.pushButton_test_popup.clicked.connect(lambda: self.popup_settings.update({'click': 'single'}))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image))
 
     def ask_user2(self, image=None, second_image=None):
         self.image_settings['beam_type'] = None
@@ -1505,17 +1504,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             figure.clear()
             if self.popup_settings['second_image'] is not None:
-                self.ax = figure.add_subplot(121)
+                self.ax = figure.add_subplot(122)
                 self.ax.set_title('Image 1')
                 self.ax.imshow(image_array)
-                ax2 = figure.add_subplot(122)
+                ax2 = figure.add_subplot(121)
                 ax2.imshow(second_image_array)
-                ax2.set_title('Image 2')
+                ax2.set_title('Previous Image')
 
             else:
                 self.ax = figure.add_subplot(111)
                 self.ax.imshow(image_array)
-                self.ax.set_title('Image 1')
+                # self.ax.set_title('Image 1')
 
             self.ax.patches = []
             if self.popup_settings['crosshairs']:
@@ -1537,7 +1536,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         image = self.popup_settings['image']
         beam_type = self.image_settings['beam_type']
 
-        if event.inaxes:
+        if event.inaxes.get_title() != 'Previous Image':
             if event.button == 1:
                 if event.dblclick and (click in ('double', 'all')):
                     if image:
