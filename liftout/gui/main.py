@@ -159,7 +159,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: implement check for this and manual setting
         # I think we should only need to set it once, and it should stay, because we dont ever set the contrast / brightness again..
         # TODO: test this assumption ^
-        self.USE_AUTOCONTRAST = False
+        self.USE_AUTOCONTRAST = True
 
         # initial image settings # TODO: add to protocol
         self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
@@ -468,8 +468,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: move to single_liftout
         # TODO: check if there is a park position first
-        movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
-
+        # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
         logging.info(f"Load Coordinates complete from {save_path}")
 
@@ -1843,5 +1842,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 # TODO: use this instead of above,
 if __name__ == "__main__":
-    offline_mode = "False" # TODO: change offline to bool not str
+    offline_mode = "False"  # TODO: change offline to bool not str
     main(offline=offline_mode)

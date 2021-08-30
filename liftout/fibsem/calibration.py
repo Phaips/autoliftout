@@ -87,19 +87,24 @@ def correct_stage_drift(microscope, image_settings, reference_images, liftout_co
 
 def align_using_reference_images(ref_image, new_image, stage, mode=None):
 
-    #TODO: add to protocol
+    #TODO: Read in from protocol
+    #TODO: there are three different types of cross-corellation, E-E, E-I, I-I
     if mode == "land":
-        lp_ratio = 6
-        hp_ratio = 64
-        sigma_factor = 10
-        sigma_ratio = 1536
         beam_type = BeamType.ION
-    else:
-        lp_ratio = 12
-        hp_ratio = 256
-        sigma_factor = 2
-        sigma_ratio = 1536
+    if mode is None:
         beam_type = BeamType.ELECTRON
+    lp_ratio = 6
+    hp_ratio = 64
+    sigma_factor = 10
+    sigma_ratio = 1536
+
+    # These are the old cross-correlation values
+    # elif mode is not "land":
+    #     lp_ratio = 12
+    #     hp_ratio = 256
+    #     sigma_factor = 2
+    #     sigma_ratio = 1536
+    #     beam_type = BeamType.ELECTRON
 
 
     # TODO: possibly hard-code these numbers at fixed resolutions?
