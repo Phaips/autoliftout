@@ -1284,8 +1284,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
         self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single'))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
 
     def ask_user(self, image=None, second_image=None):
         self.image_settings['beam_type'] = None
@@ -1316,6 +1316,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_window.setLayout(QtWidgets.QGridLayout())
         self.popup_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.popup_window.destroyed.connect(lambda: self.setEnabled(True))
+        self.popup_window.destroyed.connect(lambda: self.popup_settings.pop('image'))
+        self.popup_window.destroyed.connect(lambda: self.popup_settings.pop('second_image'))
         self.popup_window.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         self.popup_canvas = None
