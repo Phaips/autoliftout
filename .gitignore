@@ -88,3 +88,4 @@ liftout/model/example/*
 *sample.yaml
 !*test_image.tif
 */tests/*.csv
+liftout/tools/20210823.153535_manual.zip
