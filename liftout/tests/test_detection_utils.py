@@ -14,9 +14,8 @@ import pandas as pd
 
 @pytest.fixture
 def weights_file():
-    # yield r"C:\Users\Admin\Github\autoliftout\liftout\model\models\fresh_full_n10.pt"
-    # yield "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/model/models/fresh_full_n10.pt"
-    yield os.path.dirname(models.__file__) + "/fresh_full_n10.pt"
+    # TODO: read from protocol file?
+    yield os.path.join(os.path.dirname(models.__file__), "fresh_full_n10.pt")
 
 
 @pytest.fixture

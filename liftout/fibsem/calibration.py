@@ -5,6 +5,7 @@ from scipy import fftpack, misc
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
 from liftout.detection import detection
+from liftout.model import models
 BeamType = acquire.BeamType
 
 def validate_scanning_rotation(microscope):
@@ -137,6 +138,7 @@ def identify_shift_using_machine_learning(microscope, image_settings, settings, 
 
     eb_image,  ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]
+    weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
     detector = detection.Detector(weights_file)
 
     if image_settings['beam_type'] == BeamType.ION:
