@@ -1288,23 +1288,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user2(image=test_image, second_image=test_image))
 
     def ask_user2(self, image=None, second_image=None):
-        if image is not None:
-            self.popup_settings['image'] = image
-
         self.image_settings['beam_type'] = None
         beam_type = None
+
+        if image is not None:
+            self.popup_settings['image'] = image
+        else:
+            self.popup_settings['image'] = None
+        if second_image is not None:
+            self.popup_settings['second_image'] = second_image
+        else:
+            self.popup_settings['second_image'] = None
 
         if image is self.image_FIB:
             self.image_settings['beam_type'] = BeamType.ION
         elif image is self.image_SEM:
             self.image_settings['beam_type'] = BeamType.ELECTRON
 
-        if second_image is not None:
-            self.popup_settings['second_image'] = second_image
-
         # turn off main window while popup window in use
         self.setEnabled(False)
 
+        # used to avoid bug of closing and reopening test popup window (might not be an issue for regular running)
         self.popup_settings['click_crosshair'] = None
 
         # settings of the popup window
@@ -1365,6 +1369,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
 
         # set up the rest of the window and update display
+        if second_image is not None:
+            self.popup_settings['second_image'] = second_image
+
         if image is not None:
             self.popup_settings['image'] = image
 
@@ -1412,6 +1419,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_window.exec_()
 
     def update_popup_display2(self):
+        second_image_array = None
 
         figure = plt.figure(1)
 
@@ -1438,6 +1446,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.popup_settings['click']:
             self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click2(event))
+
+        # do second image first as it has less settings
+        if self.popup_settings['second_image'] is not None:
+            if type(self.popup_settings['second_image']) == np.ndarray:
+                second_image_array = self.popup_settings['second_image'].astype(np.uint8)
+            else:
+                second_image_array = self.popup_settings['second_image'].data.astype(np.uint8)
+
+            if self.popup_settings['filter_strength']:
+                second_image_array = ndi.median_filter(second_image_array,
+                                                size=self.popup_settings['filter_strength'])
+
+            if second_image_array.ndim != 3:
+                second_image_array = np.stack((second_image_array,) * 3, axis=-1)
 
         if self.popup_settings['image'] is not None:
             if type(self.popup_settings['image']) == np.ndarray:
@@ -1482,8 +1504,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.v_rect2.set_color('xkcd:yellow')
 
             figure.clear()
-            self.ax = figure.add_subplot(111)
-            self.ax.imshow(image_array)
+            if self.popup_settings['second_image'] is not None:
+                self.ax = figure.add_subplot(121)
+                self.ax.set_title('Image 1')
+                self.ax.imshow(image_array)
+                ax2 = figure.add_subplot(122)
+                ax2.imshow(second_image_array)
+                ax2.set_title('Image 2')
+
+            else:
+                self.ax = figure.add_subplot(111)
+                self.ax.imshow(image_array)
+                self.ax.set_title('Image 1')
 
             self.ax.patches = []
             if self.popup_settings['crosshairs']:
