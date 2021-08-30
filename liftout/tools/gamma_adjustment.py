@@ -3,7 +3,7 @@
 import streamlit as st
 import glob
 import PIL
-
+import matplotlib.pyplot as plt
 import numpy as np
 
 import skimage
@@ -31,7 +31,7 @@ cols = st.columns(2)
 cols[0].image(img, caption="raw")
 cols[1].image(gamma_corrected, caption="gamma correction")
 
-import matplotlib.pyplot as plt
+
 
 bins = 30
 bin_counts, bin_edges = np.histogram(img, bins)
