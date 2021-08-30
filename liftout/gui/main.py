@@ -168,7 +168,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: implement check for this and manual setting
         # I think we should only need to set it once, and it should stay, because we dont ever set the contrast / brightness again..
         # TODO: test this assumption ^
-        self.USE_AUTOCONTRAST = False
+        self.USE_AUTOCONTRAST = True
 
         # initial image settings # TODO: add to protocol
         self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
@@ -209,10 +209,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Whole-grid platinum deposition
 
-        self.update_popup_settings()
-
+        self.update_popup_settings(message='Do you want to sputter the whole sample grid with platinum?',
+                                   crosshairs=False,
+                                   filter_strength=self.filter_strength)
         self.ask_user(image=self.image_SEM)
-        # self.ask_user(beam_type=BeamType.ELECTRON, message='Do you want to sputter the whole sample grid with platinum?', crosshairs=False, filter_strength=self.filter_strength)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             logging.info("setup: sputtering platinum over the whole grid")
@@ -303,8 +303,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             self.update_display(beam_type=BeamType.ION, image_type='new')
 
-            self.ask_user(beam_type=BeamType.ION, message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
-                                                          f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
+            self.update_popup_settings(message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
+                                                          f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
+            self.ask_user(image=self.image_FIB)
 
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
@@ -332,8 +333,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
 
-            self.ask_user(message=f'Do you want to select another {feature_type} position?\n'
+            self.update_popup_settings(message=f'Do you want to select another {feature_type} position?\n'
                                   f'{len(coordinates)} positions selected so far.', crosshairs=False)
+            self.ask_user()
             select_another_position = self.response
 
         logging.info(f"{self.current_status.name}: finished selecting {len(coordinates)} {feature_type} points.")
@@ -367,18 +369,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['save'] = False
         # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
-        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
+        self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
+                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_SEM)
+        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
+        #                                                    f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
-            self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
-                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
+            self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
+                                                           f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False, allow_new_image=True)
+            self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
+            # self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
+            #                                                f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
 
         else:
             logging.warning('calibration: electron image not centered')
             return
 
+        self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(self.stage.current_position.t) * real_y
         self.stage.relative_move(StagePosition(z=delta_z))
@@ -387,8 +396,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
+        self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
+                                                           f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_SEM)
+        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
+        #                                                    f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
 
 
     def run_liftout(self):
@@ -481,7 +493,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: move to single_liftout
         # TODO: check if there is a park position first
-        movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
+        # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
 
         logging.info(f"Load Coordinates complete from {save_path}")
@@ -493,8 +505,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         # TODO: possibly new image
-        self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
-                                                           f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
+        self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
+                                                           f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_SEM)
+        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
+        #                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
         if not self.response:
             logging.warning(f'calibration: drift correction for sample {self.liftout_counter} did not work')
             return
@@ -504,25 +519,33 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # mill
-        self.ask_user(message="Do you want to start milling?", crosshairs=False)
+        self.update_popup_settings(message="Do you want to start milling?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Do you want to start milling?", crosshairs=False)
         logging.info(f"Perform Milling: {self.response}")
         if self.response:
             self.mill_lamella()
 
         # liftout
-        self.ask_user(message="Do you want to start liftout?", crosshairs=False)
+        self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Do you want to start liftout?", crosshairs=False)
         logging.info(f"Perform Liftout: {self.response}")
         if self.response:
             self.liftout_lamella()
 
         # landing
-        self.ask_user(message="Do you want to start landing?", crosshairs=False)
+        self.update_popup_settings(message="Do you want to start landing?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Do you want to start landing?", crosshairs=False)
         logging.info(f"Perform Landing: {self.response}")
         if self.response:
             self.land_lamella(landing_coordinates, original_landing_images)
 
         # reset
-        self.ask_user(message="Do you want to start reset?", crosshairs=False)
+        self.update_popup_settings(message="Do you want to start reset?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Do you want to start reset?", crosshairs=False)
         logging.info(f"Perform Reset: {self.response}")
         if self.response:
             self.reset_needle()
@@ -541,11 +564,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
-        self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
-                                                      f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
+        self.update_popup_settings(message=f'Have you centered the lamella position in the ion beam?\n'
+                                                      f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
+        #                                               f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
 
         # TODO: remove ask user wrapping once mill_trenches is refactored
-        self.ask_user(message="Do you want to start milling trenches?", crosshairs=False)
+        self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Do you want to start milling trenches?", crosshairs=False)
         logging.info(f"Perform Milling Trenches: {self.response}")
         if self.response:
             # mills trenches for lamella
@@ -604,10 +632,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # now we are at the angle for jcut, perform jcut
         milling.mill_jcut(self.microscope, self.settings)
 
-        # TODO: adjust hfw? check why it changes to 100?
+        # TODO: adjust hfw? check why it changes to 100
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
@@ -652,6 +682,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
     def liftout_lamella(self):
+        # TODO: if starting from liftout run eucentricity calibration
         self.current_status = AutoLiftoutStatus.Liftout
         logging.info(f"{self.current_status.name}: liftout started.")
 
@@ -693,7 +724,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         milling.jcut_severing_pattern(self.microscope, self.settings) #TODO: tune jcut severing pattern
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         else:
@@ -777,7 +811,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
-        self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
+        self.update_popup_settings(message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         # TODO: crosshairs here?
         if self.response:
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
@@ -835,18 +871,26 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return distance_x_m, distance_y_m
 
     def validate_detection(self, feature_1_px=None, feature_1_type=None, feature_2_px=None, feature_2_type=None):
-        self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
+        self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
+        self.ask_user(image=self.overlay_image)
+        # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
 
         # if something wasn't correctly identified
         if not self.response:
             utils.save_image(image=self.raw_image, save_path=self.image_settings['save_path'], label=self.image_settings['label'] + '_label')
 
-            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
+            self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
+            self.ask_user(image=self.overlay_image)
+            # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
 
             # if feature 1 wasn't correctly identified
             if not self.response:
-                self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_1_type} position.'
+
+                self.update_popup_settings(message=f'Please click on the correct {feature_1_type} position.'
                                                                    f'Press Yes button when happy with the position', click='single', crosshairs=False)
+                self.ask_user(image=self.downscaled_image)
+                # self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_1_type} position.'
+                #                                                    f'Press Yes button when happy with the position', click='single', crosshairs=False)
                 # TODO: do we want filtering on this image?
 
                 # if new feature position selected
@@ -854,12 +898,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     # TODO: check x/y here
                     feature_1_px = (self.yclick, self.xclick)
 
-            self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
+            self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
+            self.ask_user(image=self.overlay_image)
+            # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
 
             # if feature 2 wasn't correctly identified
             if not self.response:
-                self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_2_type} position.'
+
+                self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
                                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                self.ask_user(image=self.downscaled_image)
+                # self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_2_type} position.'
+                #                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
                 # TODO: do we want filtering on this image?
 
                 # if new feature position selected
@@ -956,7 +1006,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.run_milling(self.microscope, self.settings)
@@ -998,7 +1051,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
             milling.run_milling(self.microscope, self.settings)
@@ -1108,7 +1164,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # confirm and run milling
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.ask_user(image=self.image_FIB)
+        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             milling.run_milling(self.microscope, self.settings)
@@ -1216,8 +1275,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         x_move_half_width = movement.x_corrected_stage_movement(-width / 2)
         self.stage.relative_move(x_move_half_width)
 
-        # mill thin lamella pattern 
-        self.ask_user(message="Run lamella thinning?", crosshairs=False)
+        # mill thin lamella pattern
+        self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
+        self.ask_user()
+        # self.ask_user(message="Run lamella thinning?", crosshairs=False)
         if self.response:
             milling.mill_thin_lamella(self.microscope, self.settings)
 
@@ -1288,8 +1349,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
 
     def ask_user(self, image=None, second_image=None):
-        self.image_settings['beam_type'] = None
-        beam_type = None
 
         if image is not None:
             self.popup_settings['image'] = image
@@ -1301,9 +1360,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_settings['second_image'] = None
 
         if image is self.image_FIB:
+            self.popup_settings['beam_type'] = BeamType.ION
             self.image_settings['beam_type'] = BeamType.ION
         elif image is self.image_SEM:
+            self.popup_settings['beam_type'] = BeamType.ELECTRON
             self.image_settings['beam_type'] = BeamType.ELECTRON
+        else:
+            self.popup_settings['beam_type'] = None
+
+        beam_type = self.image_settings['beam_type']
 
         # turn off main window while popup window in use
         self.setEnabled(False)
@@ -1375,8 +1440,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_settings['second_image'] = second_image
 
         if image is not None:
-            self.popup_settings['image'] = image
-
                 # extra check in case new_image set on ML images
             if self.popup_settings['allow_new_image'] and beam_type:
                 self.new_image = QtWidgets.QPushButton()
@@ -1407,6 +1470,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 else:
                     hfw_spinbox.setMaximum(900)
                 hfw_spinbox.setValue(self.image_settings['hfw'] * 1e6)
+
+                self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
+                self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
+
+                hfw_spinbox.valueChanged.connect(lambda: self.hfw_slider.setValue(hfw_spinbox.value()))
+
+                hfw_widget.layout().addWidget(self.hfw_slider)
+                hfw_widget.layout().addWidget(hfw_spinbox)
+
                 self.popup_window.layout().addWidget(hfw_widget, 7, 1, 1, 1)
 
             self.update_popup_display()
@@ -1442,7 +1514,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: account for HFW and New image being together
             # connect button to functions
             self.new_image.clicked.connect(lambda: self.image_settings.update(
-                {'hfw': self.hfw_slider.value()*1e6}))
+                {'hfw': self.hfw_slider.value()*1e-6}))
             self.new_image.clicked.connect(lambda: self.popup_settings.update(
                 {'image': acquire.new_image(self.microscope, self.image_settings)}))
             self.new_image.clicked.connect(lambda: self.update_popup_display())
@@ -1488,23 +1560,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             cross_thickness = 2
             half_thickness = cross_thickness / 2
 
-            self.h_rect = plt.Rectangle((midx, midy - half_thickness),
-                                        half_cross, cross_thickness)
+            h_rect = plt.Rectangle((midx, midy - half_thickness), half_cross, cross_thickness)
+            h_rect2 = plt.Rectangle((midx - half_cross, midy - half_thickness), half_cross, cross_thickness)
+            v_rect = plt.Rectangle((midx - half_thickness, midy), cross_thickness, half_cross)
+            v_rect2 = plt.Rectangle((midx - half_thickness, midy - half_cross), cross_thickness, half_cross)
 
-            self.h_rect2 = plt.Rectangle(
-                (midx - half_cross, midy - half_thickness),
-                half_cross, cross_thickness)
-
-            self.v_rect = plt.Rectangle((midx - half_thickness, midy),
-                                        cross_thickness, half_cross)
-            self.v_rect2 = plt.Rectangle(
-                (midx - half_thickness, midy - half_cross),
-                cross_thickness, half_cross)
-
-            self.h_rect.set_color('xkcd:yellow')
-            self.h_rect2.set_color('xkcd:yellow')
-            self.v_rect.set_color('xkcd:yellow')
-            self.v_rect2.set_color('xkcd:yellow')
+            h_rect.set_color('xkcd:yellow')
+            h_rect2.set_color('xkcd:yellow')
+            v_rect.set_color('xkcd:yellow')
+            v_rect2.set_color('xkcd:yellow')
 
             figure.clear()
             if self.popup_settings['second_image'] is not None:
@@ -1522,10 +1586,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             self.ax.patches = []
             if self.popup_settings['crosshairs']:
-                self.ax.add_patch(self.h_rect)
-                self.ax.add_patch(self.v_rect)
-                self.ax.add_patch(self.h_rect2)
-                self.ax.add_patch(self.v_rect2)
+                self.ax.add_patch(h_rect)
+                self.ax.add_patch(v_rect)
+                self.ax.add_patch(h_rect2)
+                self.ax.add_patch(v_rect2)
+            if self.popup_settings['second_image'] is not None:
+                ax2.add_patch(h_rect)
+                ax2.add_patch(v_rect)
+                ax2.add_patch(h_rect2)
+                ax2.add_patch(v_rect2)
+
             if self.popup_settings['click_crosshair']:
                 for patch in self.popup_settings['click_crosshair']:
                     self.ax.add_patch(patch)
@@ -1861,7 +1931,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     else:
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_SEM.data
-                    self.figure_SEM.clear()
+                    # self.figure_SEM.clear()
                     self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
                     self.ax_SEM = self.figure_SEM.add_subplot(111)
                     self.ax_SEM.get_xaxis().set_visible(False)
@@ -1937,5 +2007,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 # TODO: use this instead of above,
 if __name__ == "__main__":
-    offline_mode = "True" # TODO: change offline to bool not str
+    offline_mode = "False" # TODO: change offline to bool not str
     main(offline=offline_mode)
