@@ -1,5 +1,7 @@
 
 
+from liftout.model import models
+import numpy as np
 import streamlit as st
 import glob
 import PIL
@@ -9,44 +11,81 @@ import numpy as np
 import skimage
 from skimage import exposure
 import os
-# timestamps = glob.glob(r"C:Users\Admin\Github\autoliftout\liftout\log\run/*/".replace('\\', "/r"), recursive=True)
-# st.write(timestamps)
-# timestamp = st.selectbox(timestamps)
-# st.write(timestamp)
-path = r"C:\Users\Admin\Github\autoliftout\liftout\log\run\20210825.133912\img\*.tif"
+from liftout import tools
+import yaml
+
+from liftout.detection.detection import *
+
+import liftout
+
+def gamma_correction(img, gam):
+    gamma_corrected = exposure.adjust_gamma(img, gam)
+
+    bins = 30
+    bin_counts, bin_edges = np.histogram(img, bins)
+    fig = plt.figure()
+    plt.hist(img.ravel(), bins, color="blue", label="raw", alpha=0.5)
+    plt.hist(gamma_corrected.ravel(), bins, color="red", label="gamma_adjusted", alpha=0.5)
+    plt.legend(loc="best")
+
+    return gamma_corrected, fig
 
 
-filenames = glob.glob(path)
+st.set_page_config(page_title="Gamma Correction", layout="wide")
+st.title("Gamma Correction Calibration")
 
-fname = st.selectbox("select image", [f.split("/")[-1] for f in filenames])
+protocol_path = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
-img = np.array(PIL.Image.open(fname))
+with open(protocol_path) as f:
+    settings = yaml.safe_load(f)
 
-gam = st.slider("gamma", 0.0, 5.0, 2.0)
+default_path = os.path.join(os.path.dirname(tools.__file__), "20210823.153535_manual/20210823.153535_manual/img/")
 
-gamma_corrected = exposure.adjust_gamma(img, gam)
+path = st.sidebar.text_input("Image Directory", default_path)
 
-cols = st.columns(2)
+filenames = sorted(glob.glob(path + "*.tif", recursive=True))
 
-cols[0].image(img, caption="raw")
-cols[1].image(gamma_corrected, caption="gamma correction")
+NUM_IMAGES = int(st.sidebar.number_input("Number of Images to display", 1, 
+            len(filenames)-1, min(5, len(filenames))))
+
+gam = st.sidebar.slider("gamma", 0.0, 5.0, 2.0)
 
 
+weights_file = os.path.join(os.path.dirname(models.__file__), settings["machine_learning"]["weights"])
+detector = Detector(weights_file=weights_file)
 
-bins = 30
-bin_counts, bin_edges = np.histogram(img, bins)
-fig = plt.figure()
-plt.hist(img.ravel(), bins, color="blue", label="raw", alpha=0.5)
-plt.hist(gamma_corrected.ravel(), bins, color="red", label="gamma_adjusted", alpha=0.5)
-plt.legend(loc="best")
-st.pyplot(fig)
 
-# bins = 30
-# # bin_counts, bin_edges = np.histogram(gamma_corrected, bins)
-# fig2 = plt.figure()
-# plt.hist(gamma_corrected.ravel(), bins)
-# plt.ylim([0, top_y])
-# cols[1].pyplot(fig2)
+for fname in filenames[:NUM_IMAGES]:
+
+    st.subheader(fname.split("/")[-1])
+    img = np.array(PIL.Image.open(os.path.join(path, fname)))
+    
+    gamma_corrected, fig = gamma_correction(img, gam)
+
+    mask = detector.detection_model.model_inference(np.asarray(gamma_corrected))
+
+
+    cols = st.columns(4)
+    cols[0].image(img, caption="raw")
+    cols[1].image(gamma_corrected, caption="gamma correction")
+    cols[2].pyplot(fig, caption="pixel intensity")
+    cols[3].image(mask, caption="detection mask")
+
+
+# save gamma value in protocol
+
+st.sidebar.subheader("Save Protocol")
+protocol_file_new = st.sidebar.text_input("Protocol File Name", "protocol_file_new.yml")
+if st.sidebar.button("Save to protocol file"):
+    settings["imaging"] = {}
+    settings["imaging"]["gamma_correction"] = gam
+    st.write(settings)
+    st.sidebar.success(f"Saved to protocol file {protocol_file_new}")
+
+    with open(protocol_file_new, "w") as file:
+        yaml.dump(settings, file)
 
 
 # TODO: fit the histogram for gamma adjustment to a set of 'good' images
+# TODO: add gamma adjustment to images? where? in acquire_image?
+# TODO: add detections to help calibrate?s
