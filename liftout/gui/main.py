@@ -493,7 +493,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: move to single_liftout
         # TODO: check if there is a park position first
-        # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
+        # not sure if this will work...
+        if sample.park_position.x is not None:
+            movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
 
         logging.info(f"Load Coordinates complete from {save_path}")
