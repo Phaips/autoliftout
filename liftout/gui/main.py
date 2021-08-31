@@ -501,6 +501,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
         logging.info(f"Starting Liftout No {self.liftout_counter}")
+        
+        # initial state
+        self.MILLING_COMPLETED_THIS_RUN = False # maybe make this a struct? inclcude status?
+
+
         self.stage.absolute_move(lamella_coordinates)
         calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
@@ -653,6 +658,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['label'] = 'jcut_highres'
         self.image_settings['hfw'] = 50e-6  # TODO: add to protocol
         acquire.take_reference_images(self.microscope, self.image_settings)
+
+        self.MILLING_COMPLETED_THIS_RUN = True
         logging.info("Milling Complete. Ready for Liftout")
 
     def correct_stage_drift_with_ML(self):
@@ -690,6 +697,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_liftout_angle(self.microscope, self.settings)
         logging.info(f"{self.current_status.name}: move to liftout angle.")
 
+        # TODO: if starting from liftout run eucentricity calibration
+        if self.MILLING_COMPLETED_THIS_RUN: 
+            # how to best track this? it is part of the run, not the sample.
+            # probably just reset it at the start of each liftout, and flag it at the end of milling...
+            self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
 
         # TODO: if starting from liftout need to use a wider hfw to see lamella because calibration is poor
         # correct stage drift from mill_lamella stage
