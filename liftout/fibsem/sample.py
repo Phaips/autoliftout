@@ -1,12 +1,9 @@
 import glob
 from enum import Enum
 from pprint import pprint
-import random
-import PIL
-from attr import dataclass
 import matplotlib.pyplot as plt
 import yaml
-
+import os
 import numpy as np
 
 class SampleStatus(Enum):
@@ -38,20 +35,20 @@ class Sample:
         self.landing_ref_images = list()
         self.lamella_ref_images = list()
         self.status = NotImplemented
-        if data_path[-1] != "/":
-            data_path += "/" # TODO: do this smarter
-        self.data_path = data_path.replace("\\", "/")
+        # if data_path[-1] != "/":
+        #     data_path += "/" # TODO: do this smarter
+        # self.data_path = data_path.replace("\\", "/")
+        self.data_path = os.path.join(data_path)
         self.timestamp = self.data_path.split("/")[-2]
         self.sample_no = sample_no
 
     def setup_yaml_file(self):
         # check if yaml file already exists for this timestamp..
-        yaml_file = glob.glob(self.data_path + "*sample.yaml")
+        yaml_file = os.path.join(self.data_path, "sample.yaml")
 
-        # TODO: investigate if there will there ever be more than 1 yaml file?
-        if yaml_file:
+        if os.path.exists(yaml_file):
             # read and open existing yaml file
-            with open(yaml_file[0], 'r') as f:
+            with open(yaml_file, 'r') as f:
                 sample_yaml = yaml.safe_load(f)
 
         else:
@@ -152,7 +149,7 @@ class Sample:
         sample_yaml["sample"][self.sample_no] = save_dict
 
         # should we save the images separately? or just use previously saved?
-        with open(f"{self.data_path}sample.yaml", "w") as outfile:
+        with open(os.path.join(self.data_path, "sample.yaml"), "w") as outfile:
             yaml.dump(sample_yaml, outfile)
 
     def load_data_from_file(self, fname=None):
