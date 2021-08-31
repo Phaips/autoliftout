@@ -1,8 +1,9 @@
+from liftout.tools.gamma_adjustment import gamma_correction
 from autoscript_sdb_microscope_client.structures import *
 from enum import Enum
 import logging
 from liftout import utils
-
+from skimage import exposure
 
 class BeamType(Enum):
     ELECTRON = 1
@@ -54,6 +55,12 @@ def new_image(microscope, settings):
                           brightness=settings['brightness'],
                           contrast=settings['contrast'],
                           beam_type=settings['beam_type'])
+
+    # apply gamma correction
+    if settings["gamma_correction"]:
+        gamma_correction = settings["gamma_correction"]
+        image.data= exposure.adjust_gamma(image.data, gamma_correction)
+
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],
