@@ -839,8 +839,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # move in x
             x_move = movement.x_corrected_needle_movement(-distance_x_m)
             self.needle.relative_move(x_move)
+            
             # move in z
-            gap = 0.5e-6
+             # TODO: might want to make this /3 or /4 or add a constant factor to make sure it lands
+            # detection is based on centre of lamella, we want to land of the edge.
+            # therefore subtract half the height from the movement.
+            lamella_height = self.settings["lamella"]["lamella_height"]
+            gap = lamella_height / 2 # 0.5e-6
             zy_move_gap = movement.z_corrected_needle_movement(-z_distance - gap, self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
