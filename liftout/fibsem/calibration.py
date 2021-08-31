@@ -149,23 +149,23 @@ def identify_shift_using_machine_learning(microscope, image_settings, settings, 
     return image, np.array(image_w_overlay), np.array(downscaled_image), feature_1_px, feature_1_type, feature_2_px, feature_2_type
 
 
-def calculate_shift_between_features(settings):
-    """
-    in m
-    :return:
-    """
-    # detector class (model)
-    weights_file = settings["machine_learning"]["weights"]
-    detector = detection.Detector(weights_file)
+# def calculate_shift_between_features(settings):
+#     """
+#     in m
+#     :return:
+#     """
+#     # detector class (model)
+#     weights_file = settings["machine_learning"]["weights"]
+#     detector = detection.Detector(weights_file)
 
-    print("shift_type: ", shift_type)
-    x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=show, validate=validate)
-    print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
+#     print("shift_type: ", shift_type)
+#     x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=show, validate=validate)
+#     print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
 
-    x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance)
-    print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
+#     x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance)
+#     print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
-    return x_shift, y_shift
+#     return x_shift, y_shift
 
 
 
@@ -197,22 +197,22 @@ def shift_from_crosscorrelation_AdornedImages(img1, img2, lowpass=128, highpass=
     # cross-correlate normalised images
     xcorr = crosscorrelation(img1_data_norm, img2_data_norm, bp='yes', lp=lowpass, hp=highpass, sigma=sigma)
     maxX, maxY = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-    print('\n', maxX, maxY)
+    logging.info(maxX, maxY)
     cen = np.asarray(xcorr.shape) / 2
-    print('centre = ', cen)
+    logging.info('centre = ', cen)
     err = np.array(cen - [maxX, maxY], int)
-    print("Shift between 1 and 2 is = " + str(err))
-    print("img2 is X-shifted by ", err[1], '; Y-shifted by ', err[0])
+    logging.info("Shift between 1 and 2 is = " + str(err))
+    logging.info("img2 is X-shifted by ", err[1], '; Y-shifted by ', err[0])
     x_shift = err[1] * pixelsize_x_2
     y_shift = err[0] * pixelsize_y_2
-    print("X-shift =  {} meters".format(x_shift))
-    print("Y-shift =  {} meters".format(y_shift))
+    logging.info("X-shift =  {} meters".format(x_shift))
+    logging.info("Y-shift =  {} meters".format(y_shift))
     return x_shift, y_shift
 
 
 def crosscorrelation(img1, img2, bp='no', *args, **kwargs):
     if img1.shape != img2.shape:
-        print('### ERROR in xcorr2: img1 and img2 do not have the same size ###')
+        logging.error('### ERROR in xcorr2: img1 and img2 do not have the same size ###')
         return -1
     if img1.dtype != 'float64':
         img1 = np.array(img1, float)
@@ -224,7 +224,7 @@ def crosscorrelation(img1, img2, bp='no', *args, **kwargs):
         hpv = kwargs.get('hp', None)
         sigmav = kwargs.get('sigma', None)
         if lpv == 'None' or hpv == 'None' or sigmav == 'None':
-            print('ERROR in xcorr2: check bandpass parameters')
+            logging.error('ERROR in xcorr2: check bandpass parameters')
             return -1
         bandpass = bandpass_mask(size=(img1.shape[1], img1.shape[0]), lp=lpv, hp=hpv, sigma=sigmav)
         img1ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img1)))
@@ -242,7 +242,7 @@ def crosscorrelation(img1, img2, bp='no', *args, **kwargs):
         img1ft[0, 0] = 0
         xcorr = np.abs(fftpack.fftshift(fftpack.ifft2(img1ft * img2ft)))
     else:
-        print('ERROR in xcorr2: bandpass value ( bp= ' + str(bp) + ' ) not recognized')
+        logging.error('ERROR in xcorr2: bandpass value ( bp= ' + str(bp) + ' ) not recognized')
         return -1
     return xcorr
 

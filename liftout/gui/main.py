@@ -581,14 +581,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
         # self.ask_user(message="Do you want to start milling trenches?", crosshairs=False)
-        logging.info(f"Perform Milling Trenches: {self.response}")
+        logging.info(f"{self.current_status.name}: perform milling trenches: {self.response}")
         if self.response:
             # mills trenches for lamella
             milling.mill_trenches(self.microscope, self.settings)
 
         self.current_sample.milling_coordinates = self.stage.current_position
         self.current_sample.save_data()
-        logging.info(f"Mill Trenches Complete")
+        logging.info(f"{self.current_status.name}: mill trenches complete.")
 
         # reference images of milled trenches
         self.image_settings['save'] = True
@@ -611,7 +611,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
         calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.liftout_counter, mode='ib')
-        logging.info("Finished Cross Correlation")
+        logging.info(f"{self.current_status.name}: finished cross-correlation")
 
         # TODO: check dwell time value/add to protocol
         # TODO: check artifact of 0.5 into 1 dwell time
@@ -649,7 +649,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Parallel'
 
-        logging.info(f"Mill J-Cut Complete")
+        logging.info(f"{self.current_status.name}: mill j-cut complete.")
 
         # take reference images of the jcut
         self.image_settings['save'] = True
@@ -662,7 +662,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
-        logging.info("Milling Complete. Ready for Liftout")
+        logging.info(f"{self.current_status.name}: milling complete.")
 
     def correct_stage_drift_with_ML(self):
         # TODO: add this autocontrast to a protocol? (because it changes depending on sample)
@@ -728,7 +728,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # sputter platinum
         # TODO: protocol sputter
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
-        logging.info(f"liftout: lamella to needle welding complete.")
+        logging.info(f"{self.current_status.name}: lamella to needle welding complete.")
 
         self.image_settings['save'] = True
         self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
@@ -745,21 +745,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         else:
-            logging.warning('liftout: user not happy with jcut sever milling pattern')
+            logging.warning(f"{self.current_status.name}: user not happy with jcut sever milling pattern")
             return
 
         self.image_settings['label'] = 'jcut_sever'
         acquire.take_reference_images(self.microscope, self.image_settings)
-        logging.info(f"liftout: jcut sever milling complete.")
+        logging.info(f"{self.current_status.name}: jcut sever milling complete.")
 
         # Raise needle 30um from trench
-        logging.info(f"liftout: start removing needle from trench")
+        logging.info(f"{self.current_status.name}: start removing needle from trench")
         for i in range(3):
             z_move_out_from_trench = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_trench)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
-            logging.info(f"liftout: removing needle from trench at {z_move_out_from_trench}")
+            logging.info(f"{self.current_status.name}: removing needle from trench at {z_move_out_from_trench}")
             time.sleep(1)
 
         # reference images after liftout complete
@@ -769,8 +769,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
-        logging.info(f"liftout: needle retracted. ")
-        logging.info(f"liftout: liftout complete.")
+        logging.info(f"{self.current_status.name}: needle retracted. ")
+        logging.info(f"{self.current_status.name}: liftout complete.")
 
 
     def land_needle_on_milled_lamella(self):
@@ -1819,7 +1819,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         for key in _dict:
             if key not in self.key_list_protocol:
-                print(f'Unexpected parameter in template file')
+                logging.info(f'Unexpected parameter in template file')
                 return
 
         for key, value in _dict.items():
@@ -1864,9 +1864,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dest = f'{dest}/{tab}.yml'
         protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toPlainText()
         # protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toMarkdown()
-        print(protocol_text)
+        logging.info(protocol_text)
         p = yaml.safe_load(protocol_text)
-        print(p)
+        logging.info(p)
         with open(dest, 'w') as file:
             yaml.dump(p, file, sort_keys=False)
         self.save_destination = dest
@@ -1881,7 +1881,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             Path to file for parameter loading
         """
         checked = 0
-        print(f'Please select protocol file (yml)')
+        logging.info(f'Please select protocol file (yml)')
         root = Tk()
         root.withdraw()
         _dict = None
@@ -1893,7 +1893,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     return
 
                 while not load_directory.name.endswith('.yml'):
-                    print('Not a yml configuration file')
+                    logging.info('Not a yml configuration file')
                     load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
 
                 with open(load_directory.name, 'r') as file:
@@ -1904,10 +1904,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             for key in _dict:
                 if key not in self.key_list_protocol:
                     if checked:
-                        print(f'Unexpected parameter in protocol file')
+                        logging.info(f'Unexpected parameter in protocol file')
                     checked = 0
         root.destroy()
-        print(_dict)
+        logging.info(_dict)
 
         self.load_protocol_text(_dict)
 
@@ -1976,7 +1976,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 display_error_message(traceback.format_exc())
 
     def disconnect(self):
-        print('Running cleanup/teardown')
+        logging.info('Running cleanup/teardown')
         logging.debug('Running cleanup/teardown')
         if self.objective_stage and self.offline is False:
             # Return objective lens stage to the 'out' position and disconnect.
@@ -1988,7 +1988,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 def display_error_message(message):
     """PyQt dialog box displaying an error message."""
-    print('display_error_message')
+    logging.info('display_error_message')
     logging.exception(message)
     error_dialog = QtWidgets.QErrorMessage()
     error_dialog.showMessage(message)

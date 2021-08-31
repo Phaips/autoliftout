@@ -31,13 +31,13 @@ def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     current_position_x = microscope.specimen.stage.current_position.x
     current_position_y = microscope.specimen.stage.current_position.y
     if current_position_x > 10e-3 or current_position_x < -10e-3:
-        print('Not under electron microscope, please reposition')
+        logging.error('Not under electron microscope, please reposition')
         return
     new_position = StagePosition(x=x, y=y, z=z, r=r, t=t)
     microscope.specimen.stage.relative_move(new_position, settings=settings)
-    print(f'Old pos ition: {current_position_x*1e6}, {current_position_y*1e6}')
-    print(f'Moving by: {x*1e6}, {y*1e6}')
-    print(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
+    logging.info(f'Old position: {current_position_x*1e6}, {current_position_y*1e6}')
+    logging.info(f'Moving by: {x*1e6}, {y*1e6}')
+    logging.info(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
 
     return microscope.specimen.stage.current_position
 
@@ -364,14 +364,14 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
             raise (UserWarning("Could not auto-link z stage height."))
             break
         # Focus and re-link z stage height
-        print('Automatically focusing and linking stage z-height.')
+        logging.info('Automatically focusing and linking stage z-height.')
         microscope.auto_functions.run_auto_focus()
         microscope.specimen.stage.link()
         z_difference = expected_z - microscope.specimen.stage.current_position.z
         z_move = z_corrected_stage_movement(
             z_difference, microscope.specimen.stage.current_position.t)
         microscope.specimen.stage.relative_move(z_move)
-        print(microscope.specimen.stage.current_position.z)
+        logging.info(microscope.specimen.stage.current_position.z)
     # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
     # new_electron_image(microscope)
@@ -410,9 +410,9 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     tilt_radians = stage_tilt + tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
-    print(' ------------  drift correction ---------------  ')
-    print('the corrected Y shift is ', y_move, 'meters')
-    print('the corrected Z shift is ', z_move, 'meters')
+    logging.info(' ------------  drift correction ---------------  ')
+    logging.info('the corrected Y shift is ', y_move, 'meters')
+    logging.info('the corrected Z shift is ', z_move, 'meters')
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
