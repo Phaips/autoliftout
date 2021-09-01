@@ -3,6 +3,8 @@ from enum import Enum
 import logging
 from liftout import utils
 from skimage import exposure
+import numpy as np
+
 
 class BeamType(Enum):
     ELECTRON = 1
@@ -57,9 +59,21 @@ def new_image(microscope, settings):
 
     # apply gamma correction
     if settings["gamma_correction"]:
-        gamma_correction = settings["gamma_correction"]
-        image.data = exposure.adjust_gamma(image.data, gamma_correction)
 
+        std = np.std(image.data)
+        mean = np.mean(image.data)
+        diff = mean - 255/2.
+        gam = np.clip(0.15, 1 + diff * 0.01, 5.0)
+        if abs(diff) < 46:
+            gam = 1.0
+        logging.info(f"gamma correction: diff: {diff}, gam: {gam} ")
+        # gamma_correction = settings["gamma_correction"]
+        image_data = exposure.adjust_gamma(image.data, gam)
+        # image.data = image_data
+        reference = AdornedImage(data=image_data)
+        reference.metadata = image.metadata
+        image = reference
+        # TODO: improve
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],
