@@ -498,9 +498,7 @@ def reset_needle_park_position(microscope, new_park_position):
 
     # move needle in
     insert_needle(microscope)
-    
-    # move needle to save location
-    microscope.specimen.manipulator.absolute_move(new_park_position)  # TODO: get safe absolute coordinates
 
-    # # retract needle
-    microscope.specimen.manipulator.retract()
+    # retract needle to park position, then out
+    retract_needle(microscope, new_park_position)
+    logging.info(f"movement: reset park position to {new_park_position}")
