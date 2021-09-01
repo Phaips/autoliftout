@@ -39,7 +39,7 @@ class Sample:
         #     data_path += "/" # TODO: do this smarter
         # self.data_path = data_path.replace("\\", "/")
         self.data_path = os.path.join(data_path)
-        self.timestamp = self.data_path.split("/")[-2]
+        self.timestamp = os.path.basename(self.data_path)
         self.sample_no = sample_no
 
     def setup_yaml_file(self):
@@ -155,7 +155,7 @@ class Sample:
     def load_data_from_file(self, fname=None):
 
         if fname is None:
-            fname = f"{self.data_path}sample.yaml"
+            fname = os.path.join(self.data_path, "sample.yaml")
 
         # load yaml file
         with open(fname, 'r') as f:
@@ -203,14 +203,14 @@ class Sample:
         # TODO: improve this
         # load images from disk
         sample_no = sample_dict["sample_no"]
-        ref_landing_lowres_eb = self.data_path + f"img/{sample_no:02d}_ref_landing_low_res_eb.tif"
-        ref_landing_highres_eb = self.data_path + f"img/{sample_no:02d}_ref_landing_high_res_eb.tif"
-        ref_landing_lowres_ib = self.data_path + f"img/{sample_no:02d}_ref_landing_low_res_eb_ib.tif"
-        ref_landing_highres_ib = self.data_path + f"img/{sample_no:02d}_ref_landing_high_res_eb_ib.tif"
-        ref_lamella_lowres_eb = self.data_path + f"img/{sample_no:02d}_ref_lamella_low_res_eb.tif"
-        ref_lamella_highres_eb = self.data_path + f"img/{sample_no:02d}_ref_lamella_high_res_eb.tif"
-        ref_lamella_lowres_ib = self.data_path + f"img/{sample_no:02d}_ref_lamella_low_res_eb_ib.tif"
-        ref_lamella_highres_ib = self.data_path + f"img/{sample_no:02d}_ref_lamella_high_res_eb_ib.tif"
+        ref_landing_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif")
+        ref_landing_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif")
+        ref_landing_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb_ib.tif")
+        ref_landing_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb_ib.tif")
+        ref_lamella_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif")
+        ref_lamella_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif")
+        ref_lamella_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb_ib.tif")
+        ref_lamella_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb_ib.tif")
 
         # load the adorned images and format
         for fname in [ref_landing_lowres_eb, ref_landing_highres_eb, ref_landing_lowres_ib, ref_landing_highres_ib]:

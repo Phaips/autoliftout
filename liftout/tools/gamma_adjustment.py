@@ -15,7 +15,7 @@ from skimage import exposure
 
 
 
-def gamma_correction(img, gam):
+def gamma_correction(img, gam, mean, median):
     gamma_corrected = exposure.adjust_gamma(img, gam)
 
     bins = 30
@@ -25,6 +25,8 @@ def gamma_correction(img, gam):
     plt.hist(
         gamma_corrected.ravel(), bins, color="red", label="gamma_adjusted", alpha=0.5
     )
+    plt.axvline(median, color='k', linestyle='solid', linewidth=1, label = "median")
+    plt.axvline(mean, color='k', linestyle='dashed', linewidth=1, label="mean")
     plt.legend(loc="best")
 
     return gamma_corrected, fig
@@ -55,11 +57,10 @@ if len(filenames) > 0:
     st.sidebar.write(f"{len(filenames)} images found.")
     NUM_IMAGES = int(
         st.sidebar.number_input(
-            "Number of Images to display", 1, len(filenames) - 1, min(5, len(filenames))
+            "Number of Images to display", 1, len(filenames), min(5, len(filenames))
         )
     )
 
-    gam = st.sidebar.slider("gamma", 0.0, 5.0, 2.0)
 
 
     weights_file = os.path.join(
@@ -67,13 +68,27 @@ if len(filenames) > 0:
     )
     detector = Detector(weights_file=weights_file)
 
+    # gam = st.sidebar.slider("gamma", 0.0, 5.0, 2.0)
+    min_gamma = st.sidebar.slider("min_gamma", 0.1, 0.5, 0.15)
+    max_gamma = st.sidebar.slider("max_gamma", 5.0, 9.0, 5.0)
+    gamma_threshold = st.sidebar.slider("gamma_threshold", 25, 100, 40)
+    gamma_scale = st.sidebar.slider("gamma_scale", 0.01, 0.1, 0.01)
 
     for fname in filenames[:NUM_IMAGES]:
 
         st.subheader(fname.split("/")[-1])
         img = np.array(PIL.Image.open(os.path.join(path, fname)))
-        raw_img = img
-        gamma_corrected, fig = gamma_correction(img, gam)
+
+        std = np.std(img)
+        mean = np.mean(img)
+        median = np.median(img)
+        diff = mean - 255/2.
+        gam = np.clip(min_gamma, 1 + diff * gamma_scale, max_gamma)
+        if abs(diff) < gamma_threshold:
+            gam = 1.0
+        st.write(f"mean: {mean:.3f}, median: {median}, std: {std:.3f}, diff: {diff:.3f}, gam: {gam:.3f}")
+
+        gamma_corrected, fig = gamma_correction(img, gam, mean, median)
 
         raw_mask = detector.detection_model.model_inference(np.asarray(img))
         raw_blend = draw_overlay(img, raw_mask, show=False)
@@ -81,40 +96,12 @@ if len(filenames) > 0:
         gamma_mask = detector.detection_model.model_inference(np.asarray(gamma_corrected))
         gamma_blend = draw_overlay(gamma_corrected, gamma_mask, show=False)
 
-        # std = np.std(img)
-        # mean = np.mean(img)
-        #
-        # st.write(f"mean: {mean}, std: {std}")
-        # histogram, bin_edges = np.histogram(img, bins=256)
-        #
-        # if mean > (255 - std/2):
-        #     st.write("Mean too high, clipping to zero")
-        #     indices = np.where(img < mean)
-        #     img[indices] = 0
-        # elif (mean<(255/2. - std/2) and (mean < 2*std)):
-        #     st.write("Mean too low, clipping to 255")
-        #     indices = np.where(img > mean)
-        #     img[indices] = 255
-        #
-        # bins =256
-        # fig = plt.figure()
-        # plt.hist(raw_img.ravel(), bins, color="blue", label="raw", alpha=0.5)
-        # plt.hist(
-        #     gamma_corrected.ravel(), bins, color="red", label="gamma_adjusted", alpha=0.5
-        # )
-        # plt.hist(
-        #     img.ravel(), bins, color="black", label="clipped_image", alpha=0.5
-        # )
-        # plt.legend(loc="best")
-
-
-        cols = st.columns(6)
-        cols[0].image(raw_img, caption="raw_image")
-        cols[1].image(img, caption="clipped image")
-        cols[2].image(gamma_corrected, caption="gamma correction")
-        cols[3].pyplot(fig, caption="pixel intensity")
-        cols[4].image(raw_blend, caption="raw detection mask")
-        cols[5].image(gamma_blend, caption="gamma detection mask")
+        cols = st.columns(5)
+        cols[0].image(img, caption="raw_image")
+        cols[1].image(gamma_corrected, caption="gamma correction")
+        cols[2].pyplot(fig, caption="pixel intensity")
+        cols[3].image(raw_blend, caption="raw detection mask")
+        cols[4].image(gamma_blend, caption="gamma detection mask")
 
     # save gamma value in protocol
     st.sidebar.subheader("Save Protocol")
