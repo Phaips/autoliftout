@@ -1,4 +1,3 @@
-from liftout.tools.gamma_adjustment import gamma_correction
 from autoscript_sdb_microscope_client.structures import *
 from enum import Enum
 import logging
@@ -59,7 +58,7 @@ def new_image(microscope, settings):
     # apply gamma correction
     if settings["gamma_correction"]:
         gamma_correction = settings["gamma_correction"]
-        image.data= exposure.adjust_gamma(image.data, gamma_correction)
+        image.data = exposure.adjust_gamma(image.data, gamma_correction)
 
 
     if settings['save']:

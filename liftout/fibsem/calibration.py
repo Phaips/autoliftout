@@ -1,3 +1,4 @@
+import os
 from liftout.fibsem.movement import *
 from autoscript_sdb_microscope_client.structures import GrabFrameSettings
 import scipy.ndimage as ndi

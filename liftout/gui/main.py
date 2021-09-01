@@ -178,7 +178,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'autocontrast': self.USE_AUTOCONTRAST,
                                'save': True, 'label': 'grid',
                                'beam_type': BeamType.ELECTRON,
-                               'save_path': self.save_path}
+                               'save_path': self.save_path,
+                               "gamma_correction": self.settings["imaging"]["gamma_correction"]}
 
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"Status: {self.current_status}")
@@ -196,7 +197,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'autocontrast': self.USE_AUTOCONTRAST,
                                'save': True, 'label': 'grid',
                                'beam_type': BeamType.ELECTRON,
-                               'save_path': self.save_path}
+                               'save_path': self.save_path,
+                               "gamma_correction": self.settings["imaging"]["gamma_correction"]}
 
         movement.move_to_sample_grid(self.microscope, self.settings)
 
