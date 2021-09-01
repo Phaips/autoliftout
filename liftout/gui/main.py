@@ -670,6 +670,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: add this autocontrast to a protocol? (because it changes depending on sample)
         # correct stage drift using machine learning
         label = self.image_settings['label']
+        if self.image_settings["hfw"] > 200e-6:
+            self.image_settings["hfw"] = 150e-6
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
             # TODO: more elegant labelling convention
             self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
@@ -702,10 +704,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: move to liftout angle.")
 
         # TODO: if starting from liftout run eucentricity calibration
-        if self.MILLING_COMPLETED_THIS_RUN: 
+        if not self.MILLING_COMPLETED_THIS_RUN:
             # how to best track this? it is part of the run, not the sample.
             # probably just reset it at the start of each liftout, and flag it at the end of milling...
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
+            self.image_settings["hfw"] = 150e-6
+            movement.move_to_liftout_angle(self.microscope, self.settings)
+            logging.info(f"{self.current_status.name}: move to liftout angle.")
 
         # TODO: if starting from liftout need to use a wider hfw to see lamella because calibration is poor
         # correct stage drift from mill_lamella stage
@@ -850,7 +855,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # therefore subtract half the height from the movement.
             lamella_height = self.settings["lamella"]["lamella_height"]
             gap = lamella_height / 2 # 0.5e-6
-            zy_move_gap = movement.z_corrected_needle_movement(-z_distance - gap, self.stage.current_position.t)
+            zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
             logging.info(f"{self.current_status.name}: needle x-move: {x_move}")
