@@ -371,7 +371,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
         z_move = z_corrected_stage_movement(
             z_difference, microscope.specimen.stage.current_position.t)
         microscope.specimen.stage.relative_move(z_move)
-        logging.info(microscope.specimen.stage.current_position.z)
+        logging.info(f"auto_link stage z: :{microscope.specimen.stage.current_position.z}")
     # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
     # new_electron_image(microscope)
@@ -410,9 +410,8 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     tilt_radians = stage_tilt + tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
-    logging.info(' ------------  drift correction ---------------  ')
-    logging.info('the corrected Y shift is ', y_move, 'meters')
-    logging.info('the corrected Z shift is ', z_move, 'meters')
+    logging.info(f'drift correction: the corrected Y shift is {y_move:e} meters')
+    logging.info(f'drift correction: the corrected Z shift is  {z_move:e} meters')
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
@@ -475,6 +474,7 @@ def insert_needle(microscope):
     needle = microscope.specimen.manipulator
     needle.insert()
     park_position = needle.current_position
+    logging.info("movement: insert needle")
     return park_position
 
 
@@ -500,7 +500,7 @@ def reset_needle_park_position(microscope, new_park_position):
     insert_needle(microscope)
     
     # move needle to save location
-    microscope.specimen.manipulator.absolute_move(new_park_position) # TODO: get safe absolute coordinates
+    microscope.specimen.manipulator.absolute_move(new_park_position)  # TODO: get safe absolute coordinates
 
     # # retract needle
     microscope.specimen.manipulator.retract()

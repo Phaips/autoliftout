@@ -140,7 +140,7 @@ def identify_shift_using_machine_learning(microscope, image_settings, settings, 
     eb_image,  ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
-    detector = detection.Detector(weights_file)
+    detector = detection.Detector(weights_path)
 
     if image_settings['beam_type'] == BeamType.ION:
         image = ib_image
@@ -198,16 +198,16 @@ def shift_from_crosscorrelation_AdornedImages(img1, img2, lowpass=128, highpass=
     # cross-correlate normalised images
     xcorr = crosscorrelation(img1_data_norm, img2_data_norm, bp='yes', lp=lowpass, hp=highpass, sigma=sigma)
     maxX, maxY = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-    logging.info(maxX, maxY)
+    logging.info(f"maxX: {maxX}, {maxY}")
     cen = np.asarray(xcorr.shape) / 2
-    logging.info('centre = ', cen)
+    logging.info(f'centre = {cen}')
     err = np.array(cen - [maxX, maxY], int)
-    logging.info("Shift between 1 and 2 is = " + str(err))
-    logging.info("img2 is X-shifted by ", err[1], '; Y-shifted by ', err[0])
+    logging.info(f"Shift between 1 and 2 is = {err}")
+    logging.info(f"img2 is X-shifted by  {err[1]}; Y-shifted by {err[0]}")
     x_shift = err[1] * pixelsize_x_2
     y_shift = err[0] * pixelsize_y_2
-    logging.info("X-shift =  {} meters".format(x_shift))
-    logging.info("Y-shift =  {} meters".format(y_shift))
+    logging.info(f"X-shift =  {x_shift} meters")
+    logging.info(f"Y-shift =  {y_shift} meters")
     return x_shift, y_shift
 
 
