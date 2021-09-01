@@ -46,6 +46,10 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
     multichem = microscope.gas.get_multichem()
     multichem.insert()
+    multichem.turn_heater_on("Pt cryo")
+    time.sleep(3)
+
+
     # Create sputtering pattern
     microscope.beams.electron_beam.horizontal_field_width.value = horizontal_field_width
     pattern = microscope.patterning.create_line(-line_pattern_length/2,  # x_start

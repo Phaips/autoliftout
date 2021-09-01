@@ -66,7 +66,7 @@ def new_image(microscope, settings):
         gam = np.clip(0.15, 1 + diff * 0.01, 5.0)
         if abs(diff) < 46:
             gam = 1.0
-        logging.info(f"gamma correction: diff: {diff}, gam: {gam} ")
+        logging.info(f"gamma correction: diff: {diff}, gam: {gam:.3f} ")
         # gamma_correction = settings["gamma_correction"]
         image_data = exposure.adjust_gamma(image.data, gam)
         # image.data = image_data

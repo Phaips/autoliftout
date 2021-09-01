@@ -221,6 +221,7 @@ def reset_state(microscope, settings, application_file=None):
     microscope.beams.ion_beam.scanning.dwell_time.value = dwell_time
     microscope.beams.ion_beam.horizontal_field_width.value = hfw
     microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_beam_type(2)  # ion beam default
     return microscope
 
 
@@ -315,7 +316,7 @@ def jcut_milling_patterns(microscope, settings):
 
 def setup_ion_milling(microscope, *,
                       application_file="Si_Alex",
-                      patterning_mode="Parallel",
+                      patterning_mode="Serial",
                       ion_beam_field_of_view=100e-6):
     """Setup for rectangle ion beam milling patterns.
 
@@ -326,7 +327,7 @@ def setup_ion_milling(microscope, *,
     application_file : str, optional
         Application file for ion beam milling, by default "Si_Alex"
     patterning_mode : str, optional
-        Ion beam milling pattern mode, by default "Parallel".
+        Ion beam milling pattern mode, by default "Serial".
         The available options are "Parallel" or "Serial".
     ion_beam_field_of_view : float, optional
         Width of ion beam field of view in meters, by default 59.2e-6
@@ -353,12 +354,11 @@ def weld_to_landing_post(microscope, *, milling_current=20e-12, confirm=True):
         Whether to wait for user confirmation before milling.
     """
     pattern = _create_welding_pattern(microscope)
-    # confirm_and_run_milling(microscope, milling_current, confirm=confirm)
 
 def _create_welding_pattern(microscope, *,
                             center_x=0,
                             center_y=0,
-                            width=3.5e-6,
+                            width=3e-6,
                             height=10e-6,
                             depth=5e-9):
     """Create milling pattern for welding liftout sample to the landing post.
@@ -380,7 +380,7 @@ def _create_welding_pattern(microscope, *,
         Depth of the milling pattern, in meters.
     """
     # TODO: user input yaml for welding pattern parameters
-    setup_ion_milling(microscope)
+    setup_ion_milling(microscope, patterning_mode="Serial")
     pattern = microscope.patterning.create_rectangle(
         center_x, center_y, width, height, depth)
     return pattern
@@ -464,23 +464,16 @@ def calculate_sharpen_needle_pattern(microscope, settings, x_0, y_0):
     x_2 = x_0 - dx_2 - ddx_2  # centre of the top box
     y_2 = y_0 - dy_2 + ddy_2  # centre of the top box
 
-    logging.info("needletip xshift offcentre: ", x_0, "; needletip yshift offcentre: ", y_0)
-    logging.info("width: ", width)
-    logging.info("height: ", height)
-    logging.info("depth: ", depth)
-    logging.info("needle_angle: ", needle_angle)
-    logging.info("tip_angle: ", tip_angle)
-    logging.info("rotation1 :", rotation_1)
-    logging.info("rotation2 :", rotation_2)
-    logging.info("=================================================")
-    logging.info("centre of bottom box: x1 = ", x_1, "; y1 = ", y_1)
-    logging.info("centre of top box:    x2 = ", x_2, "; y2 = ", y_2)
-    logging.info("=================================================")
-
-    # pattern = microscope.patterning.create_rectangle(x_3, y_3, width+2*bias, height+2*bias, depth)
-    # pattern.rotation = np.deg2rad(rotation_1)
-    # pattern = microscope.patterning.create_rectangle(x_4, y_4, width+2*bias, height+2*bias, depth)
-    # pattern.rotation = np.deg2rad(rotation_2)
+    logging.info(f"needletip xshift offcentre: {x_0}; needletip yshift offcentre: {y_0}")
+    logging.info(f"width: {width}")
+    logging.info(f"height: {height}")
+    logging.info(f"depth: {depth}")
+    logging.info(f"needle_angle: {needle_angle}")
+    logging.info(f"tip_angle: {tip_angle}")
+    logging.info(f"rotation1 : {rotation_1}")
+    logging.info(f"rotation2 : {rotation_2}")
+    logging.info(f"centre of bottom box: x1 = {x_1}; y1 = {y_1}")
+    logging.info(f"centre of top box:    x2 = {x_2}; y2 = {y_2}")
 
     # bottom cut pattern
     cut_coord_bottom = {
