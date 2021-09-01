@@ -181,6 +181,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'save_path': self.save_path,
                                "gamma_correction": self.settings["imaging"]["gamma_correction"]}
 
+        self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
+
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"Status: {self.current_status}")
 
@@ -499,7 +501,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if sample.park_position.x is not None:
             movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
-
         logging.info(f"Load Coordinates complete from {save_path}")
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
@@ -517,8 +518,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
-        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Is the lamella currently centered in the image?\n'
-        #                                                    f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength)
         if not self.response:
             logging.warning(f'calibration: drift correction for sample {self.liftout_counter} did not work')
             return
@@ -530,7 +529,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # mill
         self.update_popup_settings(message="Do you want to start milling?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Do you want to start milling?", crosshairs=False)
         logging.info(f"Perform Milling: {self.response}")
         if self.response:
             self.mill_lamella()
@@ -538,7 +536,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # liftout
         self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Do you want to start liftout?", crosshairs=False)
         logging.info(f"Perform Liftout: {self.response}")
         if self.response:
             self.liftout_lamella()
@@ -546,7 +543,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # landing
         self.update_popup_settings(message="Do you want to start landing?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Do you want to start landing?", crosshairs=False)
         logging.info(f"Perform Landing: {self.response}")
         if self.response:
             self.land_lamella(landing_coordinates, original_landing_images)
@@ -554,7 +550,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # reset
         self.update_popup_settings(message="Do you want to start reset?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Do you want to start reset?", crosshairs=False)
         logging.info(f"Perform Reset: {self.response}")
         if self.response:
             self.reset_needle()
@@ -630,9 +625,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) #  TODO: test movement by 6 deg
         self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
         self.correct_stage_drift_with_ML()
-        # movement.move_relative(self.microscope, t=np.deg2rad(3), settings=stage_settings)
-        # self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
-        # self.correct_stage_drift_with_ML()
 
         # save jcut position
         self.current_sample.jcut_coordinates = self.stage.current_position
@@ -649,7 +641,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Parallel'
+        self.microscope.patterning.mode = 'Serial'
 
         logging.info(f"{self.current_status.name}: mill j-cut complete.")
 
@@ -1039,7 +1031,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Parallel'
+        self.microscope.patterning.mode = 'Serial'
         logging.info(f"{self.current_status.name}: weld to post complete")
 
         # final reference images
@@ -1084,7 +1076,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Parallel'
+        self.microscope.patterning.mode = 'Serial'
 
         logging.info(f"{self.current_status.name}: needle cut-off complete")
 
@@ -1197,7 +1189,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Parallel'
+        self.microscope.patterning.mode = 'Serial'
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
 
