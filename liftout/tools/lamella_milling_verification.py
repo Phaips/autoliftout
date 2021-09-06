@@ -13,13 +13,13 @@ import yaml
 st.header("Lamella Parameter Selection")
 
 
-filenames = glob.glob("*.tif")
+filenames = glob.glob("/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/tools/*.tif")
 fname = filenames[0]
 
 img = PIL.Image.open(fname)
 
 
-with open("../protocol_liftout.yml") as f:
+with open("liftout/protocol_liftout.yml") as f:
     settings = yaml.safe_load(f)
 
 
