@@ -143,7 +143,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.save_path = utils.make_logging_directory(prefix="run")
         utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
 
-        # config_filename = '../protocol_liftout.yml'
         config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
         self.settings = utils.load_config(config_filename)
@@ -151,23 +150,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: need to consolidate this so there arent multiple different paths, its too confusing
         # currently needed to stop it crashing running immediately after init
-        self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
+        # self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
 
         # popup initialisations
         self.popup_window = None
         self.new_image = None
         self.hfw_slider = None
-        # TODO: remove hfw flag
         self.popup_settings = {'message': 'startup',
                                'allow_new_image': False,
                                'click': None,
                                'filter_strength': 0,
                                'crosshairs': True}
 
-
-        # TODO: implement check for this and manual setting
-        # I think we should only need to set it once, and it should stay, because we dont ever set the contrast / brightness again..
-        # TODO: test this assumption ^
         self.USE_AUTOCONTRAST = True
 
         # initial image settings # TODO: add to protocol
@@ -180,8 +174,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'beam_type': BeamType.ELECTRON,
                                'save_path': self.save_path,
                                "gamma_correction": self.settings["imaging"]["gamma_correction"]}
-
-        self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
+        if self.microscope:
+            self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"Status: {self.current_status}")
@@ -267,7 +261,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
         # # save
-        # TODO: TEST THIS
+        # TODO: move sample structure into select initial feature coordinates?
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -403,58 +397,62 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
-        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-        #                                                    f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
-
 
     def run_liftout(self):
         logging.info("gui: run liftout started")
+
         # recalibrate park position coordinates
         # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
-        # refactor using Sample class: self.samples = List(Sample)
+        for sample in self.samples:
 
-        # for sample in self.samples:
+            self.current_sample = sample
+            self.liftout_counter = self.current_sample.sample_no
+            (lamella_coord, landing_coord,
+                lamella_area_reference_images,
+                landing_reference_images) = self.current_sample.get_sample_data()
 
-        #     self.current_sample = sample
-        #     self.liftout_counter = self.current_sample.sample_no
-        #     (lamella_coord, landing_coord, 
-        #         lamella_area_reference_images, 
-        #         landing_reference_images) = self.current_sample.get_sample_data() 
+          # TODO: this can probably just use self.current_sample rather than passing arguments?
+            self.single_liftout(landing_coord, lamella_coord,
+                    landing_reference_images,
+                    lamella_area_reference_images)
 
-        #   TODO: this can probably just use self.current_sample rather than passing arguments?
+
+        # # TODO: remove below once the above is tested
+        # for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
+        #     self.liftout_counter += 1
+        #
+        #     # TODO: I think this is what is crashing when immediately initalising...
+        #     # Should be fixed, by initialising self.sample_save_path
+        #     self.current_sample = Sample(self.sample_save_path, i+1)
+        #     self.current_sample.load_data_from_file()
+        #
+        #
+        #
+        #     landing_reference_images = self.original_landing_images[i]
+        #     lamella_area_reference_images = self.original_trench_images[i]
+        #
         #
         #     self.single_liftout(landing_coord, lamella_coord,
-        #             landing_reference_images,
-        #             lamella_area_reference_images)
-
-
-        # TODO: remove below once the above is tested
-
-        for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
-            self.liftout_counter += 1
-
-            # TODO: I think this is what is crashing when immediately initalising...
-            # Should be fixed, by initialising self.sample_save_path
-            self.current_sample = Sample(self.sample_save_path, i+1)
-            self.current_sample.load_data_from_file()
+        #                         landing_reference_images,
+        #                         lamella_area_reference_images)
 
 
 
-            landing_reference_images = self.original_landing_images[i]
-            lamella_area_reference_images = self.original_trench_images[i]
-
-
-            self.single_liftout(landing_coord, lamella_coord,
-                                landing_reference_images,
-                                lamella_area_reference_images)
 
         # NOTE: cleanup needs to happen after all lamellas landed due to platinum depositions...
         # TODO: confirm this is still true
-        for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
+        self.update_popup_settings(message="Do you want to start lamella cleanup?", crosshairs=False)
+        self.ask_user()
+        logging.info(f"Perform Cleanup: {self.response}")
+        if self.response:
+            for sample in self.samples:
+                self.current_sample = sample
+                self.liftout_counter = self.current_sample.sample_no
+                landing_coord = self.current_sample.landing_coordinates
+                self.current_status = AutoLiftoutStatus.Cleanup
+                self.cleanup_lamella(landing_coord=landing_coord)
 
-            self.current_status = AutoLiftoutStatus.Cleanup
-            self.cleanup_lamella(landing_coord=landing_coord)
 
     def load_coords(self):
 
@@ -465,35 +463,53 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.warning("Load Coordinates: No Folder selected.")
             display_error_message("Load Coordinates: No Folder selected.")
             return
+
         ##########
         # read the sample.yaml: get how many samples in there, loop through
         # TODO: maybe change sample to start at no. 0 for consistency?
         # TODO: assume all sample no are consecutive?
-        # TODO: it doesnt really matter what number a sample is, just store them in a list... 
+        # TODO: it doesnt really matter what number a sample is, just store them in a list...
         # and have a browser for them? as long as they are consistently in the same place so we can retrieve the images too?
+
+        # test if the file exists
+        yaml_file = os.path.join(save_path, "sample.yaml")
+
+        if not os.path.exists(yaml_file):
+            error_msg = "sample.yaml file could not be found in this directory."
+            logging.error(error_msg)
+            display_error_message(error_msg)
+            return
+
+        # test if there are any samples in the file?
+        sample = Sample(save_path, None)
+        yaml_file = sample.setup_yaml_file()
+
+        num_of_samples = len(yaml_file["sample"])
+        if num_of_samples == 0:
+            # error out if no sample.yaml found...
+            error_msg = "sample.yaml file has no stored sample coordinates."
+            logging.error(error_msg)
+            display_error_message(error_msg)
+            return
+
+        else:
+            # load the samples
+            self.samples = []
+            for sample_no in range(num_of_samples):
+                sample = Sample(save_path, sample_no+1) # TODO: watch out for this kind of thing with the numbering... improve
+                sample.load_data_from_file()
+                self.samples.append(sample)
+        ######
+
+
+        # TODO: remove once the above is tested
         # sample = Sample(save_path, 1)
-        # yaml_file = sample.setup_yaml_file()
-
-        # num_of_samples = len(yaml_file["sample"])
-        # if num_of_samples == 0:
-        #     # error out if no sample.yaml found... 
-        #     logging.warning("NO SAMPLES STORED IN THIS FOLDER")
-        # else:
-        #     # load the samples 
-        #     self.samples = []
-        #     for sample_no in range(num_of_samples):
-        #         sample = Sample(save_path, sample_no+1) # TODO: watch out for this kind of thing with the numbering... improve
-        #         sample.load_data_from_file()
-        #         self.samples.append(sample)
-        #######
-        
-        sample = Sample(save_path, 1)
-        lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
-
-        self.sample_save_path = save_path # TODO: need to clear up this logging path reference, should the updates go to the current log path or old?
-        # TODO: this needs to change for multiple samples
-        self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
-        self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
+        # lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
+        #
+        # self.sample_save_path = save_path # TODO: need to clear up this logging path reference, should the updates go to the current log path or old?
+        # # TODO: this needs to change for multiple samples
+        # self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
+        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
         # TODO: move to single_liftout
         # TODO: check if there is a park position first
@@ -2025,5 +2041,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 # TODO: use this instead of above,
 if __name__ == "__main__":
-    offline_mode = "False"  # TODO: change offline to bool not str
+    offline_mode = "True"  # TODO: change offline to bool not str
     main(offline=offline_mode)

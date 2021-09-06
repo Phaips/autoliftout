@@ -226,7 +226,7 @@ class Sample:
 
     def get_sample_data(self):
         """Return the sample data formatted for liftout from the specificed data_path. """
-        self.load_data_from_file()
+        # self.load_data_from_file()
 
         return (self.lamella_coordinates, self.landing_coordinates, self.lamella_ref_images, self.landing_ref_images)
 
