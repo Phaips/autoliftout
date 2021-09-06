@@ -1,38 +1,38 @@
-from re import M
-from liftout.gui.qtdesigner_files import main as gui_main
-from liftout.fibsem import acquire
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem import movement
-from liftout.fibsem import calibration
-from liftout.fibsem import milling
-from liftout.detection import utils as detection_utils
-from liftout import utils
-import time
 import datetime
-from PyQt5 import QtWidgets, QtGui, QtCore
-import numpy as np
-import traceback
 import logging
 import sys
-import mock
+import time
+import traceback
+from re import M
 from tkinter import Tk, filedialog
-import yaml
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as _FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as _NavigationToolbar
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')
-from autoscript_sdb_microscope_client.structures import *
 
-import scipy.ndimage as ndi
-import skimage
-import PIL
-from PIL import Image
-from enum import Enum
-from liftout.fibsem.sample import Sample
+import matplotlib
+import matplotlib.pyplot as plt
+import mock
+import numpy as np
+import yaml
+from liftout import utils
+from liftout.detection import utils as detection_utils
+from liftout.fibsem import acquire, calibration, milling, movement
+from liftout.fibsem import utils as fibsem_utils
+from liftout.gui.qtdesigner_files import main as gui_main
+from matplotlib.backends.backend_qt5agg import \
+    FigureCanvasQTAgg as _FigureCanvas
+from matplotlib.backends.backend_qt5agg import \
+    NavigationToolbar2QT as _NavigationToolbar
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+matplotlib.use('Agg')
 import os
+from enum import Enum
 
 import liftout
+import PIL
+import scipy.ndimage as ndi
+import skimage
+from autoscript_sdb_microscope_client.structures import *
+from liftout.fibsem.sample import Sample
+from PIL import Image
 
 # Required to not break imports
 BeamType = acquire.BeamType
@@ -68,7 +68,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
-        self.liftout_counter = 0
+        # self.liftout_counter = 0
         self.popup_window = None
         self.popup_canvas = None
         self.raw_image = None
@@ -361,15 +361,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
 
     def run_liftout(self):
-        logging.info("gui: run liftout started")
-
+        logging.info("fgui: run liftout started")
+        logging.info(f"gui: running liftout on {len(self.samples)} samples.")
+        
         # recalibrate park position coordinates
         # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
         for sample in self.samples:
 
             self.current_sample = sample
-            self.liftout_counter = self.current_sample.sample_no
+            # self.liftout_counter = self.current_sample.sample_no
             (lamella_coord, landing_coord,
                 lamella_area_reference_images,
                 landing_reference_images) = self.current_sample.get_sample_data()
@@ -410,7 +411,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             for sample in self.samples:
                 self.current_sample = sample
-                self.liftout_counter = self.current_sample.sample_no
+                # self.liftout_counter = self.current_sample.sample_no
                 landing_coord = self.current_sample.landing_coordinates
                 self.current_status = AutoLiftoutStatus.Cleanup
                 self.cleanup_lamella(landing_coord=landing_coord)
@@ -471,24 +472,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
-        logging.info(f"Starting Liftout No {self.liftout_counter}")
+        
+        logging.info(f"gui: starting liftout no. {self.current_sample.sample_no}")
         
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False # maybe make this a struct? inclcude status?
 
         self.stage.absolute_move(lamella_coordinates)
-        calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
+        calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
         # TODO: possibly new image
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
         if not self.response:
-            logging.warning(f'calibration: drift correction for sample {self.liftout_counter} did not work')
+            logging.warning(f'calibration: drift correction for sample {self.current_sample.sample_no} did not work')
             return
 
         self.image_settings['save'] = True
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_post_drift_correction'
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_post_drift_correction'
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # mill
@@ -555,11 +557,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['dwell_time'] = self.settings['reference_images']['trench_area_ref_img_dwell_time']
 
         self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_low_res'  # TODO: add to protocol
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_low_res'  # TODO: add to protocol
         eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_highres']
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_ref_trench_high_res'  # TODO: add to protocol
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_high_res'  # TODO: add to protocol
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
@@ -569,7 +571,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.liftout_counter, mode='ib')
+        calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample.sample_no, mode='ib')
         logging.info(f"{self.current_status.name}: finished cross-correlation")
 
         # TODO: check dwell time value/add to protocol
@@ -581,11 +583,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
         self.image_settings['save'] = True
         # TODO: deal with resetting label requirement
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML'
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML()
         movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) #  TODO: test movement by 6 deg
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML'
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML'
         self.correct_stage_drift_with_ML()
 
         # save jcut position
@@ -640,7 +642,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # take reference images after drift correction
         self.image_settings['save'] = True
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML_final'
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
         self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -820,7 +822,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
         self.image_settings['beam_type'] = beamType
         self.raw_image, self.overlay_image, self.downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = \
-            calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.liftout_counter,
+            calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.current_sample.sample_no,
                                                               shift_type=shift_type)
         feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
         # scaled features
@@ -888,7 +890,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to landing coordinate
         self.stage.absolute_move(landing_coord)
         # TODO: image settings?
-        calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.liftout_counter, mode="land")
+        calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
         logging.info(f"{self.current_status.name}: initial landing calibration complete.")
         park_position = movement.move_needle_to_landing_position(self.microscope)
         logging.info(f"{self.current_status.name}: needle inserted to park_position: {park_position}")
@@ -1176,7 +1178,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # realign lamella to image centre
-        self.image_settings['label'] = f'{self.liftout_counter:02d}_drift_correction_ML_cleanup'
+        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML_cleanup'
         self.image_settings["resolution"] ="1536x1024" #TODO: add to protocol
         self.image_settings["dwell_time"] = 0.5e-6
         self.correct_stage_drift_with_ML()
