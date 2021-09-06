@@ -9,7 +9,6 @@ from liftout.detection import utils as detection_utils
 from liftout import utils
 import time
 import datetime
-# from liftout.fibsem.utils import *
 from PyQt5 import QtWidgets, QtGui, QtCore
 import numpy as np
 import traceback
@@ -45,7 +44,6 @@ test_image = np.array(test_image)
 pretilt = 27  # TODO: put in protocol
 
 _translate = QtCore.QCoreApplication.translate
-# logger = logging.getLogger(__name__)
 
 protocol_template_path = '..\\protocol_liftout.yml'
 starting_positions = 1
@@ -138,8 +136,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
-        # self.auto = AutoLiftout(microscope=self.microscope)
-
         self.save_path = utils.make_logging_directory(prefix="run")
         utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
 
@@ -220,36 +216,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"Sputter Platinum: {self.response}")
 
         # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
-
-        #
-        # # check autocontrast quality
-        # self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
-        #                        'hfw': 150-6, 'brightness': None,
-        #                        'contrast': None, 'autocontrast': True,
-        #                        'save': False, 'label': 'autocontrast_check',
-        #                        'beam_type': BeamType.ELECTRON,
-        #                        'save_path': self.save_path}
-
-        # # TODO: use two images for this check
-        # self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        # self.ask_user(self.image_FIB, message='Did the autocontrast work satisfactorily?', crosshairs=False, filter_strength=self.filter_strength)
-        # if not self.response:
-        #     # set to manual settings
-        #     self.image_settings["brightness"] = self.settings["machine_learning"]["ib_brightness"]  # TODO: rename, and make
-        #     self.image_settings["contrast"] = self.settings["machine_learning"]["ib_contrast"]
-        #     self.image_settings["autocontrast"] = False
-        #     self.image_FIB, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        #     self.ask_user(self.image_FIB, message='Did the preset contrast and brightness work satisfactorily?', filter_strength=self.filter_strength)
-        #     if not self.response:
-        #         # TODO: add ability to adjust contrast / brightness
-        #         self.ask_user(self.image_FIB, message='Please adjust the contrast and brightness and take new images until satisfied.\n'
-        #                                               'Then click yes', filter_strength=self.filter_strength)
-        #         if not self.response:
-        #             self.USE_AUTOCONTRAST = True
-        # else:
-        #     self.USE_AUTOCONTRAST = True
-
-        # set autocontrast
 
         # Select landing points and check eucentric height
         movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
@@ -365,21 +331,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.image_settings['save'] = False
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
-        # self.ask_user(beam_type=BeamType.ELECTRON, message=f'Please double click to centre a feature in the SEM\n'
-        #                                                    f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength)
+    
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False, allow_new_image=True)
             self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-            # self.ask_user(beam_type=BeamType.ION,  message=f'Please click the same location in the ion beam\n'
-            #                                                f'Press Yes when happy with the location', click='single', filter_strength=self.filter_strength, crosshairs=False)
 
         else:
             logging.warning('calibration: electron image not centered')
@@ -499,21 +461,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 sample = Sample(save_path, sample_no+1) # TODO: watch out for this kind of thing with the numbering... improve
                 sample.load_data_from_file()
                 self.samples.append(sample)
-        ######
 
 
-        # TODO: remove once the above is tested
-        # sample = Sample(save_path, 1)
-        # lamella_coords, landing_coords, trench_images, landing_images = sample.get_sample_data()
-        #
-        # self.sample_save_path = save_path # TODO: need to clear up this logging path reference, should the updates go to the current log path or old?
-        # # TODO: this needs to change for multiple samples
-        # self.lamella_coordinates, self.landing_coordinates, self.original_trench_images, self.original_landing_images = [lamella_coords], [landing_coords], [trench_images], [landing_images]
-        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
-
-        # TODO: move to single_liftout
-        # TODO: check if there is a park position first
-        # not sure if this will work...
+        # TODO: test whether this is accurate, maybe move to start of run_liftout
         if sample.park_position.x is not None:
             movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
@@ -525,7 +475,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False # maybe make this a struct? inclcude status?
-
 
         self.stage.absolute_move(lamella_coordinates)
         calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.liftout_counter, mode='eb')
@@ -587,13 +536,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Have you centered the lamella position in the ion beam?\n'
                                                       f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message=f'Have you centered the lamella position in the ion beam?'
-        #                                               f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength)
 
         # TODO: remove ask user wrapping once mill_trenches is refactored
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Do you want to start milling trenches?", crosshairs=False)
         logging.info(f"{self.current_status.name}: perform milling trenches: {self.response}")
         if self.response:
             # mills trenches for lamella
@@ -654,7 +600,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: return image with patterning marks
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
@@ -675,7 +620,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: milling complete.")
 
     def correct_stage_drift_with_ML(self):
-        # TODO: add this autocontrast to a protocol? (because it changes depending on sample)
         # correct stage drift using machine learning
         label = self.image_settings['label']
         if self.image_settings["hfw"] > 200e-6:
@@ -703,7 +647,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
     def liftout_lamella(self):
-        # TODO: if starting from liftout run eucentricity calibration
         self.current_status = AutoLiftoutStatus.Liftout
         logging.info(f"{self.current_status.name}: liftout started.")
 
@@ -711,31 +654,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_liftout_angle(self.microscope, self.settings)
         logging.info(f"{self.current_status.name}: move to liftout angle.")
 
-        # TODO: if starting from liftout run eucentricity calibration
         if not self.MILLING_COMPLETED_THIS_RUN:
-            # how to best track this? it is part of the run, not the sample.
-            # probably just reset it at the start of each liftout, and flag it at the end of milling...
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
             self.image_settings["hfw"] = 150e-6
             movement.move_to_liftout_angle(self.microscope, self.settings)
             logging.info(f"{self.current_status.name}: move to liftout angle.")
 
-        # TODO: if starting from liftout need to use a wider hfw to see lamella because calibration is poor
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
         park_position = movement.move_needle_to_liftout_position(self.microscope)
         logging.info(f"{self.current_status.name}: needle inserted to park positon: {park_position}")
-        # TODO: saved park position is too high (out of frame)
 
         # save liftout position
         self.current_sample.park_position = park_position
         self.current_sample.liftout_coordinates = self.stage.current_position
         self.current_sample.save_data()
-
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        # self.update_display(beam_type=BeamType.ION, image_type="new")
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
@@ -756,7 +691,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
         else:
@@ -842,7 +776,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         # TODO: crosshairs here?
         if self.response:
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
@@ -907,7 +840,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def validate_detection(self, feature_1_px=None, feature_1_type=None, feature_2_px=None, feature_2_type=None):
         self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
         self.ask_user(image=self.overlay_image)
-        # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
 
         # if something wasn't correctly identified
         if not self.response:
@@ -915,7 +847,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
-            # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
 
             # if feature 1 wasn't correctly identified
             if not self.response:
@@ -923,9 +854,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_popup_settings(message=f'Please click on the correct {feature_1_type} position.'
                                                                    f'Press Yes button when happy with the position', click='single', crosshairs=False)
                 self.ask_user(image=self.downscaled_image)
-                # self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_1_type} position.'
-                #                                                    f'Press Yes button when happy with the position', click='single', crosshairs=False)
-                # TODO: do we want filtering on this image?
 
                 # if new feature position selected
                 if self.response:
@@ -934,7 +862,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
-            # self.ask_user(image=self.overlay_image, message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
 
             # if feature 2 wasn't correctly identified
             if not self.response:
@@ -942,8 +869,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
                                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
                 self.ask_user(image=self.downscaled_image)
-                # self.ask_user(image=self.downscaled_image, message=f'Please click on the correct {feature_2_type} position.'
-                #                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
                 # TODO: do we want filtering on this image?
 
                 # if new feature position selected
@@ -1043,7 +968,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.run_milling(self.microscope, self.settings)
@@ -1088,7 +1012,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
             milling.run_milling(self.microscope, self.settings)
@@ -1130,7 +1053,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         logging.info(f"{self.current_status.name}: landing stage complete")
-        # TODO: test this
 
 
     def reset_needle(self):
@@ -1175,18 +1097,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
 
-        # sharpening parameters
-        # height = self.settings["sharpen"]["height"]
-        # width = self.settings["sharpen"]["width"]
-        # depth = self.settings["sharpen"]["depth"]
-        # bias = self.settings["sharpen"]["bias"]
-        # hfw = self.settings["sharpen"]["hfw"]
-        # tip_angle = self.settings["sharpen"]["tip_angle"]  # 2NA of the needle   2*alpha
-        # needle_angle = self.settings["sharpen"][
-        #     "needle_angle"
-        # ]  # needle tilt on the screen 45 deg +/-
-        # milling_current = self.settings["sharpen"]["sharpen_milling_current"]
-
         # create sharpening patterns
         cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=distance_x_m, y_0=distance_y_m)
         logging.info(f"{self.current_status.name}: calculate needle sharpen pattern")
@@ -1201,7 +1111,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
-        # self.ask_user(beam_type=BeamType.ION, message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             milling.run_milling(self.microscope, self.settings)
@@ -1226,10 +1135,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_status = AutoLiftoutStatus.Cleanup
         logging.info(f"{self.current_status.name}: cleanup stage started")
 
-        # # TODO: re-implement this
-        # stage = microscope.specimen.stage
-        # needle = microscope.specimen.manipulator
-        #
         # move to landing coord
         self.microscope.specimen.stage.absolute_move(landing_coord)
         logging.info(f"{self.current_status.name}: move to landing coordinates: {landing_coord}")
@@ -1312,7 +1217,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # mill thin lamella pattern
         self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
         self.ask_user()
-        # self.ask_user(message="Run lamella thinning?", crosshairs=False)
         if self.response:
             milling.mill_thin_lamella(self.microscope, self.settings)
 
