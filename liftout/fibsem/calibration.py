@@ -149,28 +149,6 @@ def identify_shift_using_machine_learning(microscope, image_settings, settings, 
     image_w_overlay, downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = detector.locate_shift_between_features(image, shift_type=shift_type, show=False)
     return image, np.array(image_w_overlay), np.array(downscaled_image), feature_1_px, feature_1_type, feature_2_px, feature_2_type
 
-
-# def calculate_shift_between_features(settings):
-#     """
-#     in m
-#     :return:
-#     """
-#     # detector class (model)
-#     weights_file = settings["machine_learning"]["weights"]
-#     detector = detection.Detector(weights_file)
-
-#     print("shift_type: ", shift_type)
-#     x_distance, y_distance = detector.calculate_shift_between_features(img, shift_type=shift_type, show=show, validate=validate)
-#     print(f"x_distance = {x_distance:.4f}, y_distance = {y_distance:.4f}")
-
-#     x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance)
-#     print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
-
-#     return x_shift, y_shift
-
-
-
-
 def shift_from_correlation_electronBeam_and_ionBeam(eb_image, ib_image, lowpass=128, highpass=6, sigma=2):
     ib_image_rotated = rotate_AdornedImage(ib_image)
     x_shift, y_shift = shift_from_crosscorrelation_AdornedImages(
@@ -274,3 +252,18 @@ def circ_mask(size=(128, 128), radius=32, sigma=3):
     else:
         mask = tmp
     return mask
+
+def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
+    """Automatic gamma correction"""
+    std = np.std(image.data)
+    mean = np.mean(image.data)
+    diff = mean - 255/2.
+    gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
+    if abs(diff) < threshold:
+        gam = 1.0
+    logging.info(f"calibration (gamma correction): diff: {diff:.3f}, gam: {gam:.3f} ")
+    image_data = exposure.adjust_gamma(image.data, gam)
+    reference = AdornedImage(data=image_data)
+    reference.metadata = image.metadata
+    image = reference
+    return image

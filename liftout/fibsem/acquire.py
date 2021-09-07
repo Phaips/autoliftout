@@ -1,10 +1,11 @@
+from torch.nn.functional import threshold
 from autoscript_sdb_microscope_client.structures import *
 from enum import Enum
 import logging
 from liftout import utils
 from skimage import exposure
 import numpy as np
-
+from liftout import calibration
 
 class BeamType(Enum):
     ELECTRON = 1
@@ -58,22 +59,26 @@ def new_image(microscope, settings):
                           beam_type=settings['beam_type'])
 
     # apply gamma correction
-    if settings["gamma_correction"]:
+    if settings["gamma"]["correction"]:
 
-        std = np.std(image.data)
-        mean = np.mean(image.data)
-        diff = mean - 255/2.
-        gam = np.clip(0.15, 1 + diff * 0.01, 5.0)
-        if abs(diff) < 46:
-            gam = 1.0
-        logging.info(f"gamma correction: diff: {diff}, gam: {gam:.3f} ")
-        # gamma_correction = settings["gamma_correction"]
-        image_data = exposure.adjust_gamma(image.data, gam)
-        # image.data = image_data
-        reference = AdornedImage(data=image_data)
-        reference.metadata = image.metadata
-        image = reference
-        # TODO: improve
+        # gamma parameters
+        min_gamma = settings["gamma"]["min_gamma"]
+        max_gamma = settings["gamma"]["max_gamma"]
+        scale_factor = settings["gamma"]["scale_factor"]
+        threshold = settings["gamma"]["threshold"]
+
+        image = calibration.gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold)
+        # std = np.std(image.data)
+        # mean = np.mean(image.data)
+        # diff = mean - 255/2.
+        # gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
+        # if abs(diff) < threshold:
+        #     gam = 1.0
+        # logging.info(f"gamma correction: diff: {diff}, gam: {gam:.3f} ")
+        # image_data = exposure.adjust_gamma(image.data, gam)
+        # reference = AdornedImage(data=image_data)
+        # reference.metadata = image.metadata
+        # image = reference
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],

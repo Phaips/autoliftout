@@ -10,7 +10,12 @@ imaging:
   dwell_time: 1e-6
   resolution: "1536x1024"
   imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
-  gamma_correction: True
+gamma:
+  correction: True
+  min_gamma: 0.15
+  max_gamma: 5.0
+  scale_factor: 0.01
+  threshold: 46 # px
 reference_images:
   landing_post_ref_img_resolution: "1536x1024"
   landing_post_ref_img_dwell_time: 1e-6

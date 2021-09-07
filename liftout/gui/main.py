@@ -143,6 +143,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.settings = utils.load_config(config_filename)
         self.pretilt_degrees = 27  # TODO: add pretilt_degrees to protocol
+        # TODO: ^ self.pretilt_degrees is never used
 
         # TODO: need to consolidate this so there arent multiple different paths, its too confusing
         # currently needed to stop it crashing running immediately after init
@@ -169,7 +170,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'save': True, 'label': 'grid',
                                'beam_type': BeamType.ELECTRON,
                                'save_path': self.save_path,
-                               "gamma_correction": self.settings["imaging"]["gamma_correction"]}
+                               "gamma": self.settings["gamma"]}  # TODO: test if this dictionary works...
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
@@ -190,7 +191,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'save': True, 'label': 'grid',
                                'beam_type': BeamType.ELECTRON,
                                'save_path': self.save_path,
-                               "gamma_correction": self.settings["imaging"]["gamma_correction"]}
+                               "gamma": self.settings["gamma"]}
 
         movement.move_to_sample_grid(self.microscope, self.settings)
 
