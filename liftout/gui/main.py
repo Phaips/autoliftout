@@ -480,8 +480,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.MILLING_COMPLETED_THIS_RUN = False # maybe make this a struct? inclcude status?
 
         self.stage.absolute_move(lamella_coordinates)
-        calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+
+        if ret is False:
+            # cross-correlation has failed, manual correction required
+            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
+                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
+            self.ask_user(image=self.image_SEM) # TODO: might need to update image?
+            logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
+
         # TODO: possibly new image
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength, allow_new_image=True)
@@ -572,8 +580,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample.sample_no, mode='ib')
-        logging.info(f"{self.current_status.name}: finished cross-correlation")
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample.sample_no, mode='ib')
+        # logging.info(f"{self.current_status.name}: finished cross-correlation")
+
+        if ret is False:
+            # cross-correlation has failed, manual correction required
+            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
+                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
+            self.ask_user(image=self.image_SEM) # TODO: might need to update image?
+            logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
+
 
         # TODO: check dwell time value/add to protocol
         # TODO: check artifact of 0.5 into 1 dwell time
@@ -890,8 +906,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # move to landing coordinate
         self.stage.absolute_move(landing_coord)
+        
         # TODO: image settings?
-        calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
+        
+        if ret is False:
+            # cross-correlation has failed, manual correction required
+            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
+                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
+            self.ask_user(image=self.image_FIB) # TODO: might need to update image?
+            logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
+
         logging.info(f"{self.current_status.name}: initial landing calibration complete.")
         park_position = movement.move_needle_to_landing_position(self.microscope)
         logging.info(f"{self.current_status.name}: needle inserted to park_position: {park_position}")
@@ -903,8 +928,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["beam_type"] = BeamType.ELECTRON
         self.image_settings["save"] = True
         self.image_settings["label"] = "landing_needle_land_sample_lowres"
-
-        # needle_eb_lowres, needle_ib_lowres = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
 

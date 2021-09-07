@@ -52,7 +52,7 @@ def correct_stage_drift(microscope, image_settings, reference_images, liftout_co
     microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
 
-
+    # TODO: refactor this code
     # TODO: 'coarse alignment' status
     image_settings['hfw'] = field_width_lowres
     image_settings['save'] = True
@@ -61,22 +61,25 @@ def correct_stage_drift(microscope, image_settings, reference_images, liftout_co
     if mode == "land":
         image_settings['label'] = f'{liftout_counter:02d}_{mode}_drift_correction_landing_low_res'  # TODO: add to protocol
         new_eb_lowres, new_ib_lowres = take_reference_images(microscope, settings=image_settings)
-        align_using_reference_images(ref_lowres, new_ib_lowres, stage, mode=mode)
-
+        ret = align_using_reference_images(ref_lowres, new_ib_lowres, stage, mode=mode)
+        if ret is False:
+            return ret
         # TODO: 'fine alignment' status
         image_settings['hfw'] = field_width_highres
         image_settings['save'] = True
 
         image_settings['label'] = f'{liftout_counter:02d}_drift_correction_landing_high_res'  # TODO: add to protocol
         new_eb_highres, new_ib_highres = take_reference_images(microscope, settings=image_settings)
-        align_using_reference_images(ref_highres, new_ib_highres, stage, mode=mode)
+        ret = align_using_reference_images(ref_highres, new_ib_highres, stage, mode=mode)
         # TODO: deduplicate this bit ^
     else:
         for i in range(lowres_count):
-            # if i == 1:
+
             image_settings['label'] = f'{liftout_counter:02d}_{mode}_drift_correction_lamella_low_res_{i}'  # TODO: add to protocol
             new_eb_lowres, new_ib_lowres = take_reference_images(microscope, settings=image_settings)
-            align_using_reference_images(ref_lowres, new_eb_lowres, stage)
+            ret = align_using_reference_images(ref_lowres, new_eb_lowres, stage)
+            if ret is False:
+                return ret
 
         # TODO: 'fine alignment' status
         image_settings['hfw'] = field_width_highres
@@ -84,8 +87,10 @@ def correct_stage_drift(microscope, image_settings, reference_images, liftout_co
 
         image_settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_high_res'  # TODO: add to protocol
         new_eb_highres, new_ib_highres = take_reference_images(microscope, settings=image_settings)
-        align_using_reference_images(ref_highres, new_eb_highres, stage)
+        ret = align_using_reference_images(ref_highres, new_eb_highres, stage)
 
+    logging.info(f"calibration: image cross correlation finished {ret}")
+    return ret
 
 def align_using_reference_images(ref_image, new_image, stage, mode=None):
 
@@ -120,12 +125,23 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
         new_image, ref_image, lowpass=lowpass_pixels,
         highpass=highpass_pixels, sigma=sigma)
-    x_move = x_corrected_stage_movement(-dx_ei_meters)
-    yz_move = y_corrected_stage_movement(dy_ei_meters,
-                                         stage.current_position.t,
-                                         beam_type=beam_type)  # check electron/ion movement
-    stage.relative_move(x_move)
-    stage.relative_move(yz_move)
+    
+    # TODO: add a check here to constrain stop the movement if it is too large?
+    THRESHOLD = 100e-6
+    if abs(dx_ei_meters) > THRESHOLD or abs(dy_ei_meters) > THRESHOLD:
+        logging.warning("calibration: calculated cross correlation movement too large.")
+        logging.warning("calibration: cancelling automatic cross correlation.")
+        return False
+    else:
+        
+        x_move = x_corrected_stage_movement(-dx_ei_meters)
+        yz_move = y_corrected_stage_movement(dy_ei_meters,
+                                            stage.current_position.t,
+                                            beam_type=beam_type)  # check electron/ion movement
+        stage.relative_move(x_move)
+        stage.relative_move(yz_move)
+        return True
+
 
 
 # TODO: figure out a better name
