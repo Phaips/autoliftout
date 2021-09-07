@@ -998,9 +998,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         depth = self.settings["cut"]["depth"]
         rotation = self.settings["cut"]["rotation"]
         hfw = self.settings["cut"]["hfw"]
+        vertical_gap = 2e-6
 
         cut_coord = {"center_x": -distance_x_m,
-                     "center_y": distance_y_m,
+                     "center_y": distance_y_m - vertical_gap, # TODO: check direction?
                      "width": width,
                      "height": height,
                      "depth": depth,  # TODO: might need more to get through needle
