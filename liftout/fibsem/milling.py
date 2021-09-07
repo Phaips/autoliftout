@@ -15,7 +15,6 @@ def mill_jcut(microscope, settings):
         Whether to ask the user to confirm before milling.
     """
     jcut_milling_patterns(microscope, settings)
-    microscope.patterning.mode = 'Serial'
 
 
 def jcut_severing_pattern(microscope, settings):
@@ -225,6 +224,37 @@ def reset_state(microscope, settings, application_file=None):
     return microscope
 
 
+def setup_ion_milling(microscope, *,
+                      application_file="Si_Alex",
+                      patterning_mode="Serial",
+                      ion_beam_field_of_view=100e-6):
+    """Setup for rectangle ion beam milling patterns.
+
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    application_file : str, optional
+        Application file for ion beam milling, by default "Si_Alex"
+    patterning_mode : str, optional
+        Ion beam milling pattern mode, by default "Serial".
+        The available options are "Parallel" or "Serial".
+    ion_beam_field_of_view : float, optional
+        Width of ion beam field of view in meters, by default 59.2e-6
+    """
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    microscope.patterning.set_default_beam_type(2)  # ion beam default
+    microscope.patterning.set_default_application_file(application_file)
+    microscope.patterning.mode = patterning_mode
+    microscope.patterning.clear_patterns()  # clear any existing patterns
+    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
+    logging.info(f"milling: setup ion beam milling")
+    logging.info(f"milling: application file:  {application_file}")
+    logging.info(f"milling: patterning mode: {patterning_mode}")
+    logging.info(f"milling: ion horizontal field width: {ion_beam_field_of_view}")
+
+
+
 def protocol_stage_settings(settings):
     """"Load settings for each milling stage, overwriting default values.
 
@@ -314,34 +344,8 @@ def jcut_milling_patterns(microscope, settings):
     return jcut_top, jcut_lhs, jcut_rhs
 
 
-def setup_ion_milling(microscope, *,
-                      application_file="Si_Alex",
-                      patterning_mode="Serial",
-                      ion_beam_field_of_view=100e-6):
-    """Setup for rectangle ion beam milling patterns.
 
-    Parameters
-    ----------
-    microscope : AutoScript microscope instance.
-        The AutoScript microscope object.
-    application_file : str, optional
-        Application file for ion beam milling, by default "Si_Alex"
-    patterning_mode : str, optional
-        Ion beam milling pattern mode, by default "Serial".
-        The available options are "Parallel" or "Serial".
-    ion_beam_field_of_view : float, optional
-        Width of ion beam field of view in meters, by default 59.2e-6
-    """
-    microscope.imaging.set_active_view(2)  # the ion beam view
-    microscope.patterning.set_default_beam_type(2)  # ion beam default
-    microscope.patterning.set_default_application_file(application_file)
-    microscope.patterning.mode = patterning_mode
-    microscope.patterning.clear_patterns()  # clear any existing patterns
-    microscope.beams.ion_beam.horizontal_field_width.value = ion_beam_field_of_view
-
-
-
-def weld_to_landing_post(microscope, *, milling_current=20e-12, confirm=True):
+def weld_to_landing_post(microscope, *, milling_current=20e-12):
     """Create and mill the sample to the landing post.
     Stick the lamella to the landing post by melting the ice with ion milling.
     Parmaters
@@ -353,45 +357,48 @@ def weld_to_landing_post(microscope, *, milling_current=20e-12, confirm=True):
     confirm : bool, optional
         Whether to wait for user confirmation before milling.
     """
-    pattern = _create_welding_pattern(microscope)
+    logging.info("milling: weld to landing post")
+    _create_mill_pattern(microscope)
 
-def _create_welding_pattern(microscope, *,
-                            center_x=0,
-                            center_y=0,
-                            width=3e-6,
-                            height=10e-6,
-                            depth=5e-9):
-    """Create milling pattern for welding liftout sample to the landing post.
-    Parameters
-    ----------
-    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
-        The AutoScript microscope object instance.
-    center_x : float
-        Center position of the milling pattern along x-axis, in meters.
-        Zero coordinate is at the centerpoint of the image field of view.
-    center_y : float
-        Center position of the milling pattern along x-axis, in meters.
-        Zero coordinate is at the centerpoint of the image field of view.
-    width : float
-        Width of the milling pattern, in meters.
-    height: float
-        Height of the milling pattern, in meters.
-    depth : float
-        Depth of the milling pattern, in meters.
-    """
-    # TODO: user input yaml for welding pattern parameters
-    setup_ion_milling(microscope, patterning_mode="Serial")
-    pattern = microscope.patterning.create_rectangle(
-        center_x, center_y, width, height, depth)
-    return pattern
+# def _create_welding_pattern(microscope, *,
+#                             center_x=0,
+#                             center_y=0,
+#                             width=3e-6,
+#                             height=10e-6,
+#                             depth=5e-9):
+#     """Create milling pattern for welding liftout sample to the landing post.
+#     Parameters
+#     ----------
+#     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+#         The AutoScript microscope object instance.
+#     center_x : float
+#         Center position of the milling pattern along x-axis, in meters.
+#         Zero coordinate is at the centerpoint of the image field of view.
+#     center_y : float
+#         Center position of the milling pattern along x-axis, in meters.
+#         Zero coordinate is at the centerpoint of the image field of view.
+#     width : float
+#         Width of the milling pattern, in meters.
+#     height: float
+#         Height of the milling pattern, in meters.
+#     depth : float
+#         Depth of the milling pattern, in meters.
+#     """
+#     # TODO: user input yaml for welding pattern parameters
+#     setup_ion_milling(microscope)
+#     pattern = microscope.patterning.create_rectangle(
+#         center_x, center_y, width, height, depth)
+#     return pattern
 
 
 
 def cut_off_needle(microscope, cut_coord, milling_current=0.74e-9):
-    pattern = _create_mill_pattern(microscope,
-                                     center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
-                                     width=cut_coord["width"], height=cut_coord["height"],
-                                     depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], ion_beam_field_of_view=cut_coord["hfw"])
+    logging.info(f"milling: cut off needle")
+    _create_mill_pattern(microscope,
+                        center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
+                        width=cut_coord["width"], height=cut_coord["height"],
+                        depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], 
+                        ion_beam_field_of_view=cut_coord["hfw"])
 
 
 def _create_mill_pattern(microscope, *,
@@ -406,6 +413,8 @@ def _create_mill_pattern(microscope, *,
     pattern = microscope.patterning.create_rectangle(
         center_x, center_y, width, height, depth)
     pattern.rotation = np.deg2rad(rotation_degrees)
+    logging.info(f"milling: create milling pattern,  x:{center_x:e}, y: {center_y:e}")
+    logging.info(f"w: {width:e}, h: {height:e}, d: {depth:e}, r:{rotation_degrees:.3f}")
     return pattern
 
 
@@ -497,9 +506,6 @@ def calculate_sharpen_needle_pattern(microscope, settings, x_0, y_0):
         "hfw": hfw,
     }
 
-    # setup ion milling
-    # setup_ion_milling(microscope, ion_beam_field_of_view=hfw, patterning_mode="Serial")
-
     return cut_coord_bottom, cut_coord_top
 
 
@@ -515,12 +521,14 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
         height = cut_coord["height"]
         depth = cut_coord["depth"]
         rotation_degrees = cut_coord["rotation"]
-        ion_beam_field_of_view = cut_coord["hfw"]
 
         # create patterns
         pattern = microscope.patterning.create_rectangle(
             center_x, center_y, width, height, depth)
         pattern.rotation = np.deg2rad(rotation_degrees)
         sharpen_patterns.append(pattern)
+        logging.info(f"milling: create sharpen needle pattern")
+        logging.info(f"x: {center_x}, y: {center_y}, w: {width}, h: {height}")
+        logging.info(f"d: {depth}, r: {rotation_degrees}")
 
     return sharpen_patterns
