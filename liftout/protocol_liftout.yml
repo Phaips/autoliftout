@@ -1,6 +1,7 @@
 demo_mode: False
 system:
   ip_address: 10.0.0.1
+  application_file: "autolamella"
   application_file_rectangle: "autolamella"
   application_file_cleaning_cross_section: "autolamella"
   stage_rotation_flat_to_electron: 50 # degrees
@@ -118,3 +119,15 @@ thin_lamella: # Lamella parameters
     percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
     milling_depth: 0.1e-6 # In meters. Overrides the default miling depth.
     milling_current: 6e-11 # In Amperes. Overrides the default current.
+platinum:
+  application_file: "cryo_Pt_dep"
+  gas: "Pt cryo"
+  whole_grid:
+    time: 20
+    hfw: 30e-6
+    length: 7e-6
+  weld:
+    time: 20
+    hfw: 100e-6
+    length: 15e-6
+    

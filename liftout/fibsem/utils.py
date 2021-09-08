@@ -31,22 +31,20 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
 
     # TODO: add whole_grid sputter parameters to protocol
     if whole_grid:
-        stage = microscope.specimen.stage
         move_to_sample_grid(microscope, settings)
-        # auto_link_stage(microscope, expected_z=5e-3)
-        sputter_time = 20
-        horizontal_field_width = 30e-6
-        line_pattern_length = 7e-6
+        sputter_time = settings["platinum"]["whole_grid"]["time"]# 20
+        horizontal_field_width = settings["platinum"]["whole_grid"]["hfw"] # 30e-6
+        line_pattern_length = settings["platinum"]["whole_grid"]["length"] # 7e-6
 
     # Setup
     original_active_view = microscope.imaging.get_active_view()
     microscope.imaging.set_active_view(1)  # the electron beam view
     microscope.patterning.clear_patterns()
-    microscope.patterning.set_default_application_file(sputter_application_file)
+    microscope.patterning.set_default_application_file(settings["platinum"]["application_file"]) #sputter_application_file)
     microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
     multichem = microscope.gas.get_multichem()
     multichem.insert()
-    multichem.turn_heater_on("Pt cryo")
+    multichem.turn_heater_on(settings["platinum"]["gas"]) #"Pt cryo")
     time.sleep(3)
 
 
@@ -63,7 +61,7 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     if microscope.patterning.state == "Idle":
         logging.info('Sputtering with platinum for {} seconds...'.format(sputter_time))
         microscope.patterning.start()  # asynchronous patterning
-        time.sleep(sputter_time)
+        time.sleep(sputter_time + 5)
     else:
         raise RuntimeError(
             "Can't sputter platinum, patterning state is not ready."
@@ -76,7 +74,7 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
 
     # Cleanup
     microscope.beams.electron_beam.unblank()
-    microscope.patterning.set_default_application_file(default_application_file)
+    microscope.patterning.set_default_application_file(settings["system"]["application_file"]) #default_application_file)
     microscope.imaging.set_active_view(original_active_view)
     microscope.patterning.set_default_beam_type(2)  # set ion beam
     multichem.retract()
