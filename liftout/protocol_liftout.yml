@@ -5,6 +5,7 @@ system:
   application_file_cleaning_cross_section: "autolamella"
   stage_rotation_flat_to_electron: 50 # degrees
   stage_rotation_flat_to_ion: 230 # degrees
+  pretilt_angle: 27 # degrees
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
@@ -61,7 +62,6 @@ machine_learning:
   ib_brightness: 0.41
   ib_contrast: 0.86
   weights: fresh_full_n10.pt
-#  weights: C:\Users\Admin\MICROSCOPE\DeMarcoLab\autoliftout\liftout\model\models\fresh_full_n10.pt
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees

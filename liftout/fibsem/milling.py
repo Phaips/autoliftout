@@ -25,8 +25,6 @@ def jcut_severing_pattern(microscope, settings):
         The AutoScript microscope object.
     jcut_settings : dict
         Sample surface angle for J-cut in degrees, by default 6
-    pretilt_degrees : int, optional
-        Pre-tilt of sample holder in degrees, by default 27
     Returns
     -------
     autoscript_sdb_microscope_client.structures.RectanglePattern
@@ -281,8 +279,6 @@ def jcut_milling_patterns(microscope, settings):
         The AutoScript microscope object.
     settings["jcut"] : dict
         Dictionary of J-cut parameter settings.
-    pretilt_degrees : int, optional
-        Pre-tilt of sample holder in degrees, by default 27
     Returns
     -------
     (autoscript_sdb_microscope_client.structures.RectanglePattern,
