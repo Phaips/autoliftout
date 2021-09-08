@@ -126,9 +126,8 @@ def mill_single_stage(microscope, settings, stage_settings, stage_number):
     stage_number : int. Current milling protocol stage number.
     """
     logging.info(f'Milling trenches, protocol stage {stage_number}')
-    demo_mode = settings["demo_mode"]
-    lamella_region_milling(microscope, settings, stage_settings, region='upper', demo_mode=demo_mode)
-    lamella_region_milling(microscope, settings, stage_settings, region='lower', demo_mode=demo_mode)
+    lamella_region_milling(microscope, settings, stage_settings, region='upper')
+    lamella_region_milling(microscope, settings, stage_settings, region='lower')
 
 
 def _upper_milling_coords(microscope, stage_settings):
@@ -165,7 +164,7 @@ def _lower_milling_coords(microscope, stage_settings):
     return milling_roi
 
 
-def lamella_region_milling(microscope, settings, stage_settings, region, demo_mode=False):
+def lamella_region_milling(microscope, settings, stage_settings, region):
     # Setup and realign to fiducial marker
     setup_milling(microscope, settings, stage_settings)
     # Create and mill patterns
@@ -173,13 +172,12 @@ def lamella_region_milling(microscope, settings, stage_settings, region, demo_mo
         _lower_milling_coords(microscope, stage_settings)
     elif region == 'upper':
         _upper_milling_coords(microscope, stage_settings)
-    if not demo_mode:
-        logging.info(f"milling: milling {region} lamella pattern...")
-        microscope.imaging.set_active_view(2)  # the ion beam view
-        try:
-            microscope.patterning.run()
-        except ApplicationServerException:
-            logging.error("ApplicationServerException: could not mill!")
+    logging.info(f"milling: milling {region} lamella pattern...")
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    try:
+        microscope.patterning.run()
+    except ApplicationServerException:
+        logging.error("ApplicationServerException: could not mill!")
     microscope.patterning.clear_patterns()
     return microscope
 
