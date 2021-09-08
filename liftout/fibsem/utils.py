@@ -11,30 +11,27 @@ def initialise_fibsem(ip_address='10.0.0.1'):
     return microscope
 
 
-def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
-                     horizontal_field_width=100e-6, line_pattern_length=15e-6,
-                     sputter_application_file="cryo_Pt_dep",
-                     default_application_file="autolamella",
-                     ):
+def sputter_platinum(microscope, settings, whole_grid=False):
     """Sputter platinum over the sample.
     Parameters
     ----------
     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
         The AutoScript microscope object instance.
-    sputter_time : int, optionalye
-        Time in seconds for platinum sputtering. Default is 60 seconds.
-    sputter_application_file : str
-        Application file for platinum sputtering/deposition.
-    default_application_file : str
-        Default application file, to return to after the platinum sputtering.
+    settings: dict
+        The protocol settings
     """
 
-    # TODO: add whole_grid sputter parameters to protocol
     if whole_grid:
         move_to_sample_grid(microscope, settings)
         sputter_time = settings["platinum"]["whole_grid"]["time"]# 20
-        horizontal_field_width = settings["platinum"]["whole_grid"]["hfw"] # 30e-6
+        hfw = settings["platinum"]["whole_grid"]["hfw"] # 30e-6
         line_pattern_length = settings["platinum"]["whole_grid"]["length"] # 7e-6
+        logging.info("sputtering platinum over the whole grid.")
+    else:
+        sputter_time = settings["platinum"]["weld"]["time"] # 60
+        hfw=settings["platinum"]["weld"]["hfw"] # 100e-6
+        line_pattern_length = settings["platinum"]["weld"]["length"] # 15e-6
+        logging.info("sputtering platinum to weld.")
 
     # Setup
     original_active_view = microscope.imaging.get_active_view()
@@ -49,7 +46,7 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
 
 
     # Create sputtering pattern
-    microscope.beams.electron_beam.horizontal_field_width.value = horizontal_field_width
+    microscope.beams.electron_beam.horizontal_field_width.value = hfw
     pattern = microscope.patterning.create_line(-line_pattern_length/2,  # x_start
                                                 +line_pattern_length,    # y_start
                                                 +line_pattern_length/2,  # x_end
@@ -78,4 +75,4 @@ def sputter_platinum(microscope, settings, whole_grid=False, sputter_time=60,
     microscope.imaging.set_active_view(original_active_view)
     microscope.patterning.set_default_beam_type(2)  # set ion beam
     multichem.retract()
-    logging.info("Sputtering finished.")
+    logging.info("sputtering platinum finished.")

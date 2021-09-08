@@ -210,11 +210,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
-            logging.info("setup: sputtering platinum over the whole grid")
             self.image_settings['label'] = 'grid_Pt_deposition'
             self.image_settings['save'] = True
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        logging.info(f"Sputter Platinum: {self.response}")
 
         # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
 
@@ -581,7 +579,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample.sample_no, mode='ib')
-        # logging.info(f"{self.current_status.name}: finished cross-correlation")
 
         if ret is False:
             # cross-correlation has failed, manual correction required
@@ -589,6 +586,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
             self.ask_user(image=self.image_SEM) # TODO: might need to update image?
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
+        logging.info(f"{self.current_status.name}: finished cross-correlation")
 
 
         # TODO: check dwell time value/add to protocol
@@ -695,8 +693,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.land_needle_on_milled_lamella()
 
         # sputter platinum
-        # TODO: protocol sputter
-        fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False, sputter_time=20) # TODO: check sputter time
+        fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False)
         logging.info(f"{self.current_status.name}: lamella to needle welding complete.")
 
         self.image_settings['save'] = True
