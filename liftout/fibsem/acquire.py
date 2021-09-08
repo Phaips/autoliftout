@@ -22,15 +22,17 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
         resolution="768x512",  # low resolution, so as not to damage the sample
         number_of_frames=5,
     )
-    logging.info("Automatically adjusting contrast...")
+    logging.info("acquire: automatically adjusting contrast...")
     microscope.auto_functions.run_auto_cb()
 
-
+# TODO: these settings should be image_settings for consistency
 def take_reference_images(microscope, settings):
     tmp_beam_type = settings["beam_type"]
     settings['beam_type'] = BeamType.ELECTRON
+    logging.info(f"acquire: taking {settings['beam_type'].name} reference image.")
     eb_image = new_image(microscope, settings)
     settings['beam_type'] = BeamType.ION
+    logging.info(f"acquire: taking {settings['beam_type'].name} reference image.")
     ib_image = new_image(microscope, settings)
     settings["beam_type"] = tmp_beam_type # reset to original beam type
     return eb_image, ib_image
@@ -119,6 +121,7 @@ def acquire_image(microscope, settings=None, brightness=None, contrast=None, bea
         image.metadata.binary_result.pixel_size.x = image pixel size in x
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
+    logging.info(f"acquire: acquiring new {beam_type.name} image.")
     microscope.imaging.set_active_view(beam_type.value)
     if brightness:
         microscope.detector.brightness.value = brightness

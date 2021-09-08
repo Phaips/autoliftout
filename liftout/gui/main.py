@@ -64,6 +64,10 @@ class AutoLiftoutStatus(Enum):
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
         super(GUIMainWindow, self).__init__()
+        
+        self.current_status = AutoLiftoutStatus.Initialisation
+        logging.info(f"------------ {self.current_status.name} STARTED ------------")
+
         # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
         self.setupUi(self)
@@ -175,12 +179,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
         self.current_status = AutoLiftoutStatus.Initialisation
-        logging.info(f"Status: {self.current_status}")
+        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
+
 
     def initialise_autoliftout(self):
         # TODO: check if needle i
         self.current_status = AutoLiftoutStatus.Setup
-        logging.info(f"Status: {self.current_status}")
+        logging.info(f"------------ {self.current_status.name} STARTED ------------")
 
         # move to the initial sample grid position
         self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
@@ -236,6 +241,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples.append(sample)
         
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
+        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
+
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -417,7 +424,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
     def load_coords(self):
-
+        
+        logging.info(f"------------ LOAD COORDINATES STARTED ------------")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=os.path.join(os.path.dirname(liftout.__file__), "log")) # TODO: make this path not hard coded
@@ -467,7 +475,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if sample.park_position.x is not None:
             movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
-        logging.info(f"Load Coordinates complete from {save_path}")
+        logging.info(f"{len(self.samples)} samples loaded from {save_path}.")
+        logging.info(f"------------ LOAD COORDINATES FINISHED ------------")
+
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
@@ -492,9 +502,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
-        if not self.response:
-            logging.warning(f'calibration: drift correction for sample {self.current_sample.sample_no} did not work')
-            return
+        # Should never exist here...
+        # if not self.response:
+        #     logging.warning(f'calibration: drift correction for sample {self.current_sample.sample_no} did not work')
+        #     return
 
         self.image_settings['save'] = True
         self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_post_drift_correction'
@@ -530,7 +541,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella(self):
         self.current_status = AutoLiftoutStatus.Milling
-        logging.info(f"Status: {self.current_status}")
+        logging.info(f"------------ {self.current_status.name} STARTED ------------")
         stage_settings = MoveSettings(rotate_compucentric=True)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
@@ -549,14 +560,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: remove ask user wrapping once mill_trenches is refactored
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
-        logging.info(f"{self.current_status.name}: perform milling trenches: {self.response}")
         if self.response:
             # mills trenches for lamella
             milling.mill_trenches(self.microscope, self.settings)
 
         self.current_sample.milling_coordinates = self.stage.current_position
         self.current_sample.save_data()
-        logging.info(f"{self.current_status.name}: mill trenches complete.")
 
         # reference images of milled trenches
         self.image_settings['save'] = True
@@ -586,7 +595,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
             self.ask_user(image=self.image_SEM) # TODO: might need to update image?
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
-        logging.info(f"{self.current_status.name}: finished cross-correlation")
 
 
         # TODO: check dwell time value/add to protocol
@@ -621,8 +629,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
-        logging.info(f"{self.current_status.name}: mill j-cut complete.")
-
         # take reference images of the jcut
         self.image_settings['save'] = True
         self.image_settings['label'] = 'jcut_lowres'
@@ -634,7 +640,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
-        logging.info(f"{self.current_status.name}: milling complete.")
+        logging.info(f"{self.current_status.name} complete.")
 
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
@@ -665,17 +671,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def liftout_lamella(self):
         self.current_status = AutoLiftoutStatus.Liftout
-        logging.info(f"{self.current_status.name}: liftout started.")
+        logging.info(f"------------ {self.current_status.name} STARTED ------------")
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
-        logging.info(f"{self.current_status.name}: move to liftout angle.")
 
         if not self.MILLING_COMPLETED_THIS_RUN:
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
             self.image_settings["hfw"] = 150e-6
             movement.move_to_liftout_angle(self.microscope, self.settings)
-            logging.info(f"{self.current_status.name}: move to liftout angle.")
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1150,8 +1154,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # retract needle
         movement.retract_needle(self.microscope, park_position)
-        logging.info(f"{self.current_status.name}: needle retracted")
-        logging.info(f"{self.current_status.name}: reset stage complete")
+        
+        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
     def cleanup_lamella(self, landing_coord):
         """Cleanup: Thin the lamella thickness to size for imaging."""
@@ -1285,6 +1289,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # self.connect_to_microscope(ip_address='localhost')
 
     def setup_connections(self):
+        logging.info("gui: setup connections started")
         # Protocol and information table connections
         self.pushButton_initialise.clicked.connect(lambda: self.initialise_autoliftout())
         self.pushButton_autoliftout.clicked.connect(lambda: self.run_liftout())
@@ -1309,6 +1314,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single'))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
+        logging.info("gui: setup connections finished")
 
     def ask_user(self, image=None, second_image=None):
 

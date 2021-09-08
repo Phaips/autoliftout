@@ -101,6 +101,7 @@ def move_to_liftout_angle(microscope, settings, liftout_angle=10, pretilt_angle=
     """
     flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle)))
+    logging.info(f"movement: move to liftout angle ({liftout_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -109,6 +110,7 @@ def move_to_landing_angle(microscope, settings, landing_angle=18, pretilt_angle=
     """
     flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)  # stage tilt 25
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(landing_angle)))  # more tilt by 18
+    logging.info(f"movement: move to landing angle ({landing_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -129,6 +131,7 @@ def move_to_jcut_angle(microscope, settings, jcut_angle=6., pretilt_angle=pretil
     """
     flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(jcut_angle)))
+    logging.info(f"movement: move to j-cut angle ({jcut_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -138,10 +141,12 @@ def move_to_sample_grid(microscope, settings, pretilt_angle=pretilt):
     """
     flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
     sample_grid_center = StagePosition(x=-0.0025868173, y=0.0031794167, z=0.0039457213)
+    logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
+    logging.info(f"movement: move to sample grid complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -163,12 +168,14 @@ def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
         landing_grid_position = StagePosition(x=0.0034580609,
                                               y=0.0032461667,
                                               z=0.0039338733)
+        logging.info(f"movement: moving to landing grid {landing_grid_position}")
         microscope.specimen.stage.absolute_move(landing_grid_position)
     else:
         move_to_landing_angle(microscope, settings=settings, pretilt_angle=pretilt_angle)
     # Zoom out so you can see the whole landing grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
+    logging.info(f"movement: move to landing grid complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -180,7 +187,9 @@ def move_sample_stage_out(microscope):
     sample_stage_out = StagePosition(x=-0.002507,
                                      y=0.025962792,
                                      z=0.0039559049)
+    logging.info(f"movement: move sample grid out to {sample_stage_out}")
     microscope.specimen.stage.absolute_move(sample_stage_out)
+    logging.info(f"movement: move sample stage out complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -188,6 +197,7 @@ def move_needle_to_liftout_position(microscope):
     """Move the needle into position, ready for liftout.
     """
     park_position = insert_needle(microscope)
+
     move_needle_closer(microscope)
     multichem = microscope.gas.get_multichem()
     multichem.insert()
@@ -208,8 +218,10 @@ def insert_needle(microscope):
         The parking position for the needle manipulator when inserted.
     """
     needle = microscope.specimen.manipulator
+    logging.info(f"movement: inserting needle to park position.")
     needle.insert()
     park_position = needle.current_position
+    logging.info(f"movement: inserted needle to {park_position}.")
     return park_position
 
 
@@ -230,12 +242,15 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
     # Needle starts from the parking position (after inserting it)
     # Move the needle back a bit in x, so the needle is not overlapping target
     x_move = x_corrected_needle_movement(x_shift)
+    logging.info(f"movement: moving needle by {x_move}")
     needle.relative_move(x_move)
     # Then move the needle towards the sample surface.
     z_move = z_corrected_needle_movement(z_shift, stage.current_position.t)
+    logging.info(f"movement: moving needle by {z_move}")
     needle.relative_move(z_move)
     # The park position is always the same,
     # so the needletip will end up about 20 microns from the surface.
+    logging.info(f"movement: move needle closer complete.")
     return needle.current_position
 
 
@@ -292,24 +307,29 @@ def retract_needle(microscope, park_position):
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
     # Retract the multichem
+    logging.info(f"movement: retracting multichem")
     multichem = microscope.gas.get_multichem()
     multichem.retract()
     # Retract the needle, preserving the correct parking postiion
     needle = microscope.specimen.manipulator
     current_position = needle.current_position
     # To prevent collisions with the sample; first retract in z, then y, then x
+    logging.info(f"movement: retracting needle to {park_position}")
     needle.relative_move(ManipulatorPosition(z=park_position.z - current_position.z))  # noqa: E501
     needle.relative_move(ManipulatorPosition(y=park_position.y - current_position.y))  # noqa: E501
     needle.relative_move(ManipulatorPosition(x=park_position.x - current_position.x))  # noqa: E501
     time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
+    logging.info(f"movement: retracting needle")
     needle.retract()
     retracted_position = needle.current_position
+    logging.info(f"movement: retract needle complete")
     return retracted_position
 
 
 def flat_to_beam(microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON):
     """Make the sample surface flat to the electron or ion beam.
     """
+    
     stage = microscope.specimen.stage
     # pretilt_angle = settings["system"]["pretilt_angle"] #27
     if beam_type is BeamType.ELECTRON:
@@ -320,10 +340,14 @@ def flat_to_beam(microscope, settings, pretilt_angle=pretilt, beam_type=BeamType
         tilt = np.deg2rad(52 - pretilt_angle)
     rotation = np.deg2rad(rotation)
     stage_settings = MoveSettings(rotate_compucentric=True)
+    logging.info(f"movement: moving flat to {beam_type.name}")
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
     if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
+        logging.info(f"movement: tilting to flat for large rotation.")
+    logging.info(f"movement: rotating stage to {rotation}")
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
+    logging.info(f"movement: tilting stage to {tilt}")
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
     return stage.current_position
 
@@ -465,18 +489,18 @@ def move_sample_stage_out(microscope):
 
 
 
-def insert_needle(microscope):
-    """Insert the needle and return the needle parking position.
-    Returns
-    -------
-    park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
-        The parking position for the needle manipulator when inserted.
-    """
-    needle = microscope.specimen.manipulator
-    needle.insert()
-    park_position = needle.current_position
-    logging.info("movement: insert needle")
-    return park_position
+# def insert_needle(microscope):
+#     """Insert the needle and return the needle parking position.
+#     Returns
+#     -------
+#     park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
+#         The parking position for the needle manipulator when inserted.
+#     """
+#     needle = microscope.specimen.manipulator
+#     needle.insert()
+#     park_position = needle.current_position
+#     logging.info("movement: insert needle")
+#     return park_position
 
 
 

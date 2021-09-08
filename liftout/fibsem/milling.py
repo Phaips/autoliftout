@@ -110,7 +110,9 @@ def mill_trenches(microscope, settings):
         logging.info("milling: protocol stage {} of {}".format(
             stage_number + 1, len(protocol_stages)))
         mill_single_stage(microscope, settings, stage_settings, stage_number)
+    
     # Restore ion beam imaging current (20 pico-Amps)
+    logging.info(f"mill trenches complete, returning to imaging current")
     microscope.beams.ion_beam.beam_current.value = settings['imaging']['imaging_current']#30e-12  # TODO: add to protocol?
 
 
