@@ -35,9 +35,7 @@ class Sample:
         self.landing_ref_images = list()
         self.lamella_ref_images = list()
         self.status = NotImplemented
-        # if data_path[-1] != "/":
-        #     data_path += "/" # TODO: do this smarter
-        # self.data_path = data_path.replace("\\", "/")
+
         self.data_path = os.path.join(data_path)
         self.timestamp = os.path.basename(self.data_path)
         self.sample_no = sample_no
