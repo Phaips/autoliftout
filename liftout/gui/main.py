@@ -161,7 +161,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'allow_new_image': False,
                                'click': None,
                                'filter_strength': 0,
-                               'crosshairs': True}
+                               'crosshairs': True,
+                               'milling_patterns': None}
 
         self.USE_AUTOCONTRAST = True
 
@@ -618,12 +619,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample.save_data()
 
         # now we are at the angle for jcut, perform jcut
-        milling.mill_jcut(self.microscope, self.settings)
+        jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
         # TODO: adjust hfw? check why it changes to 100
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=jcut_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
             milling.run_milling(self.microscope, self.settings)
@@ -1564,6 +1565,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 ax2.add_patch(h_rect2)
                 ax2.add_patch(v_rect2)
 
+            if self.popup_settings['milling_patterns'] is not None:
+                for pattern in self.popup_settings['milling_patterns']:
+                    x_center = pattern.center_x
+                    y_center = pattern.center_y
+                    width = pattern.width
+                    height = pattern.height
+
+                    x1 = x_center - width/2
+                    x2 = x_center + width/2
+                    y1 = y_center - height/2
+                    y2 = y_center + height/2
+
+                    pattern = (x1, x2, y1, y2)
+
+                    self.ax.add_patch(pattern)
+
             if self.popup_settings['click_crosshair']:
                 for patch in self.popup_settings['click_crosshair']:
                     self.ax.add_patch(patch)
@@ -1573,12 +1590,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
             self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
-    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True):
+    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True, milling_patterns=None):
         self.popup_settings["message"] = message
         self.popup_settings['allow_new_image'] = allow_new_image
         self.popup_settings['click'] = click
         self.popup_settings['filter_strength'] = filter_strength
         self.popup_settings['crosshairs'] = crosshairs
+        self.popup_settings['milling_patterns'] = milling_patterns
 
     def on_gui_click(self, event):
         click = self.popup_settings['click']

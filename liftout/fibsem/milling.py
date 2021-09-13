@@ -3,6 +3,7 @@ from autoscript_core.common import ApplicationServerException
 import numpy as np
 import math
 
+
 def mill_jcut(microscope, settings):
     """Create and mill the rectangle patter to sever the jcut completely.
     Parmaters
@@ -11,10 +12,11 @@ def mill_jcut(microscope, settings):
         The AutoScript microscope object instance.
     jcut_settings : dict
         Dictionary of J-cut parameter settings.
-    confrim : bool, optional
+    confirm : bool, optional
         Whether to ask the user to confirm before milling.
     """
-    jcut_milling_patterns(microscope, settings)
+    jcut_patterns = jcut_milling_patterns(microscope, settings)
+    return jcut_patterns
 
 
 def jcut_severing_pattern(microscope, settings):
