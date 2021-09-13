@@ -6,7 +6,7 @@ import datetime
 import liftout
 
 
-def configure_logging(save_path='', log_filename='logfile', log_level=logging.INFO):
+def configure_logging(save_path='', log_filename='logfile', log_level=logging.DEBUG):
     """Log to the terminal and to file simultaneously."""
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
         '%Y%m%d.%H%M%S')  # datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")

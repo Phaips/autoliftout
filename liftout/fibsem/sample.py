@@ -224,7 +224,9 @@ class Sample:
 
     def get_sample_data(self):
         """Return the sample data formatted for liftout from the specificed data_path. """
-        # self.load_data_from_file()
+
+        if not self.lamella_ref_images or not self.landing_ref_images:
+            self.load_data_from_file() # TODO: probably only need to load the images.. separate functionality for load
 
         return (self.lamella_coordinates, self.landing_coordinates, self.lamella_ref_images, self.landing_ref_images)
 

@@ -142,7 +142,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.save_path = utils.make_logging_directory(prefix="run")
         utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
-
+        self.logger = logging.getLogger(__name__)
         config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
         self.settings = utils.load_config(config_filename)
@@ -685,6 +685,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
+        if self.stage.current_position.z < 3.7e-3:
+            movement.auto_link_stage(self.microscope) # TODO: test
         park_position = movement.move_needle_to_liftout_position(self.microscope)
         logging.info(f"{self.current_status.name}: needle inserted to park positon: {park_position}")
 
@@ -1945,19 +1947,17 @@ def display_error_message(message):
     return error_dialog
 
 
-def main(offline='True'):
-    if offline.lower() == 'false':
-        # logging.basicConfig(level=logging.DEBUG)
-        launch_gui(ip_address='10.0.0.1', offline=False)
-    elif offline.lower() == 'true':
-        # logging.basicConfig(level=logging.DEBUG)
-        with mock.patch.dict('os.environ', {'PYLON_CAMEMU': '1'}):
-            try:
-                launch_gui(ip_address='localhost', offline=True)
-            except Exception:
-                import pdb
-                traceback.print_exc()
-                pdb.set_trace()
+def main(offline=True):
+    logging.basicConfig(level=logging.INFO)
+    if offline is False:
+        launch_gui(ip_address='10.0.0.1', offline=offline)
+    else:
+        try:
+            launch_gui(ip_address='localhost', offline=offline)
+        except Exception:
+            import pdb
+            traceback.print_exc()
+            pdb.set_trace()
 
 
 def launch_gui(ip_address='10.0.0.1', offline=False):
@@ -1969,11 +1969,6 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
     sys.exit(app.exec_())
 
 
-# main(offline='False')
-# main(offline='True')
-
-
-# TODO: use this instead of above,
 if __name__ == "__main__":
-    offline_mode = "True"  # TODO: change offline to bool not str
+    offline_mode = False
     main(offline=offline_mode)

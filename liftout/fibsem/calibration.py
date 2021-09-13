@@ -127,8 +127,14 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
         highpass=highpass_pixels, sigma=sigma)
     
     # TODO: add a check here to constrain stop the movement if it is too large?
-    THRESHOLD = 100e-6
-    if abs(dx_ei_meters) > THRESHOLD or abs(dy_ei_meters) > THRESHOLD:
+    # check if the cross correlation is trying to move more than a safety threshold.
+    # TODO: decide whether to clip it or fix manually.
+    pixelsize_x = ref_image.metadata.binary_result.pixel_size.x
+    hfw = pixelsize_x * ref_image.width
+    vfw  = pixelsize_x * ref_image.height
+    X_THRESHOLD = 0.25 * hfw
+    Y_THRESHOLD = 0.25 * vfw
+    if abs(dx_ei_meters) > X_THRESHOLD or abs(dy_ei_meters) > Y_THRESHOLD:
         logging.warning("calibration: calculated cross correlation movement too large.")
         logging.warning("calibration: cancelling automatic cross correlation.")
         return False
@@ -269,17 +275,3 @@ def circ_mask(size=(128, 128), radius=32, sigma=3):
         mask = tmp
     return mask
 
-def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
-    """Automatic gamma correction"""
-    std = np.std(image.data)
-    mean = np.mean(image.data)
-    diff = mean - 255/2.
-    gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
-    if abs(diff) < threshold:
-        gam = 1.0
-    logging.info(f"calibration (gamma correction): diff: {diff:.3f}, gam: {gam:.3f} ")
-    image_data = exposure.adjust_gamma(image.data, gam)
-    reference = AdornedImage(data=image_data)
-    reference.metadata = image.metadata
-    image = reference
-    return image
