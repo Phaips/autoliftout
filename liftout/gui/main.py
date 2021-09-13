@@ -244,7 +244,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
-
     def select_initial_feature_coordinates(self, feature_type=''):
         """
         Options are 'lamella' or 'landing'
@@ -1569,17 +1568,24 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             if self.popup_settings['milling_patterns'] is not None:
                 for pattern in self.popup_settings['milling_patterns']:
-                    x_center = pattern.center_x
-                    y_center = pattern.center_y
-                    width = pattern.width
-                    height = pattern.height
+                    # width = self.popup_settings['image'].shape[1]
+                    # height = self.popup_settings['image'].shape[0]
+                    image_width = self.popup_settings['image'].width
+                    image_height = self.popup_settings['image'].height
+                    pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
+                    pixel_size_y = self.popup_settings['image'].metadata.binary_result.pixel_size.y
 
-                    x1 = x_center - width/2
-                    x2 = x_center + width/2
-                    y1 = y_center - height/2
-                    y2 = y_center + height/2
+                    width = pattern.width / pixel_size
+                    height = pattern.height / pixel_size
 
-                    pattern = (x1, x2, y1, y2)
+                    # Rectangle is defined from bottom left due to mpl
+                    # Microscope (0, 0) is middle of image, y+ = up
+                    # Image (0, 0) is top left corner, y+ = down
+                    rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2)
+                    rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2)
+
+                    pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
+                    pattern.set_color('xkcd:pink')
 
                     self.ax.add_patch(pattern)
 
