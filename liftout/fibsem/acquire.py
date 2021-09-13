@@ -5,7 +5,7 @@ import logging
 from liftout import utils
 from skimage import exposure
 import numpy as np
-from liftout import calibration
+# from liftout.fibsem import calibration
 
 class BeamType(Enum):
     ELECTRON = 1
@@ -37,6 +37,20 @@ def take_reference_images(microscope, settings):
     settings["beam_type"] = tmp_beam_type # reset to original beam type
     return eb_image, ib_image
 
+def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
+    """Automatic gamma correction"""
+    std = np.std(image.data)
+    mean = np.mean(image.data)
+    diff = mean - 255/2.
+    gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
+    if abs(diff) < threshold:
+        gam = 1.0
+    logging.info(f"calibration (gamma correction): diff: {diff:.3f}, gam: {gam:.3f} ")
+    image_data = exposure.adjust_gamma(image.data, gam)
+    reference = AdornedImage(data=image_data)
+    reference.metadata = image.metadata
+    image = reference
+    return image
 
 def new_image(microscope, settings):
     frame_settings = GrabFrameSettings(resolution=settings['resolution'],
@@ -69,7 +83,7 @@ def new_image(microscope, settings):
         scale_factor = settings["gamma"]["scale_factor"]
         threshold = settings["gamma"]["threshold"]
 
-        image = calibration.gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold)
+        image = gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold)
         # std = np.std(image.data)
         # mean = np.mean(image.data)
         # diff = mean - 255/2.

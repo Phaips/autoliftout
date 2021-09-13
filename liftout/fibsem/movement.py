@@ -5,7 +5,6 @@ from autoscript_sdb_microscope_client.structures import (StagePosition,
 import time
 pretilt = 27  # TODO: add to protocol
 
-
 def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     """Move the sample stage in ion or electron beam view and take new image
 
