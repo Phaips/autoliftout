@@ -1315,7 +1315,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
         logging.info("gui: setup connections finished")
@@ -1464,6 +1465,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_window.exec_()
 
     def update_popup_display(self):
+        toolbar_active = True
         second_image_array = None
 
         figure = plt.figure(1)
@@ -1570,6 +1572,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 ax2.add_patch(v_rect2)
 
             if self.popup_settings['milling_patterns'] is not None:
+                toolbar_active = False
                 if self.select_all_button is None:
                     self.select_all_button = QtWidgets.QCheckBox('Select all')
                     self.popup_window.layout().addWidget(self.select_all_button)
@@ -1617,8 +1620,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     self.ax.add_patch(patch)
             self.popup_canvas.draw()
 
-            self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
-            self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
+            if toolbar_active:
+                self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
+                self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
             self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
     def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True, milling_patterns=None):
@@ -1988,10 +1992,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def toggle_select_all(self, onoff=None):
         for pattern in self.patterns:
-            if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
-                pattern.movable = False
-            else:
-                pattern.movable = True
+            # if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
+            #     pattern.movable = False
+            # else:
+            #     pattern.movable = True
 
             if onoff is not None:
                 pattern.toggle_move_all(onoff=onoff)
