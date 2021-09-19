@@ -38,8 +38,10 @@ from PIL import Image
 BeamType = acquire.BeamType
 
 # test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
-test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
+test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
+test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e-6), (-100.e-6, 0.e-6, 30.e-6, 400.e-6)]
+
 
 pretilt = 27  # TODO: put in protocol
 
@@ -1313,12 +1315,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single'))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
         logging.info("gui: setup connections finished")
 
     def ask_user(self, image=None, second_image=None):
+        self.select_all_button = None
 
         if image is not None:
             self.popup_settings['image'] = image
@@ -1567,27 +1570,47 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 ax2.add_patch(v_rect2)
 
             if self.popup_settings['milling_patterns'] is not None:
+                if self.select_all_button is None:
+                    self.select_all_button = QtWidgets.QCheckBox('Select all')
+                    self.popup_window.layout().addWidget(self.select_all_button)
+                self.patterns = []
                 for pattern in self.popup_settings['milling_patterns']:
-                    # width = self.popup_settings['image'].shape[1]
-                    # height = self.popup_settings['image'].shape[0]
-                    image_width = self.popup_settings['image'].width
-                    image_height = self.popup_settings['image'].height
-                    pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
-                    pixel_size_y = self.popup_settings['image'].metadata.binary_result.pixel_size.y
+                    if type(self.popup_settings['image']) == np.ndarray:
+                        image_width = self.popup_settings['image'].shape[1]
+                        image_height = self.popup_settings['image'].shape[0]
+                        pixel_size = 1e-6
+                        width = pattern[2] / pixel_size
+                        height = pattern[3] / pixel_size
 
-                    width = pattern.width / pixel_size
-                    height = pattern.height / pixel_size
+                        # Rectangle is defined from bottom left due to mpl
+                        # Microscope (0, 0) is middle of image, y+ = up
+                        # Image (0, 0) is top left corner, y+ = down
+                        rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
+                        rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
+                    else:
+                        image_width = self.popup_settings['image'].width
+                        image_height = self.popup_settings['image'].height
+                        pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
 
-                    # Rectangle is defined from bottom left due to mpl
-                    # Microscope (0, 0) is middle of image, y+ = up
-                    # Image (0, 0) is top left corner, y+ = down
-                    rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2)
-                    rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2)
+                        width = pattern.width / pixel_size
+                        height = pattern.height / pixel_size
+
+                        # Rectangle is defined from bottom left due to mpl
+                        # Microscope (0, 0) is middle of image, y+ = up
+                        # Image (0, 0) is top left corner, y+ = down
+                        rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2)
+                        rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2)
 
                     pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
-                    pattern.set_color('xkcd:pink')
-
+                    pattern.set_hatch('/////')
+                    pattern.set_edgecolor('xkcd:pink')
+                    pattern.set_fill(False)
                     self.ax.add_patch(pattern)
+                    pattern = DraggablePatch(pattern)
+                    pattern.connect()
+
+                    self.patterns.append(pattern)
+                self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
 
             if self.popup_settings['click_crosshair']:
                 for patch in self.popup_settings['click_crosshair']:
@@ -1611,65 +1634,68 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         image = self.popup_settings['image']
         beam_type = self.image_settings['beam_type']
 
-        if event.inaxes.get_title() != 'Previous Image':
-            if event.button == 1:
-                if event.dblclick and (click in ('double', 'all')):
-                    if image:
+        if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
+            return
+        else:
+            if event.inaxes.get_title() != 'Previous Image':
+                if event.button == 1:
+                    if event.dblclick and (click in ('double', 'all')):
+                        if image:
+                            self.xclick = event.xdata
+                            self.yclick = event.ydata
+                            x, y = movement.pixel_to_realspace_coordinate(
+                                [self.xclick, self.yclick], image)
+
+                            x_move = movement.x_corrected_stage_movement(x,
+                                                                         stage_tilt=self.stage.current_position.t)
+                            yz_move = movement.y_corrected_stage_movement(
+                                y,
+                                stage_tilt=self.stage.current_position.t,
+                                beam_type=beam_type)
+                            self.stage.relative_move(x_move)
+                            self.stage.relative_move(yz_move)
+                            # TODO: refactor beam type here
+                            self.popup_settings['image'] = acquire.new_image(
+                                microscope=self.microscope,
+                                settings=self.image_settings)
+                            if beam_type:
+                                self.update_display(beam_type=beam_type,
+                                                    image_type='last')
+                            self.update_popup_display()
+
+                    elif click in ('single', 'all'):
                         self.xclick = event.xdata
                         self.yclick = event.ydata
-                        x, y = movement.pixel_to_realspace_coordinate(
-                            [self.xclick, self.yclick], image)
 
-                        x_move = movement.x_corrected_stage_movement(x,
-                                                                     stage_tilt=self.stage.current_position.t)
-                        yz_move = movement.y_corrected_stage_movement(
-                            y,
-                            stage_tilt=self.stage.current_position.t,
-                            beam_type=beam_type)
-                        self.stage.relative_move(x_move)
-                        self.stage.relative_move(yz_move)
-                        # TODO: refactor beam type here
-                        self.popup_settings['image'] = acquire.new_image(
-                            microscope=self.microscope,
-                            settings=self.image_settings)
-                        if beam_type:
-                            self.update_display(beam_type=beam_type,
-                                                image_type='last')
+                        cross_size = 120
+                        half_cross = cross_size / 2
+                        cross_thickness = 2
+                        half_thickness = cross_thickness / 2
+
+                        h_rect = plt.Rectangle(
+                            (event.xdata, event.ydata - half_thickness),
+                            half_cross, cross_thickness)
+                        h_rect2 = plt.Rectangle((event.xdata - half_cross,
+                                                 event.ydata - half_thickness),
+                                                half_cross,
+                                                cross_thickness)
+
+                        v_rect = plt.Rectangle(
+                            (event.xdata - half_thickness, event.ydata),
+                            cross_thickness, half_cross)
+                        v_rect2 = plt.Rectangle((
+                                                event.xdata - half_thickness,
+                                                event.ydata - half_cross),
+                                                cross_thickness,
+                                                half_cross)
+
+                        h_rect.set_color('xkcd:yellow')
+                        h_rect2.set_color('xkcd:yellow')
+                        v_rect.set_color('xkcd:yellow')
+                        v_rect2.set_color('xkcd:yellow')
+
+                        self.popup_settings['click_crosshair'] = (h_rect, h_rect2, v_rect, v_rect2)
                         self.update_popup_display()
-
-                elif click in ('single', 'all'):
-                    self.xclick = event.xdata
-                    self.yclick = event.ydata
-
-                    cross_size = 120
-                    half_cross = cross_size / 2
-                    cross_thickness = 2
-                    half_thickness = cross_thickness / 2
-
-                    h_rect = plt.Rectangle(
-                        (event.xdata, event.ydata - half_thickness),
-                        half_cross, cross_thickness)
-                    h_rect2 = plt.Rectangle((event.xdata - half_cross,
-                                             event.ydata - half_thickness),
-                                            half_cross,
-                                            cross_thickness)
-
-                    v_rect = plt.Rectangle(
-                        (event.xdata - half_thickness, event.ydata),
-                        cross_thickness, half_cross)
-                    v_rect2 = plt.Rectangle((
-                                            event.xdata - half_thickness,
-                                            event.ydata - half_cross),
-                                            cross_thickness,
-                                            half_cross)
-
-                    h_rect.set_color('xkcd:yellow')
-                    h_rect2.set_color('xkcd:yellow')
-                    v_rect.set_color('xkcd:yellow')
-                    v_rect2.set_color('xkcd:yellow')
-
-                    self.popup_settings['click_crosshair'] = (h_rect, h_rect2, v_rect, v_rect2)
-                    self.update_popup_display()
 
     def set_response(self, response):
         self.response = response
@@ -1960,6 +1986,77 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.disconnect()
 
+    def toggle_select_all(self, onoff=None):
+        for pattern in self.patterns:
+            if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
+                pattern.movable = False
+            else:
+                pattern.movable = True
+
+            if onoff is not None:
+                pattern.toggle_move_all(onoff=onoff)
+            else:
+                pattern.toggle_move_all(onoff=self.select_all_button.isChecked())
+
+
+class DraggablePatch:
+    def __init__(self, patch):
+        self.patch = patch
+        self.press = None
+        self.cidpress = None
+        self.cidrelease = None
+        self.cidmotion = None
+        self.move_all = False
+        self.movable = True
+
+    def connect(self):
+        self.cidpress = self.patch.figure.canvas.mpl_connect(
+            'button_press_event', self.on_press)
+        self.cidrelease = self.patch.figure.canvas.mpl_connect(
+            'button_release_event', self.on_release)
+        self.cidmotion = self.patch.figure.canvas.mpl_connect(
+            'motion_notify_event', self.on_motion)
+
+    def on_press(self, event):
+        if not self.movable:
+            self.press = None
+            return
+        if event.button != 1: return
+        if not self.move_all:
+            if event.inaxes != self.patch.axes: return
+            contains, attrd = self.patch.contains(event)
+            if not contains: return
+        # print('event contains', self.patch.xy)
+        x0, y0 = self.patch.xy
+        self.press = x0, y0, event.xdata, event.ydata
+
+    def on_motion(self, event):
+        'on motion we will move the rect if the mouse is over us'
+        if self.press is None: return
+        if event.inaxes != self.patch.axes: return
+        x0, y0, xpress, ypress = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        # print('x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f' %
+        #      (x0, xpress, event.xdata, dx, x0+dx))
+        self.patch.set_x(x0+dx)
+        self.patch.set_y(y0+dy)
+        self.patch.figure.canvas.draw()
+
+    def on_release(self, event):
+        'on release we reset the press data'
+        self.press = None
+        self.patch.figure.canvas.draw()
+
+    def disconnect(self):
+        'disconnect all the stored connection ids'
+        self.patch.figure.canvas.mpl_disconnect(self.cidpress)
+        self.patch.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.patch.figure.canvas.mpl_disconnect(self.cidmotion)
+
+    def toggle_move_all(self, onoff=False):
+        self.move_all = onoff
+
 
 def display_error_message(message):
     """PyQt dialog box displaying an error message."""
@@ -1994,5 +2091,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)

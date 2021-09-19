@@ -6,7 +6,7 @@ from scipy import fftpack, misc
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
 from liftout.detection import detection
-from liftout.model import models
+# from liftout.model import models
 BeamType = acquire.BeamType
 
 def validate_scanning_rotation(microscope):
@@ -161,15 +161,15 @@ def identify_shift_using_machine_learning(microscope, image_settings, settings, 
 
     eb_image,  ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]
-    weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
-    detector = detection.Detector(weights_path)
+    # weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
+    # detector = detection.Detector(weights_path)
 
     if image_settings['beam_type'] == BeamType.ION:
         image = ib_image
     else:
         image = eb_image
-    image_w_overlay, downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = detector.locate_shift_between_features(image, shift_type=shift_type, show=False)
-    return image, np.array(image_w_overlay), np.array(downscaled_image), feature_1_px, feature_1_type, feature_2_px, feature_2_type
+    # image_w_overlay, downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = detector.locate_shift_between_features(image, shift_type=shift_type, show=False)
+    # return image, np.array(image_w_overlay), np.array(downscaled_image), feature_1_px, feature_1_type, feature_2_px, feature_2_type
 
 def shift_from_correlation_electronBeam_and_ionBeam(eb_image, ib_image, lowpass=128, highpass=6, sigma=2):
     ib_image_rotated = rotate_AdornedImage(ib_image)
