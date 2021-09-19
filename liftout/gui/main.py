@@ -38,7 +38,7 @@ from PIL import Image
 BeamType = acquire.BeamType
 
 # test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
-test_image = np.random.randint(0, 255, size=(1000, 1000, 3))
+test_image = np.random.randint(0, 255, size=(1536, 1024))
 test_image = np.array(test_image)
 
 pretilt = 27  # TODO: put in protocol
@@ -142,7 +142,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.save_path = utils.make_logging_directory(prefix="run")
         utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
-        self.logger = logging.getLogger(__name__)
+        # self.logger = logging.getLogger(__name__)
         config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
         self.settings = utils.load_config(config_filename)
@@ -1314,6 +1314,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
         self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single'))
+        self.pushButton_test_popup.clicked.connect(
+            lambda: self.update_popup_settings(milling_patterns=milling.mill_jcut(self.microscope, self.settings)))
+
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
         logging.info("gui: setup connections finished")
@@ -1568,12 +1571,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             if self.popup_settings['milling_patterns'] is not None:
                 for pattern in self.popup_settings['milling_patterns']:
-                    # width = self.popup_settings['image'].shape[1]
-                    # height = self.popup_settings['image'].shape[0]
-                    image_width = self.popup_settings['image'].width
-                    image_height = self.popup_settings['image'].height
-                    pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
-                    pixel_size_y = self.popup_settings['image'].metadata.binary_result.pixel_size.y
+                    if type(self.popup_settings['image']) == np.ndarray:
+                        image_width = self.popup_settings['image'].shape[1]
+                        image_height = self.popup_settings['image'].shape[0]
+                        pixel_size = 1e-6
+                    else:
+                        image_width = self.popup_settings['image'].width
+                        image_height = self.popup_settings['image'].height
+                        pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
+
 
                     width = pattern.width / pixel_size
                     height = pattern.height / pixel_size
@@ -1972,7 +1978,7 @@ def display_error_message(message):
 
 
 def main(offline=True):
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
     if offline is False:
         launch_gui(ip_address='10.0.0.1', offline=offline)
     else:

@@ -370,33 +370,36 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
     microscope.beams.electron_beam.horizontal_field_width.value = 0.000400
     # TODO: check with Sergey on double autocontrast
-    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    # autocontrast(microscope, beam_type=BeamType.ELECTRON)
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     z_difference = expected_z - microscope.specimen.stage.current_position.z
     if abs(z_difference) > 3e-3:
         raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
-    z_move = z_corrected_stage_movement(
-        z_difference, microscope.specimen.stage.current_position.t)
-    microscope.specimen.stage.relative_move(z_move)
-    counter = 0
-    while not linked_within_z_tolerance(microscope,
-                                        expected_z=expected_z,
-                                        tolerance=tolerance):
-        if counter > 3:
-            raise (UserWarning("Could not auto-link z stage height."))
-            break
-        # Focus and re-link z stage height
-        logging.info('Automatically focusing and linking stage z-height.')
-        microscope.auto_functions.run_auto_focus()
-        microscope.specimen.stage.link()
-        z_difference = expected_z - microscope.specimen.stage.current_position.z
-        z_move = z_corrected_stage_movement(
-            z_difference, microscope.specimen.stage.current_position.t)
-        microscope.specimen.stage.relative_move(z_move)
-        logging.info(f"auto_link stage z: :{microscope.specimen.stage.current_position.z}")
-    # Restore original settings
+    # This move shouldn't be happening as we only want to refocus, not shift the stage position
+    # z_move = z_corrected_stage_movement(
+    #     z_difference, microscope.specimen.stage.current_position.t)
+    # microscope.specimen.stage.relative_move(z_move)
+    # counter = 0
+    # while not linked_within_z_tolerance(microscope,
+    #                                     expected_z=expected_z,
+    #                                     tolerance=tolerance):
+    #     if counter > 3:
+    #         raise (UserWarning("Could not auto-link z stage height."))
+    #         break
+    #     # Focus and re-link z stage height
+    #     logging.info('Automatically focusing and linking stage z-height.')
+    #     microscope.auto_functions.run_auto_focus()
+    #     microscope.specimen.stage.link()
+    #     z_difference = expected_z - microscope.specimen.stage.current_position.z
+    #
+    #     # This move shouldn't be happening as we only want to refocus, not shift the stage position
+    #     # z_move = z_corrected_stage_movement(
+    #     #     z_difference, microscope.specimen.stage.current_position.t)
+    #     # microscope.specimen.stage.relative_move(z_move)
+    #     logging.info(f"auto_link stage z: :{microscope.specimen.stage.current_position.z}")
+    # # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
     # new_electron_image(microscope)
 
