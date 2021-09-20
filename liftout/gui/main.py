@@ -74,7 +74,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
-        # self.liftout_counter = 0
         self.popup_window = None
         self.popup_canvas = None
         self.raw_image = None
@@ -378,7 +377,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for sample in self.samples:
 
             self.current_sample = sample
-            # self.liftout_counter = self.current_sample.sample_no
             (lamella_coord, landing_coord,
                 lamella_area_reference_images,
                 landing_reference_images) = self.current_sample.get_sample_data()
@@ -419,7 +417,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             for sample in self.samples:
                 self.current_sample = sample
-                # self.liftout_counter = self.current_sample.sample_no
                 landing_coord = self.current_sample.landing_coordinates
                 self.current_status = AutoLiftoutStatus.Cleanup
                 self.cleanup_lamella(landing_coord=landing_coord)
@@ -593,6 +590,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if ret is False:
             # cross-correlation has failed, manual correction required
+            # TODO: we need to take a new image here? / use last image
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
             self.ask_user(image=self.image_SEM) # TODO: might need to update image?
@@ -1315,7 +1313,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click='single', crosshairs=True))
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
@@ -2073,7 +2071,7 @@ def display_error_message(message):
 
 
 def main(offline=True):
-    # logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO)
     if offline is False:
         launch_gui(ip_address='10.0.0.1', offline=offline)
     else:
