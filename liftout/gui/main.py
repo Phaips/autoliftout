@@ -628,7 +628,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=jcut_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
-            milling.run_milling(self.microscope, self.settings)
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
+            # milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
         # take reference images of the jcut
@@ -716,6 +719,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
         if self.response:
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
         else:
             logging.warning(f"{self.current_status.name}: user not happy with jcut sever milling pattern")
@@ -1315,10 +1320,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coords())
 
-        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
         self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
+
         logging.info("gui: setup connections finished")
 
     def ask_user(self, image=None, second_image=None):
@@ -1585,9 +1591,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         width = pattern[2] / pixel_size
                         height = pattern[3] / pixel_size
 
-                        # Rectangle is defined from bottom left due to mpl
-                        # Microscope (0, 0) is middle of image, y+ = up
-                        # Image (0, 0) is top left corner, y+ = down
+                        # Rectangle is defined from bottom left due to mpl, y+ down in image (so bottom left is top left)
+                        # Microscope (0, 0) is middle of image, y+ = up in image
+                        # Image (0, 0) is top left corner, y+ = down in image
                         rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
                         rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
                     else:
@@ -1611,7 +1617,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     self.ax.add_patch(pattern)
                     pattern = DraggablePatch(pattern)
                     pattern.connect()
-
+                    pattern.center_x_px = (pattern.patch._x1 + pattern.patch._x0)/2
+                    pattern.center_y_px = (pattern.patch._y1 + pattern.patch._y0)/2
+                    pattern.center_x = (pattern.patch._x1 + pattern.patch._x0)/2 * pixel_size
+                    pattern.center_y = (pattern.patch._y1 + pattern.patch._y0)/2 * pixel_size
                     self.patterns.append(pattern)
                 self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
 
@@ -1703,7 +1712,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def set_response(self, response):
         self.response = response
+        # xy is top left in image coords, bottom left in
+
         self.setEnabled(True)
+
+    # def send_patterns(self):
+    #     for pattern in self.patterns:
+
 
     def new_protocol(self):
         num_index = self.tabWidget_Protocol.__len__() + 1
@@ -2012,6 +2027,8 @@ class DraggablePatch:
         self.cidmotion = None
         self.move_all = False
         self.movable = True
+        self.center_x = None
+        self.center_y = None
 
     def connect(self):
         self.cidpress = self.patch.figure.canvas.mpl_connect(
