@@ -474,8 +474,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # TODO: test whether this is accurate, maybe move to start of run_liftout
-        if sample.park_position.x is not None:
-            movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
+        # if sample.park_position.x is not None:
+            # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}.")
         logging.info(f"------------ LOAD COORDINATES FINISHED ------------")
@@ -631,7 +631,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             self.microscope.patterning.clear_patterns()
             for pattern in self.patterns:
-                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
@@ -714,15 +714,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['label'] = 'landed_Pt_sputter'
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        milling.jcut_severing_pattern(self.microscope, self.settings) #TODO: tune jcut severing pattern
+        jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings) #TODO: tune jcut severing pattern
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
+                                   milling_patterns=jcut_severing_pattern)
         self.ask_user(image=self.image_FIB)
         if self.response:
             self.microscope.patterning.clear_patterns()
             for pattern in self.patterns:
-                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.patch.height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
         else:
             logging.warning(f"{self.current_status.name}: user not happy with jcut sever milling pattern")
@@ -1618,11 +1619,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     pattern.set_fill(False)
                     self.ax.add_patch(pattern)
                     pattern = DraggablePatch(pattern)
+                    pattern.pixel_size = pixel_size
+                    pattern.image_width = image_width
+                    pattern.image_height = image_height
                     pattern.connect()
-                    pattern.center_x_px = (pattern.patch._x1 + pattern.patch._x0)/2
-                    pattern.center_y_px = (pattern.patch._y1 + pattern.patch._y0)/2
-                    pattern.center_x = (pattern.patch._x1 + pattern.patch._x0)/2 * pixel_size
-                    pattern.center_y = (pattern.patch._y1 + pattern.patch._y0)/2 * pixel_size
+                    pattern.update_position()
                     self.patterns.append(pattern)
                 self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
 
@@ -2031,6 +2032,9 @@ class DraggablePatch:
         self.movable = True
         self.center_x = None
         self.center_y = None
+        self.pixel_size = None
+        self.image_width = None
+        self.image_height = None
 
     def connect(self):
         self.cidpress = self.patch.figure.canvas.mpl_connect(
@@ -2039,6 +2043,14 @@ class DraggablePatch:
             'button_release_event', self.on_release)
         self.cidmotion = self.patch.figure.canvas.mpl_connect(
             'motion_notify_event', self.on_motion)
+
+    def update_position(self):
+        self.center_x_px = (self.patch._x1 + self.patch._x0) / 2 - self.image_width / 2
+        self.center_y_px = (self.patch._y1 + self.patch._y0) / 2 - self.image_height / 2  # 3 coordinates systems!!!
+        self.center_x = self.center_x_px * self.pixel_size
+        self.center_y = - self.center_y_px * self.pixel_size  # centre coordinate systems
+        self.width = self.patch._width * self.pixel_size
+        self.height = self.patch._height * self.pixel_size
 
     def on_press(self, event):
         if not self.movable:
@@ -2068,6 +2080,7 @@ class DraggablePatch:
 
     def on_release(self, event):
         'on release we reset the press data'
+        self.update_position()
         self.press = None
         self.patch.figure.canvas.draw()
 
