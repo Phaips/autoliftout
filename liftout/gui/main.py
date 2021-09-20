@@ -66,7 +66,17 @@ class AutoLiftoutStatus(Enum):
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
         super(GUIMainWindow, self).__init__()
-        
+
+        # setup logging
+        self.save_path = utils.make_logging_directory(prefix="run")
+        utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
+        # self.logger = logging.getLogger(__name__)
+        config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
+
+        self.settings = utils.load_config(config_filename)
+        self.pretilt_degrees = 27  # TODO: add pretilt_degrees to protocol
+        # TODO: ^ self.pretilt_degrees is never used
+
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"------------ {self.current_status.name} STARTED ------------")
 
@@ -141,14 +151,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
-        self.save_path = utils.make_logging_directory(prefix="run")
-        utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
-        # self.logger = logging.getLogger(__name__)
-        config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
-        self.settings = utils.load_config(config_filename)
-        self.pretilt_degrees = 27  # TODO: add pretilt_degrees to protocol
-        # TODO: ^ self.pretilt_degrees is never used
 
         # TODO: need to consolidate this so there arent multiple different paths, its too confusing
         # currently needed to stop it crashing running immediately after init
@@ -629,7 +632,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.microscope.patterning.clear_patterns()
             for pattern in self.patterns:
                 self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
-            # milling.run_milling(self.microscope, self.settings)
+            milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
         # take reference images of the jcut
@@ -717,6 +720,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
         self.ask_user(image=self.image_FIB)
         if self.response:
+            self.microscope.patterning.clear_patterns()
             for pattern in self.patterns:
                 self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.patch._width, pattern.patch._height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
@@ -2088,7 +2092,7 @@ def display_error_message(message):
 
 
 def main(offline=True):
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
     if offline is False:
         launch_gui(ip_address='10.0.0.1', offline=offline)
     else:
