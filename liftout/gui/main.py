@@ -153,12 +153,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
-
-
-        # TODO: need to consolidate this so there arent multiple different paths, its too confusing
-        # currently needed to stop it crashing running immediately after init
-        # self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
-
         # popup initialisations
         self.popup_window = None
         self.new_image = None
@@ -390,29 +384,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.single_liftout(landing_coord, lamella_coord,
                     landing_reference_images,
                     lamella_area_reference_images)
-
-
-        # # TODO: remove below once the above is tested
-        # for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
-        #     self.liftout_counter += 1
-        #
-        #     # TODO: I think this is what is crashing when immediately initalising...
-        #     # Should be fixed, by initialising self.sample_save_path
-        #     self.current_sample = Sample(self.sample_save_path, i+1)
-        #     self.current_sample.load_data_from_file()
-        #
-        #
-        #
-        #     landing_reference_images = self.original_landing_images[i]
-        #     lamella_area_reference_images = self.original_trench_images[i]
-        #
-        #
-        #     self.single_liftout(landing_coord, lamella_coord,
-        #                         landing_reference_images,
-        #                         lamella_area_reference_images)
-
-
-
 
         # NOTE: cleanup needs to happen after all lamellas landed due to platinum depositions...
         # TODO: confirm this is still true
