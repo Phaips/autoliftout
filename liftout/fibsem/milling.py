@@ -339,7 +339,7 @@ def jcut_milling_patterns(microscope, settings):
             jcut_milling_depth)                            # depth
     if jcut_top is None and jcut_lhs is None and jcut_rhs is None:
         raise RuntimeError('No J-cut patterns created, check your protocol file')
-    return jcut_top, jcut_lhs, jcut_rhs
+    return [jcut_top, jcut_lhs, jcut_rhs]
 
 
 

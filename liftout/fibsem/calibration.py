@@ -112,7 +112,7 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
     #     sigma_factor = 2
     #     sigma_ratio = 1536
     #     beam_type = BeamType.ELECTRON
-
+    logging.info(f"calibration: align using {beam_type.name} reference image in mode {mode}.")
 
     # TODO: possibly hard-code these numbers at fixed resolutions?
     lowpass_pixels = int(max(
@@ -179,7 +179,6 @@ def shift_from_correlation_electronBeam_and_ionBeam(eb_image, ib_image, lowpass=
 def rotate_AdornedImage(image):
     from autoscript_sdb_microscope_client.structures import AdornedImage, GrabFrameSettings
     data = np.rot90(np.rot90(np.copy(image.data)))
-    # data = ndi.rotate(image.data, 180, reshape=False)
     reference = AdornedImage(data=data)
     reference.metadata = image.metadata
     return reference

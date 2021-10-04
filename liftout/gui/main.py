@@ -79,6 +79,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"------------ {self.current_status.name} STARTED ------------")
+        gui_mode_str = "Offline" if offline else "Online"
+        logging.info(f"gui mode: {gui_mode_str}")
 
         # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
@@ -371,7 +373,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
 
     def run_liftout(self):
-        logging.info("fgui: run liftout started")
+        logging.info("gui: run liftout started")
         logging.info(f"gui: running liftout on {len(self.samples)} samples.")
         
         # recalibrate park position coordinates
@@ -559,7 +561,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                       f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
 
-        # TODO: remove ask user wrapping once mill_trenches is refactored
+        # # TODO: remove ask user wrapping once mill_trenches is refactored
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
         if self.response:
@@ -596,7 +598,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: we need to take a new image here? / use last image
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_SEM) # TODO: might need to update image?
+            self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+            self.ask_user(image=self.image_SEM)
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
 
@@ -722,8 +725,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
         if self.response:
             self.microscope.patterning.clear_patterns()
+            milling.setup_ion_milling(self.microscope) # TODO: might be able to remove this
             for pattern in self.patterns:
-                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.patch.height, depth=self.settings["jcut"]['jcut_milling_depth'])
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
         else:
             logging.warning(f"{self.current_status.name}: user not happy with jcut sever milling pattern")
@@ -1125,7 +1129,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))
+        z_distance = distance_y_m / np.sin(np.deg2rad(52)) # TODO: magic number
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
@@ -1643,7 +1647,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_settings['click'] = click
         self.popup_settings['filter_strength'] = filter_strength
         self.popup_settings['crosshairs'] = crosshairs
-        self.popup_settings['milling_patterns'] = milling_patterns
+        if milling_patterns is not None:
+            if type(milling_patterns) is list:
+                self.popup_settings['milling_patterns'] = milling_patterns # needs to be an iterable for display
+            else:
+                self.popup_settings['milling_patterns'] = [milling_patterns] # needs to be an iterable for display
+        else:
+            self.popup_settings["milling_patterns"] = milling_patterns
 
     def on_gui_click(self, event):
         click = self.popup_settings['click']

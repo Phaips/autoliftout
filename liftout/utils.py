@@ -72,13 +72,9 @@ def make_logging_directory(prefix='run'):
     os.makedirs(directory, exist_ok=True)
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
 
-    # save_directory = f'{directory}/{prefix}/{timestamp}'
-    # save_directory.replace('\\', '/')
-    # os.makedirs(f'{save_directory}/img/', exist_ok=True)
-
     save_directory = os.path.join(directory, prefix, timestamp)
     os.makedirs(os.path.join(save_directory, "img"), exist_ok=True)
-    return save_directory # TODO: this might break some other saving stuff if this inst a string....
+    return save_directory
 
 
 def save_image(image, save_path, label=''):
