@@ -898,10 +898,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ensure_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
         self.image_settings["hfw"] = 150e-6
 
-        # move to landing coordinate # TODO: wrap in func
-        stage_settings = MoveSettings(rotate_compucentric=True)
-        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)  # only to prevent crash
-        self.stage.absolute_move(landing_coord)
+        # # move to landing coordinate # TODO: wrap in func
+        # stage_settings = MoveSettings(rotate_compucentric=True)
+        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)  # only to prevent crash
+        # self.stage.absolute_move(landing_coord) # TODO: dont need the second movement
 
         # TODO: image settings?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
