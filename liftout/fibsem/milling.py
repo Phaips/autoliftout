@@ -339,7 +339,7 @@ def jcut_milling_patterns(microscope, settings):
             jcut_milling_depth)                            # depth
     if jcut_top is None and jcut_lhs is None and jcut_rhs is None:
         raise RuntimeError('No J-cut patterns created, check your protocol file')
-    return jcut_top, jcut_lhs, jcut_rhs
+    return [jcut_top, jcut_lhs, jcut_rhs]
 
 
 
@@ -357,50 +357,19 @@ def weld_to_landing_post(microscope, *, milling_current=20e-12):
     """
     logging.info("milling: weld to landing post")
     # TODO: add to protocol
-    _create_mill_pattern(microscope, center_x=0, center_y=0, width=3e-6,
+    pattern = _create_mill_pattern(microscope, center_x=0, center_y=0, width=3e-6,
                             height=10e-6,
                             depth=5e-9, rotation_degrees=0)
-
-# def _create_welding_pattern(microscope, *,
-#                             center_x=0,
-#                             center_y=0,
-#                             width=3e-6,
-#                             height=10e-6,
-#                             depth=5e-9):
-#     """Create milling pattern for welding liftout sample to the landing post.
-#     Parameters
-#     ----------
-#     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
-#         The AutoScript microscope object instance.
-#     center_x : float
-#         Center position of the milling pattern along x-axis, in meters.
-#         Zero coordinate is at the centerpoint of the image field of view.
-#     center_y : float
-#         Center position of the milling pattern along x-axis, in meters.
-#         Zero coordinate is at the centerpoint of the image field of view.
-#     width : float
-#         Width of the milling pattern, in meters.
-#     height: float
-#         Height of the milling pattern, in meters.
-#     depth : float
-#         Depth of the milling pattern, in meters.
-#     """
-#     # TODO: user input yaml for welding pattern parameters
-#     setup_ion_milling(microscope)
-#     pattern = microscope.patterning.create_rectangle(
-#         center_x, center_y, width, height, depth)
-#     return pattern
-
-
+    return pattern
 
 def cut_off_needle(microscope, cut_coord, milling_current=0.74e-9):
     logging.info(f"milling: cut off needle")
-    _create_mill_pattern(microscope,
+    pattern = _create_mill_pattern(microscope,
                         center_x=cut_coord["center_x"], center_y=cut_coord["center_y"],
                         width=cut_coord["width"], height=cut_coord["height"],
                         depth=cut_coord["depth"], rotation_degrees=cut_coord["rotation"], 
                         ion_beam_field_of_view=cut_coord["hfw"])
-
+    return pattern
 
 def _create_mill_pattern(microscope, *,
                            center_x=-10.5e-6,

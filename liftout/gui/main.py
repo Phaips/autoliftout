@@ -79,6 +79,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.current_status = AutoLiftoutStatus.Initialisation
         logging.info(f"------------ {self.current_status.name} STARTED ------------")
+        gui_mode_str = "Offline" if offline else "Online"
+        logging.info(f"gui mode: {gui_mode_str}")
 
         # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
@@ -153,12 +155,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: remove these?
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
-
-
-
-        # TODO: need to consolidate this so there arent multiple different paths, its too confusing
-        # currently needed to stop it crashing running immediately after init
-        # self.sample_save_path = self.save_path  # NOTE: this gets overwritten when load_coords is called...
 
         # popup initialisations
         self.popup_window = None
@@ -374,7 +370,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
 
     def run_liftout(self):
-        logging.info("fgui: run liftout started")
+        logging.info("gui: run liftout started")
         logging.info(f"gui: running liftout on {len(self.samples)} samples.")
         
         # recalibrate park position coordinates
@@ -391,29 +387,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.single_liftout(landing_coord, lamella_coord,
                     landing_reference_images,
                     lamella_area_reference_images)
-
-
-        # # TODO: remove below once the above is tested
-        # for i, (lamella_coord, landing_coord) in enumerate(self.zipped_coordinates):
-        #     self.liftout_counter += 1
-        #
-        #     # TODO: I think this is what is crashing when immediately initalising...
-        #     # Should be fixed, by initialising self.sample_save_path
-        #     self.current_sample = Sample(self.sample_save_path, i+1)
-        #     self.current_sample.load_data_from_file()
-        #
-        #
-        #
-        #     landing_reference_images = self.original_landing_images[i]
-        #     lamella_area_reference_images = self.original_trench_images[i]
-        #
-        #
-        #     self.single_liftout(landing_coord, lamella_coord,
-        #                         landing_reference_images,
-        #                         lamella_area_reference_images)
-
-
-
 
         # NOTE: cleanup needs to happen after all lamellas landed due to platinum depositions...
         # TODO: confirm this is still true
@@ -562,7 +535,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                       f'If not, double click to center the lamella position', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
 
-        # TODO: remove ask user wrapping once mill_trenches is refactored
+        # # TODO: remove ask user wrapping once mill_trenches is refactored
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
         if self.response:
@@ -599,7 +572,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: we need to take a new image here? / use last image
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_SEM) # TODO: might need to update image?
+            self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+            self.ask_user(image=self.image_SEM)
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
 
@@ -725,8 +699,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
         if self.response:
             self.microscope.patterning.clear_patterns()
+            # milling.setup_ion_milling(self.microscope) # TODO: might be able to remove this
             for pattern in self.patterns:
-                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.patch.height, depth=self.settings["jcut"]['jcut_milling_depth'])
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
         else:
             logging.warning(f"{self.current_status.name}: user not happy with jcut sever milling pattern")
@@ -917,12 +892,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: land lamella stage started")
         self.current_status = AutoLiftoutStatus.Landing
 
+        # move to landing coordinate # TODO: wrap in func
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-
-        # move to landing coordinate
         self.stage.absolute_move(landing_coord)
-        
+
+        # eucentricity correction
+        self.ensure_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
+        self.image_settings["hfw"] = 150e-6
+
+        # move to landing coordinate # TODO: wrap in func
+        stage_settings = MoveSettings(rotate_compucentric=True)
+        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)  # only to prevent crash
+        self.stage.absolute_move(landing_coord)
+
         # TODO: image settings?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
         
@@ -935,7 +918,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{self.current_status.name}: initial landing calibration complete.")
         park_position = movement.move_needle_to_landing_position(self.microscope)
-        logging.info(f"{self.current_status.name}: needle inserted to park_position: {park_position}")
+
 
         # # Y-MOVE
         self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
@@ -1004,16 +987,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # WELD TO LANDING POST
         # TODO: this is not joining the lamella to the post
-        milling.weld_to_landing_post(self.microscope)
+        weld_pattern = milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
+                                   filter_strength=self.filter_strength, crosshairs=False, milling_patterns=weld_pattern)
         self.ask_user(image=self.image_FIB)
+
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=5e-9)  # TODO: add to protocol
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Serial'
+
         logging.info(f"{self.current_status.name}: weld to post complete")
 
         # final reference images
@@ -1049,14 +1036,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: calculating needle cut-off pattern")
 
         # cut off needle tip
-        milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
+        cut_off_pattern = milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
+                                   milling_patterns=cut_off_pattern)
         self.ask_user(image=self.image_FIB)
+        # TODO: add rotation
+
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=cut_coord["depth"])
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
@@ -1128,7 +1120,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))
+        z_distance = distance_y_m / np.sin(np.deg2rad(52)) # TODO: magic number
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
@@ -1646,7 +1638,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.popup_settings['click'] = click
         self.popup_settings['filter_strength'] = filter_strength
         self.popup_settings['crosshairs'] = crosshairs
-        self.popup_settings['milling_patterns'] = milling_patterns
+        if milling_patterns is not None:
+            if type(milling_patterns) is list:
+                self.popup_settings['milling_patterns'] = milling_patterns # needs to be an iterable for display
+            else:
+                self.popup_settings['milling_patterns'] = [milling_patterns] # needs to be an iterable for display
+        else:
+            self.popup_settings["milling_patterns"] = milling_patterns
 
     def on_gui_click(self, event):
         click = self.popup_settings['click']
