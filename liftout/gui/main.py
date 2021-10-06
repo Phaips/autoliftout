@@ -696,7 +696,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
         if self.response:
             self.microscope.patterning.clear_patterns()
-            milling.setup_ion_milling(self.microscope) # TODO: might be able to remove this
+            # milling.setup_ion_milling(self.microscope) # TODO: might be able to remove this
             for pattern in self.patterns:
                 self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=self.settings["jcut"]['jcut_milling_depth'])
             milling.run_milling(self.microscope, self.settings)
@@ -889,12 +889,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: land lamella stage started")
         self.current_status = AutoLiftoutStatus.Landing
 
+        # move to landing coordinate # TODO: wrap in func
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-
-        # move to landing coordinate
         self.stage.absolute_move(landing_coord)
-        
+
+        # eucentricity correction
+        self.ensure_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
+        self.image_settings["hfw"] = 150e-6
+
+        # move to landing coordinate # TODO: wrap in func
+        stage_settings = MoveSettings(rotate_compucentric=True)
+        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)  # only to prevent crash
+        self.stage.absolute_move(landing_coord)
+
         # TODO: image settings?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
         
@@ -907,7 +915,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{self.current_status.name}: initial landing calibration complete.")
         park_position = movement.move_needle_to_landing_position(self.microscope)
-        logging.info(f"{self.current_status.name}: needle inserted to park_position: {park_position}")
+
 
         # # Y-MOVE
         self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
@@ -976,16 +984,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # WELD TO LANDING POST
         # TODO: this is not joining the lamella to the post
-        milling.weld_to_landing_post(self.microscope)
+        weld_pattern = milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
+                                   filter_strength=self.filter_strength, crosshairs=False, milling_patterns=weld_pattern)
         self.ask_user(image=self.image_FIB)
+
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=5e-9)  # TODO: add to protocol
             milling.run_milling(self.microscope, self.settings)
-        self.microscope.patterning.mode = 'Serial'
+
         logging.info(f"{self.current_status.name}: weld to post complete")
 
         # final reference images
@@ -1021,14 +1033,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: calculating needle cut-off pattern")
 
         # cut off needle tip
-        milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
+        cut_off_pattern = milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
+                                   milling_patterns=cut_off_pattern)
         self.ask_user(image=self.image_FIB)
+        # TODO: add rotation
+
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                self.microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=cut_coord["depth"])
             milling.run_milling(self.microscope, self.settings)
         self.microscope.patterning.mode = 'Serial'
 
