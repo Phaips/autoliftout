@@ -69,7 +69,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # setup logging
         self.save_path = utils.make_logging_directory(prefix="run")
-        utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
+        self.log_path = utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
         # self.logger = logging.getLogger(__name__)
         config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
 
@@ -101,7 +101,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.status = QtWidgets.QLabel(self.statusbar)
         self.status.setAlignment(QtCore.Qt.AlignRight)
         self.statusbar.addPermanentWidget(self.status, 1)
-
+        self.status_timer = QtCore.QTimer()
+        self.status_timer.timeout.connect(self.update_status)
+        self.status_timer.start(1000)
+        self.label_5.setText("This one")
         self.setup_connections()
 
         # initialise image frames and images
@@ -2017,6 +2020,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 pattern.toggle_move_all(onoff=onoff)
             else:
                 pattern.toggle_move_all(onoff=self.select_all_button.isChecked())
+
+    def update_status(self):
+        with open(self.log_path) as f:
+            lines = f.read().splitlines()
+            last_line = lines[-1]
+        self.label_5.setText(last_line)
 
 
 class DraggablePatch:

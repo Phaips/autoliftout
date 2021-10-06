@@ -19,6 +19,7 @@ def configure_logging(save_path='', log_filename='logfile', log_level=logging.IN
             logging.FileHandler(save_path+'/'+log_filename+timestamp+'.log'),
             logging.StreamHandler(),
         ])
+    return save_path+'/'+log_filename+timestamp+'.log'
 
 
 def load_config(yaml_filename):
