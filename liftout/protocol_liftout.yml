@@ -11,6 +11,7 @@ imaging:
   dwell_time: 1e-6
   resolution: "1536x1024"
   imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
+  save: False
 gamma:
   correction: True
   min_gamma: 0.15
