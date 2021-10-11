@@ -62,9 +62,16 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
     logging.info("milling: returning to the ion beam imaging current now.")
     microscope.patterning.clear_patterns()
     microscope.beams.ion_beam.beam_current.value = imaging_current
+    microscope.patterning.mode = 'Serial'
     logging.info("milling: ion beam milling complete.")
 
 
+def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
+    microscope.patterning.clear_patterns()
+    for pattern in patterns:
+        tmp_pattern = microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=depth)
+        tmp_pattern.rotation = np.deg2rad(pattern.rotation)
+    run_milling(microscope, settings)
 
 # TODO: this and mill_trenches can probably be consolidated
 def mill_thin_lamella(microscope, settings):
