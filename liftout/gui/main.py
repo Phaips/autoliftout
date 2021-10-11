@@ -147,9 +147,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.samples = []
 
-        # TODO: remove these?
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        # # TODO: remove these?
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # popup initialisations
         self.popup_window = None
@@ -167,8 +167,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # initial image settings # TODO: add to protocol
         self.image_settings = {'resolution': "1536x1024", 'dwell_time': 1e-6,
                                'hfw': 2750e-6,
-                               'brightness': self.settings["machine_learning"]["ib_brightness"],
-                               'contrast': self.settings["machine_learning"]["ib_contrast"],
                                'autocontrast': self.USE_AUTOCONTRAST,
                                'save': True, 'label': 'grid',
                                'beam_type': BeamType.ELECTRON,
@@ -203,18 +201,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path = self.save_path,
             gamma = self.settings["gamma"]
         )
-
-
-        # self.image_settings2 = {'resolution': "1536x1024", 'dwell_time': 1e-6,
-        #                        'hfw': 2750e-6,
-        #                        'brightness': self.settings["machine_learning"]["ib_brightness"],
-        #                        'contrast': self.settings["machine_learning"]["ib_contrast"],
-        #                        'autocontrast': self.USE_AUTOCONTRAST,
-        #                        'save': True, 'label': 'grid',
-        #                        'beam_type': BeamType.ELECTRON,
-        #                        'save_path': self.save_path,
-        #                        "gamma": self.settings["gamma"]}
-
 
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
@@ -259,7 +245,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             sample.landing_coordinates = landing_coordinates
             sample.save_data()
             self.samples.append(sample)
-        
+
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
@@ -360,7 +346,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
-    
+
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
             self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -388,7 +374,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def run_liftout(self):
         logging.info("gui: run liftout started")
         logging.info(f"gui: running liftout on {len(self.samples)} samples.")
-        
+
         # recalibrate park position coordinates
         # reset_needle_park_position(microscope=self.microscope, new_park_position=)
 
@@ -418,7 +404,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
     def load_coordinates(self):
-        
+
         logging.info(f"------------ LOAD COORDINATES STARTED ------------")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
@@ -477,9 +463,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
-        
+
         logging.info(f"gui: starting liftout no. {self.current_sample.sample_no}")
-        
+
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False # maybe make this a struct? inclcude status?
 
@@ -822,7 +808,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # move in x
             x_move = movement.x_corrected_needle_movement(-distance_x_m)
             self.needle.relative_move(x_move)
-            
+
             # move in z
              # TODO: might want to make this /3 or /4 or add a constant factor to make sure it lands
             # detection is based on centre of lamella, we want to land of the edge.
@@ -931,7 +917,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: image settings?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
-        
+
         if ret is False:
             # cross-correlation has failed, manual correction required
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
@@ -1170,8 +1156,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: TEST
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=cut_coord_bottom["depth"])
-            # milling.run_milling(self.microscope, self.settings)
-        # self.microscope.patterning.mode = 'Serial'
+
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
 
@@ -1183,12 +1168,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # retract needle
         movement.retract_needle(self.microscope, park_position)
-        
+
         logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
     def cleanup_lamella(self, landing_coord):
         """Cleanup: Thin the lamella thickness to size for imaging."""
-        
+
         self.current_status = AutoLiftoutStatus.Cleanup
         logging.info(f"{self.current_status.name}: cleanup stage started")
 
@@ -2044,13 +2029,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def update_status(self):
 
         self.label_status_1.setText(f"Status: {self.current_status.name}")
+        status_colors = {"Initialisation": "coral", "Setup": "yellow", "Milling": "lightgreen"}
+        self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
+
 
         if self.samples:
-            self.label_status_2.setText(f"{len(self.samples)} Samples Loaded")
+            self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded")
             self.label_status_2.setStyleSheet("background-color: lightgreen")
         else:
-            self.label_status_2.setText("No Sample Loaded")
-            self.label_status_2.setStyleSheet("background-color: yellow")
+            self.label_status_2.setText("No Sample Positions Loaded")
+            self.label_status_2.setStyleSheet("background-color: coral")
 
         # log info
         with open(self.log_path) as f:
@@ -2174,5 +2162,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)
