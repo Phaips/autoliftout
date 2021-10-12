@@ -74,7 +74,11 @@ def test_save_sample_data(tmp_data_path):
     sample.save_data()
     sample.load_data_from_file()
 
-    assert sample.lamella_coordinates == lamella_coordinates
+    assert sample.lamella_coordinates.x == lamella_coordinates.x
+    assert sample.lamella_coordinates.y == lamella_coordinates.y
+    assert sample.lamella_coordinates.z == lamella_coordinates.z
+    assert sample.lamella_coordinates.r == lamella_coordinates.r
+    assert sample.lamella_coordinates.t == lamella_coordinates.t
 
 
 def test_save_sample_data_with_existing_data(tmp_data_path, saved_sample):
@@ -90,16 +94,22 @@ def test_save_sample_data_with_existing_data(tmp_data_path, saved_sample):
     new_sample = Sample(tmp_data_path, sample_no)
     new_sample.load_data_from_file()
 
-    assert new_sample.lamella_coordinates == new_lamella_coordinates
-
+    assert new_sample.lamella_coordinates.x == new_lamella_coordinates.x
+    assert new_sample.lamella_coordinates.y == new_lamella_coordinates.y
+    assert new_sample.lamella_coordinates.z == new_lamella_coordinates.z
+    assert new_sample.lamella_coordinates.r == new_lamella_coordinates.r
+    assert new_sample.lamella_coordinates.t == new_lamella_coordinates.t
 
 def test_load_sample_data_from_file(tmp_data_path, saved_sample):
 
     new_sample = Sample(tmp_data_path, 1)
     new_sample.load_data_from_file()
 
-    assert saved_sample.lamella_coordinates == new_sample.lamella_coordinates
-
+    assert saved_sample.lamella_coordinates.x == new_sample.lamella_coordinates.x
+    assert saved_sample.lamella_coordinates.y == new_sample.lamella_coordinates.y
+    assert saved_sample.lamella_coordinates.z == new_sample.lamella_coordinates.z
+    assert saved_sample.lamella_coordinates.r == new_sample.lamella_coordinates.r
+    assert saved_sample.lamella_coordinates.t == new_sample.lamella_coordinates.t
 
 def test_load_sample_data_from_file_fails():
 
@@ -117,19 +127,6 @@ def test_load_sample_data_from_file_with_no_sample_fails(saved_sample):
 
 # https://stackoverflow.com/questions/23337471/how-to-properly-assert-that-an-exception-gets-raised-in-pytest
 
-
-def test_initial_get_sample_data_returns_none(tmp_data_path):
-    remove_tmp_file(tmp_data_path)
-    sample = Sample(tmp_data_path, 1)
-
-    lam_coord, land_coord, lam_imgs, landing_imgs = sample.get_sample_data()
-
-    assert lam_coord.x == StagePosition().x
-    assert land_coord.x == StagePosition().x
-    assert not lam_imgs  # list is empty
-    assert not landing_imgs  # list is empty
-
-
 def test_get_sample_data(tmp_data_path, saved_sample):
 
     sample = Sample(tmp_data_path, 1)
@@ -137,9 +134,20 @@ def test_get_sample_data(tmp_data_path, saved_sample):
 
     lamella_coord, landing_coord, lamella_imgs, landing_imgs = sample.get_sample_data()
 
-    assert lamella_coord == StagePosition(1, 2, 3, 4, 5)
-    assert landing_coord == StagePosition()
+    example_stage_position = StagePosition(1, 2, 3, 4, 5)
+    empty_stage_position = StagePosition()
+
+    assert lamella_coord.x == example_stage_position.x
+    assert lamella_coord.y == example_stage_position.y
+    assert lamella_coord.z == example_stage_position.z
+    assert lamella_coord.r == example_stage_position.r
+    assert lamella_coord.t == example_stage_position.t
     assert len(lamella_imgs) == 4
+    assert landing_coord.x == empty_stage_position.x
+    assert landing_coord.y == empty_stage_position.y
+    assert landing_coord.z == empty_stage_position.z
+    assert landing_coord.r == empty_stage_position.r
+    assert landing_coord.t == empty_stage_position.t
     assert len(landing_imgs) == 4
 
 
