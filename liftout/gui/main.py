@@ -146,6 +146,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle = self.microscope.specimen.manipulator
 
         self.samples = []
+        self.current_sample = None
 
         # # TODO: remove these?
         # self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -177,6 +178,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.status_timer = QtCore.QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(1000)
+        self.label_status_3.setStyleSheet("background-color: black;  color: white")
 
         logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
@@ -1378,7 +1380,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
-        self.current_status = AutoLiftoutStatus.Liftout
+
         if image is not None:
             self.popup_settings['image'] = image
         else:
@@ -2092,12 +2094,28 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if not WINDOW_ENABLED:
             self.setEnabled(True)
 
-        self.label_status_1.setText(f"Status: {self.current_status.name}")
-        status_colors = {"Initialisation": "coral", "Setup": "yellow", "Milling": "lightgreen", "Liftout": "lightblue", "Landing": "purple"}
+        self.label_status_1.setText(f"Status: \n  {self.current_status.name}   ")
+        status_colors = {"Initialisation": "coral", "Setup": "yellow",
+                         "Milling": "lightgreen", "Liftout": "lightblue", "Landing": "purple"}
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
+        self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_status_1.setFont(QtGui.QFont("Arial", weight=QtGui.QFont.Bold))
 
         if self.samples:
-            self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded")
+            if self.current_sample:
+                # print("CURRENT SAMPLE EXISTS")
+                self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
+                                            f"\n\tCurrent Sample: {self.current_sample.sample_no} "
+                                            f"\n\tLamella Coordinate: {self.current_sample.lamella_coordinates}"
+                                            f"\n\tLanding Coordinate: {self.current_sample.landing_coordinates}"
+                                            f"\n\tPark Position: {self.current_sample.park_position}")
+            else:
+                # print("NO CURRENT SAMPLE")
+                self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
+                                            f"\n\tSample No: {self.samples[0].sample_no} "
+                                            f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
+                                            f"\n\tLanding Coordinate: {self.samples[0].landing_coordinates}"
+                                            f"\n\tPark Position: {self.samples[0].park_position}")
             self.label_status_2.setStyleSheet("background-color: lightgreen")
         else:
             self.label_status_2.setText("No Sample Positions Loaded")
@@ -2106,13 +2124,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # log info
         with open(self.log_path) as f:
             lines = f.read().splitlines()
-            last_line = lines[-1]
-        self.label_status_3.setText(last_line)
+            log_line = "\n".join(lines[-5:])  # last five log msgs
+            self.label_status_3.setText(log_line)
 
         # TODO: test (this might cause lag...)
         # TODO: remove all other calls to updating these displays
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
+
+        # logging.info(f"Random No: {np.random.random()}")
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
