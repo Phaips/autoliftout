@@ -2369,5 +2369,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)
