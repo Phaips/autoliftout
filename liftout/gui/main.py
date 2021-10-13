@@ -177,8 +177,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # setup status information
         self.status_timer = QtCore.QTimer()
         self.status_timer.timeout.connect(self.update_status)
-        self.status_timer.start(1000)
+        self.status_timer.start(2000)
         self.label_status_3.setStyleSheet("background-color: black;  color: white")
+
+
+        # TEST REGION: TODO: REMOVE
+        # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
+
 
         logging.info(f"------------ {self.current_status.name} FINISHED ------------")
 
@@ -191,15 +196,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: add to protocol
         self.update_image_settings(
-            resolution = self.settings["imaging"]["resolution"], # "1536x1024",
-            dwell_time = self.settings["imaging"]["dwell_time"], #1e-6,
-            hfw = 2750e-6,
-            # autocontrast = self.USE_AUTOCONTRAST,
-            beam_type = BeamType.ELECTRON,
-            save = True,
-            label = 'grid',
-            # save_path = self.save_path,
-            # gamma = self.settings["gamma"]
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=2750e-6,
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label='grid',
         )
 
         # move to the initial sample grid position
@@ -208,12 +210,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # NOTE: can't take ion beam image with such a high hfw
         acquire.new_image(self.microscope, self.image_settings)
 
-
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # Whole-grid platinum deposition
-
         self.update_popup_settings(message='Do you want to sputter the whole sample grid with platinum?',
                                    crosshairs=False,
                                    filter_strength=self.filter_strength)
@@ -355,9 +355,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['hfw'] = 900e-6  # TODO: add to protocol
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting?
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
-        # acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
+        acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        # acquire.autocontrast(self.microscope, beam_type=BeamType.ION)
+        acquire.autocontrast(self.microscope, beam_type=BeamType.ION)
         self.update_display(beam_type=BeamType.ION, image_type='last')
         self.user_based_eucentric_height_adjustment()
 
@@ -399,6 +399,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(self.stage.current_position.t) * real_y
         self.stage.relative_move(StagePosition(z=delta_z))
+        logging.info(f"eucentric: moving height by {delta_z:.4f}m")
         if self.response:
             self.update_display(beam_type=BeamType.ION, image_type='new')
         # TODO: Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
@@ -588,16 +589,30 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample.save_data()
 
         # reference images of milled trenches
-        self.image_settings['save'] = True
-        self.image_settings['resolution'] = self.settings['reference_images']['trench_area_ref_img_resolution']
-        self.image_settings['dwell_time'] = self.settings['reference_images']['trench_area_ref_img_dwell_time']
-
-        self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
-        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_low_res'  # TODO: add to protocol
+        # self.image_settings['save'] = True
+        # self.image_settings['resolution'] = self.settings['reference_images']['trench_area_ref_img_resolution']
+        # self.image_settings['dwell_time'] = self.settings['reference_images']['trench_area_ref_img_dwell_time']
+        #
+        # self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_lowres']  # TODO: watch image settings through run
+        # self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_low_res'  # TODO: add to protocol
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
+            save=True,
+            label=f'{self.current_sample.sample_no:02d}_ref_trench_low_res'
+        )
         eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
-        self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_highres']
-        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_high_res'  # TODO: add to protocol
+        # self.image_settings['hfw'] = self.settings['reference_images']['trench_area_ref_img_hfw_highres']
+        # self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_ref_trench_high_res'  # TODO: add to protocol
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
+            save=True,
+            label=f'{self.current_sample.sample_no:02d}_ref_trench_high_res'
+        )
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
@@ -763,7 +778,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-
         # self.image_settings['label'] = 'jcut_sever'
         self.update_image_settings(save=True, hfw=100e-6, label='jcut_sever')
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -788,7 +802,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{self.current_status.name}: needle retracted. ")
         logging.info(f"{self.current_status.name}: liftout complete.")
-
 
     def land_needle_on_milled_lamella(self):
 
@@ -1044,14 +1057,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
 
-        ## X-HALF-MOVE
+        # X-HALF-MOVE
         # self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
         # self.image_settings["beam_type"] = BeamType.ELECTRON
         # self.image_settings["hfw"] = 150e-6
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=150e-6,  #TODO: fix protocol,
+            hfw=150e-6,  # TODO: fix protocol,
             beam_type=BeamType.ELECTRON,
             save=True,
             label="landing_needle_land_sample_lowres_after_z_move"
@@ -1470,6 +1483,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # FIBSEM methods
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
 
+        # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
@@ -1572,7 +1586,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.popup_settings['second_image'] = second_image
 
         if image is not None:
-                # extra check in case new_image set on ML images
+            # extra check in case new_image set on ML images
             if self.popup_settings['allow_new_image'] and beam_type:
                 self.new_image = QtWidgets.QPushButton()
                 self.new_image.setFixedHeight(self.button_height)
@@ -2230,10 +2244,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: test (this might cause lag...)
         # TODO: remove all other calls to updating these displays
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
+        # self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        # logging.info(f"Random No: {np.random.random()}")
+        # logging.info(f"Random No: {np.random.random():.5f}")
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
@@ -2349,5 +2363,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)
