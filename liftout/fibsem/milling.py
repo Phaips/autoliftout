@@ -68,7 +68,7 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
 
 def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
     microscope.patterning.clear_patterns()
-    for pattern in patterns:
+    for pattern in patterns: # TODO: test that this doesnt break the drawing
         tmp_pattern = microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=depth)
         tmp_pattern.rotation = np.deg2rad(pattern.rotation)
     run_milling(microscope, settings)

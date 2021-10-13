@@ -12,6 +12,7 @@ imaging:
   resolution: "1536x1024"
   imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
   save: False
+  autocontrast: True
 gamma:
   correction: True
   min_gamma: 0.15
@@ -37,11 +38,13 @@ reference_images:
   needle_with_lamella_ref_img_dwell_time_ion: 0.5e-6
   needle_with_lamella_shifted_img_lowres: 250e-6
   needle_with_lamella_shifted_img_highres: 150e-6
+  landing_lamella_ref_img_hfw_lowres: 150e-6
+  landing_lamella_ref_img_hfw_highres: 80e-6
 lamella:
   lamella_width: 12e-6 # in meters
   lamella_height: 3e-6 # in meters
   total_cut_height: 6e-6 # in meters
-  milling_depth: 1e-6 # default milling depth, unless otherwise specified
+  milling_depth: 1.2e-6 # default milling depth, unless otherwise specified
   milling_current: 0.74e-9 # default milling current, unless otherwise specified
   protocol_stages: # stages will be milled in the order they appear here
     # rough_cut
@@ -52,7 +55,7 @@ lamella:
     - percentage_roi_height: 0.8 # fractional percentage of total_cut height
       percentage_from_lamella_surface: 0.0 # fractional percentage
       milling_current: 0.74e-9 # in Amps
-      milling_depth: 0.6e-6 # in meters
+      milling_depth: 0.8e-6 # in meters
 needle:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
@@ -69,7 +72,7 @@ jcut:
   jcut_length: 9e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 1.5e-6 # in meters
+  jcut_milling_depth: 1.7e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false
@@ -89,12 +92,6 @@ cut:
   depth: 4e-6
   rotation: 0
   hfw: 100e-6
-# thin:
-#   width: 5e-6
-#   height: 1e-6
-#   depth: 4e-6
-#   rotation: 0
-#   hfw: 100e-6
 thin_lamella: # Lamella parameters
   lamella_width:  5e-6 # In meters. Width of lamella.
   lamella_height: 2e-6 # In meters. Thickness of lamella.
