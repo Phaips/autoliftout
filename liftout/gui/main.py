@@ -78,9 +78,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         assert self.pretilt_degrees == 27
 
         self.current_status = AutoLiftoutStatus.Initialisation
-        logging.info(f"------------ {self.current_status.name} STARTED ------------")
-        gui_mode_str = "offline" if offline else "online"
-        logging.info(f"gui: starting in {gui_mode_str} mode")
+        logging.info(f"{self.current_status.name} STARTED")
+        logging.info(f"gui: starting in {'offline' if offline else 'online'} mode")
 
         # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
@@ -149,8 +148,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample = None
 
         # # TODO: remove these?
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
+        self.update_display(beam_type=BeamType.ION, image_type='last')
 
         # popup initialisations
         self.popup_window = None
@@ -164,7 +163,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'milling_patterns': None}
 
 
-        # initial image settings # TODO: add to protocol
+        # initial image settings
         self.image_settings = {}
         self.USE_AUTOCONTRAST = self.settings["imaging"]["autocontrast"]
         self.update_image_settings()
@@ -178,21 +177,26 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.status_timer = QtCore.QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(2000)
-        self.label_status_3.setStyleSheet("background-color: black;  color: white")
 
+        # setup status labels
+        self.label_status_1.setStyleSheet("background-color: coral; padding: 10px")
+        self.label_status_1.setFont(QtGui.QFont("Arial", 14, weight=QtGui.QFont.Bold))
+        self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
+        self.label_status_3.setStyleSheet("background-color: black;  color: white; padding:10px")
+        self.update_status()
 
         # TEST REGION: TODO: REMOVE
         # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
 
-
-        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
+        logging.info(f"{self.current_status.name} FINISHED")
 
 
 
     def initialise_autoliftout(self):
         # TODO: check if needle i
         self.current_status = AutoLiftoutStatus.Setup
-        logging.info(f"------------ {self.current_status.name} STARTED ------------")
+        logging.info(f"{self.current_status.name} STARTED")
 
         # TODO: add to protocol
         self.update_image_settings(
@@ -247,7 +251,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
-        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
+        logging.info(f"{self.current_status.name} FINISHED")
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -442,7 +446,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def load_coordinates(self):
 
-        logging.info(f"------------ LOAD COORDINATES STARTED ------------")
+        logging.info(f"LOAD COORDINATES STARTED")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=os.path.join(os.path.dirname(liftout.__file__), "log")) # TODO: make this path not hard coded
@@ -495,7 +499,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}.")
-        logging.info(f"------------ LOAD COORDINATES FINISHED ------------")
+        logging.info(f"LOAD COORDINATES FINISHED")
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
@@ -560,7 +564,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella(self):
         self.current_status = AutoLiftoutStatus.Milling
-        logging.info(f"------------ {self.current_status.name} STARTED ------------")
+        logging.info(f"{self.current_status.name} STARTED")
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
         stage_settings = MoveSettings(rotate_compucentric=True)
@@ -705,6 +709,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
 
+        # TODO: update to update_image_settings
         # take reference images after drift correction
         self.image_settings['save'] = True
         self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
@@ -715,7 +720,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def liftout_lamella(self):
         self.current_status = AutoLiftoutStatus.Liftout
-        logging.info(f"------------ {self.current_status.name} STARTED ------------")
+        logging.info(f" {self.current_status.name} STARTED")
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
@@ -1340,7 +1345,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # retract needle
         movement.retract_needle(self.microscope, park_position)
 
-        logging.info(f"------------ {self.current_status.name} FINISHED ------------")
+        logging.info(f"{self.current_status.name} FINISHED")
 
     def cleanup_lamella(self, landing_coord):
         """Cleanup: Thin the lamella thickness to size for imaging."""
@@ -2209,12 +2214,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if not WINDOW_ENABLED:
             self.setEnabled(True)
 
-        self.label_status_1.setText(f"Status: \n  {self.current_status.name}   ")
+        mode = "" if not self.offline else "\n(Offline Mode)"
+        self.label_status_1.setText(f"{self.current_status.name}{mode}")
         status_colors = {"Initialisation": "coral", "Setup": "yellow",
                          "Milling": "lightgreen", "Liftout": "lightblue", "Landing": "purple"}
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
-        self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_status_1.setFont(QtGui.QFont("Arial", weight=QtGui.QFont.Bold))
+        # self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
+        # self.label_status_1.setFont(QtGui.QFont("Arial", 14, weight=QtGui.QFont.Bold))
 
         if self.samples:
             if self.current_sample:
@@ -2231,10 +2237,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                             f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
                                             f"\n\tLanding Coordinate: {self.samples[0].landing_coordinates}"
                                             f"\n\tPark Position: {self.samples[0].park_position}")
-            self.label_status_2.setStyleSheet("background-color: lightgreen")
+            self.label_status_2.setStyleSheet("background-color: lightgreen; padding: 10px")
         else:
             self.label_status_2.setText("No Sample Positions Loaded")
-            self.label_status_2.setStyleSheet("background-color: coral")
+            self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
 
         # log info
         with open(self.log_path) as f:
