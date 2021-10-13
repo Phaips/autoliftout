@@ -339,7 +339,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             images.append((eb_lowres, eb_highres, ib_lowres, ib_highres))
 
             self.update_popup_settings(message=f'Do you want to select another {feature_type} position?\n'
-                                  f'{len(coordinates)} positions selected so far.', crosshairs=False)
+                                        f'{len(coordinates)} positions selected so far.', crosshairs=False)
             self.ask_user()
             select_another_position = self.response
 
@@ -372,6 +372,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.image_settings['save'] = False
+        # self.update_image_settings(
+        #     resolution='1536x1024',  # TODO: add to protocol
+        #     dwell_time=1e-6,  # TODO: add to protocol
+        #     beam
+        # ) TODO: need to pass the hfw as parameter as it is currently defined outside func
         self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double',
@@ -433,7 +438,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 landing_coord = self.current_sample.landing_coordinates
                 self.current_status = AutoLiftoutStatus.Cleanup
                 self.cleanup_lamella(landing_coord=landing_coord)
-
 
     def load_coordinates(self):
 
@@ -517,8 +521,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
 
-        self.image_settings['save'] = True
-        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_post_drift_correction'
+        # self.image_settings['save'] = True
+        # self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_post_drift_correction'
+        self.update_image_settings(
+            save=True,
+            label=f'{self.current_sample.sample_no:02d}_post_drift_correction'
+        )
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # mill
@@ -820,7 +828,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
         # calculate shift between lamella centre and needle tip in the electron view
-        self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+        self.image_settings['hfw'] = 180e-6 #self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -877,13 +885,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.info(f"{self.current_status.name}: needle zy-move: {zy_move_gap}")
 
 
-            self.image_settings['save'] = True
-            self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
-            self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
-            self.image_settings['label'] = 'needle_ref_img_lowres'
+            # self.image_settings['save'] = True
+            # self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
+            # self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+            # self.image_settings['label'] = 'needle_ref_img_lowres'
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
+                save=True,
+                label='needle_ref_img_lowres'
+            )
             acquire.take_reference_images(self.microscope, self.image_settings)
-            self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_highres"]
-            self.image_settings['label'] = 'needle_ref_img_highres'
+            # self.image_settings['hfw'] = self.settings["reference_images"]["needle_ref_img_hfw_highres"]
+            # self.image_settings['label'] = 'needle_ref_img_highres'
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
+                save=True,
+                label='needle_ref_img_highres'
+            )
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name}: land needle on lamella complete.")
         else:
@@ -981,14 +999,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # # Y-MOVE
-        self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
-        self.image_settings["dwell_time"] = self.settings["reference_images"]["landing_post_ref_img_dwell_time"]
-        self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.image_settings["beam_type"] = BeamType.ELECTRON
-        self.image_settings["save"] = True
-        self.image_settings["label"] = "landing_needle_land_sample_lowres"
+        # self.image_settings["resolution"] = self.settings["reference_images"]["landing_post_ref_img_resolution"]
+        # self.image_settings["dwell_time"] = self.settings["reference_images"]["landing_post_ref_img_dwell_time"]
+        # self.image_settings["hfw"]  = 180e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        # self.image_settings["beam_type"] = BeamType.ELECTRON
+        # self.image_settings["save"] = True
+        # self.image_settings["label"] = "landing_needle_land_sample_lowres"
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=180e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol,
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="landing_needle_land_sample_lowres"
+        )
+
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
         y_move = movement.y_corrected_needle_movement(-distance_y_m, self.stage.current_position.t)
         self.needle.relative_move(y_move)
@@ -999,9 +1026,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # Z-MOVE
-        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_y_move"
-        self.image_settings["beam_type"] = BeamType.ION
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=180e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol,
+            beam_type=BeamType.ION,
+            save=True,
+            label="landing_needle_land_sample_lowres_after_y_move"
+        )
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
 
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
@@ -1011,12 +1044,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
 
-
         ## X-HALF-MOVE
-        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
-        self.image_settings["beam_type"] = BeamType.ELECTRON
-        self.image_settings["hfw"] = 150e-6
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
+        # self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
+        # self.image_settings["beam_type"] = BeamType.ELECTRON
+        # self.image_settings["hfw"] = 150e-6
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=150e-6,  #TODO: fix protocol,
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="landing_needle_land_sample_lowres_after_z_move"
+        )
+
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
         # half move
         x_move = movement.x_corrected_needle_movement(distance_x_m / 2)
@@ -1027,10 +1068,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="new")
 
         ## X-MOVE
-        self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
-        self.image_settings["beam_type"] = BeamType.ELECTRON
-        self.image_settings["hfw"] = 80e-6
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=self.image_settings["beam_type"])
+        # self.image_settings["label"] = "landing_needle_land_sample_lowres_after_z_move"
+        # self.image_settings["beam_type"] = BeamType.ELECTRON
+        # self.image_settings["hfw"] = 80e-6
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=80e-6,  # TODO: fix protocol,
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="landing_needle_land_sample_lowres_after_z_move"
+        )
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
         # TODO: gap?
         x_move = movement.x_corrected_needle_movement(distance_x_m)
@@ -1038,15 +1087,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: x-move complete: {x_move}")
 
         # final reference images
-        self.image_settings["save"] = True
-        self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.image_settings["label"] = "E_landing_lamella_final_weld_highres"
+        # self.image_settings["save"] = True
+        # self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        # self.image_settings["label"] = "E_landing_lamella_final_weld_highres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=80e-6,  # TODO: fix protocol,
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="landing_lamella_final_weld_highres"
+        )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        # WELD TO LANDING POST
-        # TODO: this is not joining the lamella to the post
+        ############################## WELD TO LANDING POST #############################################
         weld_pattern = milling.weld_to_landing_post(self.microscope)
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
@@ -1059,24 +1115,38 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=5e-9) # TODO: add to protocol
 
-
         logging.info(f"{self.current_status.name}: weld to post complete")
 
         # final reference images
-
-        self.image_settings["hfw"]  = 100e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.image_settings["label"] = "landing_lamella_final_weld_highres"
+        # self.image_settings["hfw"]  = 100e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        # self.image_settings["label"] = "landing_lamella_final_weld_highres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=100e-6,  # TODO: fix protocol,
+            save=True,
+            label="landing_lamella_final_weld_highres"
+        )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
 
-        # CUT OFF NEEDLE
-        logging.info("landing: start cut off needle. detecting needle distance from centre.")
-        self.image_settings["hfw"] = self.settings["cut"]["hfw"]
-        self.image_settings["label"] = "landing_lamella_pre_cut_off"
-        self.image_settings["beam_type"] = BeamType.ION
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
+        ###################################### CUT OFF NEEDLE ######################################
+        logging.info(f"{self.current_status.name}: start cut off needle. detecting needle distance from centre.")
+        # self.image_settings["hfw"] = self.settings["cut"]["hfw"]
+        # self.image_settings["label"] = "landing_lamella_pre_cut_off"
+        # self.image_settings["beam_type"] = BeamType.ION
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=self.settings["cut"]["hfw"],
+            beam_type=BeamType.ION,
+            save=True,
+            label="landing_lamella_pre_cut_off"
+        )
+
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
 
         height = self.settings["cut"]["height"]
         width = self.settings["cut"]["width"]
@@ -1111,13 +1181,28 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: needle cut-off complete")
 
         # reference images
-        self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.image_settings["label"] = "landing_lamella_final_cut_lowres"
+        # self.image_settings["hfw"]  = 150e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        # self.image_settings["label"] = "landing_lamella_final_cut_lowres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=150e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+            beam_type=BeamType.ION,
+            save=True,
+            label="landing_lamella_final_cut_lowres"
+        )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-
-        self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
-        self.image_settings["label"] = "landing_lamella_final_cut_highres"
+        # self.image_settings["hfw"]  = 80e-6 # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+        # self.image_settings["label"] = "landing_lamella_final_cut_highres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=80e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+            beam_type=BeamType.ION,
+            save=True,
+            label="landing_lamella_final_cut_highres"
+        )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         logging.info(f"{self.current_status.name}: removing needle from landing post")
@@ -1135,12 +1220,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: needle retracted.")
 
         # reference images
-        self.image_settings["hfw"] = self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"] # 150e-6 #TODO: fix protocol
-        self.image_settings["label"] = "landing_lamella_final_lowres"
+        # self.image_settings["hfw"] = self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"] # 150e-6 #TODO: fix protocol
+        # self.image_settings["label"] = "landing_lamella_final_lowres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
+            save=True,
+            label="landing_lamella_final_lowres"
+        )
+
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         self.image_settings["hfw"] = self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"] # 80e-6  #TODO: fix protocol
         self.image_settings["label"] = "landing_lamella_final_highres"
+        self.update_image_settings(
+            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
+            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
+            save=True,
+            label="landing_lamella_final_highres"
+        )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         logging.info(f"{self.current_status.name}: landing stage complete")
@@ -1171,15 +1271,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["imaging"]["horizontal_field_width"],
+            beam_type=BeamType.ION,
             save=True,
             label="sharpen_needle_initial"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
-        self.image_settings["beam_type"] = BeamType.ION
+        # self.image_settings["beam_type"] = BeamType.ION
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
@@ -1193,7 +1294,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=self.image_settings["beam_type"])
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
 
         # create sharpening patterns
         cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=distance_x_m, y_0=distance_y_m)

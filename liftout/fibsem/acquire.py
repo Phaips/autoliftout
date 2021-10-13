@@ -34,7 +34,7 @@ def take_reference_images(microscope, settings):
     settings['beam_type'] = BeamType.ION
     logging.info(f"acquire: taking {settings['beam_type'].name} reference image.")
     ib_image = new_image(microscope, settings)
-    settings["beam_type"] = tmp_beam_type # reset to original beam type
+    settings["beam_type"] = tmp_beam_type  # reset to original beam type
     return eb_image, ib_image
 
 def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
