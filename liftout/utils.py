@@ -5,7 +5,7 @@ import logging
 import datetime
 import liftout
 
-
+# TODO: better logs: https://www.toptal.com/python/in-depth-python-logging
 def configure_logging(save_path='', log_filename='logfile', log_level=logging.INFO):
     """Log to the terminal and to file simultaneously."""
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
@@ -77,7 +77,7 @@ def make_logging_directory(prefix='run'):
     os.makedirs(os.path.join(save_directory, "img"), exist_ok=True)
     return save_directory
 
-
+# TODO: change to os.path.join
 def save_image(image, save_path, label=''):
     path = f'{save_path}/img/{label}.tif'
     image.save(path)
