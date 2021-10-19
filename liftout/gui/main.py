@@ -58,7 +58,7 @@ class AutoLiftoutStatus(Enum):
     Liftout = 2
     Landing = 3
     Reset = 4
-    Cleanup = 5
+    Thinning = 5
     Finished = 6
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
@@ -400,13 +400,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: confirm this is still true
         self.update_popup_settings(message="Do you want to start lamella cleanup?", crosshairs=False)
         self.ask_user()
-        logging.info(f"Perform Cleanup: {self.response}")
+        logging.info(f"Perform Thinning: {self.response}")
         if self.response:
             for sample in self.samples:
                 self.current_sample = sample
                 landing_coord = self.current_sample.landing_coordinates
-                self.current_status = AutoLiftoutStatus.Cleanup
-                self.cleanup_lamella(landing_coord=landing_coord)
+                self.current_status = AutoLiftoutStatus.Thinning
+                self.thin_lamella(landing_coord=landing_coord)
 
     def load_coordinates(self):
 
@@ -1247,10 +1247,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{self.current_status.name} FINISHED")
 
-    def cleanup_lamella(self, landing_coord):
-        """Cleanup: Thin the lamella thickness to size for imaging."""
+    def thin_lamella(self, landing_coord):
+        """Thinning: Thin the lamella thickness to size for imaging."""
 
-        self.current_status = AutoLiftoutStatus.Cleanup
+        self.current_status = AutoLiftoutStatus.Thinning
         logging.info(f"{self.current_status.name}: cleanup stage started")
 
         # move to landing coord
@@ -2118,7 +2118,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_status_1.setText(f"{self.current_status.name}{mode}")
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
-                         "Reset": "salmon", "Cleanup": "white", "Finished": "cyan"}
+                         "Reset": "salmon", "Thinning": "white", "Finished": "cyan"}
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
 
         if self.samples:
