@@ -126,7 +126,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.samples = []
         self.current_sample = None
 
-        # # TODO: remove these?
+        # initial display
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
@@ -259,12 +259,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION, image_type='new')
 
             self.update_popup_settings(message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
-                                                          f'Press Yes when the feature is centered', click='double',
-                                       filter_strength=self.filter_strength, allow_new_image=True)
+                                        f'Press Yes when the feature is centered', click='double',
+                                        filter_strength=self.filter_strength, allow_new_image=True)
             self.ask_user(image=self.image_FIB)
 
-            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             # TODO: does this need to be new image?  Can it be last?  Can it be view set?
+            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
             coordinates.append(self.stage.current_position)
             if feature_type == 'landing':
@@ -294,6 +294,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     label=f'{len(coordinates):02d}_ref_lamella_low_res'
                 )
                 eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
                 self.update_image_settings(
                     resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
                     dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
@@ -319,6 +320,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if flat_to_sem:
             movement.flat_to_beam(self.microscope, settings=self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON)
 
+        # lowres calibration
         self.image_settings['hfw'] = 900e-6  # TODO: add to protocol
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting?
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
@@ -328,7 +330,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
         self.user_based_eucentric_height_adjustment()
 
-        # TODO: status
+        # highres calibration
         self.image_settings['hfw'] = 200e-6  # TODO: add to protocol
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
@@ -792,9 +794,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # calculate shift between lamella centre and needle tip in the ion view
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
-        # calculate shift in xyz coordinates
-        # TODO: status
 
+        # calculate shift in xyz coordinates
         z_distance = distance_y_m / np.cos(self.stage.current_position.t)
 
         # Calculate movement
@@ -807,7 +808,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_popup_settings(message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         self.ask_user(image=self.image_FIB)
-        # TODO: crosshairs here?
+
         if self.response:
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)

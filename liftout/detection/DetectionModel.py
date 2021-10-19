@@ -32,7 +32,7 @@ class DetectionModel:
             ]
         )
 
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # TODO: support GPU
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.load_model()
 
@@ -48,7 +48,7 @@ class DetectionModel:
         self.model = smp.Unet(encoder_name="resnet18", in_channels=1, classes=3,)
         # load model weights
         self.model.load_state_dict(torch.load(self.weights_file, map_location="cpu"))
-        self.model.to(self.device) #TODO: GPU support
+        self.model.to(self.device)
         self.model.eval()
 
     def model_inference(self, img):

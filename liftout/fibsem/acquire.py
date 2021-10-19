@@ -146,6 +146,3 @@ def acquire_image(microscope, settings=None, brightness=None, contrast=None, bea
     else:
         image = microscope.imaging.grab_frame()
     return image
-
-
-# def update_image_settings(settings):
