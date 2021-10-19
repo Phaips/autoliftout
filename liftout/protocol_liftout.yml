@@ -42,7 +42,7 @@ reference_images:
   landing_lamella_ref_img_hfw_highres: 80e-6
 lamella:
   lamella_width: 12e-6 # in meters
-  lamella_height: 3e-6 # in meters
+  lamella_height: 6e-6 # in meters
   total_cut_height: 6e-6 # in meters
   milling_depth: 1.2e-6 # default milling depth, unless otherwise specified
   milling_current: 0.74e-9 # default milling current, unless otherwise specified

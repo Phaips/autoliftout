@@ -356,7 +356,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single',
-                                       filter_strength=self.filter_strength, crosshairs=False, allow_new_image=True)
+                                       filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False)
             self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
 
         else:
@@ -754,7 +754,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         needle = self.microscope.specimen.manipulator
 
         # low res
-
+        # TODO: remove lowres/highres ref images?
         self.update_image_settings(
             resolution=self.settings["reference_images"]["needle_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
@@ -1392,7 +1392,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.reset_needle())
+        # self.pushButton_test_popup.clicked.connect(lambda: self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ELECTRON))
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_image_settings())
@@ -2120,19 +2120,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                          "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Cleanup": "white", "Finished": "cyan"}
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
-        # self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
-        # self.label_status_1.setFont(QtGui.QFont("Arial", 14, weight=QtGui.QFont.Bold))
 
         if self.samples:
             if self.current_sample:
-                # print("CURRENT SAMPLE EXISTS")
                 self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
                                             f"\n\tCurrent Sample: {self.current_sample.sample_no} "
                                             f"\n\tLamella Coordinate: {self.current_sample.lamella_coordinates}"
                                             f"\n\tLanding Coordinate: {self.current_sample.landing_coordinates}"
                                             f"\n\tPark Position: {self.current_sample.park_position}")
             else:
-                # print("NO CURRENT SAMPLE")
                 self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
                                             f"\n\tSample No: {self.samples[0].sample_no} "
                                             f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
