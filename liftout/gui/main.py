@@ -61,8 +61,6 @@ class AutoLiftoutStatus(Enum):
     Cleanup = 5
     Finished = 6
 
-
-
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
         super(GUIMainWindow, self).__init__()
@@ -354,6 +352,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
+            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], 900e-6)) # clip to max hfw for ion #TODO: TEST THIS
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single',
@@ -1226,13 +1225,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                   crosshairs=False, milling_patterns=sharpen_patterns)
+                                   crosshairs=False) #milling_patterns=sharpen_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             # TODO: TEST ROTATION
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=cut_coord_bottom["depth"])
+            # milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+            #                                patterns=self.patterns, depth=cut_coord_bottom["depth"])
+            milling.run_milling(self.microscope, self.settings)
 
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
@@ -1392,7 +1392,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.reset_needle())
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_image_settings())
@@ -2116,9 +2116,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         mode = "" if not self.offline else "\n(Offline Mode)"
         self.label_status_1.setText(f"{self.current_status.name}{mode}")
-        status_colors = {"Initialisation": "coral", "Setup": "yellow",
-                         "Milling": "lightgreen", "Liftout": "lightblue", "Landing": "purple",
-                         "Reset": "red", "Cleanup": "white", "Finished": "cyan"}
+        status_colors = {"Initialisation": "gray", "Setup": "gold",
+                         "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
+                         "Reset": "salmon", "Cleanup": "white", "Finished": "cyan"}
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
         # self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
         # self.label_status_1.setFont(QtGui.QFont("Arial", 14, weight=QtGui.QFont.Bold))
@@ -2141,7 +2141,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.label_status_2.setStyleSheet("background-color: lightgreen; padding: 10px")
         else:
             self.label_status_2.setText("No Sample Positions Loaded")
-            self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
+            self.label_status_2.setStyleSheet("background-color: gray; padding: 10px")
 
         # log info
         with open(self.log_path) as f:
