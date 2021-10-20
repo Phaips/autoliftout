@@ -67,6 +67,7 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
 
 
 def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
+    microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.clear_patterns()
     for pattern in patterns: # TODO: test that this doesnt break the drawing
         tmp_pattern = microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=depth)
