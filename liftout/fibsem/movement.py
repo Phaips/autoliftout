@@ -139,7 +139,8 @@ def move_to_sample_grid(microscope, settings, pretilt_angle=pretilt):
     Assumes sample grid is mounted on the left hand side of the holder.
     """
     flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
-    sample_grid_center = StagePosition(x=-0.0025868173, y=0.0031794167, z=0.0039457213)
+    # sample_grid_center = StagePosition(x=-0.0025868173, y=0.0031794167, z=0.0039457213)
+    sample_grid_center = StagePosition(x=-0.00266, y=0.00228, z=0.0039457213)
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
@@ -164,8 +165,11 @@ def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
     """
     if flat_to_sem:
         flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
+        # landing_grid_position = StagePosition(x=0.0034580609,
+        #                                       y=0.0032461667,
+        #                                       z=0.0039338733)
         landing_grid_position = StagePosition(x=0.0034580609,
-                                              y=0.0032461667,
+                                              y=0.0022836,
                                               z=0.0039338733)
         logging.info(f"movement: moving to landing grid {landing_grid_position}")
         microscope.specimen.stage.absolute_move(landing_grid_position)
