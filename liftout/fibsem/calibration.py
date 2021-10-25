@@ -151,12 +151,12 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
 # TODO: figure out a better name
 def identify_shift_using_machine_learning(microscope, image_settings, settings, liftout_counter, shift_type):
     # TODO: this block can now be removed. no longer used with gamma correction
-    if image_settings['beam_type'] == BeamType.ION:
-        image_settings['brightness'] = settings["machine_learning"]["ib_brightness"]
-        image_settings['contrast'] = settings["machine_learning"]["ib_contrast"]
-    elif image_settings['beam_type'] == BeamType.ELECTRON:
-        image_settings['brightness'] = settings["machine_learning"]["eb_brightness"]
-        image_settings['contrast'] = settings["machine_learning"]["eb_contrast"]
+    # if image_settings['beam_type'] == BeamType.ION:
+    #     image_settings['brightness'] = settings["machine_learning"]["ib_brightness"]
+    #     image_settings['contrast'] = settings["machine_learning"]["ib_contrast"]
+    # elif image_settings['beam_type'] == BeamType.ELECTRON:
+    #     image_settings['brightness'] = settings["machine_learning"]["eb_brightness"]
+    #     image_settings['contrast'] = settings["machine_learning"]["eb_contrast"]
 
     eb_image,  ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]

@@ -7,6 +7,7 @@ from skimage import exposure
 import numpy as np
 # from liftout.fibsem import calibration
 
+
 class BeamType(Enum):
     ELECTRON = 1
     ION = 2
@@ -25,6 +26,7 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     logging.info("acquire: automatically adjusting contrast...")
     microscope.auto_functions.run_auto_cb()
 
+
 # TODO: these settings should be image_settings for consistency
 def take_reference_images(microscope, settings):
     tmp_beam_type = settings["beam_type"]
@@ -36,6 +38,7 @@ def take_reference_images(microscope, settings):
     ib_image = new_image(microscope, settings)
     settings["beam_type"] = tmp_beam_type  # reset to original beam type
     return eb_image, ib_image
+
 
 def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
     """Automatic gamma correction"""
@@ -51,6 +54,7 @@ def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
     reference.metadata = image.metadata
     image = reference
     return image
+
 
 def new_image(microscope, settings):
     frame_settings = GrabFrameSettings(resolution=settings['resolution'],

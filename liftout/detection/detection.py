@@ -32,8 +32,8 @@ class Detector:
             "lamella_centre_to_image_centre",
             "lamella_edge_to_landing_post",
             "needle_tip_to_image_centre",
-            "thin_lamella_top_to_centre",
-            "thin_lamella_bottom_to_centre"
+            # "thin_lamella_top_to_centre",
+            # "thin_lamella_bottom_to_centre"
         ]
 
     def detect_features(self, img, mask, shift_type):
