@@ -93,8 +93,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.button_height = 50
         self.button_width = 100
 
-        self.setup_connections()
-
         # initialise image frames and images
         self.image_SEM = None
         self.image_FIB = None
@@ -165,8 +163,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_status_3.setStyleSheet("background-color: black;  color: white; padding:10px")
         self.update_status()
 
-        # TEST REGION: TODO: REMOVE
-        # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
+        self.setup_connections()
 
         logging.info(f"{self.current_status.name} FINISHED")
 
@@ -1232,14 +1229,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                   crosshairs=False) #milling_patterns=sharpen_patterns)
+                                   crosshairs=False, milling_patterns=sharpen_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             # TODO: TEST ROTATION
-            # milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-            #                                patterns=self.patterns, depth=cut_coord_bottom["depth"])
-            milling.run_milling(self.microscope, self.settings)
+            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+                                           patterns=self.patterns, depth=cut_coord_bottom["depth"])
+            # milling.run_milling(self.microscope, self.settings)
 
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
@@ -1330,8 +1327,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: check the direction of this movement?
         # move half the width of lamella to centre the edge..
-        width = self.settings["thin_lamella"]["lamella_width"]
-        x_move_half_width = movement.x_corrected_stage_movement(width / 2)
+        width = self.settings["lamella"]["lamella_width"]
+        x_move_half_width = movement.x_corrected_stage_movement(width / 4)
         self.stage.relative_move(x_move_half_width)
         # TODO: take reference images
 
@@ -1419,13 +1416,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
 
         # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
+
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
+
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
+
         # self.pushButton_test_popup.clicked.connect(lambda: self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ELECTRON))
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_image_settings())
+
+        # self.pushButton_test_popup.clicked.connect(lambda: self.test_draw_patterns())
+
         logging.info("gui: setup connections finished")
 
     def ask_user(self, image=None, second_image=None):
@@ -1704,7 +1708,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                         width = pattern.width / pixel_size
                         height = pattern.height / pixel_size
-
+                        rotation = pattern.rotation
                         # Rectangle is defined from bottom left due to mpl
                         # Microscope (0, 0) is middle of image, y+ = up
                         # Image (0, 0) is top left corner, y+ = down
@@ -1713,6 +1717,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                     pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
                     pattern.set_hatch('/////')
+                    pattern.angle = np.rad2deg(rotation)
                     pattern.set_edgecolor('xkcd:pink')
                     pattern.set_fill(False)
                     self.ax.add_patch(pattern)
@@ -1720,7 +1725,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     pattern.pixel_size = pixel_size
                     pattern.image_width = image_width
                     pattern.image_height = image_height
-                    pattern.rotation = 0  # TODO: update this
                     pattern.connect()
                     pattern.update_position()
                     self.patterns.append(pattern)
@@ -1839,6 +1843,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # xy is top left in image coords, bottom left in
 
         self.setEnabled(True) # enable the main window
+
+    def test_draw_patterns(self):
+        # TODO: adjust hfw? check why it changes to 100
+        self.update_display(beam_type=BeamType.ION, image_type='last')
+        # TODO: return image with patterning marks
+        cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope,
+                                                                                   settings=self.settings,
+                                                                                   x_0=0, y_0=0)
+
+        # testing rotation passing from FIB to GUI
+        sharpen_patterns = milling.create_sharpen_needle_patterns(self.microscope, cut_coord_bottom, cut_coord_top)
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=sharpen_patterns)
+
+        self.ask_user(image=self.image_FIB)
+        if self.response:
+            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+                                           patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
     # def new_protocol(self):
     #     num_index = self.tabWidget_Protocol.__len__() + 1
@@ -2090,7 +2111,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     else:
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_SEM.data
-                    self.figure_SEM.clear()
+                    # self.figure_SEM.clear()
                     self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
                     self.ax_SEM = self.figure_SEM.add_subplot(111)
                     self.ax_SEM.get_xaxis().set_visible(False)
@@ -2200,6 +2221,8 @@ class DraggablePatch:
         self.pixel_size = None
         self.image_width = None
         self.image_height = None
+        self.rotation = 0
+        self.rotating = False
 
     def connect(self):
         self.cidpress = self.patch.figure.canvas.mpl_connect(
@@ -2210,53 +2233,154 @@ class DraggablePatch:
             'motion_notify_event', self.on_motion)
 
     def update_position(self):
-        self.center_x_px = (self.patch._x1 + self.patch._x0) / 2 - self.image_width / 2
-        self.center_y_px = (self.patch._y1 + self.patch._y0) / 2 - self.image_height / 2  # 3 coordinates systems!!!
-        self.center_x = self.center_x_px * self.pixel_size
-        self.center_y = - self.center_y_px * self.pixel_size  # centre coordinate systems
+        relative_center_x, relative_center_y = self.calculate_center()
+        center_x_px = relative_center_x - self.image_width / 2
+        center_y_px = relative_center_y - self.image_height / 2
+
+        self.center_x = center_x_px * self.pixel_size
+        self.center_y = - center_y_px * self.pixel_size  # centre coordinate systems
+
         self.width = self.patch._width * self.pixel_size
         self.height = self.patch._height * self.pixel_size
+        self.rotation = self.patch.angle
 
     def on_press(self, event):
+        # movement enabled check
         if not self.movable:
             self.press = None
             return
+
+        # left click check
         if event.button != 1: return
+
+        # if only moving what's under the cursor:
         if not self.move_all:
+            # discard all changes if this isn't a hovered patch
             if event.inaxes != self.patch.axes: return
             contains, attrd = self.patch.contains(event)
             if not contains: return
-        # print('event contains', self.patch.xy)
+
+        # get the top left corner of the patch
         x0, y0 = self.patch.xy
         self.press = x0, y0, event.xdata, event.ydata
 
+        if self.rotation_check(event):
+            self.rotating = True
+        else:
+            self.rotating = False
+            QtWidgets.QApplication.restoreOverrideCursor()
+
     def on_motion(self, event):
-        'on motion we will move the rect if the mouse is over us'
-        if self.press is None: return
-        if event.inaxes != self.patch.axes: return
-        x0, y0, xpress, ypress = self.press
-        dx = event.xdata - xpress
-        dy = event.ydata - ypress
-        # print('x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f' %
-        #      (x0, xpress, event.xdata, dx, x0+dx))
-        self.patch.set_x(x0+dx)
-        self.patch.set_y(y0+dy)
+        """on motion we will move the rect if the mouse is over us"""
+        if self.rotation_check(event):
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+        else:
+            QtWidgets.QApplication.restoreOverrideCursor()
+
+        if not self.press: return
+
+        if self.rotating and not self.move_all:
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+            center_x, center_y = self.calculate_center()
+
+            angle_dx = event.xdata - center_x
+            angle_dy = event.ydata - center_y
+            angle = np.rad2deg(np.arctan2(angle_dy, angle_dx))
+            self.rotate_about_center(angle+90)
+        else:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            x0, y0, x_intial_press, y_initial_press = self.press
+            dx = event.xdata - x_intial_press
+            dy = event.ydata - y_initial_press
+            self.patch.set_x(x0+dx)
+            self.patch.set_y(y0+dy)
+
         self.patch.figure.canvas.draw()
 
     def on_release(self, event):
-        'on release we reset the press data'
+        """on release we reset the press data"""
+        QtWidgets.QApplication.restoreOverrideCursor()
         self.update_position()
         self.press = None
         self.patch.figure.canvas.draw()
 
     def disconnect(self):
-        'disconnect all the stored connection ids'
+        """disconnect all the stored connection ids"""
         self.patch.figure.canvas.mpl_disconnect(self.cidpress)
         self.patch.figure.canvas.mpl_disconnect(self.cidrelease)
         self.patch.figure.canvas.mpl_disconnect(self.cidmotion)
 
     def toggle_move_all(self, onoff=False):
         self.move_all = onoff
+
+    def calculate_center(self):
+        x0, y0 = self.patch.xy
+        w = self.patch._width/2
+        h = self.patch._height/2
+        theta = np.deg2rad(self.patch.angle)
+        x_center = x0 + w * np.cos(theta) - h * np.sin(theta)
+        y_center = y0 + w * np.sin(theta) + h * np.cos(theta)
+
+        return x_center, y_center
+
+    def calculate_corners(self):
+        x0, y0 = self.patch.xy
+        w = self.patch._width/2
+        h = self.patch._height/2
+        theta = np.deg2rad(self.patch.angle)
+
+        x_shift = 2 * (w * np.cos(theta) - h * np.sin(theta))
+        y_shift = 2 * (w * np.sin(theta) + h * np.cos(theta))
+
+        top_left = x0, y0
+        top_right = x0 + x_shift, y0
+        bottom_left = x0, y0 + y_shift
+        bottom_right = x0 + x_shift, y0 + y_shift
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    def rotation_check(self, event):
+        xpress = event.xdata
+        ypress = event.ydata
+        if xpress and ypress:
+            ratio = 5
+            abs_min = 30
+            distance_check = max(min(self.patch._height / ratio, self.patch._width / ratio), abs_min)
+            corners = self.calculate_corners()
+            for corner in corners:
+                dist = np.sqrt((xpress-corner[0]) ** 2 + (ypress-corner[1]) ** 2)
+                if dist < distance_check:
+                    return True
+        return False
+
+    def rotate_about_center(self, angle):
+        print(angle)
+        # calculate the center position in the unrotated, original position
+        old_x_center, old_y_center = self.calculate_center()
+
+        # move the pattern to have x0, y0 at 0, 0
+        self.patch.set_x(0)
+        self.patch.set_y(0)
+
+        # rotate by angle
+        self.patch.angle = angle
+        new_theta = np.deg2rad(self.patch.angle)
+
+        # calculate new center position at the rotated, 0, 0 position
+        w = self.patch._width/2
+        h = self.patch._height/2
+        new_x_center = w * np.cos(new_theta) - h * np.sin(new_theta)
+        new_y_center = w * np.sin(new_theta) + h * np.cos(new_theta)
+
+        # move the center to the 0, 0, position (can be removed as a nondebugging step)
+        # self.patch.set_x(-new_x_center)
+        # self.patch.set_y(-new_y_center)
+
+        # move pattern back to centered on original center position
+        self.patch.set_x(-new_x_center + old_x_center)
+        self.patch.set_y(-new_y_center + old_y_center)
+
+        self.update_position()
 
 
 def display_error_message(message, title="Error"):
@@ -2297,5 +2421,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)
