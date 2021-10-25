@@ -8,12 +8,15 @@ system:
   pretilt_angle: 27 # degrees
 initial_position:
   sample_grid: # need to check the coordinate systems
-    x: -0.00266
-    y: 0.00228
+    x: -0.0026853
+    y: 0.0031637
     z: 0.0039457213
   landing_grid:
-    x: 0.0034580609
-    y: 0.0022836
+    # x is +6 mm from sample grid center
+    x: 0.0033147
+    # y is the same as sample grid center
+    y: 0.0031637
+    # z is the same as sample grid center
     z: 0.0039338733
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
@@ -107,7 +110,7 @@ cut:
 thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg
   tilt_angle: 21 # deg
-  lamella_width:  5e-6 # In meters. Width of lamella.
+  lamella_width:  4e-6 # In meters. Width of lamella.
   lamella_height: 2e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
@@ -122,14 +125,14 @@ thin_lamella: # Lamella parameters
 #    milling_depth: 0.5e-6 # In meters. Overrides the default miling depth.
 #    milling_current: 0.89e-9 # In Amperes. Overrides the default current.
 #  # Regular cut, stage 2
-#  - percentage_roi_height: 0.3 # Milling size as fraction of total_cut_height.
-#    percentage_from_lamella_surface: 0.2 # Fraction from surface of lamella.
-#    milling_depth: 0.25e-6 # In meters. Overrides the default miling depth.
-#    milling_current: 0.2e-9 # In Amperes. Overrides the default current.
+  - percentage_roi_height: 0.5 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.2 # Fraction from surface of lamella.
+    milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
+    milling_current: 0.2e-9 # In Amperes. Overrides the default current.
   # Polishing cut, stage 3
-  - percentage_roi_height: 0.5 # think this should be 1 if the only stage # Milling size as fraction of total_cut_height.
+  - percentage_roi_height: 0.3 # think this should be 1 if the only stage # Milling size as fraction of total_cut_height.
     percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
-    milling_depth: 0.1e-6 # In meters. Overrides the default miling depth.
+    milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
     milling_current: 20e-12 # In Amperes. Overrides the default current.
 platinum:
   application_file: "cryo_Pt_dep"
@@ -142,4 +145,3 @@ platinum:
     time: 20
     hfw: 100e-6
     length: 15e-6
-    
