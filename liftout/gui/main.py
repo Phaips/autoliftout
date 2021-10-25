@@ -1395,7 +1395,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
         self.label_FIB.layout().addWidget(self.toolbar_FIB)
         self.label_FIB.layout().addWidget(self.canvas_FIB)
-
         # self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ION, click=None))
 
     def initialize_hardware(self, offline=False):
@@ -2421,5 +2420,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)
