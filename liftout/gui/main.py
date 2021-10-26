@@ -880,16 +880,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
         self.ask_user(image=self.overlay_image)
 
+        DETECTIONS_ARE_CORRECT = self.response
+
         # if something wasn't correctly identified
-        if not self.response:
+        # if not self.response:
+        while not DETECTIONS_ARE_CORRECT:
             utils.save_image(image=self.raw_image, save_path=self.image_settings['save_path'], label=self.image_settings['label'] + '_label')
 
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
 
-            # TODO: change this to a loop?            
+            # TODO: change this to a loop instead of two individual detections?            
             logging.info(f"ml_detection: {feature_1_type}: {self.response}")
-            
+
             # if feature 1 wasn't correctly identified
             if not self.response:
 
@@ -902,21 +905,37 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     # TODO: check x/y here
                     feature_1_px = (self.yclick, self.xclick)
 
-            self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
-            self.ask_user(image=self.overlay_image)
+            # TODO: check if feature_2_type is image_centre and skip
+            if feature_2_type != "image_centre": 
+                self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
+                self.ask_user(image=self.overlay_image)
 
-            logging.info(f"ml_detection: {feature_2_type}: {self.response}")
-            # if feature 2 wasn't correctly identified TODO: check if feature_2_type is image_centre and skip
-            if not self.response:
+                logging.info(f"ml_detection: {feature_2_type}: {self.response}")
+                # if feature 2 wasn't correctly identified 
+                if not self.response:
 
-                self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
-                                                                   f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
-                self.ask_user(image=self.downscaled_image)
-                # TODO: do we want filtering on this image?
+                    self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
+                                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                    self.ask_user(image=self.downscaled_image)
+                    # TODO: do we want filtering on this image?
 
-                # if new feature position selected
-                if self.response:
-                    feature_2_px = (self.yclick, self.xclick)
+                    # if new feature position selected
+                    if self.response:
+                        feature_2_px = (self.yclick, self.xclick)
+
+
+            # TODO: show the user the final movement after corrections
+            # TODO: add a while loop to loop 
+            # TODO: wrap this in a function
+            ####
+            final_detection_img = liftout.detection.draw_two_features(self.downscaled_image, feature_1_px, feature_2_px)
+            self.update_popup_settings(
+                message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
+                click=None, crosshairs=False
+            )
+            self.ask_user(image=final_detection_img)
+            DETECTIONS_ARE_CORRECT = self.response
+            #####
 
         return feature_1_px, feature_2_px
 
