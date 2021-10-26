@@ -22,6 +22,7 @@ from matplotlib.backends.backend_qt5agg import \
     NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from liftout.gui.DraggablePatch import  DraggablePatch
 matplotlib.use('Agg')
 import os
 from enum import Enum
@@ -40,6 +41,7 @@ BeamType = acquire.BeamType
 # test_image = PIL.Image.open('C:/Users/David/images/mask_test.tif')
 test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
+# test_image = np.zeros_like(test_image, dtype='uint16')
 test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e-6), (-100.e-6, 0.e-6, 30.e-6, 400.e-6)]
 
 
@@ -425,7 +427,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: it doesnt really matter what number a sample is, just store them in a list...
         # and have a browser for them? as long as they are consistently in the same place so we can retrieve the images too?
 
-        # test if the file exists
+        # tes if the file exists
         yaml_file = os.path.join(save_path, "sample.yaml")
 
         if not os.path.exists(yaml_file):
@@ -635,7 +637,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
-        logging.info(f"{self.current_status.name} complete.")
+        logging.info(f" {self.current_status.name} FINISHED")
 
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
@@ -748,7 +750,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.retract_needle(self.microscope, park_position)
 
         logging.info(f"{self.current_status.name}: needle retracted. ")
-        logging.info(f"{self.current_status.name}: liftout complete.")
+        logging.info(f" {self.current_status.name} FINISHED")
 
     def land_needle_on_milled_lamella(self):
 
@@ -861,6 +863,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.current_sample.sample_no,
                                                               shift_type=shift_type)
         feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
+        # TODO: assert that self.overlay_image and self.downscale_image are the same size?
         # scaled features
         scaled_feature_1_px = detection_utils.scale_invariant_coordinates(feature_1_px, self.overlay_image) #(y, x)
         scaled_feature_2_px = detection_utils.scale_invariant_coordinates(feature_2_px, self.overlay_image) # (y, x)
@@ -881,6 +884,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.overlay_image)
 
         DETECTIONS_ARE_CORRECT = self.response
+        if DETECTIONS_ARE_CORRECT:
+            logging.info(f"ml_detection: {feature_1_type}: {self.response}")
+            logging.info(f"ml_detection: {feature_2_type}: {self.response}")
 
         # if something wasn't correctly identified
         # if not self.response:
@@ -905,7 +911,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     # TODO: check x/y here
                     feature_1_px = (self.yclick, self.xclick)
 
-            # TODO: check if feature_2_type is image_centre and skip
+            # skip image centre 'detections'
             if feature_2_type != "image_centre": 
                 self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
                 self.ask_user(image=self.overlay_image)
@@ -924,11 +930,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         feature_2_px = (self.yclick, self.xclick)
 
 
-            # TODO: show the user the final movement after corrections
-            # TODO: add a while loop to loop 
             # TODO: wrap this in a function
-            ####
-            final_detection_img = liftout.detection.draw_two_features(self.downscaled_image, feature_1_px, feature_2_px)
+            #### show the user the manually corrected movement and confirm
+            from liftout.detection.detection import draw_two_features
+            final_detection_img = draw_two_features(self.downscaled_image, feature_1_px, feature_2_px)
+            final_detection_img = np.array(final_detection_img.convert("RGB"))
             self.update_popup_settings(
                 message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
                 click=None, crosshairs=False
@@ -1196,7 +1202,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def reset_needle(self):
 
         self.current_status = AutoLiftoutStatus.Reset
-        logging.info(f"{self.current_status.name}: reset stage started")
+        logging.info(f" {self.current_status.name} STARTED")
 
         # move sample stage out
         movement.move_sample_stage_out(self.microscope)
@@ -1276,7 +1282,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Thinning: Thin the lamella thickness to size for imaging."""
 
         self.current_status = AutoLiftoutStatus.Thinning
-        logging.info(f"{self.current_status.name}: stage started")
+        logging.info(f" {self.current_status.name} STARTED")
 
         # move to landing coord
         self.microscope.specimen.stage.absolute_move(landing_coord)
@@ -1392,6 +1398,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         logging.info(f"{self.current_status.name}: thin lamella {self.current_sample.sample_no} complete.")
+        logging.info(f" {self.current_status.name} FINISHED")
+
 
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
@@ -1438,10 +1446,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
+        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
+        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ELECTRON))
 
@@ -1451,6 +1459,28 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.pushButton_test_popup.clicked.connect(lambda: self.test_draw_patterns())
 
         logging.info("gui: setup connections finished")
+
+    def testing_function(self):
+
+        TEST_VALIDATE_DETECTION = True
+
+        if TEST_VALIDATE_DETECTION:
+
+            self.raw_image = AdornedImage(data=test_image)
+            self.overlay_image = test_image
+            self.downscaled_image = test_image
+            print("Hello World")
+            import random
+            supported_feature_types = ["image_centre", "lamella_centre", "needle_tip", "lamella_edge", "landing_post"]
+            feature_1_px = (0, 0)
+            feature_1_type = random.choice(supported_feature_types)
+            feature_2_px = (test_image.shape[0] // 2 , test_image.shape[1] //2)
+            feature_2_type = random.choice(supported_feature_types)
+
+            feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
+
+
+
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -1721,6 +1751,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         # Image (0, 0) is top left corner, y+ = down in image
                         rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
                         rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
+                        rotation = 0
                     else:
                         image_width = self.popup_settings['image'].width
                         image_height = self.popup_settings['image'].height
@@ -2226,181 +2257,181 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if not WINDOW_ENABLED:
             self.setEnabled(False)
 
-
-class DraggablePatch:
-    def __init__(self, patch):
-        self.patch = patch
-        self.press = None
-        self.cidpress = None
-        self.cidrelease = None
-        self.cidmotion = None
-        self.move_all = False
-        self.movable = True
-        self.center_x = None
-        self.center_y = None
-        self.pixel_size = None
-        self.image_width = None
-        self.image_height = None
-        self.rotation = 0
-        self.rotating = False
-
-    def connect(self):
-        self.cidpress = self.patch.figure.canvas.mpl_connect(
-            'button_press_event', self.on_press)
-        self.cidrelease = self.patch.figure.canvas.mpl_connect(
-            'button_release_event', self.on_release)
-        self.cidmotion = self.patch.figure.canvas.mpl_connect(
-            'motion_notify_event', self.on_motion)
-
-    def update_position(self):
-        relative_center_x, relative_center_y = self.calculate_center()
-        center_x_px = relative_center_x - self.image_width / 2
-        center_y_px = relative_center_y - self.image_height / 2
-
-        self.center_x = center_x_px * self.pixel_size
-        self.center_y = - center_y_px * self.pixel_size  # centre coordinate systems
-
-        self.width = self.patch._width * self.pixel_size
-        self.height = self.patch._height * self.pixel_size
-        self.rotation = self.patch.angle
-
-    def on_press(self, event):
-        # movement enabled check
-        if not self.movable:
-            self.press = None
-            return
-
-        # left click check
-        if event.button != 1: return
-
-        # if only moving what's under the cursor:
-        if not self.move_all:
-            # discard all changes if this isn't a hovered patch
-            if event.inaxes != self.patch.axes: return
-            contains, attrd = self.patch.contains(event)
-            if not contains: return
-
-        # get the top left corner of the patch
-        x0, y0 = self.patch.xy
-        self.press = x0, y0, event.xdata, event.ydata
-
-        if self.rotation_check(event):
-            self.rotating = True
-        else:
-            self.rotating = False
-            QtWidgets.QApplication.restoreOverrideCursor()
-
-    def on_motion(self, event):
-        """on motion we will move the rect if the mouse is over us"""
-        if self.rotation_check(event):
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
-        else:
-            QtWidgets.QApplication.restoreOverrideCursor()
-
-        if not self.press: return
-
-        if self.rotating and not self.move_all:
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
-            center_x, center_y = self.calculate_center()
-
-            angle_dx = event.xdata - center_x
-            angle_dy = event.ydata - center_y
-            angle = np.rad2deg(np.arctan2(angle_dy, angle_dx))
-            self.rotate_about_center(angle+90)
-        else:
-            QtWidgets.QApplication.restoreOverrideCursor()
-            x0, y0, x_intial_press, y_initial_press = self.press
-            dx = event.xdata - x_intial_press
-            dy = event.ydata - y_initial_press
-            self.patch.set_x(x0+dx)
-            self.patch.set_y(y0+dy)
-
-        self.patch.figure.canvas.draw()
-
-    def on_release(self, event):
-        """on release we reset the press data"""
-        QtWidgets.QApplication.restoreOverrideCursor()
-        self.update_position()
-        self.press = None
-        self.patch.figure.canvas.draw()
-
-    def disconnect(self):
-        """disconnect all the stored connection ids"""
-        self.patch.figure.canvas.mpl_disconnect(self.cidpress)
-        self.patch.figure.canvas.mpl_disconnect(self.cidrelease)
-        self.patch.figure.canvas.mpl_disconnect(self.cidmotion)
-
-    def toggle_move_all(self, onoff=False):
-        self.move_all = onoff
-
-    def calculate_center(self):
-        x0, y0 = self.patch.xy
-        w = self.patch._width/2
-        h = self.patch._height/2
-        theta = np.deg2rad(self.patch.angle)
-        x_center = x0 + w * np.cos(theta) - h * np.sin(theta)
-        y_center = y0 + w * np.sin(theta) + h * np.cos(theta)
-
-        return x_center, y_center
-
-    def calculate_corners(self):
-        x0, y0 = self.patch.xy
-        w = self.patch._width/2
-        h = self.patch._height/2
-        theta = np.deg2rad(self.patch.angle)
-
-        x_shift = 2 * (w * np.cos(theta) - h * np.sin(theta))
-        y_shift = 2 * (w * np.sin(theta) + h * np.cos(theta))
-
-        top_left = x0, y0
-        top_right = x0 + x_shift, y0
-        bottom_left = x0, y0 + y_shift
-        bottom_right = x0 + x_shift, y0 + y_shift
-
-        return top_left, top_right, bottom_left, bottom_right
-
-    def rotation_check(self, event):
-        xpress = event.xdata
-        ypress = event.ydata
-        if xpress and ypress:
-            ratio = 5
-            abs_min = 30
-            distance_check = max(min(self.patch._height / ratio, self.patch._width / ratio), abs_min)
-            corners = self.calculate_corners()
-            for corner in corners:
-                dist = np.sqrt((xpress-corner[0]) ** 2 + (ypress-corner[1]) ** 2)
-                if dist < distance_check:
-                    return True
-        return False
-
-    def rotate_about_center(self, angle):
-        print(angle)
-        # calculate the center position in the unrotated, original position
-        old_x_center, old_y_center = self.calculate_center()
-
-        # move the pattern to have x0, y0 at 0, 0
-        self.patch.set_x(0)
-        self.patch.set_y(0)
-
-        # rotate by angle
-        self.patch.angle = angle
-        new_theta = np.deg2rad(self.patch.angle)
-
-        # calculate new center position at the rotated, 0, 0 position
-        w = self.patch._width/2
-        h = self.patch._height/2
-        new_x_center = w * np.cos(new_theta) - h * np.sin(new_theta)
-        new_y_center = w * np.sin(new_theta) + h * np.cos(new_theta)
-
-        # move the center to the 0, 0, position (can be removed as a nondebugging step)
-        # self.patch.set_x(-new_x_center)
-        # self.patch.set_y(-new_y_center)
-
-        # move pattern back to centered on original center position
-        self.patch.set_x(-new_x_center + old_x_center)
-        self.patch.set_y(-new_y_center + old_y_center)
-
-        self.update_position()
+# TODO: remove
+# class DraggablePatch:
+#     def __init__(self, patch):
+#         self.patch = patch
+#         self.press = None
+#         self.cidpress = None
+#         self.cidrelease = None
+#         self.cidmotion = None
+#         self.move_all = False
+#         self.movable = True
+#         self.center_x = None
+#         self.center_y = None
+#         self.pixel_size = None
+#         self.image_width = None
+#         self.image_height = None
+#         self.rotation = 0
+#         self.rotating = False
+#
+#     def connect(self):
+#         self.cidpress = self.patch.figure.canvas.mpl_connect(
+#             'button_press_event', self.on_press)
+#         self.cidrelease = self.patch.figure.canvas.mpl_connect(
+#             'button_release_event', self.on_release)
+#         self.cidmotion = self.patch.figure.canvas.mpl_connect(
+#             'motion_notify_event', self.on_motion)
+#
+#     def update_position(self):
+#         relative_center_x, relative_center_y = self.calculate_center()
+#         center_x_px = relative_center_x - self.image_width / 2
+#         center_y_px = relative_center_y - self.image_height / 2
+#
+#         self.center_x = center_x_px * self.pixel_size
+#         self.center_y = - center_y_px * self.pixel_size  # centre coordinate systems
+#
+#         self.width = self.patch._width * self.pixel_size
+#         self.height = self.patch._height * self.pixel_size
+#         self.rotation = self.patch.angle
+#
+#     def on_press(self, event):
+#         # movement enabled check
+#         if not self.movable:
+#             self.press = None
+#             return
+#
+#         # left click check
+#         if event.button != 1: return
+#
+#         # if only moving what's under the cursor:
+#         if not self.move_all:
+#             # discard all changes if this isn't a hovered patch
+#             if event.inaxes != self.patch.axes: return
+#             contains, attrd = self.patch.contains(event)
+#             if not contains: return
+#
+#         # get the top left corner of the patch
+#         x0, y0 = self.patch.xy
+#         self.press = x0, y0, event.xdata, event.ydata
+#
+#         if self.rotation_check(event):
+#             self.rotating = True
+#         else:
+#             self.rotating = False
+#             QtWidgets.QApplication.restoreOverrideCursor()
+#
+#     def on_motion(self, event):
+#         """on motion we will move the rect if the mouse is over us"""
+#         if self.rotation_check(event):
+#             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+#         else:
+#             QtWidgets.QApplication.restoreOverrideCursor()
+#
+#         if not self.press: return
+#
+#         if self.rotating and not self.move_all:
+#             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+#             center_x, center_y = self.calculate_center()
+#
+#             angle_dx = event.xdata - center_x
+#             angle_dy = event.ydata - center_y
+#             angle = np.rad2deg(np.arctan2(angle_dy, angle_dx))
+#             self.rotate_about_center(angle+90)
+#         else:
+#             QtWidgets.QApplication.restoreOverrideCursor()
+#             x0, y0, x_intial_press, y_initial_press = self.press
+#             dx = event.xdata - x_intial_press
+#             dy = event.ydata - y_initial_press
+#             self.patch.set_x(x0+dx)
+#             self.patch.set_y(y0+dy)
+#
+#         self.patch.figure.canvas.draw()
+#
+#     def on_release(self, event):
+#         """on release we reset the press data"""
+#         QtWidgets.QApplication.restoreOverrideCursor()
+#         self.update_position()
+#         self.press = None
+#         self.patch.figure.canvas.draw()
+#
+#     def disconnect(self):
+#         """disconnect all the stored connection ids"""
+#         self.patch.figure.canvas.mpl_disconnect(self.cidpress)
+#         self.patch.figure.canvas.mpl_disconnect(self.cidrelease)
+#         self.patch.figure.canvas.mpl_disconnect(self.cidmotion)
+#
+#     def toggle_move_all(self, onoff=False):
+#         self.move_all = onoff
+#
+#     def calculate_center(self):
+#         x0, y0 = self.patch.xy
+#         w = self.patch._width/2
+#         h = self.patch._height/2
+#         theta = np.deg2rad(self.patch.angle)
+#         x_center = x0 + w * np.cos(theta) - h * np.sin(theta)
+#         y_center = y0 + w * np.sin(theta) + h * np.cos(theta)
+#
+#         return x_center, y_center
+#
+#     def calculate_corners(self):
+#         x0, y0 = self.patch.xy
+#         w = self.patch._width/2
+#         h = self.patch._height/2
+#         theta = np.deg2rad(self.patch.angle)
+#
+#         x_shift = 2 * (w * np.cos(theta) - h * np.sin(theta))
+#         y_shift = 2 * (w * np.sin(theta) + h * np.cos(theta))
+#
+#         top_left = x0, y0
+#         top_right = x0 + x_shift, y0
+#         bottom_left = x0, y0 + y_shift
+#         bottom_right = x0 + x_shift, y0 + y_shift
+#
+#         return top_left, top_right, bottom_left, bottom_right
+#
+#     def rotation_check(self, event):
+#         xpress = event.xdata
+#         ypress = event.ydata
+#         if xpress and ypress:
+#             ratio = 5
+#             abs_min = 30
+#             distance_check = max(min(self.patch._height / ratio, self.patch._width / ratio), abs_min)
+#             corners = self.calculate_corners()
+#             for corner in corners:
+#                 dist = np.sqrt((xpress-corner[0]) ** 2 + (ypress-corner[1]) ** 2)
+#                 if dist < distance_check:
+#                     return True
+#         return False
+#
+#     def rotate_about_center(self, angle):
+#         print(angle)
+#         # calculate the center position in the unrotated, original position
+#         old_x_center, old_y_center = self.calculate_center()
+#
+#         # move the pattern to have x0, y0 at 0, 0
+#         self.patch.set_x(0)
+#         self.patch.set_y(0)
+#
+#         # rotate by angle
+#         self.patch.angle = angle
+#         new_theta = np.deg2rad(self.patch.angle)
+#
+#         # calculate new center position at the rotated, 0, 0 position
+#         w = self.patch._width/2
+#         h = self.patch._height/2
+#         new_x_center = w * np.cos(new_theta) - h * np.sin(new_theta)
+#         new_y_center = w * np.sin(new_theta) + h * np.cos(new_theta)
+#
+#         # move the center to the 0, 0, position (can be removed as a nondebugging step)
+#         # self.patch.set_x(-new_x_center)
+#         # self.patch.set_y(-new_y_center)
+#
+#         # move pattern back to centered on original center position
+#         self.patch.set_x(-new_x_center + old_x_center)
+#         self.patch.set_y(-new_y_center + old_y_center)
+#
+#         self.update_position()
 
 
 def display_error_message(message, title="Error"):

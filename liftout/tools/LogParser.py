@@ -13,7 +13,15 @@ def parse_log_file(fname):
 
     gamma_dict = {"gamma": [], "diff": []}
 
-    # TODO: add a better logging identifier rather than doing this wierd parsing...
+
+    from liftout.gui.main import AutoLiftoutStatus
+
+    stages = [stage.name for stage in AutoLiftoutStatus]
+    stage_dict = dict.fromkeys(stages)
+    for stage in stage_dict.keys():
+        stage_dict[stage] = {"STARTED": None, "FINISHED": None}
+
+    # TODO: add a better logging identifier rather than doing this weird parsing...
     with open(fname) as f:
         lines = f.read().splitlines()
         for i, line in enumerate(lines):
@@ -25,12 +33,27 @@ def parse_log_file(fname):
                 val = msg.split(":")[-1].strip()
 
                 if key in ml_dict.keys():
-                    ml_dict[key][val] +=1
+                    ml_dict[key][val] += 1
+
             if res == "gamma_correction":
                 gamma_dict["diff"].append(float(msg.split(":")[2].strip()))
                 gamma_dict["gamma"].append(float(msg.split(":")[4].strip()))
 
-    return ml_dict, gamma_dict # TODO: need a better way
+            if msg.__contains__("STARTED") or msg.__contains__("FINISHED"):
+                # NOTE: gonna break if more than 1 lamella is completed in a run...
+
+                stage = msg.split(" ")[0].strip()
+                status = msg.split(" ")[-1].strip()
+                time = line.split("—")[0].split(",")[0]  # don't care about ms
+                import datetime
+                dt_object = datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+                print(time, dt_object, stage, status)
+                stage_dict[stage][status] = dt_object
+            if msg.__contains__("Perform"):
+                print(msg)
+
+    return ml_dict, gamma_dict, stage_dict # TODO: need a better way
+
 
 def plot_ml_data(ml_dict):
 
