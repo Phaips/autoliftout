@@ -20,6 +20,7 @@ def configure_logging(save_path='', log_filename='logfile', log_level=logging.IN
             logging.StreamHandler(),
         ])
     return save_path+'/'+log_filename+timestamp+'.log'
+    # TODO: use os.path.join instead
 
 
 def load_config(yaml_filename):

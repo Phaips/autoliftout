@@ -887,8 +887,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
 
-            # TODO: add ml metric tracking here... record no success / total detections for each type
-
+            # TODO: change this to a loop?            
+            logging.info(f"ml_detection: {feature_1_type}: {self.response}")
+            
             # if feature 1 wasn't correctly identified
             if not self.response:
 
@@ -904,6 +905,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
 
+            logging.info(f"ml_detection: {feature_2_type}: {self.response}")
             # if feature 2 wasn't correctly identified TODO: check if feature_2_type is image_centre and skip
             if not self.response:
 
