@@ -30,9 +30,7 @@ def test_Detector_init(detector):
         "needle_tip_to_lamella_centre",
         "lamella_centre_to_image_centre",
         "lamella_edge_to_landing_post",
-        "needle_tip_to_image_centre",
-        "thin_lamella_top_to_centre",
-        "thin_lamella_bottom_to_centre",
+        "needle_tip_to_image_centre"
     ]
 
 
