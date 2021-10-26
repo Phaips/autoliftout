@@ -1443,17 +1443,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # FIBSEM methods
         self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
 
+
+        # TESTING METHODS (TO BE REMOVED)
         # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
-        self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
+        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
+        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ELECTRON))
 
-        # self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
+        self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_image_settings())
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.test_draw_patterns())
@@ -1463,13 +1465,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
 
         TEST_VALIDATE_DETECTION = True
+        TEST_DRAW_PATTERNS = True
 
         if TEST_VALIDATE_DETECTION:
 
             self.raw_image = AdornedImage(data=test_image)
             self.overlay_image = test_image
             self.downscaled_image = test_image
-            print("Hello World")
             import random
             supported_feature_types = ["image_centre", "lamella_centre", "needle_tip", "lamella_edge", "landing_post"]
             feature_1_px = (0, 0)
@@ -1479,6 +1481,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
 
+        if TEST_DRAW_PATTERNS:
+            self.test_draw_patterns()
 
 
 
@@ -1740,6 +1744,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.patterns = []
                 for pattern in self.popup_settings['milling_patterns']:
                     if type(self.popup_settings['image']) == np.ndarray:
+                        # TODO: remove this block as it is only used for testing
                         image_width = self.popup_settings['image'].shape[1]
                         image_height = self.popup_settings['image'].shape[0]
                         pixel_size = 1e-6
@@ -1899,18 +1904,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: adjust hfw? check why it changes to 100
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
-        cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope,
-                                                                                   settings=self.settings,
-                                                                                   x_0=0, y_0=0)
+        if not self.offline:
+            cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope,
+                                                                                       settings=self.settings,
+                                                                                       x_0=0, y_0=0)
 
-        # testing rotation passing from FIB to GUI
-        sharpen_patterns = milling.create_sharpen_needle_patterns(self.microscope, cut_coord_bottom, cut_coord_top)
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=sharpen_patterns)
+            # testing rotation passing from FIB to GUI
+            sharpen_patterns = milling.create_sharpen_needle_patterns(self.microscope, cut_coord_bottom, cut_coord_top)
+            self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=sharpen_patterns)
 
-        self.ask_user(image=self.image_FIB)
-        if self.response:
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
+            self.ask_user(image=self.image_FIB)
+            if self.response:
+                milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+                                               patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
     # def new_protocol(self):
     #     num_index = self.tabWidget_Protocol.__len__() + 1
@@ -2472,5 +2478,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)
