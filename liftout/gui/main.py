@@ -167,7 +167,30 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.setup_connections()
 
+
+        self.pre_run_validation()
+
         logging.info(f"{self.current_status.name} FINISHED")
+
+    def pre_run_validation(self):
+        logging.info(f"Running pre run validation")
+
+        # TODO populate the validation checks
+        validation_errors = []
+        validation_checks = [
+            "axes_homed",
+            "needle_calibration",
+            "link_and_focus"
+
+        ]
+        import random
+        for check in validation_checks:
+            if random.random() > 0.5:
+                validation_errors.append(check)
+
+        if validation_errors:
+            logging.warning(f"validation_errors={validation_errors}")
+        logging.info(f"Finished pre run validation: {len(validation_errors)} issues identified.")
 
     def initialise_autoliftout(self):
         # TODO: check if needle i

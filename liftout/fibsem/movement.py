@@ -192,7 +192,7 @@ def move_sample_stage_out(microscope):
     microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
     sample_stage_out = StagePosition(x=-0.002507,
                                      y=0.025962792,
-                                     z=0.0039559049)
+                                     z=0.0039559049) # TODO: make these dynamically set based on initial_position
     logging.info(f"movement: move sample grid out to {sample_stage_out}")
     microscope.specimen.stage.absolute_move(sample_stage_out)
     logging.info(f"movement: move sample stage out complete.")
