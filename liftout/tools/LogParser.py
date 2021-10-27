@@ -27,7 +27,8 @@ def parse_log_file(fname):
         for i, line in enumerate(lines):
             msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
             res = msg.split(":")[0].strip()
-            
+
+            print(line)
             if res == "ml_detection":
                 key = msg.split(":")[1].strip()
                 val = msg.split(":")[-1].strip()
@@ -36,21 +37,24 @@ def parse_log_file(fname):
                     ml_dict[key][val] += 1
 
             if res == "gamma_correction":
-                gamma_dict["diff"].append(float(msg.split(":")[2].strip()))
-                gamma_dict["gamma"].append(float(msg.split(":")[4].strip()))
+                data = msg.split(",")
+                # print(data)
+                gamma_dict["diff"].append(float(data[0].split(":")[2].strip()))
+                gamma_dict["gamma"].append(float(data[1].split(":")[1].strip()))
 
             if msg.__contains__("STARTED") or msg.__contains__("FINISHED"):
                 # NOTE: gonna break if more than 1 lamella is completed in a run...
-
+                if "LOAD COORDINATES" in msg:
+                    break
                 stage = msg.split(" ")[0].strip()
                 status = msg.split(" ")[-1].strip()
                 time = line.split("—")[0].split(",")[0]  # don't care about ms
                 import datetime
                 dt_object = datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-                print(time, dt_object, stage, status)
                 stage_dict[stage][status] = dt_object
             if msg.__contains__("Perform"):
-                print(msg)
+                dat = msg.split(":")
+                stage_dict[dat[0].split()[1].strip()]["PERFORM"] = dat[1]
 
     return ml_dict, gamma_dict, stage_dict # TODO: need a better way
 
@@ -66,8 +70,7 @@ def plot_ml_data(ml_dict):
     # would make it easier to analyse... 
 
 def plot_gamma_data(gamma_dict):
-    # pprint(gamma_dict)
-    df_gamma = pd.DataFrame(gamma_dict)
-    # print(df_gamma)
 
-    return df_gamma["gamma"].plot.hist(bins=5, alpha=0.5, title="Gamma Correction Distribution")
+    df_gamma = pd.DataFrame(gamma_dict)
+
+    return df_gamma["gamma"].plot.hist(bins=30, alpha=0.5, title="Gamma Correction Distribution")
