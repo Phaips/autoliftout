@@ -45,7 +45,7 @@ def parse_log_file(fname):
             if msg.__contains__("STARTED") or msg.__contains__("FINISHED"):
                 # NOTE: gonna break if more than 1 lamella is completed in a run...
                 if "LOAD COORDINATES" in msg:
-                    break
+                    continue
                 stage = msg.split(" ")[0].strip()
                 status = msg.split(" ")[-1].strip()
                 time = line.split("—")[0].split(",")[0]  # don't care about ms
