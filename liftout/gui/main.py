@@ -474,7 +474,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
-            for sample_no in range(num_of_samples):
+            for sample_no in range(num_of_samples): # TODO: use keys() instead
                 sample = Sample(save_path, sample_no+1)  # TODO: watch out for this kind of thing with the numbering... improve
                 sample.load_data_from_file()
                 self.samples.append(sample)
@@ -956,7 +956,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # TODO: wrap this in a function
             #### show the user the manually corrected movement and confirm
             from liftout.detection.detection import draw_two_features
-            final_detection_img = draw_two_features(self.downscaled_image, feature_1_px, feature_2_px)
+            final_detection_img = Image.fromarray(self.downscaled_image).convert("RGB")
+            final_detection_img = draw_two_features(final_detection_img, feature_1_px, feature_2_px)
             final_detection_img = np.array(final_detection_img.convert("RGB"))
             self.update_popup_settings(
                 message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
@@ -970,8 +971,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_lamella(self, landing_coord, original_landing_images):
 
-        logging.info(f"{self.current_status.name}: land lamella stage started")
         self.current_status = AutoLiftoutStatus.Landing
+        logging.info(f"{self.current_status.name} STARTED")
 
         # move to landing coordinate # TODO: wrap in func
         stage_settings = MoveSettings(rotate_compucentric=True)
@@ -1219,7 +1220,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        logging.info(f"{self.current_status.name}: landing stage complete")
+        logging.info(f"{self.current_status.name} FINISHED")
+
 
 
     def reset_needle(self):
@@ -1298,6 +1300,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # retract needle
         movement.retract_needle(self.microscope, park_position)
+
+
+        stage_settings = MoveSettings(rotate_compucentric=True)
+        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
+        self.stage.absolute_move(StagePosition(x=0.0, y=0.0))
 
         logging.info(f"{self.current_status.name} FINISHED")
 

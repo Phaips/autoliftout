@@ -149,7 +149,7 @@ class DraggablePatch:
         return False
 
     def rotate_about_center(self, angle):
-        print(angle)
+        # print(angle)
         # calculate the center position in the unrotated, original position
         old_x_center, old_y_center = self.calculate_center()
 
