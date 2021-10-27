@@ -60,7 +60,7 @@ def test_create_new_yaml_file(tmp_data_path):
 
     yaml_file = sample.setup_yaml_file()
 
-    assert set(yaml_file.keys()) == set(["timestamp", "data_path", "sample"])
+    assert set(yaml_file.keys()) == {"timestamp", "data_path", "sample"}
     assert yaml_file["sample"] == {}
 
 

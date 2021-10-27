@@ -48,7 +48,7 @@ def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
     gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
     if abs(diff) < threshold:
         gam = 1.0
-    logging.info(f"calibration (gamma correction): diff: {diff:.3f}, gam: {gam:.3f} ")
+    logging.info(f"gamma_correction: diff: {diff:.3f}, gam: {gam:.3f} ")
     image_data = exposure.adjust_gamma(image.data, gam)
     reference = AdornedImage(data=image_data)
     reference.metadata = image.metadata
@@ -88,17 +88,6 @@ def new_image(microscope, settings):
         threshold = settings["gamma"]["threshold"]
 
         image = gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold)
-        # std = np.std(image.data)
-        # mean = np.mean(image.data)
-        # diff = mean - 255/2.
-        # gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
-        # if abs(diff) < threshold:
-        #     gam = 1.0
-        # logging.info(f"gamma correction: diff: {diff}, gam: {gam:.3f} ")
-        # image_data = exposure.adjust_gamma(image.data, gam)
-        # reference = AdornedImage(data=image_data)
-        # reference.metadata = image.metadata
-        # image = reference
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],

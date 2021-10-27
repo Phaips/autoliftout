@@ -7,7 +7,7 @@ import re
 import glob
 from random import shuffle
 import shutil
- 
+import os
 
 def scale_invariant_coordinates(px, mask):
     """ Return the scale invariant coordinates of the features in the given mask
@@ -85,19 +85,30 @@ def parse_metadata(filename):
 
 def extract_img_for_labelling(path, logfile="logfile"):
     """Extract all the images that have been identified for retraining"""
+    import liftout
 
-    log_dir = path+f"{logfile}/"
+    log_dir = path#+f"{logfile}/"
     label_dir = path+"label"
     dest_dir = path
     # identify images with _label postfix
-    filenames = glob.glob(log_dir+ "*label*.tif")
 
+    # mkdir for copying images to
+    data_path = os.path.join(os.path.dirname(liftout.__file__), "data", "retrain")
+    os.makedirs(
+        data_path, exist_ok=True
+    )
+    print(data_path)
 
-    for fname in filenames:
-        # print(fname)
-        basename = fname.split("/")[-1]
+    # find all files for retraining (with _label postfix
+    filenames = glob.glob(os.path.join(log_dir, "/**/*label*.tif"), recursive=True)
+    print(f"{len(filenames)} images found for relabelling")
+
+    for fname in filenames[-10:]:
+        basename = os.path.basename(fname)
         print(fname, basename)
-        shutil.copyfile(fname, path+"label/"+basename)
+
+        # TODO: check the naming...
+        shutil.copyfile(fname, os.path.join(data_path, basename))
 
     # zip the image folder
-    shutil.make_archive(f"{path}/images", 'zip', label_dir)
+    # shutil.make_archive(f"{path}/images", 'zip', label_dir)
