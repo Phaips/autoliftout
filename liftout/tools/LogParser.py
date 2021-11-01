@@ -28,7 +28,7 @@ def parse_log_file(fname):
             msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
             res = msg.split(":")[0].strip()
 
-            print(line)
+            # print(line)
             if res == "ml_detection":
                 key = msg.split(":")[1].strip()
                 val = msg.split(":")[-1].strip()
@@ -64,7 +64,7 @@ def plot_ml_data(ml_dict):
     df = pd.DataFrame(ml_dict)
 
     # plotting
-    return df.T.plot.bar(title="Machine Learning Evaluation")
+    return df.T.plot.bar(title="Machine Learning Evaluation"), df
     #### TODO: change df structure?
     # # feature_type #  success ###  ### count
     # would make it easier to analyse... 
@@ -73,4 +73,19 @@ def plot_gamma_data(gamma_dict):
 
     df_gamma = pd.DataFrame(gamma_dict)
 
-    return df_gamma["gamma"].plot.hist(bins=30, alpha=0.5, title="Gamma Correction Distribution")
+    return df_gamma["gamma"].plot.hist(bins=30, alpha=0.5, title="Gamma Correction Distribution"), df_gamma
+
+def plot_state_dict(state_dict):
+    state_duration_dict = {}
+    for state in state_dict.keys():
+        #     print(stage_dict[state])
+        if state_dict[state]["FINISHED"] and state_dict[state]["STARTED"]:
+            state_duration = state_dict[state]["FINISHED"] - state_dict[state]["STARTED"]
+            print(f"{state}: {state_duration}")
+            state_duration_dict[state] = state_duration.total_seconds()
+
+    # import pandas as pd
+
+    print(state_duration_dict)
+    df = pd.DataFrame([state_duration_dict])
+    return df.plot.bar(title="State Duration"), df
