@@ -83,32 +83,50 @@ def parse_metadata(filename):
 
     return df
 
-def extract_img_for_labelling(path, logfile="logfile"):
-    """Extract all the images that have been identified for retraining"""
-    import liftout
 
-    log_dir = path#+f"{logfile}/"
-    label_dir = path+"label"
-    dest_dir = path
-    # identify images with _label postfix
+def extract_img_for_labelling(path, show=False):
+    """Extract all the images that have been identified for retraining.
+
+    path: path to directory containing logged images
+
+    """
+    import liftout
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    import datetime, time
+    import random
+
 
     # mkdir for copying images to
     data_path = os.path.join(os.path.dirname(liftout.__file__), "data", "retrain")
     os.makedirs(
         data_path, exist_ok=True
     )
-    print(data_path)
+    print(f"Searching in {path} for retraining images...")
 
     # find all files for retraining (with _label postfix
-    filenames = glob.glob(os.path.join(log_dir, "/**/*label*.tif"), recursive=True)
+    filenames = glob.glob(os.path.join(path, "/**/*label*.tif"), recursive=True)
     print(f"{len(filenames)} images found for relabelling")
+    print(f"Copying images to {data_path}...")
 
-    for fname in filenames[-10:]:
-        basename = os.path.basename(fname)
-        print(fname, basename)
+    for i, fname in enumerate(filenames):
+        # TODO: tqdm
+        print(f"Copying {i}/{len(filenames)}")
+        # basename = os.path.basename(fname)
+        datetime_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+        basename = f"{datetime_str}.{random.random()}.tif" # use a random number to prevent duplicates at seconds time resolution
+        # print(fname, basename)
+        if show:
+            img = Image.open(fname)
+            plt.imshow(img, cmap="gray")
+            plt.show()
 
-        # TODO: check the naming...
-        shutil.copyfile(fname, os.path.join(data_path, basename))
+        source_path = os.path.join(fname)
+        destination_path = os.path.join(data_path, basename)
+        # print(f"Source: {source_path}")
+        # print(f"Destination: {destination_path}")
+        print("-"*50)
+        shutil.copyfile(source_path, destination_path)
 
     # zip the image folder
     # shutil.make_archive(f"{path}/images", 'zip', label_dir)
