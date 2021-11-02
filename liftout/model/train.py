@@ -237,8 +237,6 @@ if __name__ == "__main__":
     ################################## SAVE MODEL ##################################
 
 
-
-
 # ref:
 # https://towardsdatascience.com/train-a-lines-segmentation-model-using-pytorch-34d4adab8296
 # https://discuss.pytorch.org/t/multiclass-segmentation-u-net-masks-format/70979/14
