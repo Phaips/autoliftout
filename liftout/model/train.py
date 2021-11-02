@@ -2,7 +2,7 @@
 
 import argparse
 from datetime import datetime
-
+    
 import matplotlib.pyplot as plt
 import numpy as np
 import segmentation_models_pytorch as smp
@@ -10,6 +10,7 @@ import torch
 from liftout.model.dataset import *
 from liftout.model.utils import *
 from tqdm import tqdm
+import wandb
 
 def save_model(model, epoch):
     """Helper function for saving the model based on current time and epoch"""
@@ -17,7 +18,7 @@ def save_model(model, epoch):
     # datetime object containing current date and time
     now = datetime.now()
     # format
-    dt_string = now.strftime("%d_%m_%Y_%H_%M_%S") + f"_n{epoch+1}"
+    dt_string = now.strftime("%d_%m_%Y_%H_%M_%S") + f"_n{epoch+1:02d}"
     model_save_file = f"models/{dt_string}_model.pt"
     torch.save(model.state_dict(), model_save_file)
 
@@ -69,23 +70,28 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
 
             # evaluation
             train_loss += loss.item()
+            wandb.log({"train_loss": loss.item()})
             data_loader.set_description(f"Train Loss: {loss.item():.04f}")
 
             if i % 100 == 0:
+          
                 if DEBUG:
                     model.eval()
                     with torch.no_grad():
 
                         outputs = model(images)
                         output_mask = decode_output(outputs)
-                    show_memory_usage()  # show gpu usage
+                        # TODO: hstack these outputs...
 
-                    # show images and masks
-                    images = images.detach().cpu()
-                    masks = masks.detach().cpu().unsqueeze(1)
-                    show_img_and_mask(
-                        images, masks, output_mask, title=f"Epoch {epoch+1} Evaluation",
-                    )        
+                        img_base = images.detach().cpu().squeeze().numpy()
+                        img_rgb = np.dstack((img_base, img_base, img_base))
+                        gt_base = decode_segmap(masks.detach().cpu().permute(1, 2, 0))
+
+                        wb_img = wandb.Image(img_rgb, caption="Input Image")
+                        wb_gt = wandb.Image(gt_base, caption="Ground Truth")
+                        wb_mask = wandb.Image(output_mask, caption="Output Mask")
+                        wandb.log({"image": wb_img, "mask": wb_mask, "ground_truth": wb_gt})
+                           
         
         val_loader = tqdm(val_data_loader)
         for i, (images, masks) in enumerate(val_loader):
@@ -105,6 +111,7 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
             loss = criterion(outputs, masks)
 
             val_loss += loss.item()
+            wandb.log({"val_loss": loss.item()})
             val_loader.set_description(f"Val Loss: {loss.item():.04f}")
 
         train_losses.append(train_loss / len(train_data_loader))
@@ -113,14 +120,6 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
         # save model checkpoint
         save_model(model, epoch)
 
-        # show loss plot
-        plt.plot(train_losses, label="train")
-        plt.plot(val_losses, label="val")
-        plt.legend(loc="best")
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.title("Loss Plot")
-        plt.show()
 
     return model
 
@@ -163,9 +162,18 @@ if __name__ == "__main__":
     epochs = args.epochs
     DEBUG = args.debug
 
+    # weights and biases setup
+    wandb.init(project="autoliftout", entity="patrickmonash")
+
     # hyperparams
     num_classes = 3
     batch_size = 1
+
+    wandb.config = {
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "num_classes": num_classes
+    }
 
     ################################## LOAD DATASET ##################################
     print(
@@ -203,19 +211,22 @@ if __name__ == "__main__":
         imgs, masks = next(iter(train_data_loader))
 
         # sanity check - model, imgs, masks
+        imgs = imgs.to(device)
         output = model(imgs)
         pred = decode_output(output)
 
         print("imgs, masks, output")
         print(imgs.shape, masks.shape, output.shape)
 
-        show_img_and_mask(
-            imgs=imgs,
-            gts=masks,
-            mask=np.zeros_like(masks[0].squeeze(0)),
-            title="Sanity Checks (No Prediction)",
-        )
-        show_img_and_mask(imgs, masks, pred, title="Checkpointed Model Predictions")
+
+        img_base = imgs.detach().cpu().squeeze().numpy()
+        img_rgb = np.dstack((img_base, img_base, img_base))
+        gt_base = decode_segmap(masks[0].permute(1, 2, 0).squeeze())
+
+        wb_img = wandb.Image(img_rgb, caption="Input Image")
+        wb_gt = wandb.Image(gt_base, caption="Ground Truth")
+        wb_mask = wandb.Image(pred, caption="Output Mask")
+        wandb.log({"image": wb_img, "mask": wb_mask, "ground_truth": wb_gt})
 
     ################################## TRAINING ##################################
     print("\n----------------------- Begin Training -----------------------\n")

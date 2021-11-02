@@ -52,8 +52,8 @@ class SegmentationDataset(Dataset):
 def load_images_and_masks_in_path(images_path, masks_path):
     images = []
     masks = []
-    sorted_img_filenames = sorted(glob.glob(images_path + ".png"))
-    sorted_mask_filenames = sorted(glob.glob(masks_path + ".png"))
+    sorted_img_filenames = sorted(glob.glob(images_path + ".png"))  #[-435:]
+    sorted_mask_filenames = sorted(glob.glob(masks_path + ".png"))  #[-435:]
 
     for img_fname, mask_fname in tqdm(
         list(zip(sorted_img_filenames, sorted_mask_filenames))
@@ -64,7 +64,6 @@ def load_images_and_masks_in_path(images_path, masks_path):
 
         images.append(image)
         masks.append(mask)
-
     return np.array(images), np.array(masks)
 
 
@@ -72,7 +71,7 @@ def preprocess_data(data_path, num_classes=3, batch_size=1, val_size=0.2):
 
     img_path = f"{data_path}/train/**/img"
     label_path = f"{data_path}/train/**/label"
-    print(f"Loading data set from {img_path}")
+    print(f"Loading dataset from {img_path}")
 
     train_images, train_masks = load_images_and_masks_in_path(img_path, label_path)
 

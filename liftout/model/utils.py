@@ -42,13 +42,14 @@ def decode_segmap(image, nc=3):
 def show_img_and_mask(imgs, gts, mask, title="Image, Ground Truth and Mask"):
     """Show a plot of the image, ground truth mask, and predicted mask"""
     n_imgs = len(imgs)
+    imgs = imgs.cpu().detach()
 
     fig, ax = plt.subplots(n_imgs, 3, figsize=(8, 6))
     fig.suptitle(title)
 
     for i in range(len(imgs)):
 
-        img = imgs[i].permute(1, 2, 0)
+        img = imgs[i].permute(1, 2, 0).squeeze()
         gt = decode_segmap(gts[i].permute(1, 2, 0).squeeze())  # convert to rgb mask
 
         ax[0].imshow(img, cmap="gray")
