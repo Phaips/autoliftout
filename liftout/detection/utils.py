@@ -110,7 +110,7 @@ def extract_img_for_labelling(path, show=False):
     print(f"Copying images to {data_path}...")
 
     for i, fname in enumerate(filenames):
-        # TODO: tqdm
+        # tqdm?
         print(f"Copying {i}/{len(filenames)}")
         # basename = os.path.basename(fname)
         datetime_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')

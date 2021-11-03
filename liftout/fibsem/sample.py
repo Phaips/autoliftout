@@ -199,6 +199,7 @@ class Sample:
                                                  )
 
         # TODO: improve this
+        # TODO: update the names of files once the eb_ib issue is fixed..
         # load images from disk
         sample_no = sample_dict["sample_no"]
         ref_landing_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif")
@@ -241,57 +242,3 @@ class Sample:
 
         # save to disk
         self.save_data() 
-
-
-if __name__ == "__main__":
-
-    data_path = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/gui/log/run/20210804.151912/"
-    lam_coord = [StagePosition(x=1, y=1, z=1, r=1, t=1)]
-    land_coord = [StagePosition(x=2, y=2, z=2, r=2, t=2)]
-    zipped_coordinates = list(zip(lam_coord, land_coord))
-    save_path = "/Users/patrickcleeve/Documents/university/bio/demarco/autoliftout/liftout/gui/log/run/20210804.151914"
-
-    for i, (lamella_coordinates, landing_coordinates) in enumerate(zipped_coordinates, 1):
-        sample = Sample(save_path, i)
-        sample.lamella_coordinates = lamella_coordinates
-        sample.landing_coordinates = landing_coordinates
-        sample.save_data()
-
-    sample = Sample(data_path=save_path, sample_no=1)
-    sample.load_data_from_file()
-
-    print(sample.lamella_coordinates)
-    print(sample.landing_coordinates)
-    print(sample.milling_coordinates)
-    print(sample.jcut_coordinates)
-    print(sample.liftout_coordinates)
-    print(sample.park_position)
-    print(sample.last_needle_position)
-    print(sample.last_stage_position)
-
-    _, _, lamella_imgs, landing_imgs = sample.get_sample_data()
-    for img in lamella_imgs:
-        plt.imshow(img.data)
-        plt.show()
-    for img in landing_imgs:
-        plt.imshow(img.data)
-        plt.show()
-
-# TODO: resolve the naming bug with the labels will need to be fixed here as well..
-
-# the names of the images are fixed, wiht a sample_no prefix.
-# so we dont need to save the fnames, just the timestamp...
-
-# Sample file structure
-# sample.yaml:
-#   timestamp:
-#   data_path:
-#   sample:
-#       1: Sample()
-#           timestamp: float
-#           sample_no: int
-#           lamella_coordinates: StagePosition()
-#           landing_coordinates: StagePosition()
-#       2: Sample()
-#       3: Sample()
-#       ...

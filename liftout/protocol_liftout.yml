@@ -2,6 +2,7 @@ system:
   ip_address: 10.0.0.1
   application_file: "autolamella"
   application_file_rectangle: "autolamella"
+  #application_file_rectangle: "Si_Alex"
   application_file_cleaning_cross_section: "autolamella"
   stage_rotation_flat_to_electron: 50 # degrees
   stage_rotation_flat_to_ion: 230 # degrees
@@ -92,6 +93,11 @@ jcut:
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false
   mill_top_jcut_pattern: true # true or false
+weld:
+  width: 3e-6
+  height: 10e-6
+  depth: 15e-9
+  rotation: 0
 sharpen:
   height: 2.5e-6
   width:  20e-6

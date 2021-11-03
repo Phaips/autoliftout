@@ -69,12 +69,11 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
 def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.clear_patterns()
-    for pattern in patterns: # TODO: test that this doesnt break the drawing
+    for pattern in patterns: 
         tmp_pattern = microscope.patterning.create_rectangle(pattern.center_x, pattern.center_y, pattern.width, pattern.height, depth=depth)
         tmp_pattern.rotation = np.deg2rad(pattern.rotation)
     run_milling(microscope, settings)
 
-# TODO: this and mill_trenches can probably be consolidated
 def mill_thin_lamella(microscope, settings):
     """Mill the trenches for thinning the lamella.
     Parameters
@@ -101,7 +100,9 @@ def mill_thin_lamella(microscope, settings):
             settings,
             stage_settings,
             stage_number)
+    
     # Restore ion beam imaging current (20 pico-Amps)
+    logging.info(f"mill trenches complete, returning to imaging current")
     microscope.beams.ion_beam.beam_current.value = 30e-12
 
 
@@ -123,7 +124,7 @@ def mill_trenches(microscope, settings):
     
     # Restore ion beam imaging current (20 pico-Amps)
     logging.info(f"mill trenches complete, returning to imaging current")
-    microscope.beams.ion_beam.beam_current.value = settings['imaging']['imaging_current']#30e-12  # TODO: add to protocol?
+    microscope.beams.ion_beam.beam_current.value = settings['imaging']['imaging_current']
 
 
 def mill_single_stage(microscope, settings, stage_settings, stage_number):
@@ -352,7 +353,7 @@ def jcut_milling_patterns(microscope, settings):
 
 
 
-def weld_to_landing_post(microscope, *, milling_current=20e-12):
+def weld_to_landing_post(microscope, settings, milling_current=20e-12):
     """Create and mill the sample to the landing post.
     Stick the lamella to the landing post by melting the ice with ion milling.
     Parmaters
@@ -365,10 +366,18 @@ def weld_to_landing_post(microscope, *, milling_current=20e-12):
         Whether to wait for user confirmation before milling.
     """
     logging.info("milling: weld to landing post")
-    # TODO: add to protocol
-    pattern = _create_mill_pattern(microscope, center_x=0, center_y=0, width=3e-6,
-                            height=10e-6,
-                            depth=5e-9, rotation_degrees=0)
+    # TO_TEST
+    pattern = _create_mill_pattern(microscope, 
+                                center_x=0, center_y=0, 
+                                width=settings["weld"]["width"],
+                                height=settings["weld"]["height"],
+                                depth=settings["weld"]["depth"], 
+                                rotation_degrees=settings["weld"]["rotation"])
+
+
+    # pattern = _create_mill_pattern(microscope, center_x=0, center_y=0, width=3e-6,
+    #                         height=10e-6,
+    #                         depth=5e-9, rotation_degrees=0)
     return pattern
 
 def cut_off_needle(microscope, cut_coord, milling_current=0.74e-9):
@@ -396,7 +405,12 @@ def _create_mill_pattern(microscope, *,
     logging.info(f"w: {width:e}, h: {height:e}, d: {depth:e}, r:{rotation_degrees:.3f}")
     return pattern
 
-
+# ideal structure:
+# def milling_operation(patterns):
+    # setup_ion_milling()
+    # for pattern in patterns:
+    #   _draw_milling_patterns()
+    # run_milling()
 
 
 def calculate_sharpen_needle_pattern(microscope, settings, x_0, y_0):
@@ -420,24 +434,6 @@ def calculate_sharpen_needle_pattern(microscope, settings, x_0, y_0):
     rotation_1 = -(needle_angle + alpha)
     rotation_2 = -(needle_angle - alpha) - 180
 
-    ############################################################################
-    # dx_1 = D * math.cos( np.deg2rad(needle_angle + alpha) )
-    # dy_1 = D * math.sin( np.deg2rad(needle_angle + alpha) )
-    # x_1 = x_0 - dx_1 # centre of the bottom box
-    # y_1 = y_0 - dy_1 # centre of the bottom box
-
-    # dx_2 = D * math.cos( np.deg2rad(needle_angle - alpha - beta) )
-    # dy_2 = D * math.sin( np.deg2rad(needle_angle - alpha - beta) )
-    # x_2 = x_0 - dx_2 # centre of the top box
-    # y_2 = y_0 - dy_2 # centre of the top box
-
-    # x_1_origin = x_1 - x_0
-    # y_1_origin = y_1 - y_0 # shift the x1,y1 to the origin
-    # x_2_origin_rot, y_2_origin_rot = Rotate( x_1_origin, y_1_origin, 360-(2*alpha+2*beta) ) # rotate to get the x2,y2 point
-    # x_2_rot = x_2_origin_rot + x_0 # shift to the old centre at x0,y0
-    # y_2_rot = y_2_origin_rot + y_0
-
-    ############################################################################
     dx_1 = (width / 2) * math.cos(np.deg2rad(needle_angle + alpha))
     dy_1 = (width / 2) * math.sin(np.deg2rad(needle_angle + alpha))
     ddx_1 = (height / 2) * math.sin(np.deg2rad(needle_angle + alpha))

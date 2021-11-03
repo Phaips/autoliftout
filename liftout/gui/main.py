@@ -45,7 +45,7 @@ test_image = np.array(test_image)
 test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e-6), (-100.e-6, 0.e-6, 30.e-6, 400.e-6)]
 
 
-pretilt = 27  # TODO: put in protocol
+# pretilt = 27  # TODO: put in protocol
 
 _translate = QtCore.QCoreApplication.translate
 
@@ -193,7 +193,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"Finished pre run validation: {len(validation_errors)} issues identified.")
 
     def initialise_autoliftout(self):
-        # TODO: check if needle i
+
         self.current_status = AutoLiftoutStatus.Setup
         logging.info(f"{self.current_status.name} STARTED")
 
@@ -238,7 +238,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
         # # save
-        # TODO: move sample structure into select initial feature coordinates?
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -346,9 +345,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings['hfw'] = 900e-6  # TODO: add to protocol
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting?
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
-        acquire.autocontrast(self.microscope, beam_type=BeamType.ELECTRON)  # TODO: why
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        acquire.autocontrast(self.microscope, beam_type=BeamType.ION)  # TODO: why
         self.update_display(beam_type=BeamType.ION, image_type='last')
         self.user_based_eucentric_height_adjustment()
 
@@ -437,7 +434,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"LOAD COORDINATES STARTED")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log")) # TODO: make this path not hard coded
+                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log")) 
         if not save_path:
             logging.warning("Load Coordinates: No Folder selected.")
             display_error_message("Load Coordinates: No Folder selected.")
@@ -573,11 +570,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
 
-        # # TODO: remove ask user wrapping once mill_trenches is refactored
         self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
         if self.response:
-            # mills trenches for lamella
+            # mill trenches for lamella
             milling.mill_trenches(self.microscope, self.settings)
 
         self.current_sample.milling_coordinates = self.stage.current_position
@@ -640,9 +636,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # now we are at the angle for jcut, perform jcut
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
-        # TODO: adjust hfw? check why it changes to 100
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False, milling_patterns=jcut_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
@@ -707,7 +701,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # move needle to liftout start position
         if self.stage.current_position.z < 3.7e-3:
-            # TODO: [FIX] autofocus cannot be relied upon, if this condition is met, we need to stop.
+            # [FIX] autofocus cannot be relied upon, if this condition is met, we need to stop.
 
             # movement.auto_link_stage(self.microscope) # This is too unreliable to fix the miscalibration
             logging.warning(f"Calibration error detected: stage position height")
@@ -719,7 +713,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 title="Calibration Error"
             )
 
-            # Aborting Liftout # TODO: safe shutdown.
+            # Aborting Liftout
             self.disconnect()
             exit(0)
 
@@ -741,7 +735,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(save=True, hfw=100e-6, label='landed_Pt_sputter')
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings) # TODO: tune jcut severing pattern
+        jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings)
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
@@ -849,11 +843,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle.relative_move(x_move)
 
             # move in z
-             # TODO: might want to make this /3 or /4 or add a constant factor to make sure it lands
             # detection is based on centre of lamella, we want to land of the edge.
             # therefore subtract half the height from the movement.
             lamella_height = self.settings["lamella"]["lamella_height"]
-            gap = lamella_height / 2 # 0.5e-6
+            gap = lamella_height / 2 
             zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
@@ -886,7 +879,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.current_sample.sample_no,
                                                               shift_type=shift_type)
         feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
-        # TODO: assert that self.overlay_image and self.downscale_image are the same size?
         # scaled features
         scaled_feature_1_px = detection_utils.scale_invariant_coordinates(feature_1_px, self.overlay_image) #(y, x)
         scaled_feature_2_px = detection_utils.scale_invariant_coordinates(feature_2_px, self.overlay_image) # (y, x)
@@ -944,9 +936,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if not self.response:
 
                     self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
-                                                                    f'Press Yes button when happy with the position', click='single', filter_strength=self.filter_strength, crosshairs=False)
+                                                                    f'Press Yes button when happy with the position', click='single', 
+                                                                    filter_strength=self.filter_strength, crosshairs=False)
                     self.ask_user(image=self.downscaled_image)
-                    # TODO: do we want filtering on this image?
 
                     # if new feature position selected
                     if self.response:
@@ -974,17 +966,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_status = AutoLiftoutStatus.Landing
         logging.info(f"{self.current_status.name} STARTED")
 
-        # move to landing coordinate # TODO: wrap in func
+        # move to landing coordinate # TODO: wrap in safe movement func
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
         self.stage.absolute_move(landing_coord)
 
         # eucentricity correction
-        # TODO: check if we want to recalibrate... should this be done after drift correction?
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
         self.image_settings["hfw"] = 150e-6
 
-        # TODO: image settings?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
 
         if ret is False:
@@ -1070,7 +1060,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
-        # TODO: gap?
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
         logging.info(f"{self.current_status.name}: x-move complete: {x_move}")
@@ -1089,7 +1078,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
         ############################## WELD TO LANDING POST #############################################
-        weld_pattern = milling.weld_to_landing_post(self.microscope)
+        weld_pattern = milling.weld_to_landing_post(self.microscope, self.settings) # TO_TEST
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
@@ -1139,11 +1128,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         vertical_gap = 2e-6
 
         cut_coord = {"center_x": -distance_x_m,
-                     "center_y": distance_y_m - vertical_gap, # TODO: check direction?
+                     "center_y": distance_y_m - vertical_gap, 
                      "width": width,
                      "height": height,
-                     "depth": depth,  # TODO: might need more to get through needle
-                     "rotation": rotation, "hfw": hfw}  # TODO: check rotation
+                     "depth": depth,  
+                     "rotation": rotation, "hfw": hfw}  
 
         logging.info(f"{self.current_status.name}: calculating needle cut-off pattern")
 
@@ -1154,7 +1143,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
                                    milling_patterns=cut_off_pattern)
         self.ask_user(image=self.image_FIB)
-        # TODO: add rotation
 
         if self.response:
             logging.info(f"{self.current_status.name}: needle cut-off started")
@@ -1251,13 +1239,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
-        # self.image_settings["beam_type"] = BeamType.ION
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))  # TODO: magic number
+        z_distance = distance_y_m / np.sin(np.deg2rad(52))  # MAGIC_NUMBER
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
@@ -1285,10 +1272,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
-            # TODO: TEST ROTATION
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=cut_coord_bottom["depth"])
-            # milling.run_milling(self.microscope, self.settings)
 
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
@@ -1371,8 +1356,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
-        # TODO: this should be image_centre not landing post?
-        # x_shift, y_shift = calculate_shift_between_features_in_metres(lamella_ib, "lamella_edge_to_landing_post")
 
         # z-movement (shouldnt really be needed if eucentric calibration is correct)
         z_distance = distance_y_m / np.sin(np.deg2rad(52))
@@ -1383,12 +1366,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         x_move = movement.x_corrected_stage_movement(-distance_x_m)
         self.stage.relative_move(x_move)
 
-        # TODO: check the direction of this movement?
         # move half the width of lamella to centre the edge..
         width = self.settings["lamella"]["lamella_width"]
         x_move_half_width = movement.x_corrected_stage_movement(width / 4)
         self.stage.relative_move(x_move_half_width)
-        # TODO: take reference images
 
         # take reference images and finish
         self.update_image_settings(
@@ -1403,7 +1384,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # mill thin lamella pattern
         self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
-        # TODO: refactor this to use the movable pattern structure like other milling
         self.ask_user()
         if self.response:
             milling.mill_thin_lamella(self.microscope, self.settings)
@@ -1932,7 +1912,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setEnabled(True) # enable the main window
 
     def test_draw_patterns(self):
-        # TODO: adjust hfw? check why it changes to 100
         self.update_display(beam_type=BeamType.ION, image_type='last')
         # TODO: return image with patterning marks
         if not self.offline:
@@ -2293,183 +2272,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
-
-# TODO: remove
-# class DraggablePatch:
-#     def __init__(self, patch):
-#         self.patch = patch
-#         self.press = None
-#         self.cidpress = None
-#         self.cidrelease = None
-#         self.cidmotion = None
-#         self.move_all = False
-#         self.movable = True
-#         self.center_x = None
-#         self.center_y = None
-#         self.pixel_size = None
-#         self.image_width = None
-#         self.image_height = None
-#         self.rotation = 0
-#         self.rotating = False
-#
-#     def connect(self):
-#         self.cidpress = self.patch.figure.canvas.mpl_connect(
-#             'button_press_event', self.on_press)
-#         self.cidrelease = self.patch.figure.canvas.mpl_connect(
-#             'button_release_event', self.on_release)
-#         self.cidmotion = self.patch.figure.canvas.mpl_connect(
-#             'motion_notify_event', self.on_motion)
-#
-#     def update_position(self):
-#         relative_center_x, relative_center_y = self.calculate_center()
-#         center_x_px = relative_center_x - self.image_width / 2
-#         center_y_px = relative_center_y - self.image_height / 2
-#
-#         self.center_x = center_x_px * self.pixel_size
-#         self.center_y = - center_y_px * self.pixel_size  # centre coordinate systems
-#
-#         self.width = self.patch._width * self.pixel_size
-#         self.height = self.patch._height * self.pixel_size
-#         self.rotation = self.patch.angle
-#
-#     def on_press(self, event):
-#         # movement enabled check
-#         if not self.movable:
-#             self.press = None
-#             return
-#
-#         # left click check
-#         if event.button != 1: return
-#
-#         # if only moving what's under the cursor:
-#         if not self.move_all:
-#             # discard all changes if this isn't a hovered patch
-#             if event.inaxes != self.patch.axes: return
-#             contains, attrd = self.patch.contains(event)
-#             if not contains: return
-#
-#         # get the top left corner of the patch
-#         x0, y0 = self.patch.xy
-#         self.press = x0, y0, event.xdata, event.ydata
-#
-#         if self.rotation_check(event):
-#             self.rotating = True
-#         else:
-#             self.rotating = False
-#             QtWidgets.QApplication.restoreOverrideCursor()
-#
-#     def on_motion(self, event):
-#         """on motion we will move the rect if the mouse is over us"""
-#         if self.rotation_check(event):
-#             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
-#         else:
-#             QtWidgets.QApplication.restoreOverrideCursor()
-#
-#         if not self.press: return
-#
-#         if self.rotating and not self.move_all:
-#             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
-#             center_x, center_y = self.calculate_center()
-#
-#             angle_dx = event.xdata - center_x
-#             angle_dy = event.ydata - center_y
-#             angle = np.rad2deg(np.arctan2(angle_dy, angle_dx))
-#             self.rotate_about_center(angle+90)
-#         else:
-#             QtWidgets.QApplication.restoreOverrideCursor()
-#             x0, y0, x_intial_press, y_initial_press = self.press
-#             dx = event.xdata - x_intial_press
-#             dy = event.ydata - y_initial_press
-#             self.patch.set_x(x0+dx)
-#             self.patch.set_y(y0+dy)
-#
-#         self.patch.figure.canvas.draw()
-#
-#     def on_release(self, event):
-#         """on release we reset the press data"""
-#         QtWidgets.QApplication.restoreOverrideCursor()
-#         self.update_position()
-#         self.press = None
-#         self.patch.figure.canvas.draw()
-#
-#     def disconnect(self):
-#         """disconnect all the stored connection ids"""
-#         self.patch.figure.canvas.mpl_disconnect(self.cidpress)
-#         self.patch.figure.canvas.mpl_disconnect(self.cidrelease)
-#         self.patch.figure.canvas.mpl_disconnect(self.cidmotion)
-#
-#     def toggle_move_all(self, onoff=False):
-#         self.move_all = onoff
-#
-#     def calculate_center(self):
-#         x0, y0 = self.patch.xy
-#         w = self.patch._width/2
-#         h = self.patch._height/2
-#         theta = np.deg2rad(self.patch.angle)
-#         x_center = x0 + w * np.cos(theta) - h * np.sin(theta)
-#         y_center = y0 + w * np.sin(theta) + h * np.cos(theta)
-#
-#         return x_center, y_center
-#
-#     def calculate_corners(self):
-#         x0, y0 = self.patch.xy
-#         w = self.patch._width/2
-#         h = self.patch._height/2
-#         theta = np.deg2rad(self.patch.angle)
-#
-#         x_shift = 2 * (w * np.cos(theta) - h * np.sin(theta))
-#         y_shift = 2 * (w * np.sin(theta) + h * np.cos(theta))
-#
-#         top_left = x0, y0
-#         top_right = x0 + x_shift, y0
-#         bottom_left = x0, y0 + y_shift
-#         bottom_right = x0 + x_shift, y0 + y_shift
-#
-#         return top_left, top_right, bottom_left, bottom_right
-#
-#     def rotation_check(self, event):
-#         xpress = event.xdata
-#         ypress = event.ydata
-#         if xpress and ypress:
-#             ratio = 5
-#             abs_min = 30
-#             distance_check = max(min(self.patch._height / ratio, self.patch._width / ratio), abs_min)
-#             corners = self.calculate_corners()
-#             for corner in corners:
-#                 dist = np.sqrt((xpress-corner[0]) ** 2 + (ypress-corner[1]) ** 2)
-#                 if dist < distance_check:
-#                     return True
-#         return False
-#
-#     def rotate_about_center(self, angle):
-#         print(angle)
-#         # calculate the center position in the unrotated, original position
-#         old_x_center, old_y_center = self.calculate_center()
-#
-#         # move the pattern to have x0, y0 at 0, 0
-#         self.patch.set_x(0)
-#         self.patch.set_y(0)
-#
-#         # rotate by angle
-#         self.patch.angle = angle
-#         new_theta = np.deg2rad(self.patch.angle)
-#
-#         # calculate new center position at the rotated, 0, 0 position
-#         w = self.patch._width/2
-#         h = self.patch._height/2
-#         new_x_center = w * np.cos(new_theta) - h * np.sin(new_theta)
-#         new_y_center = w * np.sin(new_theta) + h * np.cos(new_theta)
-#
-#         # move the center to the 0, 0, position (can be removed as a nondebugging step)
-#         # self.patch.set_x(-new_x_center)
-#         # self.patch.set_y(-new_y_center)
-#
-#         # move pattern back to centered on original center position
-#         self.patch.set_x(-new_x_center + old_x_center)
-#         self.patch.set_y(-new_y_center + old_y_center)
-#
-#         self.update_position()
-
 
 def display_error_message(message, title="Error"):
     """PyQt dialog box displaying an error message."""

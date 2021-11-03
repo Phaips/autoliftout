@@ -170,7 +170,6 @@ class Detector:
 # Detection and Drawing Tools
 
 def extract_class_pixels(mask, color):
-    # TODO: get a better name for this
     """ Extract only the pixels that are classified as the desired class (color)
 
     args:
@@ -383,7 +382,6 @@ def detect_lamella_edge(img, mask, threshold=25):
     """Detect the right edge of the lamella"""
     color = (255, 0, 0) # fixed color
 
-    # TODO: extract filter from detection?
     mask_filt, px_filt = extract_class_pixels(mask, color) # this is duplicate in detect_func
     edge_px = detect_right_edge(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, edge_px, color, crosshairs=True)

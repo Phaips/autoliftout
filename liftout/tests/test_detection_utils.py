@@ -14,7 +14,6 @@ import pandas as pd
 
 @pytest.fixture
 def weights_file():
-    # TODO: read from protocol file?
     yield os.path.join(os.path.dirname(models.__file__), "fresh_full_n10.pt")
 
 
@@ -28,7 +27,6 @@ def test_image_fname():
     """ Return the filename of a test image """
     #TODO:  there has to be a better way to do this
     filenames = glob.glob("./**/*test_image.tif", recursive=True)
-    # fname = os.getcwd() + "liftout/tests/test_image.tif"
 
     fname = filenames[0]
     yield fname

@@ -1,4 +1,5 @@
 import os
+from numpy.lib.npyio import save
 import yaml
 import time
 import logging
@@ -9,19 +10,24 @@ import liftout
 def configure_logging(save_path='', log_filename='logfile', log_level=logging.INFO):
     """Log to the terminal and to file simultaneously."""
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
-        '%Y%m%d.%H%M%S')  # datetime.now().strftime("_%Y-%m-%d_%H-%M-%S")
+        '%Y%m%d.%H%M%S')
+
+    logfile = os.path.join(save_path, f"{log_filename}{timestamp}.log")
+
     logging.basicConfig(
-        format="%(asctime)s — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s", #"%(asctime)s %(levelname)s %(message)s",
+        format="%(asctime)s — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
         level=log_level,
         # Multiple handlers can be added to your logging configuration.
         # By default log messages are appended to the file if it exists already
         handlers=[
-            logging.FileHandler(save_path+'/'+log_filename+timestamp+'.log'),
+            logging.FileHandler(logfile), #save_path+'/'+log_filename+timestamp+'.log'), 
             logging.StreamHandler(),
         ])
-    return save_path+'/'+log_filename+timestamp+'.log'
-    # TODO: use os.path.join instead
 
+    # FEATURE_FLAG
+    assert logfile == save_path+'/'+log_filename+timestamp+'.log'
+    return logfile
+    # return save_path+'/'+log_filename+timestamp+'.log'
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -78,7 +84,9 @@ def make_logging_directory(prefix='run'):
     os.makedirs(os.path.join(save_directory, "img"), exist_ok=True)
     return save_directory
 
-# TODO: change to os.path.join
 def save_image(image, save_path, label=''):
     path = f'{save_path}/img/{label}.tif'
+    path_new = os.path.join(save_path, "img", f"{label}.tif")
+    assert path == path_new
     image.save(path)
+    # FEATURE_FLAG

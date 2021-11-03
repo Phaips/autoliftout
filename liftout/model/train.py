@@ -81,8 +81,7 @@ def train_model(model, device, train_data_loader, val_data_loader, epochs, DEBUG
 
                         outputs = model(images)
                         output_mask = decode_output(outputs)
-                        # TODO: hstack these outputs...
-
+                        
                         img_base = images.detach().cpu().squeeze().numpy()
                         img_rgb = np.dstack((img_base, img_base, img_base))
                         gt_base = decode_segmap(masks.detach().cpu().permute(1, 2, 0))

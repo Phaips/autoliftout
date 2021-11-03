@@ -58,7 +58,6 @@ def show_img_and_mask(imgs, gts, mask, title="Image, Ground Truth and Mask"):
         ax[2].imshow(mask)
         ax[2].set_title("Predicted Mask")
 
-    # TODO: improve when batch size is larger
     plt.show()
 
 
