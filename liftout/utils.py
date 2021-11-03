@@ -1,5 +1,4 @@
 import os
-from numpy.lib.npyio import save
 import yaml
 import time
 import logging
