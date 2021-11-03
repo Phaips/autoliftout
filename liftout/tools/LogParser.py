@@ -13,16 +13,29 @@ def parse_log_file(fname):
 
     gamma_dict = {"gamma": [], "diff": []}
 
-
-    from liftout.gui.main import AutoLiftoutStatus
-
+    try:
+        from liftout.gui.main import AutoLiftoutStatus
+    except ModuleNotFoundError:
+        from enum import Enum
+        class AutoLiftoutStatus(Enum):
+            Initialisation = -1
+            Setup = 0
+            Milling = 1
+            Liftout = 2
+            Landing = 3
+            Reset = 4
+            Thinning = 5
+            Finished = 6
+    
     stages = [stage.name for stage in AutoLiftoutStatus]
     stage_dict = dict.fromkeys(stages)
     for stage in stage_dict.keys():
         stage_dict[stage] = {"STARTED": None, "FINISHED": None}
 
+
     # TODO: add a better logging identifier rather than doing this weird parsing...
-    with open(fname) as f:
+    with open(fname, encoding="cp1252") as f:
+        # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
         lines = f.read().splitlines()
         for i, line in enumerate(lines):
             msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
@@ -81,11 +94,11 @@ def plot_state_dict(state_dict):
         #     print(stage_dict[state])
         if state_dict[state]["FINISHED"] and state_dict[state]["STARTED"]:
             state_duration = state_dict[state]["FINISHED"] - state_dict[state]["STARTED"]
-            print(f"{state}: {state_duration}")
+            # print(f"{state}: {state_duration}")
             state_duration_dict[state] = state_duration.total_seconds()
 
     # import pandas as pd
 
-    print(state_duration_dict)
+    # print(state_duration_dict)
     df = pd.DataFrame([state_duration_dict])
     return df.plot.bar(title="State Duration"), df

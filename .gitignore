@@ -90,7 +90,7 @@ liftout/model/example/*
 */tests/*.csv
 liftout/tools/20210823.153535_manual.zip
 !liftout/tests/data/img/*.tif
-liftout/model/label_to_dataset.sh
+
 
 liftout/data/*
 liftout/tools/chart.png
@@ -98,3 +98,5 @@ liftout/tools/*.html
 liftout/model/wandb/*
 liftout/model/eval/*
 liftout/model/data.zip
+liftout/tools/*.png
+liftout/log/*
