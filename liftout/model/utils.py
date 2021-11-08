@@ -17,7 +17,10 @@ def decode_output(output):
 
 def decode_segmap(image, nc=3):
 
-    """Decode segmentation class mask into an RGB image mask"""
+    """
+    Decode segmentation class mask into an RGB image mask 
+    ref: https://learnopencv.com/pytorch-for-beginners-semantic-segmentation-using-torchvision/
+    """
 
     # 0=background, 1=lamella, 2= needle
     label_colors = np.array([(0, 0, 0), (255, 0, 0), (0, 255, 0)])

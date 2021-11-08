@@ -101,3 +101,5 @@ def preprocess_data(data_path, num_classes=3, batch_size=1, val_size=0.2):
     print(f"Validation dataset has {len(val_data_loader)} batches of size {batch_size}")
 
     return train_data_loader, val_data_loader
+
+# ref: https://towardsdatascience.com/pytorch-basics-sampling-samplers-2a0f29f0bf2a
