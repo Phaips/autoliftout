@@ -16,10 +16,13 @@ from liftout.detection.utils import *
 
 
 @st.cache(allow_output_mutation=True)
-def cached_streamlit_setup(images_path, weights_file):
+def cached_streamlit_setup(images_path, weights_file, sort=True):
 
     # load image filenames, randomise
-    filenames = match_filenames_from_path(images_path, pattern=".tif")
+    filenames = sorted(glob.glob(os.path.join(images_path, "*.tif")))
+
+    if sort is False:
+        shuffle(filenames)
 
     # load detector
     detector = Detector(weights_file=weights_file)
