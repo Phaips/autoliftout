@@ -81,7 +81,7 @@ machine_learning:
   eb_contrast: 0.70
   ib_brightness: 0.41
   ib_contrast: 0.86
-  weights: fresh_full_n10.pt
+  weights: boost_n05_model.pt
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees

@@ -68,10 +68,9 @@ if len(filenames) > 0:
     )
     detector = Detector(weights_file=weights_file)
 
-    # gam = st.sidebar.slider("gamma", 0.0, 5.0, 2.0)
     min_gamma = st.sidebar.slider("min_gamma", 0.1, 0.5, 0.15)
-    max_gamma = st.sidebar.slider("max_gamma", 5.0, 9.0, 5.0)
-    gamma_threshold = st.sidebar.slider("gamma_threshold", 25, 100, 40)
+    max_gamma = st.sidebar.slider("max_gamma", 1.5, 3.0, 2.0)
+    gamma_threshold = st.sidebar.slider("gamma_threshold", 25, 100, 46)
     gamma_scale = st.sidebar.slider("gamma_scale", 0.01, 0.1, 0.01)
 
     for fname in filenames[:NUM_IMAGES]:
@@ -102,103 +101,3 @@ if len(filenames) > 0:
         cols[2].pyplot(fig, caption="pixel intensity")
         cols[3].image(raw_blend, caption="raw detection mask")
         cols[4].image(gamma_blend, caption="gamma detection mask")
-
-    # save gamma value in protocol
-    st.sidebar.subheader("Save Protocol")
-    protocol_file_new = st.sidebar.text_input("Protocol File Name", "protocol_file_new.yml")
-    if st.sidebar.button("Save to protocol file"):
-        # settings["imaging"] = {}
-        settings["imaging"]["gamma_correction"] = gam
-        st.write(settings)
-        st.sidebar.success(f"Saved to protocol file {protocol_file_new}")
-
-        with open(protocol_file_new, "w") as file:
-            yaml.dump(settings, file, sort_keys=False)
-
-
-# TODO: fit the histogram for gamma adjustment to a set of 'good' images
-# TODO: probably should have two separate gamma corrections for eb / ib?
-
-"""
-# TODO: initial setup:
-# - show autocontrasted images:
-- ask if it is ok
-    - if not show gamma corrected autocontrast
-        - allow changing gamma here?
-- if still not ok, allow them to set manual brightness / contrast?
-- and gamma correction?
-"""
-
-#
-# STD = np.std(img_orig)
-# MEAN  = np.mean(img_orig)
-#
-# print('STD = ', STD, '; MEAN = ', MEAN)
-#
-# histogram, bin_edges = np.histogram(img_orig, bins=256)
-# plt.figure(11)
-# plt.plot(bin_edges[0:-1], histogram, 'ob')  # <- or here
-#
-# if MEAN > (255 - STD/2):
-#     print('1---------- doing renormalisation, recalibration and padding ----------------- ')
-#     indices = np.where(img_orig < MEAN  )
-#     img_orig[indices] = 0
-# elif (MEAN<(255/2. - STD/2) and (MEAN < 2*STD)):
-#     print('2---------- doing renormalisation, recalibration and padding ----------------- ')
-#     indices = np.where(img_orig > MEAN  )
-#     img_orig[indices] = 255
-#
-# elif (MEAN<(255/2. - STD/2) and MEAN>=STD/2) or (MEAN>=(255/2. + STD/2) and MEAN <= (255 - STD/2)):
-#     print('3---------- doing renormalisation, recalibration and padding ----------------- ')
-#     # normalisation
-#     img_sigma = np.std(img_orig)
-#     img_mean  = np.mean(img_orig)
-#     img_orig =  (img_orig  - img_mean) / img_sigma
-#
-#     ### filtering begin
-#     img_orig = img_orig - img_orig.min()
-#     img_sigma = np.std(img_orig)
-#     img_mean  = np.mean(img_orig)
-#
-#     if MEAN<(255/2. - STD/2):
-#         indices = np.where( img_orig >= (img_mean + 2*img_sigma) )
-#     if MEAN>=(255/2. + STD/2):
-#         indices = np.where( img_orig <= (img_mean - 2*img_sigma) )
-#     img_orig[indices] = img_mean
-#     img_orig = img_orig/(img_mean + 2*img_sigma )  * 255
-#     img_orig = img_orig.astype(np.uint8)
-#     #### filtering end
-#     histogram3, bin_edges3 = np.histogram(img_orig, bins=256)
-#
-#
-#     ### renormalisation
-#     img_sigma = np.std(img_orig)
-#     img_mean  = np.mean(img_orig)
-#     img_orig =  (img_orig  - img_mean) / img_sigma
-#     #### BINNING, PADDING
-#     scale_factor = 1
-#     #image_resized = resize(img_orig, (img_orig.shape[0] // 2, img_orig.shape[1] // 2),  anti_aliasing=False)
-#     #image_resized = rescale(img_orig, 0.50, anti_aliasing=True)
-#     image_resized = skimage.transform.downscale_local_mean(img_orig, (scale_factor,scale_factor), cval=0, clip=True)
-#     cmask = circ_mask(size=(image_resized.shape[1], image_resized.shape[0]), radius=image_resized.shape[0]//scale_factor-80, sigma=20)  # circular mask
-#     img_orig = image_resized * cmask
-#     if scale_factor > 1:
-#         ddx = image_resized.shape[0]//scale_factor
-#         ddy = image_resized.shape[1]//scale_factor
-#         img_orig = np.pad(img_orig, ((ddx,ddx), (ddy,ddy)), 'constant'  )
-#     img_orig = img_orig/img_orig.max()  * 255
-#     img_orig = img_orig.astype(np.uint8)
-#     #img_orig = np.asarray(img.data)
-#     #img_orig1 = ndi.median_filter(img_orig1, size=4)
-#
-#     # model inference + display
-#
-#     #img_sigma = np.std(img_orig)
-#     #img_mean  = np.mean(img_orig)
-#     #img_orig =  (img_orig  - img_mean) / img_sigma
-#
-#
-#     plt.figure(12)
-#     plt.plot(bin_edges[0:-1], histogram, 'b')  # <- or here
-#     plt.figure(12)
-#     plt.plot(bin_edges3[0:-1], histogram3, 'r')  # <- or here
