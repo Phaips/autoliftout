@@ -5,15 +5,7 @@ import pytest
 import segmentation_models_pytorch as smp
 import torch
 from liftout.detection import DetectionModel
-from liftout.model import models
-import os
-
-# TODO: replace weights file with something stable
-
-@pytest.fixture
-def weights_file():
-    # TODO: read from protocol?
-    yield os.path.join(os.path.dirname(models.__file__), "fresh_full_n10.pt")
+from liftout.tests.test_detection import weights_file
 
 
 @pytest.fixture
@@ -27,24 +19,31 @@ def test_DetectionModel_init(detection_model, weights_file):
     assert type(detection_model) == DetectionModel.DetectionModel
     assert detection_model.weights_file == weights_file
 
+
 def test_cuda_device(detection_model):
     """test whether the device is loaded correctly"""
-    
-    assert detection_model.device == torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    assert detection_model.device == torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu"
+    )
+
 
 def test_transformation(detection_model):
-    """ test image preprocess transformation is correct """
+    """test image preprocess transformation is correct"""
     img = np.zeros((1024, 1536, 1), dtype=np.uint8)
     img_t = detection_model.preprocess_image(img)
 
     assert img_t.shape == (1, 1, 256, 384)
 
+
 def test_cuda_image(detection_model):
-    """ test image is loaded onto device correctly """
+    """test image is loaded onto device correctly"""
     img = np.zeros((1024, 1536, 1), dtype=np.uint8)
     img_t = detection_model.preprocess_image(img)
 
-    assert img_t.device == torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    assert img_t.device == torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu"
+    )
 
 
 def test_load_model(detection_model):
@@ -61,7 +60,7 @@ def test_load_model(detection_model):
 
 
 def test_model_inference(detection_model):
-    """ test model inference pipeline works correctly"""
+    """test model inference pipeline works correctly"""
     img = np.zeros((1024, 1536, 1), dtype=np.uint8)
 
     rgb_mask = detection_model.model_inference(img)
@@ -78,7 +77,7 @@ def test_decode_segmap(detection_model):
 
     assert np.all(rgb_mask == [0, 0, 0])  # assert black
 
-    ones = np.ones_like(zeros) 
+    ones = np.ones_like(zeros)
     rgb_mask = detection_model.decode_segmap(ones)
     rgb_mask = rgb_mask.reshape(256, 384, 3)  # TODO: this should be decode_output
 

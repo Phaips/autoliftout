@@ -4,16 +4,18 @@
 # https://changhsinlee.com/pytest-mock/
 # https://docs.pytest.org/en/6.2.x/monkeypatch.html
 
+import os
+
 import numpy as np
 import pytest
-from liftout.detection import detection, utils
-import os
+from liftout.detection import detection
 from liftout.model import models
+
 
 @pytest.fixture
 def weights_file():
     # TODO: read from protocol
-    yield os.path.join(os.path.dirname(models.__file__), "fresh_full_n10.pt")
+    yield os.path.join(os.path.dirname(models.__file__), "boost_n05_model.pt")
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ def test_Detector_init(detector):
         "needle_tip_to_lamella_centre",
         "lamella_centre_to_image_centre",
         "lamella_edge_to_landing_post",
-        "needle_tip_to_image_centre"
+        "needle_tip_to_image_centre",
     ]
 
 
@@ -57,9 +59,6 @@ def test_extract_class_pixels():
 
     assert np.all(class_mask == (255, 0, 0))
     assert len(idx[0]) == class_mask.shape[0] * class_mask.shape[1]  # full tuple
-
-
-
 
 
 def test_detect_centre_point():

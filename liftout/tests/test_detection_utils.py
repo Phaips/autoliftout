@@ -4,32 +4,23 @@
 # https://changhsinlee.com/pytest-mock/
 # https://docs.pytest.org/en/6.2.x/monkeypatch.html
 
-import numpy as np
-import pytest
-from liftout.model import models
-from liftout.detection import detection, utils
-import glob
 import os
+
+import numpy as np
 import pandas as pd
+import pytest
+from liftout.detection import utils
 
-@pytest.fixture
-def weights_file():
-    yield os.path.join(os.path.dirname(models.__file__), "fresh_full_n10.pt")
-
-
-@pytest.fixture
-def detector(weights_file):
-
-    yield detection.Detector(weights_file=weights_file)
 
 @pytest.fixture
 def test_image_fname():
     """ Return the filename of a test image """
     #TODO:  there has to be a better way to do this
-    filenames = glob.glob("./**/*test_image.tif", recursive=True)
+    # filenames = glob.glob("./**/*test_image.tif", recursive=True)
 
-    fname = filenames[0]
-    yield fname
+    # fname = filenames[0]
+    from liftout.tests import data
+    yield os.path.join(os.path.dirname(data.__file__), "test_image.tif")
 
 
 def test_scale_invariant_coordinates():
@@ -68,11 +59,3 @@ def test_parse_metadata_df(test_image_fname):
 
     # assert len(df_metadata.columns) == 50 # TODO: actually implement this properly
     assert type(df_metadata) == pd.DataFrame
-
-
-def test_match_filenames_from_path():
-    pass
-
-def test_extract_img_for_labelling():
-
-    pass
