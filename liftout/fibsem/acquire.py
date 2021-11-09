@@ -31,10 +31,8 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
 def take_reference_images(microscope, settings):
     tmp_beam_type = settings["beam_type"]
     settings['beam_type'] = BeamType.ELECTRON
-    # logging.info(f"acquire: taking {settings['beam_type'].name} reference image.") # REMOVE_LINE
     eb_image = new_image(microscope, settings)
     settings['beam_type'] = BeamType.ION
-    # logging.info(f"acquire: taking {settings['beam_type'].name} reference image.") # REMOVE_LINE
     ib_image = new_image(microscope, settings)
     settings["beam_type"] = tmp_beam_type  # reset to original beam type
     return eb_image, ib_image
@@ -62,12 +60,12 @@ def new_image(microscope, settings):
     tmp_settings = settings
     if settings['beam_type'] == BeamType.ELECTRON:
         microscope.beams.electron_beam.horizontal_field_width.value = settings['hfw']
-        settings['label'] += '_eb'
-        # label = settings["label"] + "_eb" # TODO: need to update sample images filenames too
+        # settings['label'] += '_eb'
+        label = settings["label"] + "_eb" # TODO: need to update sample images filenames too
     else:
         microscope.beams.ion_beam.horizontal_field_width.value = settings['hfw']
-        settings['label'] += '_ib'
-        # label = settings["label"] + "_ib"  # TODO: need to update sample images filenames too
+        # settings['label'] += '_ib'
+        label = settings["label"] + "_ib"  # TODO: need to update sample images filenames too
 
     if settings['autocontrast']:
         autocontrast(microscope, beam_type=settings['beam_type'])
@@ -93,8 +91,8 @@ def new_image(microscope, settings):
 
     if settings['save']:
         utils.save_image(image=image, save_path=settings['save_path'],
-                        #  label=label)
-                         label=settings['label'])
+                         label=label) # TO_TEST
+                        #  label=settings['label'])
 
     settings = tmp_settings # reset the settings to original # TODO: this doesnt work, need to reset
     return image

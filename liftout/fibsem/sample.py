@@ -6,30 +6,22 @@ import yaml
 import os
 import numpy as np
 
-class SampleStatus(Enum):
-    Setup = 0
-    Milling = 1
-    Liftout = 2
-    Landing = 3
-    Reset = 4
-    Cleanup = 5
-    Finished = 6
-
 try:
     from autoscript_sdb_microscope_client.structures import *
 except:
-   from liftout.tests.mock_autoscript_sdb_microscope_client import *
+    from liftout.tests.mock_autoscript_sdb_microscope_client import *
+
 
 class Sample:
     def __init__(self, data_path, sample_no):
-        self.landing_coordinates = StagePosition()  
-        self.lamella_coordinates = StagePosition() 
+        self.landing_coordinates = StagePosition()
+        self.lamella_coordinates = StagePosition()
         self.milling_coordinates = StagePosition()
         self.jcut_coordinates = StagePosition()
         self.liftout_coordinates = StagePosition()
         self.park_position = ManipulatorPosition()
 
-        self.last_stage_position = StagePosition() 
+        self.last_stage_position = StagePosition()
         self.last_needle_position = ManipulatorPosition()
 
         self.landing_ref_images = list()
@@ -46,7 +38,7 @@ class Sample:
 
         if os.path.exists(yaml_file):
             # read and open existing yaml file
-            with open(yaml_file, 'r') as f:
+            with open(yaml_file, "r") as f:
                 sample_yaml = yaml.safe_load(f)
 
         else:
@@ -54,17 +46,17 @@ class Sample:
             sample_yaml = {
                 "timestamp": self.timestamp,
                 "data_path": self.data_path,
-                "sample": {}
+                "sample": {},
             }
         return sample_yaml
 
     def save_data(self):
-        """ Save the lamella and landing coordinates, and reference to data path"""
+        """Save the lamella and landing coordinates, and reference to data path"""
 
         # check if yaml file already exists for this timestamp..
         sample_yaml = self.setup_yaml_file()
 
-        # format coordinate data for saving        
+        # format coordinate data for saving
         lamella_coordinates_dict = {
             "x": self.lamella_coordinates.x,
             "y": self.lamella_coordinates.y,
@@ -109,9 +101,8 @@ class Sample:
             "x": self.park_position.x,
             "y": self.park_position.y,
             "z": self.park_position.z,
-            "r": self.park_position.r
+            "r": self.park_position.r,
         }
-
 
         last_stage_position_dict = {
             "x": self.last_stage_position.x,
@@ -125,7 +116,7 @@ class Sample:
             "x": self.last_needle_position.x,
             "y": self.last_needle_position.y,
             "z": self.last_needle_position.z,
-            "r": self.last_needle_position.r
+            "r": self.last_needle_position.r,
         }
 
         # save stage position to yml file
@@ -156,89 +147,141 @@ class Sample:
             fname = os.path.join(self.data_path, "sample.yaml")
 
         # load yaml file
-        with open(fname, 'r') as f:
+        with open(fname, "r") as f:
             sample_yaml = yaml.safe_load(f)
 
         sample_dict = sample_yaml["sample"][self.sample_no]
 
         # load stage positions from yaml
-        self.lamella_coordinates = StagePosition(x=sample_dict["lamella_coordinates"]["x"],
-                                                 y=sample_dict["lamella_coordinates"]["y"],
-                                                 z=sample_dict["lamella_coordinates"]["z"],
-                                                 r=sample_dict["lamella_coordinates"]["r"],
-                                                 t=sample_dict["lamella_coordinates"]["t"])
+        self.lamella_coordinates = StagePosition(
+            x=sample_dict["lamella_coordinates"]["x"],
+            y=sample_dict["lamella_coordinates"]["y"],
+            z=sample_dict["lamella_coordinates"]["z"],
+            r=sample_dict["lamella_coordinates"]["r"],
+            t=sample_dict["lamella_coordinates"]["t"],
+        )
 
-        self.landing_coordinates = StagePosition(x=sample_dict["landing_coordinates"]["x"],
-                                                 y=sample_dict["landing_coordinates"]["y"],
-                                                 z=sample_dict["landing_coordinates"]["z"],
-                                                 r=sample_dict["landing_coordinates"]["r"],
-                                                 t=sample_dict["landing_coordinates"]["t"])
+        self.landing_coordinates = StagePosition(
+            x=sample_dict["landing_coordinates"]["x"],
+            y=sample_dict["landing_coordinates"]["y"],
+            z=sample_dict["landing_coordinates"]["z"],
+            r=sample_dict["landing_coordinates"]["r"],
+            t=sample_dict["landing_coordinates"]["t"],
+        )
 
-        self.milling_coordinates = StagePosition(x=sample_dict["milling_coordinates"]["x"],
-                                                 y=sample_dict["milling_coordinates"]["y"],
-                                                 z=sample_dict["milling_coordinates"]["z"],
-                                                 r=sample_dict["milling_coordinates"]["r"],
-                                                 t=sample_dict["milling_coordinates"]["t"])
+        self.milling_coordinates = StagePosition(
+            x=sample_dict["milling_coordinates"]["x"],
+            y=sample_dict["milling_coordinates"]["y"],
+            z=sample_dict["milling_coordinates"]["z"],
+            r=sample_dict["milling_coordinates"]["r"],
+            t=sample_dict["milling_coordinates"]["t"],
+        )
 
-        self.jcut_coordinates = StagePosition(x=sample_dict["jcut_coordinates"]["x"],
-                                              y=sample_dict["jcut_coordinates"]["y"],
-                                              z=sample_dict["jcut_coordinates"]["z"],
-                                              r=sample_dict["jcut_coordinates"]["r"],
-                                              t=sample_dict["jcut_coordinates"]["t"])
+        self.jcut_coordinates = StagePosition(
+            x=sample_dict["jcut_coordinates"]["x"],
+            y=sample_dict["jcut_coordinates"]["y"],
+            z=sample_dict["jcut_coordinates"]["z"],
+            r=sample_dict["jcut_coordinates"]["r"],
+            t=sample_dict["jcut_coordinates"]["t"],
+        )
 
-        self.liftout_coordinates = StagePosition(x=sample_dict["liftout_coordinates"]["x"],
-                                                 y=sample_dict["liftout_coordinates"]["y"],
-                                                 z=sample_dict["liftout_coordinates"]["z"],
-                                                 r=sample_dict["liftout_coordinates"]["r"],
-                                                 t=sample_dict["liftout_coordinates"]["t"])
+        self.liftout_coordinates = StagePosition(
+            x=sample_dict["liftout_coordinates"]["x"],
+            y=sample_dict["liftout_coordinates"]["y"],
+            z=sample_dict["liftout_coordinates"]["z"],
+            r=sample_dict["liftout_coordinates"]["r"],
+            t=sample_dict["liftout_coordinates"]["t"],
+        )
 
-        self.park_position = ManipulatorPosition(x=sample_dict["park_position"]["x"],
-                                                 y=sample_dict["park_position"]["y"],
-                                                 z=sample_dict["park_position"]["z"],
-                                                 r=sample_dict["park_position"]["r"]
-                                                 )
+        self.park_position = ManipulatorPosition(
+            x=sample_dict["park_position"]["x"],
+            y=sample_dict["park_position"]["y"],
+            z=sample_dict["park_position"]["z"],
+            r=sample_dict["park_position"]["r"],
+        )
 
         # TODO: improve this
         # TODO: update the names of files once the eb_ib issue is fixed..
         # load images from disk
-        sample_no = sample_dict["sample_no"]
-        ref_landing_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif")
-        ref_landing_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif")
-        ref_landing_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb_ib.tif")
-        ref_landing_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb_ib.tif")
-        ref_lamella_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif")
-        ref_lamella_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif")
-        ref_lamella_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb_ib.tif")
-        ref_lamella_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb_ib.tif")
+        sample_no = sample_dict["sample_no"]  # TO_TEST
+        ref_landing_lowres_eb = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif"
+        )
+        ref_landing_highres_eb = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif"
+        )
+        ref_landing_lowres_ib = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_ib.tif"
+        )
+        ref_landing_highres_ib = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_ib.tif"
+        )
+        ref_lamella_lowres_eb = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif"
+        )
+        ref_lamella_highres_eb = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif"
+        )
+        ref_lamella_lowres_ib = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_ib.tif"
+        )
+        ref_lamella_highres_ib = os.path.join(
+            self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_ib.tif"
+        )
+        # ref_landing_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif")
+        # ref_landing_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif")
+        # ref_landing_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb_ib.tif")
+        # ref_landing_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb_ib.tif")
+        # ref_lamella_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif")
+        # ref_lamella_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif")
+        # ref_lamella_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb_ib.tif")
+        # ref_lamella_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb_ib.tif")
 
         # load the adorned images and format
-        for fname in [ref_landing_lowres_eb, ref_landing_highres_eb, ref_landing_lowres_ib, ref_landing_highres_ib]:
+        for fname in [
+            ref_landing_lowres_eb,
+            ref_landing_highres_eb,
+            ref_landing_lowres_ib,
+            ref_landing_highres_ib,
+        ]:
             img = AdornedImage.load(fname)
 
             self.landing_ref_images.append(img)
 
-        for fname in [ref_lamella_lowres_eb, ref_lamella_highres_eb, ref_lamella_lowres_ib, ref_lamella_highres_ib]:
+        for fname in [
+            ref_lamella_lowres_eb,
+            ref_lamella_highres_eb,
+            ref_lamella_lowres_ib,
+            ref_lamella_highres_ib,
+        ]:
             img = AdornedImage.load(fname)
 
             self.lamella_ref_images.append(img)
 
-
     def get_sample_data(self):
-        """Return the sample data formatted for liftout from the specificed data_path. """
+        """Return the sample data formatted for liftout from the specificed data_path."""
 
         if not self.lamella_ref_images or not self.landing_ref_images:
-            self.load_data_from_file() # TODO: probably only need to load the images.. separate functionality for load
+            self.load_data_from_file()  # TODO: probably only need to load the images.. separate functionality for load
 
-        return (self.lamella_coordinates, self.landing_coordinates, self.lamella_ref_images, self.landing_ref_images)
+        return (
+            self.lamella_coordinates,
+            self.landing_coordinates,
+            self.lamella_ref_images,
+            self.landing_ref_images,
+        )
 
+    def save_current_position(
+        self,
+        stage_position: StagePosition,
+        needle_position: ManipulatorPosition,
+    ):
+        """Save the current sample stage and needle positions and state for recovery"""
 
-    def save_current_position(self, stage_position: StagePosition, needle_position: ManipulatorPosition, ):
-        """Save the current sample stage and needle positions and state for recovery """
-        
         # save the current sample positions
         self.last_stage_position = stage_position
         self.last_needle_position = needle_position
         self.last_status = self.status
 
         # save to disk
-        self.save_data() 
+        self.save_data()
