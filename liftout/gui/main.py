@@ -495,6 +495,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.MILLING_COMPLETED_THIS_RUN = False
 
         # TODO: use or code a safe_move function
+        def safe_stage_absolute_movement(microscope: SdbMicroscopeClient, stage_position: StagePosition, stage_settings: MoveSettings):
+            pass
+            # stage = microscope.specimen.stage
+            # stage_settings = MoveSettings(rotate_compucentric=True)
+            # stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+            # stage.absolute_move(StagePosition(r=stage_position.r))
+            # stage.absolute_move(stage_position)
+        
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
         self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
@@ -509,14 +517,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_SEM) # TODO: might need to update image?
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
-        # TODO: possibly new image
+        
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.',
                                    click='double', filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_SEM)
 
-        # self.image_settings['save'] = True
-        # self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_post_drift_correction'
         self.update_image_settings(
             save=True,
             label=f"{self.current_sample.sample_no:02d}_post_drift_correction"
@@ -1198,7 +1204,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         self.image_settings["hfw"] = self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"] # 80e-6  #TODO: fix protocol
-        self.image_settings["label"] = "landing_lamella_final_highres"
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_landing_lamella_final_highres"
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
@@ -1249,7 +1255,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
 
-        self.image_settings["label"] = "sharpen_needle_centre"
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_sharpen_needle_centre"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
@@ -1278,7 +1284,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: needle sharpening milling complete")
 
         # take reference images
-        self.image_settings["label"] = "sharpen_needle_final"
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_sharpen_needle_final"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
