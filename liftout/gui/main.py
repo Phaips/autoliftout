@@ -170,6 +170,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pre_run_validation()
 
+        # DEVELOPER ONLY
+        self.ADDITIONAL_CONFIRMATION = True
+
         logging.info(f"{self.current_status.name} FINISHED")
 
     def pre_run_validation(self):
@@ -588,6 +591,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         
         self.current_sample.milling_coordinates = self.stage.current_position
         self.current_sample.save_data()
+
+        if self.ADDITIONAL_CONFIRMATION: #TO_TEST
+            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
+            self.update_display(beam_type=BeamType.ION, image_type="last")
+            self.ask_user(image=self.image_SEM)
+
         logging.info(f"{self.current_status.name} | MILL_TRENCHES | FINISHED")
         ## 
 
@@ -768,6 +777,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(save=True, hfw=100e-6, label=f"{self.current_sample.sample_no:02d}_jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
         logging.info(f"{self.current_status.name} | MILL_SEVERING | FINISHED")
+
+        if self.ADDITIONAL_CONFIRMATION: # TO_TEST
+            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
+            self.update_display(beam_type=BeamType.ION, image_type="last")
+            self.ask_user(image=self.image_FIB)
 
         # Raise needle 30um from trench
         logging.info(f"{self.current_status.name}: start removing needle from trench")
@@ -1102,6 +1116,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
+        if self.ADDITIONAL_CONFIRMATION: # TO_TEST
+            self.update_popup_settings(message="Was the landing successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
+            self.ask_user(image=self.image_SEM)
+
         logging.info(f"{self.current_status.name} | LAND_LAMELLA | FINISHED")
         #################################################################################################
 
@@ -1203,6 +1221,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_cut_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+
+        if self.ADDITIONAL_CONFIRMATION:
+            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
+            self.update_display(beam_type=BeamType.ION, image_type="last")
+            self.ask_user(image=self.image_FIB)
 
         logging.info(f"{self.current_status.name}: removing needle from landing post")
         # move needle out of trench slowly at first
