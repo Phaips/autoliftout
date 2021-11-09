@@ -1842,6 +1842,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         image = self.popup_settings['image']
         beam_type = self.image_settings['beam_type']
 
+
+
         if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
             return
         else:
@@ -1849,6 +1851,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if event.button == 1:
                     if event.dblclick and (click in ('double', 'all')):
                         if image:
+                            logging.info(f"{self.current_status} | DOUBLE CLICK")
                             self.xclick = event.xdata
                             self.yclick = event.ydata
                             x, y = movement.pixel_to_realspace_coordinate(
@@ -1872,6 +1875,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                             self.update_popup_display()
 
                     elif click in ('single', 'all'):
+                        logging.info(f"{self.current_status} | SINGLE CLICK")
                         self.xclick = event.xdata
                         self.yclick = event.ydata
 

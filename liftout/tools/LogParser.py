@@ -27,10 +27,10 @@ def parse_log_file(fname):
             Thinning = 5
             Finished = 6
     
-    stages = [stage.name for stage in AutoLiftoutStatus]
-    stage_dict = dict.fromkeys(stages)
-    for stage in stage_dict.keys():
-        stage_dict[stage] = {"STARTED": None, "FINISHED": None}
+    stages = [state.name for state in AutoLiftoutStatus]
+    state_dict = dict.fromkeys(stages)
+    for state in state_dict.keys():
+        state_dict[state] = {"STARTED": None, "FINISHED": None}
 
 
     # TODO: add a better logging identifier rather than doing this weird parsing...
@@ -38,38 +38,55 @@ def parse_log_file(fname):
         # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
         lines = f.read().splitlines()
         for i, line in enumerate(lines):
+            if line == "":
+                continue
             msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
-            res = msg.split(":")[0].strip()
+            func = line.split("—")[-2].strip()
 
-            # print(line)
-            if res == "ml_detection":
+
+            # ml parsing
+            if "validate_detection" in func:
+
                 key = msg.split(":")[1].strip()
                 val = msg.split(":")[-1].strip()
 
                 if key in ml_dict.keys():
                     ml_dict[key][val] += 1
 
-            if res == "gamma_correction":
+
+            # gama correction parsing
+            if "gamma_correction" in func:
+                # print(func)
                 data = msg.split(",")
                 # print(data)
                 gamma_dict["diff"].append(float(data[0].split(":")[2].strip()))
                 gamma_dict["gamma"].append(float(data[1].split(":")[1].strip()))
 
+
+
+            # state parsing
             if msg.__contains__("STARTED") or msg.__contains__("FINISHED"):
                 # NOTE: gonna break if more than 1 lamella is completed in a run...
                 if "LOAD COORDINATES" in msg:
                     continue
-                stage = msg.split(" ")[0].strip()
+                state = msg.split(" ")[0].strip()
                 status = msg.split(" ")[-1].strip()
                 time = line.split("—")[0].split(",")[0]  # don't care about ms
                 import datetime
                 dt_object = datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-                stage_dict[stage][status] = dt_object
+                state_dict[state][status] = dt_object
             if msg.__contains__("Perform"):
                 dat = msg.split(":")
-                stage_dict[dat[0].split()[1].strip()]["PERFORM"] = dat[1]
+                state_dict[dat[0].split()[1].strip()]["PERFORM"] = dat[1]
 
-    return ml_dict, gamma_dict, stage_dict # TODO: need a better way
+            # user interaction
+            if "on_gui_click" in func:
+                print("CLICK MESSAGE")
+                print(line)
+                print(msg)
+            
+
+    return ml_dict, gamma_dict, state_dict # TODO: need a better way
 
 
 def plot_ml_data(ml_dict):
@@ -91,7 +108,7 @@ def plot_gamma_data(gamma_dict):
 def plot_state_dict(state_dict):
     state_duration_dict = {}
     for state in state_dict.keys():
-        #     print(stage_dict[state])
+        #     print(state_dict[state])
         if state_dict[state]["FINISHED"] and state_dict[state]["STARTED"]:
             state_duration = state_dict[state]["FINISHED"] - state_dict[state]["STARTED"]
             # print(f"{state}: {state_duration}")
