@@ -117,11 +117,11 @@ thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg
   tilt_angle: 21 # deg
   lamella_width:  4e-6 # In meters. Width of lamella.
-  lamella_height: 2e-6 # In meters. Thickness of lamella.
+  lamella_height: 0.5e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
-  hfw: 80e-6
+  hfw: 30e-6
   # Protocol stages are milled in the order they appear here.
   # Stages may override the default parmeters above Eg: current, depth, etc.
   protocol_stages:

@@ -49,10 +49,6 @@ test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e
 
 _translate = QtCore.QCoreApplication.translate
 
-protocol_template_path = '..\\protocol_liftout.yml'
-starting_positions = 1
-information_keys = ['x', 'y', 'z', 'rotation', 'tilt', 'comments']
-
 class AutoLiftoutStatus(Enum):
     Initialisation = -1
     Setup = 0
@@ -70,7 +66,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # setup logging
         self.save_path = utils.make_logging_directory(prefix="run")
         self.log_path = utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
-        config_filename = os.path.join(os.path.dirname(liftout.__file__),"protocol_liftout.yml")
+        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
 
         # load config
         self.settings = utils.load_config(config_filename)
@@ -172,8 +168,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # DEVELOPER ONLY
         self.ADDITIONAL_CONFIRMATION = True
+        self.MILLING_COMPLETED_THIS_RUN = False
 
         logging.info(f"{self.current_status.name} FINISHED")
+
 
     def pre_run_validation(self):
         logging.info(f"Running pre run validation")
@@ -437,7 +435,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"LOAD COORDINATES STARTED")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log")) 
+                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
         if not save_path:
             logging.warning("Load Coordinates: No Folder selected.")
             display_error_message("Load Coordinates: No Folder selected.")
@@ -474,8 +472,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
-            for sample_no in range(num_of_samples): # TODO: use keys() instead
-                sample = Sample(save_path, sample_no+1)  # TODO: watch out for this kind of thing with the numbering... improve
+            for sample_no in yaml_file["sample"].keys(): # range(num_of_samples): # TODO: use keys() instead
+                sample = Sample(save_path, sample_no) # +1
                 sample.load_data_from_file()
                 self.samples.append(sample)
 
@@ -499,14 +497,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.MILLING_COMPLETED_THIS_RUN = False
 
         # TODO: use or code a safe_move function
-        def safe_stage_absolute_movement(microscope: SdbMicroscopeClient, stage_position: StagePosition, stage_settings: MoveSettings):
+        def safe_stage_absolute_movement(microscope, stage_position: StagePosition, stage_settings: MoveSettings):
             pass
             # stage = microscope.specimen.stage
             # stage_settings = MoveSettings(rotate_compucentric=True)
             # stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
             # stage.absolute_move(StagePosition(r=stage_position.r))
             # stage.absolute_move(stage_position)
-        
+
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
         self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
@@ -521,7 +519,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_SEM) # TODO: might need to update image?
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
-        
+
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.',
                                    click='double', filter_strength=self.filter_strength, allow_new_image=True)
@@ -588,7 +586,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             # mill trenches for lamella
             milling.mill_trenches(self.microscope, self.settings)
-        
+
         self.current_sample.milling_coordinates = self.stage.current_position
         self.current_sample.save_data()
 
@@ -598,7 +596,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_SEM)
 
         logging.info(f"{self.current_status.name} | MILL_TRENCHES | FINISHED")
-        ## 
+        ##
 
         # reference images of milled trenches
         self.update_image_settings(
@@ -620,7 +618,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
-        
+
 
         # move flat to electron beam
         movement.flat_to_beam(self.microscope, self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON, )
@@ -655,22 +653,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample.jcut_coordinates = self.stage.current_position
         self.current_sample.save_data()
 
-        ## MILL_JCUT    
+        ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
         logging.info(f"{self.current_status.name} | MILL_JCUT | STARTED")
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, 
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
                             crosshairs=False, milling_patterns=jcut_patterns)
         self.ask_user(image=self.image_FIB)
         if self.response:
 
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
-        
+
         logging.info(f"{self.current_status.name} | MILL_JCUT | FINISHED")
-        ## 
+        ##
 
         # take reference images of the jcut
         # TODO: add to protocol
@@ -804,7 +802,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f" {self.current_status.name} FINISHED")
 
     def land_needle_on_milled_lamella(self):
-        
+
         logging.info(f"{self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | STARTED")
 
         needle = self.microscope.specimen.manipulator
@@ -832,7 +830,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
-        ### 
+        ###
 
         ### XY-MOVE (ELECTRON)
         self.image_settings['hfw'] = 180e-6 #self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
@@ -847,7 +845,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new")
-        ### 
+        ###
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
@@ -863,7 +861,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
-        ### 
+        ###
 
         self.update_popup_settings(message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
         self.ask_user(image=self.image_FIB)
@@ -884,7 +882,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # detection is based on centre of lamella, we want to land of the edge.
             # therefore subtract half the height from the movement.
             lamella_height = self.settings["lamella"]["lamella_height"]
-            gap = lamella_height / 2 
+            gap = lamella_height / 2
             zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
@@ -905,8 +903,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | FINISHED")
-            ### 
-        
+            ###
+
         else:
             logging.warning(f"{self.current_status.name}: needle not safe to move onto lamella.")
             logging.warning(f"{self.current_status.name}: needle landing cancelled by user.")
@@ -975,7 +973,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if not self.response:
 
                     self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
-                                                                    f'Press Yes button when happy with the position', click='single', 
+                                                                    f'Press Yes button when happy with the position', click='single',
                                                                     filter_strength=self.filter_strength, crosshairs=False)
                     self.ask_user(image=self.downscaled_image)
 
@@ -1136,10 +1134,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["weld"]["depth"]) # TODO: add to protocol, 
-                                           
+                                           patterns=self.patterns, depth=self.settings["weld"]["depth"]) # TODO: add to protocol,
+
         logging.info(f"{self.current_status.name} | MILLING_WELD | FINISHED")
-        
+
         #################################################################################################
 
         # final reference images
@@ -1177,11 +1175,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         vertical_gap = 2e-6
 
         cut_coord = {"center_x": -distance_x_m,
-                     "center_y": distance_y_m - vertical_gap, 
+                     "center_y": distance_y_m - vertical_gap,
                      "width": width,
                      "height": height,
-                     "depth": depth,  
-                     "rotation": rotation, "hfw": hfw}  
+                     "depth": depth,
+                     "rotation": rotation, "hfw": hfw}
 
         logging.info(f"{self.current_status.name}: calculating needle cut-off pattern")
 
@@ -1275,7 +1273,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move sample stage out
         movement.move_sample_stage_out(self.microscope)
         logging.info(f"{self.current_status.name}: moved sample stage out")
-        
+
         ###################################### SHARPEN_NEEDLE ######################################
         logging.info(f"{self.current_status.name} | SHARPEN_NEEDLE | STARTED")
 
@@ -1335,7 +1333,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{self.current_status.name} | SHARPEN_NEEDLE | FINISHED")
         #################################################################################################
-        
+
         # take reference images
         self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_sharpen_needle_final"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1413,7 +1411,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"{self.current_sample.sample_no:02d}_cleanup_lamella_pre_movement"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
-        
+
         ###################################### THIN_LAMELLA ######################################
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
@@ -1448,7 +1446,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user()
         if self.response:
             milling.mill_thin_lamella(self.microscope, self.settings)
-        
+
         ###################################################################################################
 
         # take reference images and finish
@@ -1538,8 +1536,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def testing_function(self):
 
-        TEST_VALIDATE_DETECTION = True
-        TEST_DRAW_PATTERNS = True
+        TEST_VALIDATE_DETECTION = False
+        TEST_DRAW_PATTERNS = False
+        TEST_BEAM_SHIFT = True
 
         if TEST_VALIDATE_DETECTION:
 
@@ -1557,6 +1556,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if TEST_DRAW_PATTERNS:
             self.test_draw_patterns()
+
+        if TEST_BEAM_SHIFT:
+            self.update_image_settings()
+            calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
+
 
 
 
@@ -1995,237 +1999,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                                patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-    # def new_protocol(self):
-    #     num_index = self.tabWidget_Protocol.__len__() + 1
-    #
-    #     # new tab for protocol
-    #     new_protocol_tab = QtWidgets.QWidget()
-    #     new_protocol_tab.setObjectName(f'Protocol {num_index}')
-    #     layout_protocol_tab = QtWidgets.QGridLayout(new_protocol_tab)
-    #     layout_protocol_tab.setObjectName(f'gridLayout_{num_index}')
-    #
-    #     # new text edit to hold protocol
-    #     protocol_text_edit = QtWidgets.QTextEdit()
-    #     font = QtGui.QFont()
-    #     font.setPointSize(10)
-    #     protocol_text_edit.setFont(font)
-    #     protocol_text_edit.setObjectName(f'protocol_text_edit_{num_index}')
-    #     layout_protocol_tab.addWidget(protocol_text_edit, 0, 0, 1, 1)
-    #
-    #     self.tabWidget_Protocol.addTab(new_protocol_tab, f'Protocol {num_index}')
-    #     self.tabWidget_Protocol.setCurrentWidget(new_protocol_tab)
-    #     self.load_template_protocol()
-    #
-    #     #
-    #
-    #     # new tab for information from FIBSEM
-    #     new_information_tab = QtWidgets.QWidget()
-    #     new_information_tab.setObjectName(f'Protocol {num_index}')
-    #     layout_new_information_tab = QtWidgets.QGridLayout(new_information_tab)
-    #     layout_new_information_tab.setObjectName(f'layout_new_information_tab_{num_index}')
-    #
-    #     # new empty table for information to fill
-    #     new_table_widget = QtWidgets.QTableWidget()
-    #     new_table_widget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-    #     new_table_widget.setAlternatingRowColors(True)
-    #     new_table_widget.setObjectName(f'tableWidget_{num_index}')
-    #     new_table_widget.setColumnCount(len(information_keys))
-    #     new_table_widget.setRowCount(starting_positions)
-    #
-    #     # set up rows
-    #     for row in range(starting_positions):
-    #         table_item = QtWidgets.QTableWidgetItem()
-    #         new_table_widget.setVerticalHeaderItem(row, table_item)
-    #         item = new_table_widget.verticalHeaderItem(row)
-    #         item.setText(_translate('MainWindow', f'Position {row+1}'))
-    #
-    #     # set up columns
-    #     for column in range(len(information_keys)):
-    #         table_item = QtWidgets.QTableWidgetItem()
-    #         new_table_widget.setHorizontalHeaderItem(column, table_item)
-    #         item = new_table_widget.horizontalHeaderItem(column)
-    #         item.setText(_translate('MainWindow', information_keys[column]))
-    #
-    #     new_table_widget.horizontalHeader().setDefaultSectionSize(174)
-    #     new_table_widget.horizontalHeader().setHighlightSections(True)
-    #
-    #     layout_new_information_tab.addWidget(new_table_widget, 0, 0, 1, 1)
-    #     self.tabWidget_Information.addTab(new_information_tab, f'Protocol {num_index}')
-    #     self.tabWidget_Information.setCurrentWidget(new_information_tab)
-    #
-    # def rename_protocol(self):
-    #     index = self.tabWidget_Protocol.currentIndex()
-    #
-    #     top_margin = 4
-    #     left_margin = 10
-    #
-    #     rect = self.tabWidget_Protocol.tabBar().tabRect(index)
-    #     self.edit = QtWidgets.QLineEdit(self.tabWidget_Protocol)
-    #     self.edit.move(rect.left() + left_margin, rect.top() + top_margin)
-    #     self.edit.resize(rect.width() - 2 * left_margin, rect.height() - 2 * top_margin)
-    #     self.edit.show()
-    #     self.edit.setFocus()
-    #     self.edit.selectAll()
-    #     self.edit.editingFinished.connect(lambda: self.finish_rename())
-    #
-    # def finish_rename(self):
-    #     self.tabWidget_Protocol.setTabText(self.tabWidget_Protocol.currentIndex(), self.edit.text())
-    #     tab = self.tabWidget_Protocol.currentWidget()
-    #     tab.setObjectName(self.edit.text())
-    #
-    #     self.tabWidget_Information.setTabText(self.tabWidget_Information.currentIndex(), self.edit.text())
-    #     tab2 = self.tabWidget_Information.currentWidget()
-    #     tab2.setObjectName(self.edit.text())
-    #     self.edit.deleteLater()
-    #
-    # def delete_protocol(self):
-    #     index = self.tabWidget_Protocol.currentIndex()
-    #     self.tabWidget_Information.removeTab(index)
-    #     self.tabWidget_Protocol.removeTab(index)
-    #     pass
-    #
-    # def load_template_protocol(self):
-    #     with open(protocol_template_path, 'r') as file:
-    #         _dict = yaml.safe_load(file)
-    #
-    #     for key, value in _dict.items():
-    #         self.key_list_protocol.append(key)
-    #         if isinstance(value, dict):
-    #             for key2, value2 in value.items():
-    #                 if key2 not in self.key_list_protocol:
-    #                     self.key_list_protocol.append(key)
-    #             if isinstance(value, dict):
-    #                 for key3, value3 in value.items():
-    #                     if key3 not in self.key_list_protocol:
-    #                         self.key_list_protocol.append(key)
-    #             elif isinstance(value, list):
-    #                 for dictionary in value:
-    #                     for key4, value4 in dictionary.items():
-    #                         if key4 not in self.key_list_protocol:
-    #                             self.key_list_protocol.append(key)
-    #
-    #     self.load_protocol_text(_dict)
-    #
-    # def load_protocol_text(self, dictionary):
-    #     protocol_text = str()
-    #     count = 0
-    #     jcut = 0
-    #     _dict = dictionary
-    #
-    #     for key in _dict:
-    #         if key not in self.key_list_protocol:
-    #             logging.info(f'Unexpected parameter in template file')
-    #             return
-    #
-    #     for key, value in _dict.items():
-    #         if type(value) is dict:
-    #             if jcut == 1:
-    #                 protocol_text += f'{key}:'  # jcut
-    #                 jcut = 0
-    #             else:
-    #                 protocol_text += f'\n{key}:'  # first level excluding jcut
-    #             for key2, value2 in value.items():
-    #                 if type(value2) is list:
-    #                     jcut = 1
-    #                     protocol_text += f'\n  {key2}:'  # protocol stages
-    #                     for item in value2:
-    #                         if count == 0:
-    #                             protocol_text += f'\n    # rough_cut'
-    #                             count = 1
-    #                             count2 = 0
-    #                         else:
-    #                             protocol_text += f'    # regular_cut'
-    #                             count = 0
-    #                             count2 = 0
-    #                         protocol_text += f'\n    -'
-    #                         for key6, value6 in item.items():
-    #                             if count2 == 0:
-    #                                 protocol_text += f' {key6}: {value6}\n'  # first after list
-    #                                 count2 = 1
-    #                             else:
-    #                                 protocol_text += f'      {key6}: {value6}\n'  # rest of list
-    #                 else:
-    #                     protocol_text += f'\n  {key2}: {value2}'  # values not in list
-    #         else:
-    #             protocol_text += f'{key}: {value}'  # demo mode
-    #     self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).setText(protocol_text)
-    #
-    # def save_protocol(self, destination=None):
-    #     dest = destination
-    #     if dest is None:
-    #         dest = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select folder to save protocol in')
-    #         index = self.tabWidget_Protocol.currentIndex()
-    #         tab = self.tabWidget_Protocol.tabBar().tabText(index)
-    #         dest = f'{dest}/{tab}.yml'
-    #     protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toPlainText()
-    #     # protocol_text = self.tabWidget_Protocol.currentWidget().findChild(QtWidgets.QTextEdit).toMarkdown()
-    #     logging.info(protocol_text)
-    #     p = yaml.safe_load(protocol_text)
-    #     logging.info(p)
-    #     with open(dest, 'w') as file:
-    #         yaml.dump(p, file, sort_keys=False)
-    #     self.save_destination = dest
-        # save
-    #
-    # def load_yaml(self):
-    #     """Ask the user to choose a protocol file to load
-    #
-    #     Returns
-    #     -------
-    #     str
-    #         Path to file for parameter loading
-    #     """
-    #     checked = 0
-    #     logging.info(f'Please select protocol file (yml)')
-    #     root = Tk()
-    #     root.withdraw()
-    #     _dict = None
-    #     while not checked:
-    #         checked = 1
-    #         try:
-    #             load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
-    #             if load_directory is None:
-    #                 return
-    #
-    #             while not load_directory.name.endswith('.yml'):
-    #                 logging.info('Not a yml configuration file')
-    #                 load_directory = filedialog.askopenfile(mode='r', filetypes=[('yml files', '*.yml')])
-    #
-    #             with open(load_directory.name, 'r') as file:
-    #                 _dict = yaml.safe_load(file)
-    #                 file.close()
-    #         except Exception:
-    #             display_error_message(traceback.format_exc())
-    #         for key in _dict:
-    #             if key not in self.key_list_protocol:
-    #                 if checked:
-    #                     logging.info(f'Unexpected parameter in protocol file')
-    #                 checked = 0
-    #     root.destroy()
-    #     logging.info(_dict)
-    #
-    #     self.load_protocol_text(_dict)
-
-    # def tab_moved(self, moved):
-    #     if moved == 'protocol':
-    #         self.tabWidget_Information.tabBar().moveTab(self.tabWidget_Information.currentIndex(), self.tabWidget_Protocol.currentIndex())
-    #     elif moved == 'information':
-    #         self.tabWidget_Protocol.tabBar().moveTab(self.tabWidget_Protocol.currentIndex(), self.tabWidget_Information.currentIndex())
-    #
-    # def random_data(self):
-    #     for parameter in range(len(self.params)):
-    #         self.params[information_keys[parameter]] = np.random.randint(0, 1)
-    #     self.fill_information()
-    #     self.position = (self.position + 1) % self.tabWidget_Information.currentWidget().findChild(QtWidgets.QTableWidget).rowCount()
-    #
-    # def fill_information(self):
-    #     information = self.tabWidget_Information.currentWidget().findChild(QtWidgets.QTableWidget)
-    #     row = self.position
-    #
-    #     for column in range(len(information_keys)):
-    #         item = QtWidgets.QTableWidgetItem()
-    #         item.setText(str(self.params[information_keys[column]]))
-    #         information.setItem(row, column, item)
 
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""

@@ -24,7 +24,7 @@ def configure_logging(save_path='', log_filename='logfile', log_level=logging.IN
         ])
 
     # FEATURE_FLAG
-    assert logfile == save_path+'/'+log_filename+timestamp+'.log'
+    # assert logfile == save_path+'/'+log_filename+timestamp+'.log'
     return logfile
     # return save_path+'/'+log_filename+timestamp+'.log'
 
@@ -84,8 +84,8 @@ def make_logging_directory(prefix='run'):
     return save_directory
 
 def save_image(image, save_path, label=''):
-    path = f'{save_path}/img/{label}.tif'
-    path_new = os.path.join(save_path, "img", f"{label}.tif")
-    assert path == path_new
+    path_old = f'{save_path}/img/{label}.tif'
+    path = os.path.join(save_path, "img", f"{label}.tif")
+    # assert path == path_new
     image.save(path)
     # FEATURE_FLAG

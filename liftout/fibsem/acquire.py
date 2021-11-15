@@ -38,7 +38,7 @@ def take_reference_images(microscope, settings):
     return eb_image, ib_image
 
 
-def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold):
+def gamma_correction(image, min_gamma, max_gamma, scale_factor, threshold) -> AdornedImage:
     """Automatic gamma correction"""
     std = np.std(image.data)
     mean = np.mean(image.data)
