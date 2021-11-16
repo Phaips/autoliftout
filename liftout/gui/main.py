@@ -197,11 +197,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_status = AutoLiftoutStatus.Setup
         logging.info(f"{self.current_status.name} STARTED")
 
-        # TODO: add to protocol
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=2750e-6, # self.settings["reference_images"]["grid"]
+            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], #2750e-6,
             beam_type=BeamType.ELECTRON,
             save=True,
             label="grid",
@@ -223,7 +222,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
-            self.update_image_settings(hfw=2750e-6, save=True, label="grid_Pt_deposition")
+            self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition") # 2750e-6
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
@@ -274,8 +273,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 movement.move_to_trenching_angle(self.microscope, settings=self.settings)
 
 
-            # refresh TODO: fix protocol structure
-            self.update_image_settings(hfw=400e-6, save=False)
+            # refresh
+            self.update_image_settings(hfw=self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"], save=False) # 400e-6
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
             self.update_display(beam_type=BeamType.ION, image_type='new')
 
@@ -342,18 +341,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             movement.flat_to_beam(self.microscope, settings=self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON)
 
         # lowres calibration
-        self.image_settings['hfw'] = 900e-6  # TODO: add to protocol # self.settings["calibration"]["eucentric_lowres_hfw"] # TODO: REMOVE
+        self.image_settings['hfw'] = self.settings["calibration"]["eucentric_hfw_lowres"]  # 900e-6 # TODO: REMOVE
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting? # TODO: REMOVE
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_lowres_hfw"])
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])
 
         # highres calibration
-        self.image_settings['hfw'] = 200e-6  # TODO: add to protocol # self.settings["calibration"]["eucentric_highres_hfw"] # TODO: REMOVE
+        self.image_settings['hfw'] = self.settings["calibration"]["eucentric_hfw_highres"] # 200e-6  # TODO: REMOVE
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_highres_hfw"])
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"])
 
     def user_based_eucentric_height_adjustment(self, hfw=None):
         self.image_settings['resolution'] = '1536x1024'
@@ -375,7 +374,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
-            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], 900e-6)) # clip to max hfw for ion #TODO: implement this before taking images...?
+            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"])) # clip to max hfw for ion, 900e-6 #TODO: implement this before taking images...?
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single',
@@ -415,7 +414,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 lamella_area_reference_images,
                 landing_reference_images) = self.current_sample.get_sample_data()
 
-          # TODO: this can probably just use self.current_sample rather than passing arguments?
             self.single_liftout(landing_coord, lamella_coord,
                             landing_reference_images, lamella_area_reference_images)
 
@@ -568,7 +566,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
-        self.update_image_settings(hfw=100e-6)
+        self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])   # TO_TEST 80e-6
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']  # TODO: why are these two lines here?
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -637,15 +635,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
 
-        # TODO: add to protocol
-        # TODO: deal with resetting label requirement
-
-        self.update_image_settings(resolution='1536x1024', dwell_time=1e-6, hfw=80e-6,
+        # TO_TEST
+        self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],  # 80e-6
                                    save=True, label=f"{self.current_sample.sample_no:02d}_drift_correction_ML")
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML()
         movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings)
-        self.update_image_settings(resolution='1536x1024', dwell_time=1e-6, hfw=80e-6,
+        self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"], # 80e-6
                                    save=True, label=f"{self.current_sample.sample_no:02d}_drift_correction_ML")
         self.correct_stage_drift_with_ML()
 
@@ -671,12 +667,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ##
 
         # take reference images of the jcut
-        # TODO: add to protocol
-        self.update_image_settings(hfw=150e-6, save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres")
+        # TO_TEST
+        self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_lowres"],
+                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres") # 150e-6
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        # TODO: add to protocol
-        self.update_image_settings(hfw=50e-6, save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres")
+        # TO_TEST
+        self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_highres"],
+                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres") # 50e-6
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
@@ -688,7 +686,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # if self.image_settings["hfw"] > 200e-6:
         #     self.image_settings["hfw"] = 150e-6
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
-            # TODO: more elegant labelling convention
             self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=beamType)
 
@@ -703,9 +700,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: update to update_image_settings
         # take reference images after drift correction
-        self.image_settings['save'] = True
-        self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
-        self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
+        # self.image_settings['save'] = True
+        # self.image_settings['label'] = f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
+        # self.image_settings['autocontrast'] = self.USE_AUTOCONTRAST
+        self.update_image_settings(
+            save=True,
+            label=f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
+        )
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
@@ -719,14 +720,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not self.MILLING_COMPLETED_THIS_RUN:
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
-            self.image_settings["hfw"] = 150e-6
+            self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] # 150e-6 # TO_TEST
             movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
-        if self.stage.current_position.z < 3.7e-3:
+        if self.stage.current_position.z < self.settings["calibration"]["stage_height_limit"]: # 3.7e-3: # TO_TEST
             # [FIX] autofocus cannot be relied upon, if this condition is met, we need to stop.
 
             # movement.auto_link_stage(self.microscope) # This is too unreliable to fix the miscalibration
@@ -758,7 +759,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False)
         logging.info(f"{self.current_status.name}: lamella to needle welding complete.")
 
-        self.update_image_settings(save=True, hfw=100e-6, label=f"{self.current_sample.sample_no:02d}_landed_Pt_sputter")
+        self.update_image_settings(save=True, hfw=self.settings["platinum"]["weld"]["hfw"], label=f"{self.current_sample.sample_no:02d}_landed_Pt_sputter") #TO_TEST
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         logging.info(f"{self.current_status.name} | MILL_SEVERING | STARTED")
@@ -772,7 +773,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-        self.update_image_settings(save=True, hfw=100e-6, label=f"{self.current_sample.sample_no:02d}_jcut_sever")
+        self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"{self.current_sample.sample_no:02d}_jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
         logging.info(f"{self.current_status.name} | MILL_SEVERING | FINISHED")
 
@@ -833,7 +834,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###
 
         ### XY-MOVE (ELECTRON)
-        self.image_settings['hfw'] = 180e-6 #self.settings["reference_images"]["needle_ref_img_hfw_lowres"]
+        self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"] # 180e-6
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -1010,7 +1011,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # eucentricity correction
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
-        self.image_settings["hfw"] = 150e-6
+        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] # 150e-6
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
 
@@ -1031,7 +1032,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=180e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol,
+            hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"], # # 180e-6
             beam_type=BeamType.ELECTRON,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres"
@@ -1051,14 +1052,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=180e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol,
+            hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"], # # 180e-6
             beam_type=BeamType.ION,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_y_move"
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
 
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))
+        z_distance = distance_y_m / np.sin(np.deg2rad(52)) # TODO: MAGIC_NUMBER
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: z-move complete: {z_move}")
@@ -1070,7 +1071,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=150e-6,  # TODO: fix protocol,
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"], # 150e-6,
             beam_type=BeamType.ELECTRON,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
@@ -1090,7 +1091,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=80e-6,  # TODO: fix protocol,
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"], #80e-6
             beam_type=BeamType.ELECTRON,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
@@ -1105,7 +1106,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=80e-6,  # TODO: fix protocol,
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"], #80e-6
             beam_type=BeamType.ELECTRON,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_weld_highres"
@@ -1134,7 +1135,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: welding to post started.")
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["weld"]["depth"]) # TODO: add to protocol,
+                                           patterns=self.patterns, depth=self.settings["weld"]["depth"]) # TO_TEST
 
         logging.info(f"{self.current_status.name} | MILLING_WELD | FINISHED")
 
@@ -1144,7 +1145,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=100e-6,  # TODO: fix protocol,
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"], # 80e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_weld_highres"
         )
@@ -1172,7 +1173,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         depth = self.settings["cut"]["depth"]
         rotation = self.settings["cut"]["rotation"]
         hfw = self.settings["cut"]["hfw"]
-        vertical_gap = 2e-6
+        vertical_gap = self.settings["cut"]["gap"] # 2e-6 # TO_TEST
 
         cut_coord = {"center_x": -distance_x_m,
                      "center_y": distance_y_m - vertical_gap,
@@ -1203,7 +1204,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=150e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"], # 150e-6
             beam_type=BeamType.ION,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_cut_lowres"
@@ -1213,7 +1214,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=80e-6, # self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"] #TODO: fix protocol
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"], #80e-6
             beam_type=BeamType.ION,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_cut_highres"
@@ -1250,12 +1251,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        self.image_settings["hfw"] = self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"] # 80e-6  #TODO: fix protocol
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_landing_lamella_final_highres"
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
-            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
+            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"], # 80e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_highres"
         )
@@ -1362,7 +1361,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: move to landing coordinates: {landing_coord}")
 
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
-        self.image_settings["hfw"] = 150e-6
+        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
         # tilt to 0 rotate 180 move to 21 deg
         # tilt to zero, to prevent hitting anything
@@ -1385,7 +1384,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=400e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"], # 400e-6,
             save=True,
             label=f"{self.current_sample.sample_no:02d}_thinning_lamella_21deg_tilt"
         )
@@ -1396,7 +1395,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=300e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"], # 400e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_drift_correction_ML_thinning"
         )
@@ -1406,7 +1405,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=80e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], # 80e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_cleanup_lamella_pre_movement"
         )
@@ -1436,7 +1435,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=100e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], # 80e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_lamella_pre_thinning"
         )
@@ -1455,7 +1454,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=80e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], #80e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_highres"
         )
@@ -1465,7 +1464,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=150e-6,
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"], #150e-6
             save=True,
             label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_lowres"
         )
@@ -1986,7 +1985,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def test_draw_patterns(self):
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        # TODO: return image with patterning marks
+
         if not self.offline:
             cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope,
                                                                                        settings=self.settings,
@@ -2104,11 +2103,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             lines = f.read().splitlines()
             log_line = "\n".join(lines[-5:])  # last five log msgs
             self.label_status_3.setText(log_line)
-
-        # TODO: test (this might cause lag...)
-        # TODO: remove all other calls to updating these displays once this works
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        # self.update_display(beam_type=BeamType.ION, image_type="last")
 
         # logging.info(f"Random No: {np.random.random():.5f}")
 
