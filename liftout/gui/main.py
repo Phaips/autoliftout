@@ -77,7 +77,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name} STARTED")
         logging.info(f"gui: starting in {'offline' if offline else 'online'} mode")
 
-        # TODO: replace "SEM, FIB" with BeamType calls
         self.offline = offline
         self.setupUi(self)
         self.setWindowTitle('Autoliftout User Interface Main Window')
@@ -202,7 +201,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=2750e-6,
+            hfw=2750e-6, # self.settings["reference_images"]["grid"]
             beam_type=BeamType.ELECTRON,
             save=True,
             label="grid",
@@ -343,29 +342,31 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             movement.flat_to_beam(self.microscope, settings=self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON)
 
         # lowres calibration
-        self.image_settings['hfw'] = 900e-6  # TODO: add to protocol
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting?
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
+        self.image_settings['hfw'] = 900e-6  # TODO: add to protocol # self.settings["calibration"]["eucentric_lowres_hfw"] # TODO: REMOVE
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: why do we do this hfw setting? # TODO: REMOVE
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
         self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.user_based_eucentric_height_adjustment()
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_lowres_hfw"])
 
         # highres calibration
-        self.image_settings['hfw'] = 200e-6  # TODO: add to protocol
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']
-        self.user_based_eucentric_height_adjustment()
+        self.image_settings['hfw'] = 200e-6  # TODO: add to protocol # self.settings["calibration"]["eucentric_highres_hfw"] # TODO: REMOVE
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw'] # TODO: REMOVE
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_highres_hfw"])
 
-    def user_based_eucentric_height_adjustment(self):
-        self.image_settings['resolution'] = '1536x1024'  # TODO: add to protocol
-        self.image_settings['dwell_time'] = 1e-6  # TODO: add to protocol
+    def user_based_eucentric_height_adjustment(self, hfw=None):
+        self.image_settings['resolution'] = '1536x1024'
+        self.image_settings['dwell_time'] = 1e-6
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.image_settings['save'] = False
+
+        # TODO: enable setting the image settings here TO_TEST
         # self.update_image_settings(
-        #     resolution='1536x1024',  # TODO: add to protocol
-        #     dwell_time=1e-6,  # TODO: add to protocol
-        #     beam
-        # ) TODO: need to pass the hfw as parameter as it is currently defined outside func
+        #     beam_type=BeamType.ELECTRON,
+        #     hfw=hfw
+        # )
+
         self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
                                                            f'Press Yes when the feature is centered', click='double',
@@ -437,14 +438,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
         if not save_path:
-            logging.warning("Load Coordinates: No Folder selected.")
-            display_error_message("Load Coordinates: No Folder selected.")
+            error_msg = "Load Coordinates: No Folder selected."
+            logging.warning(error_msg)
+            display_error_message(error_msg)
             return
 
         ##########
         # read the sample.yaml: get how many samples in there, loop through
-        # TODO: maybe change sample to start at no. 0 for consistency?
-        # TODO: assume all sample no are consecutive?
         # TODO: it doesnt really matter what number a sample is, just store them in a list...
         # and have a browser for them? as long as they are consistently in the same place so we can retrieve the images too?
 
@@ -472,8 +472,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
-            for sample_no in yaml_file["sample"].keys(): # range(num_of_samples): # TODO: use keys() instead
-                sample = Sample(save_path, sample_no) # +1
+            for sample_no in yaml_file["sample"].keys():
+                sample = Sample(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
 
@@ -1414,6 +1414,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ###################################### THIN_LAMELLA ######################################
 
+        # TODO: use new thinning code
+
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
 
         # z-movement (shouldnt really be needed if eucentric calibration is correct)
@@ -2151,5 +2153,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)

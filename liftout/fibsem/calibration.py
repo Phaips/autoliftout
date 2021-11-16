@@ -521,10 +521,10 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
         from autoscript_core.common import ApplicationServerException
 
         logging.info(f"milling: milling thin lamella pattern...")
-        microscope.imaging.set_active_view(2)  # the ion beam view
         microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
             "hfw"
-        ]  # TODO: move to better place
+        ]
+        microscope.imaging.set_active_view(2)  # the ion beam view
         try:
             microscope.patterning.run()
         except ApplicationServerException:
