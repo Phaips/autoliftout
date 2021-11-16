@@ -1,9 +1,10 @@
 from liftout.fibsem.acquire import *
 import numpy as np
-from autoscript_sdb_microscope_client.structures import (StagePosition,
-                                                         MoveSettings)
+from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
 import time
+
 pretilt = 27  # TODO: add to protocol
+
 
 def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     """Move the sample stage in ion or electron beam view and take new image
@@ -30,13 +31,15 @@ def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     current_position_x = microscope.specimen.stage.current_position.x
     current_position_y = microscope.specimen.stage.current_position.y
     if current_position_x > 10e-3 or current_position_x < -10e-3:
-        logging.error('Not under electron microscope, please reposition')
+        logging.error("Not under electron microscope, please reposition")
         return
     new_position = StagePosition(x=x, y=y, z=z, r=r, t=t)
     microscope.specimen.stage.relative_move(new_position, settings=settings)
-    logging.info(f'Old position: {current_position_x*1e6}, {current_position_y*1e6}')
-    logging.info(f'Moving by: {x*1e6}, {y*1e6}')
-    logging.info(f'New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n')
+    logging.info(f"Old position: {current_position_x*1e6}, {current_position_y*1e6}")
+    logging.info(f"Moving by: {x*1e6}, {y*1e6}")
+    logging.info(
+        f"New position: {(current_position_x + x)*1e6}, {(current_position_y + y)*1e6}\n"
+    )
 
     return microscope.specimen.stage.current_position
 
@@ -91,29 +94,48 @@ def move_to_trenching_angle(microscope, settings, *, pretilt_angle=pretilt):
     autoscript_sdb_microscope_client.structures.StagePosition
         The position of the microscope stage after moving.
     """
-    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        pretilt_angle=pretilt_angle,
+        beam_type=BeamType.ION,
+    )
     return microscope.specimen.stage.current_position
 
 
-def move_to_liftout_angle(microscope, settings, liftout_angle=10, pretilt_angle=pretilt):
-    """Tilt the sample stage to the correct angle for liftout.
-    """
-    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
+def move_to_liftout_angle(
+    microscope, settings, liftout_angle=10, pretilt_angle=pretilt
+):
+    """Tilt the sample stage to the correct angle for liftout."""
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        pretilt_angle=pretilt_angle,
+        beam_type=BeamType.ELECTRON,
+    )
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle)))
     logging.info(f"movement: move to liftout angle ({liftout_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_angle(microscope, settings, landing_angle=18, pretilt_angle=pretilt):
-    """Tilt the sample stage to the correct angle for the landing posts.
-    """
-    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ION)  # stage tilt 25
-    microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(landing_angle)))  # more tilt by 18
+def move_to_landing_angle(
+    microscope, settings, landing_angle=18, pretilt_angle=pretilt
+):
+    """Tilt the sample stage to the correct angle for the landing posts."""
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        pretilt_angle=pretilt_angle,
+        beam_type=BeamType.ION,
+    )  # stage tilt 25
+    microscope.specimen.stage.relative_move(
+        StagePosition(t=np.deg2rad(landing_angle))
+    )  # more tilt by 18
     logging.info(f"movement: move to landing angle ({landing_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
-def move_to_jcut_angle(microscope, settings, jcut_angle=6., pretilt_angle=pretilt):
+def move_to_jcut_angle(microscope, settings, jcut_angle=6.0, pretilt_angle=pretilt):
     """Tilt the sample to the Jcut angle.
     Parameters
     ----------
@@ -128,7 +150,12 @@ def move_to_jcut_angle(microscope, settings, jcut_angle=6., pretilt_angle=pretil
     autoscript_sdb_microscope_client.structures.StagePosition
         The position of the microscope stage after moving.
     """
-    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        pretilt_angle=pretilt_angle,
+        beam_type=BeamType.ELECTRON,
+    )
     microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(jcut_angle)))
     logging.info(f"movement: move to j-cut angle ({jcut_angle} deg) complete.")
     return microscope.specimen.stage.current_position
@@ -138,10 +165,17 @@ def move_to_sample_grid(microscope, settings, pretilt_angle=pretilt):
     """Move stage and zoom out to see the whole sample grid.
     Assumes sample grid is mounted on the left hand side of the holder.
     """
-    flat_to_beam(microscope, settings=settings, pretilt_angle=pretilt_angle, beam_type=BeamType.ELECTRON)
-    sample_grid_center = StagePosition(x=float(settings['initial_position']['sample_grid']['x']),
-                                       y=float(settings['initial_position']['sample_grid']['y']),
-                                       z=float(settings['initial_position']['sample_grid']['z']))
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        pretilt_angle=pretilt_angle,
+        beam_type=BeamType.ELECTRON,
+    )
+    sample_grid_center = StagePosition(
+        x=float(settings["initial_position"]["sample_grid"]["x"]),
+        y=float(settings["initial_position"]["sample_grid"]["y"]),
+        z=float(settings["initial_position"]["sample_grid"]["z"]),
+    )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
     # Zoom out so you can see the whole sample grid
@@ -151,8 +185,9 @@ def move_to_sample_grid(microscope, settings, pretilt_angle=pretilt):
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
-                         flat_to_sem=True):
+def move_to_landing_grid(
+    microscope, settings, *, pretilt_angle=pretilt, flat_to_sem=True
+):
     """Move stage and zoom out to see the whole landing post grid.
     Assumes the landing grid is mounted on the right hand side of the holder.
     Parameters
@@ -166,14 +201,18 @@ def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
     """
     if flat_to_sem:
         flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
-        landing_grid_position = StagePosition(x=float(settings['initial_position']['landing_grid']['x']),
-                                              y=float(settings['initial_position']['landing_grid']['y']),
-                                              z=float(settings['initial_position']['landing_grid']['z']))
+        landing_grid_position = StagePosition(
+            x=float(settings["initial_position"]["landing_grid"]["x"]),
+            y=float(settings["initial_position"]["landing_grid"]["y"]),
+            z=float(settings["initial_position"]["landing_grid"]["z"]),
+        )
 
         logging.info(f"movement: moving to landing grid {landing_grid_position}")
         microscope.specimen.stage.absolute_move(landing_grid_position)
     else:
-        move_to_landing_angle(microscope, settings=settings, pretilt_angle=pretilt_angle)
+        move_to_landing_angle(
+            microscope, settings=settings, pretilt_angle=pretilt_angle
+        )
     # Zoom out so you can see the whole landing grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
@@ -182,13 +221,12 @@ def move_to_landing_grid(microscope, settings, *, pretilt_angle=pretilt,
 
 
 def move_sample_stage_out(microscope):
-    """Move stage completely out of the way, so it is not visible at all.
-    """
+    """Move stage completely out of the way, so it is not visible at all."""
     # Must set tilt to zero, so we don't see reflections from metal stage base
     microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
-    sample_stage_out = StagePosition(x=-0.002507,
-                                     y=0.025962792,
-                                     z=0.0039559049) # TODO: make these dynamically set based on initial_position
+    sample_stage_out = StagePosition(
+        x=-0.002507, y=0.025962792, z=0.0039559049
+    )  # TODO: make these dynamically set based on initial_position
     logging.info(f"movement: move sample grid out to {sample_stage_out}")
     microscope.specimen.stage.absolute_move(sample_stage_out)
     logging.info(f"movement: move sample stage out complete.")
@@ -196,8 +234,7 @@ def move_sample_stage_out(microscope):
 
 
 def move_needle_to_liftout_position(microscope):
-    """Move the needle into position, ready for liftout.
-    """
+    """Move the needle into position, ready for liftout."""
     park_position = insert_needle(microscope)
 
     move_needle_closer(microscope)
@@ -205,12 +242,13 @@ def move_needle_to_liftout_position(microscope):
     multichem.insert()
     return park_position
 
+
 def move_needle_to_landing_position(microscope):
-    """Move the needle into position, ready for landing.
-    """
+    """Move the needle into position, ready for landing."""
     park_position = insert_needle(microscope)
     move_needle_closer(microscope, x_shift=-25e-6)
     return park_position
+
 
 def insert_needle(microscope):
     """Insert the needle and return the needle parking position.
@@ -267,6 +305,7 @@ def x_corrected_needle_movement(expected_x, stage_tilt=None):
     ManipulatorPosition
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+
     return ManipulatorPosition(x=expected_x, y=0, z=0)  # no adjustment needed
 
 
@@ -281,6 +320,7 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     ManipulatorPosition
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+
     y_move = +np.cos(stage_tilt) * expected_y
     z_move = +np.sin(stage_tilt) * expected_y
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
@@ -297,6 +337,7 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     ManipulatorPosition
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+
     y_move = -np.sin(stage_tilt) * expected_z
     z_move = +np.cos(stage_tilt) * expected_z
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
@@ -308,6 +349,7 @@ def retract_needle(microscope, park_position):
         The parking position for the needle manipulator when inserted.
     """
     from autoscript_sdb_microscope_client.structures import ManipulatorPosition
+
     # Retract the multichem
     logging.info(f"movement: retracting multichem")
     multichem = microscope.gas.get_multichem()
@@ -317,9 +359,15 @@ def retract_needle(microscope, park_position):
     current_position = needle.current_position
     # To prevent collisions with the sample; first retract in z, then y, then x
     logging.info(f"movement: retracting needle to {park_position}")
-    needle.relative_move(ManipulatorPosition(z=park_position.z - current_position.z))  # noqa: E501
-    needle.relative_move(ManipulatorPosition(y=park_position.y - current_position.y))  # noqa: E501
-    needle.relative_move(ManipulatorPosition(x=park_position.x - current_position.x))  # noqa: E501
+    needle.relative_move(
+        ManipulatorPosition(z=park_position.z - current_position.z)
+    )  # noqa: E501
+    needle.relative_move(
+        ManipulatorPosition(y=park_position.y - current_position.y)
+    )  # noqa: E501
+    needle.relative_move(
+        ManipulatorPosition(x=park_position.x - current_position.x)
+    )  # noqa: E501
     time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
     logging.info(f"movement: retracting needle")
     needle.retract()
@@ -328,19 +376,20 @@ def retract_needle(microscope, park_position):
     return retracted_position
 
 
-def flat_to_beam(microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON):
-    """Make the sample surface flat to the electron or ion beam.
-    """
-    
+def flat_to_beam(
+    microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON
+):
+    """Make the sample surface flat to the electron or ion beam."""
+
     stage = microscope.specimen.stage
-    pretilt_angle_new = settings["system"]["pretilt_angle"] #27
+    pretilt_angle_new = settings["system"]["pretilt_angle"]  # 27
     assert pretilt_angle_new == pretilt_angle  # TO_TEST
     if beam_type is BeamType.ELECTRON:
         rotation = settings["system"]["stage_rotation_flat_to_electron"]
         tilt = np.deg2rad(pretilt_angle)
     if beam_type is BeamType.ION:
         rotation = settings["system"]["stage_rotation_flat_to_ion"]
-        tilt = np.deg2rad(52 - pretilt_angle) # MAGIC_NUMBER
+        tilt = np.deg2rad(52 - pretilt_angle)  # MAGIC_NUMBER
     rotation = np.deg2rad(rotation)
     stage_settings = MoveSettings(rotate_compucentric=True)
     logging.info(f"movement: moving flat to {beam_type.name}")
@@ -416,6 +465,7 @@ def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
         Stage position to pass to relative movement function.
     """
     from autoscript_sdb_microscope_client.structures import StagePosition
+
     return StagePosition(x=expected_x, y=0, z=0)
 
 
@@ -433,15 +483,16 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     """
     # TODO: add settings, need to read pretilt
     from autoscript_sdb_microscope_client.structures import StagePosition
+
     if beam_type == BeamType.ELECTRON:
         tilt_adjustment = np.deg2rad(-pretilt)
     elif beam_type == BeamType.ION:
-        tilt_adjustment = np.deg2rad(52 - pretilt) # MAGIC_NUMBER
+        tilt_adjustment = np.deg2rad(52 - pretilt)  # MAGIC_NUMBER
     tilt_radians = stage_tilt + tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
-    logging.info(f'drift correction: the corrected Y shift is {y_move:e} meters')
-    logging.info(f'drift correction: the corrected Z shift is  {z_move:e} meters')
+    logging.info(f"drift correction: the corrected Y shift is {y_move:e} meters")
+    logging.info(f"drift correction: the corrected Z shift is  {z_move:e} meters")
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
@@ -480,19 +531,20 @@ def linked_within_z_tolerance(microscope, expected_z=3.9e-3, tolerance=1e-6):
     else:
         return False
 
-def reset_needle_park_position(microscope, new_park_position):
-    """ Reset the needle to a safe park position to prevent crashes when inserted.
-    
-    This function is required as the insert() api call does not allow us to specify 
-    an insert position. The needle will return to the previously retracted positions. 
 
-    If the programs stops while the need is inserted and near the stage there is a chance 
+def reset_needle_park_position(microscope, new_park_position):
+    """Reset the needle to a safe park position to prevent crashes when inserted.
+
+    This function is required as the insert() api call does not allow us to specify
+    an insert position. The needle will return to the previously retracted positions.
+
+    If the programs stops while the need is inserted and near the stage there is a chance
     it will hit the stage when reinserted if we do not do this.
 
     TODO: Determine the initial park position after needle calibration and use that as a default
     TODO: Call this before liftout starts to prevent crashing.
-    
-        """
+
+    """
     # # recalibrating needle park position
     # # move sample stage out
     move_sample_stage_out(microscope)
