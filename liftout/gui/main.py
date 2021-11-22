@@ -236,7 +236,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
-        # # save
+        # save
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -482,7 +482,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.pushButton_autoliftout.setEnabled(True)
 
-        logging.info(f"{len(self.samples)} samples loaded from {save_path}.")
+        logging.info(f"{len(self.samples)} samples loaded from {save_path}")
         logging.info(f"LOAD COORDINATES FINISHED")
 
     def single_liftout(self, landing_coordinates, lamella_coordinates,
@@ -566,7 +566,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
-        self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])   # TO_TEST 80e-6
+        self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
         self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']  # TODO: why are these two lines here?
         self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -588,9 +588,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample.milling_coordinates = self.stage.current_position
         self.current_sample.save_data()
 
-        if self.ADDITIONAL_CONFIRMATION: #TO_TEST
+        if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
-            self.update_display(beam_type=BeamType.ION, image_type="last")
+            self.update_display(beam_type=BeamType.ION, image_type="new")
             self.ask_user(image=self.image_SEM)
 
         logging.info(f"{self.current_status.name} | MILL_TRENCHES | FINISHED")
@@ -914,8 +914,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
         self.image_settings['beam_type'] = beamType
         self.raw_image, self.overlay_image, self.downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = \
-            calibration.identify_shift_using_machine_learning(self.microscope, self.image_settings, self.settings, self.current_sample.sample_no,
-                                                              shift_type=shift_type)
+            calibration.identify_shift_using_machine_learning(microscope=self.microscope, image_settings=self.image_settings, settings=self.settings, shift_type=shift_type)
         feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
         # scaled features
         scaled_feature_1_px = detection_utils.scale_invariant_coordinates(feature_1_px, self.overlay_image) #(y, x)
@@ -1369,7 +1368,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
         # thinning position
-        thinning_rotation_angle = self.settings["thin_lamella"]["rotation_angle"]  # 180 deg
+        thinning_rotation_angle = self.settings["thin_lamella"]["rotation_angle"]  # 180 deg # TODO: convert to absolute movement for safety (50deg, aka start angle)
         thinning_tilt_angle = self.settings["thin_lamella"]["tilt_angle"]  # 21 deg
 
         # rotate to thinning angle
@@ -1413,40 +1412,45 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ###################################### THIN_LAMELLA ######################################
 
-        # TODO: use new thinning code
+        # NEW THINNING
+        self.update_image_settings() # TO_TEST
+        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
-
-        # z-movement (shouldnt really be needed if eucentric calibration is correct)
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))
-        z_move = movement.z_corrected_stage_movement(z_distance, self.stage.current_position.t)
-        self.stage.relative_move(z_move)
-
-        # x-move the rest of the way
-        x_move = movement.x_corrected_stage_movement(-distance_x_m)
-        self.stage.relative_move(x_move)
-
-        # move half the width of lamella to centre the edge..
-        width = self.settings["lamella"]["lamella_width"]
-        x_move_half_width = movement.x_corrected_stage_movement(width / 4)
-        self.stage.relative_move(x_move_half_width)
-
-        # take reference images and finish
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], # 80e-6
-            save=True,
-            label=f"{self.current_sample.sample_no:02d}_lamella_pre_thinning"
-        )
-
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-
-        # mill thin lamella pattern
-        self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
-        self.ask_user()
-        if self.response:
-            milling.mill_thin_lamella(self.microscope, self.settings)
+        #
+        # # TODO: use new thinning code
+        #
+        # distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
+        #
+        # # z-movement (shouldnt really be needed if eucentric calibration is correct)
+        # z_distance = distance_y_m / np.sin(np.deg2rad(52))
+        # z_move = movement.z_corrected_stage_movement(z_distance, self.stage.current_position.t)
+        # self.stage.relative_move(z_move)
+        #
+        # # x-move the rest of the way
+        # x_move = movement.x_corrected_stage_movement(-distance_x_m)
+        # self.stage.relative_move(x_move)
+        #
+        # # move half the width of lamella to centre the edge..
+        # width = self.settings["lamella"]["lamella_width"]
+        # x_move_half_width = movement.x_corrected_stage_movement(width / 4)
+        # self.stage.relative_move(x_move_half_width)
+        #
+        # # take reference images and finish
+        # self.update_image_settings(
+        #     resolution=self.settings["imaging"]["resolution"],
+        #     dwell_time =self.settings["imaging"]["dwell_time"],
+        #     hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], # 80e-6
+        #     save=True,
+        #     label=f"{self.current_sample.sample_no:02d}_lamella_pre_thinning"
+        # )
+        #
+        # acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        #
+        # # mill thin lamella pattern
+        # self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
+        # self.ask_user()
+        # if self.response:
+        #     milling.mill_thin_lamella(self.microscope, self.settings)
 
         ###################################################################################################
 
@@ -2147,5 +2151,5 @@ def launch_gui(ip_address='10.0.0.1', offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)

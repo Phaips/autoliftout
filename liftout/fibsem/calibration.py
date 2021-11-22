@@ -398,7 +398,7 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     ref_image = acquire.new_image(microscope, image_settings)
 
     # adjust beamshift by known amount
-    microscope.beams.ion_beam.beam_shift.value += (1e-6, 2e-6)
+    # microscope.beams.ion_beam.beam_shift.value += (1e-6, 2e-6)
 
     # align using cross correlation
     img1 = ref_image
@@ -418,8 +418,6 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
     # mill
     from liftout.fibsem import milling
-
-    # milling.mill_thin_lamella(microscope, settings)
 
     ## MILL THIN LAMELLA
     # load protocol stages
@@ -443,7 +441,7 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
         # adjust beamshift
         microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
-
+        _ = acquire.new_image(microscope, image_settings)
         logging.info(
             "milling: protocol stage {} of {}".format(
                 stage_number + 1, len(protocol_stages)
@@ -525,12 +523,17 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
             "hfw"
         ]
         microscope.imaging.set_active_view(2)  # the ion beam view
+        _ = acquire.new_image(microscope, settings=image_settings)
+
         try:
             microscope.patterning.run()
         except ApplicationServerException:
             logging.error("ApplicationServerException: could not mill!")
         microscope.patterning.clear_patterns()
 
+    logging.info("Thin Lamella Finished.")
+
+    # TODO: reset to the imaging current
     # for stage in stages:
     #   align
     #   mill stage

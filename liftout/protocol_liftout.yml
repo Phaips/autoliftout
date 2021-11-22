@@ -128,10 +128,10 @@ cut:
   hfw: 100e-6
   gap: 2e-6
 thin_lamella: # Lamella parameters
-  rotation_angle: 180 # deg
+  rotation_angle: 180 # deg (relative)
   tilt_angle: 21 # deg
   lamella_width:  4e-6 # In meters. Width of lamella.
-  lamella_height: 0.5e-6 # In meters. Thickness of lamella.
+  lamella_height: 0.25e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
@@ -140,13 +140,13 @@ thin_lamella: # Lamella parameters
   # Stages may override the default parmeters above Eg: current, depth, etc.
   protocol_stages:
 #  # Rough cut, stage 1
-#  - percentage_roi_height: 0.7 # Milling size as fraction of total_cut_height.
-#    percentage_from_lamella_surface: 0.4 # Fraction from surface of lamella.
-#    milling_depth: 0.5e-6 # In meters. Overrides the default miling depth.
-#    milling_current: 0.89e-9 # In Amperes. Overrides the default current.
-#  # Regular cut, stage 2
   - percentage_roi_height: 0.5 # Milling size as fraction of total_cut_height.
     percentage_from_lamella_surface: 0.2 # Fraction from surface of lamella.
+    milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
+    milling_current: 0.2e-9 # In Amperes. Overrides the default current.
+#  # Regular cut, stage 2
+  - percentage_roi_height: 0.3 # Milling size as fraction of total_cut_height.
+    percentage_from_lamella_surface: 0.1 # Fraction from surface of lamella.
     milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
     milling_current: 0.2e-9 # In Amperes. Overrides the default current.
   # Polishing cut, stage 3

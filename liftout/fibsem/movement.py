@@ -380,10 +380,10 @@ def flat_to_beam(
     microscope, settings, pretilt_angle=pretilt, beam_type=BeamType.ELECTRON
 ):
     """Make the sample surface flat to the electron or ion beam."""
-
+    pretilt_angle_old = pretilt_angle
     stage = microscope.specimen.stage
-    pretilt_angle_new = settings["system"]["pretilt_angle"]  # 27
-    assert pretilt_angle_new == pretilt_angle  # TO_TEST
+    pretilt_angle = settings["system"]["pretilt_angle"]  # 27
+    assert pretilt_angle == pretilt_angle_old  # TO_TEST
     if beam_type is BeamType.ELECTRON:
         rotation = settings["system"]["stage_rotation_flat_to_electron"]
         tilt = np.deg2rad(pretilt_angle)
