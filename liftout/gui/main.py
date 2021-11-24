@@ -557,10 +557,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Take an ion beam image at the *milling current*
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
-        self.microscope.beams.ion_beam.horizontal_field_width.value = self.image_settings['hfw']  # TODO: why are these two lines here?
-        self.microscope.beams.electron_beam.horizontal_field_width.value = self.image_settings['hfw']
         self.update_display(beam_type=BeamType.ION, image_type='new')
-
         self.update_popup_settings(message=f'Have you centered the lamella position in the ion beam?\n'
                                                       f'If not, double click to center the lamella position', click='double',
                                    filter_strength=self.filter_strength, allow_new_image=True)
@@ -617,7 +614,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if ret is False:
             # cross-correlation has failed, manual correction required
-            # TODO: we need to take a new image here? / use last image
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
             self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
@@ -777,7 +773,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             time.sleep(1)
 
         # reference images after liftout complete
-        self.image_settings['label'] = f"{self.current_sample.sample_no:02d}_liftout_of_trench" # TODO: TO_TEST
+        self.image_settings['label'] = f"{self.current_sample.sample_no:02d}_liftout_of_trench"
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move needle to park position
@@ -794,8 +790,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### REFERENCE IMAGES
         # low res
-        # TODO: remove lowres/highres ref images? they are immediately retaken afterwards...
-        # TODO: reset the label after each movement...
         self.update_image_settings(
             resolution=self.settings["reference_images"]["needle_ref_img_resolution"],
             dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
@@ -820,7 +814,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### XY-MOVE (ELECTRON)
         self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_pre_movement_lowres" # TODO: TO_TEST
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_pre_movement_lowres"
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -836,7 +830,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_xy_movement_lowres" # TODO: TO_TEST
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_xy_movement_lowres"
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
         # calculate shift in xyz coordinates
@@ -857,7 +851,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             ### Z-MOVE FINAL (ION)
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
-            self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_z_half_movement_highres" # TODO: TO_TEST
+            self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_z_half_movement_highres"
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
             # calculate shift in xyz coordinates
@@ -881,14 +875,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_lowres" # TODO: TO_TEST
+                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_lowres"
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
 
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_highres" # TODO: TO_TEST
+                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_highres"
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | FINISHED")
@@ -1921,11 +1915,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                 beam_type=beam_type)
                             self.stage.relative_move(x_move)
                             self.stage.relative_move(yz_move)
-                            # TODO: refactor beam type here ??
                             self.popup_settings['image'] = acquire.new_image(
                                 microscope=self.microscope,
                                 settings=self.image_settings)
-                            if beam_type:
+                            if beam_type: # TODO: probably remove this if statement (useless)
                                 self.update_display(beam_type=beam_type,
                                                     image_type='last')
                             self.update_popup_display()
