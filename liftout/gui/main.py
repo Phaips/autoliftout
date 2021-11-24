@@ -662,7 +662,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TO_TEST
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_highres"],
-                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres")
+                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
@@ -777,7 +777,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             time.sleep(1)
 
         # reference images after liftout complete
-        self.image_settings['label'] = 'liftout_of_trench'
+        self.image_settings['label'] = f"{self.current_sample.sample_no:02d}_liftout_of_trench" # TODO: TO_TEST
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move needle to park position
@@ -820,6 +820,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### XY-MOVE (ELECTRON)
         self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_pre_movement_lowres" # TODO: TO_TEST
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -835,6 +836,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
+        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_xy_movement_lowres" # TODO: TO_TEST
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
         # calculate shift in xyz coordinates
@@ -855,6 +857,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             ### Z-MOVE FINAL (ION)
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
+            self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_z_half_movement_highres" # TODO: TO_TEST
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
             # calculate shift in xyz coordinates
@@ -878,14 +881,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_ref_img_lowres"
+                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_lowres" # TODO: TO_TEST
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
 
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_ref_img_highres"
+                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_highres" # TODO: TO_TEST
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | FINISHED")
@@ -1395,7 +1398,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###################################### THIN_LAMELLA ######################################
 
         # NEW THINNING
-        self.update_image_settings() # TO_TEST
+        self.update_image_settings() # TODO: TO_TEST
         calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
 
         #
