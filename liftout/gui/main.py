@@ -997,7 +997,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # cross-correlation has failed, manual correction required
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
                          click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_FIB) # TODO: might need to update image?
+            self.ask_user(image=self.image_FIB)
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
         logging.info(f"{self.current_status.name}: initial landing calibration complete.")
@@ -1392,11 +1392,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###################################### THIN_LAMELLA ######################################
 
         # NEW THINNING
-        self.update_image_settings() # TODO: TO_TEST
+        self.update_image_settings() # TODO: TO_TEST (new thinning code)
         calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
 
         #
-        # # TODO: use new thinning code
         #
         # distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
         #
@@ -1805,7 +1804,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.patterns = []
                 for pattern in self.popup_settings['milling_patterns']:
                     if type(self.popup_settings['image']) == np.ndarray:
-                        # TODO: remove this block as it is only used for testing
+                        # TODO: remove this block as it is only used for testing (NEXT)
                         image_width = self.popup_settings['image'].shape[1]
                         image_height = self.popup_settings['image'].shape[0]
                         pixel_size = 1e-6
