@@ -421,7 +421,6 @@ def weld_to_landing_post(microscope, settings, milling_current=20e-12):
         Whether to wait for user confirmation before milling.
     """
     logging.info("milling: weld to landing post")
-    # TO_TEST
     pattern = _create_mill_pattern(
         microscope,
         center_x=0,

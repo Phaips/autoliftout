@@ -383,7 +383,7 @@ def flat_to_beam(
     pretilt_angle_old = pretilt_angle
     stage = microscope.specimen.stage
     pretilt_angle = settings["system"]["pretilt_angle"]  # 27
-    assert pretilt_angle == pretilt_angle_old  # TO_TEST
+    assert pretilt_angle == pretilt_angle_old  # TODO: REMOVE PRETILT_ANGLE FROM PARAMS TO_TEST
     if beam_type is BeamType.ELECTRON:
         rotation = settings["system"]["stage_rotation_flat_to_electron"]
         tilt = np.deg2rad(pretilt_angle)

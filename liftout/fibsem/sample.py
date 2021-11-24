@@ -200,10 +200,8 @@ class Sample:
             r=sample_dict["park_position"]["r"],
         )
 
-        # TODO: improve this
-        # TODO: update the names of files once the eb_ib issue is fixed..
         # load images from disk
-        sample_no = sample_dict["sample_no"]  # TO_TEST
+        sample_no = sample_dict["sample_no"]
         ref_landing_lowres_eb = os.path.join(
             self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif"
         )
