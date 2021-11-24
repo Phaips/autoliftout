@@ -397,9 +397,9 @@ def flat_to_beam(
     if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
         logging.info(f"movement: tilting to flat for large rotation.")
-    logging.info(f"movement: rotating stage to {rotation}")
+    logging.info(f"movement: rotating stage to {rotation:.4f}")
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
-    logging.info(f"movement: tilting stage to {tilt}")
+    logging.info(f"movement: tilting stage to {tilt:.4f}")
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
     return stage.current_position
 
