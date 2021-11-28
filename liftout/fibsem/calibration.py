@@ -394,7 +394,6 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     image_settings["label"] = "crosscorrelation_1"
 
     # initial reference image
-    # _, ref_image = acquire.take_reference_images(microscope, image_settings)
     ref_image = acquire.new_image(microscope, image_settings)
 
     # adjust beamshift by known amount
@@ -414,13 +413,7 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     # retake image
     _ = acquire.new_image(microscope, image_settings)
 
-    # TODO: need to align for each imaging current...
-
-    # mill
-    from liftout.fibsem import milling
-
-    ## MILL THIN LAMELLA
-    # load protocol stages
+    # load protocol settings
     protocol_stages = []
 
     for stage_settings in settings["thin_lamella"]["protocol_stages"]:
@@ -429,6 +422,49 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
         protocol_stages.append(tmp_settings)
 
+
+    #####################
+
+    # TODO: need to align for each imaging current...
+    # # high_current
+    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[0]['milling_current']}"
+    # microscope.beams.ion_beam.beam_current.value = protocol_stages[0]["milling_current"]
+    # img_ref_high_current = acquire.new_image(microscope, image_settings)
+    #
+    # # med_current
+    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[1]['milling_current']}"
+    # microscope.beams.ion_beam.beam_current.value = protocol_stages[1]["milling_current"]
+    # img_ref_med_current = acquire.new_image(microscope, image_settings)
+    #
+    # # low_current
+    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[2]['milling_current']}"
+    # microscope.beams.ion_beam.beam_current.value = protocol_stages[2]["milling_current"]
+    # img_ref_low_current = acquire.new_image(microscope, image_settings)
+    #
+    # img_refs = [img_ref_high_current, img_ref_med_current, img_ref_low_current]
+
+    # maybe a dictionary with the beam_current as key would be better?
+    # TODO: make this a loop?
+    # TODO: revert to previous imaging current?
+    # TODO: will this mean we have to change params for each cross-correlation?
+    # TODO: update label here?
+
+
+
+    # for stage_number, stage_settings in protocol_stages:
+    #
+    #     img1 = img_refs[stage_number]
+
+
+    ########################
+
+    # mill
+    from liftout.fibsem import milling
+
+    ## MILL THIN LAMELLA
+    # load protocol stages
+
+    # MILL THIN LAMELLA
     for stage_number, stage_settings in enumerate(protocol_stages):
 
         # align using cross correlation
