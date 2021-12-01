@@ -339,7 +339,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def ensure_eucentricity(self, flat_to_sem=True):
         calibration.validate_scanning_rotation(self.microscope)
         if flat_to_sem:
-            movement.flat_to_beam(self.microscope, settings=self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON)
+            movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
 
         # TODO: maybe update images here?
         # lowres calibration
@@ -577,8 +577,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
+            self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
-            self.ask_user(image=self.image_SEM)
+            self.ask_user(image=self.image_FIB)
 
         logging.info(f"{self.current_status.name} | MILL_TRENCHES | FINISHED")
         ##
@@ -606,7 +607,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # move flat to electron beam
-        movement.flat_to_beam(self.microscope, self.settings, pretilt_angle=self.pretilt_degrees, beam_type=BeamType.ELECTRON, )
+        movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON, )
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
@@ -1455,7 +1456,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: thin lamella {self.current_sample.sample_no} complete.")
         logging.info(f" {self.current_status.name} FINISHED")
 
-
     def initialise_image_frames(self):
         self.figure_SEM = plt.figure()
         plt.axis('off')
@@ -2050,7 +2050,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Thinning": "mediumpurple", "Finished": "cyan"}
-        self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}"))
+        self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white"))
 
         if self.samples:
             if self.current_sample:

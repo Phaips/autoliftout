@@ -19,7 +19,6 @@ import liftout.detection.DetectionModel as DetectionModel
 from liftout.detection.utils import *
 
 # TODO: convert detection types to enum
-# TODO: maybe implement template methods
 
 class Detector:
 
