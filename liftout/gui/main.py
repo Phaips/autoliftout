@@ -1380,6 +1380,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         self.correct_stage_drift_with_ML()
 
+
+        # TODO: use this manual version instead of ML?
+        # self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
+        # self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
+        #                                    f'Press Yes when the feature is centered', click='double',
+        #                            filter_strength=self.filter_strength, allow_new_image=True)
+        # self.ask_user(image=self.image_FIB)
+
         # take reference images
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
@@ -1395,41 +1403,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # NEW THINNING
         self.update_image_settings() # TODO: TO_TEST (new thinning code)
         calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
-
-        #
-        #
-        # distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ION)
-        #
-        # # z-movement (shouldnt really be needed if eucentric calibration is correct)
-        # z_distance = distance_y_m / np.sin(np.deg2rad(52))
-        # z_move = movement.z_corrected_stage_movement(z_distance, self.stage.current_position.t)
-        # self.stage.relative_move(z_move)
-        #
-        # # x-move the rest of the way
-        # x_move = movement.x_corrected_stage_movement(-distance_x_m)
-        # self.stage.relative_move(x_move)
-        #
-        # # move half the width of lamella to centre the edge..
-        # width = self.settings["lamella"]["lamella_width"]
-        # x_move_half_width = movement.x_corrected_stage_movement(width / 4)
-        # self.stage.relative_move(x_move_half_width)
-        #
-        # # take reference images and finish
-        # self.update_image_settings(
-        #     resolution=self.settings["imaging"]["resolution"],
-        #     dwell_time =self.settings["imaging"]["dwell_time"],
-        #     hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"], # 80e-6
-        #     save=True,
-        #     label=f"{self.current_sample.sample_no:02d}_lamella_pre_thinning"
-        # )
-        #
-        # acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-        #
-        # # mill thin lamella pattern
-        # self.update_popup_settings(message="Run lamella thinning?", crosshairs=False)
-        # self.ask_user()
-        # if self.response:
-        #     milling.mill_thin_lamella(self.microscope, self.settings)
 
         ###################################################################################################
 
