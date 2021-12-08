@@ -431,9 +431,6 @@ def weld_to_landing_post(microscope, settings, milling_current=20e-12):
         rotation_degrees=settings["weld"]["rotation"],
     )
 
-    # pattern = _create_mill_pattern(microscope, center_x=0, center_y=0, width=3e-6,
-    #                         height=10e-6,
-    #                         depth=5e-9, rotation_degrees=0)
     return pattern
 
 

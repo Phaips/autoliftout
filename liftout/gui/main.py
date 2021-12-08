@@ -1242,7 +1242,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name} FINISHED")
 
 
-
     def reset_needle(self):
 
         self.current_status = AutoLiftoutStatus.Reset
@@ -1376,17 +1375,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_drift_correction_ML_thinning"
+            label=f"{self.current_sample.sample_no:02d}_drift_correction_thinning"
         )
-        self.correct_stage_drift_with_ML()
-
+        # self.correct_stage_drift_with_ML()
 
         # TODO: use this manual version instead of ML?
-        # self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        # self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
-        #                                    f'Press Yes when the feature is centered', click='double',
-        #                            filter_strength=self.filter_strength, allow_new_image=True)
-        # self.ask_user(image=self.image_FIB)
+        # TODO: check the hfw, we might need more zoom
+        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
+        self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
+                                           f'Press Yes when the feature is centered', click='double',
+                                   filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_FIB)
 
         # take reference images
         self.update_image_settings(
@@ -1406,7 +1405,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ###################################################################################################
 
+        # TODO: take super high res reference (30um)
         # take reference images and finish
+
+        self.update_image_settings(
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time =self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
+            save=True,
+            label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_superres"
+        )
+
+        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
@@ -1426,6 +1437,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+
         logging.info(f"{self.current_status.name}: thin lamella {self.current_sample.sample_no} complete.")
         logging.info(f" {self.current_status.name} FINISHED")
 

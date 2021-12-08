@@ -567,6 +567,13 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
             logging.error("ApplicationServerException: could not mill!")
         microscope.patterning.clear_patterns()
 
+    # reset milling state and return to imaging current
+    logging.info("milling: returning to the ion beam imaging current now.")
+    microscope.patterning.clear_patterns()
+    microscope.beams.ion_beam.beam_current.value = settings["imaging"]["imaging_current"]
+    microscope.patterning.mode = "Serial"
+    logging.info("milling: ion beam milling complete.")
+
     logging.info("Thin Lamella Finished.")
 
     # TODO: reset to the imaging current
