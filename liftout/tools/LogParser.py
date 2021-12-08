@@ -27,7 +27,7 @@ def parse_log_file(fname):
             Thinning = 5
             Finished = 6
     
-    stages = [state.name for state in AutoLiftoutStatus]
+    stages = [state.name for state in AutoLiftoutStatus] + ["SINGLE_LIFTOUT"]
     state_dict = dict.fromkeys(stages)
     for state in state_dict.keys():
         state_dict[state] = {"STARTED": None, "FINISHED": None}
@@ -74,17 +74,19 @@ def parse_log_file(fname):
                 time = line.split("—")[0].split(",")[0]  # don't care about ms
                 import datetime
                 dt_object = datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-                state_dict[state][status] = dt_object
+                if "|" not in msg: # temp solution until we account for sub-states
+                    # print(state, status, msg)
+                    state_dict[state][status] = dt_object
             if msg.__contains__("Perform"):
                 dat = msg.split(":")
                 state_dict[dat[0].split()[1].strip()]["PERFORM"] = dat[1]
 
             # user interaction
             if "on_gui_click" in func:
-                print("CLICK MESSAGE")
-                print(line)
-                print(msg)
-            
+                # print("CLICK MESSAGE")
+                # print(line)
+                # print(msg)
+                pass
 
     return ml_dict, gamma_dict, state_dict # TODO: need a better way
 
