@@ -23,7 +23,7 @@ imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
   resolution: "1536x1024"
-  imaging_current: 20e-12 # 20pA for Ar, 30pA for Xe
+  imaging_current: 20e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe
   save: False
   autocontrast: True
   max_eb_hfw: 2700e-6
@@ -72,20 +72,20 @@ calibration:
 lamella:
   lamella_width: 12e-6 # in meters
   lamella_height: 5e-6 # in meters
-  total_cut_height: 6e-6 # in meters
-  milling_depth: 1.2e-6 # default milling depth, unless otherwise specified
-  milling_current: 0.74e-9 # default milling current, unless otherwise specified
+  total_cut_height: 10e-6 # in meters
+  milling_depth: 2.2e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   hfw: 150e-6
   protocol_stages: # stages will be milled in the order they appear here
     # rough_cut
     - percentage_roi_height: 0.3 # fractional percentage of total_cut height
       percentage_from_lamella_surface: 0.7 # fractional percentage
-      milling_current: 0.74e-9 # in meters
+      milling_current: 2.4e-9 # in meters
     # regular_cut
     - percentage_roi_height: 0.8 # fractional percentage of total_cut height
       percentage_from_lamella_surface: 0.0 # fractional percentage
-      milling_current: 0.74e-9 # in Amps
-      milling_depth: 0.8e-6 # in meters
+      milling_current: 2.4e-9 # in Amps
+      milling_depth: 2.2e-6 # in meters
 needle:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6

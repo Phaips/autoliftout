@@ -65,7 +65,7 @@ def main():
         st.subheader(fname)
         cols_raw = st.columns(2)
         cols_raw[0].image(img, caption="base_img")
-        cols_raw[1].image(mask, caption="label_img") # TODO: replace with label if available?
+        cols_raw[1].image(mask, caption="label_img")
 
         cols_mask = st.columns(2)
         cols_mask[0].image(lamella_mask, caption="lamella_mask")
@@ -83,6 +83,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# TODO: add save images

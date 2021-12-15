@@ -414,13 +414,13 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
 
     microscope.imaging.set_active_view(1)
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.000400
+    microscope.beams.electron_beam.horizontal_field_width.value = 0.000150
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
-    z_difference = expected_z - microscope.specimen.stage.current_position.z
-    if abs(z_difference) > 3e-3:
-        raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
+    # z_difference = expected_z - microscope.specimen.stage.current_position.z
+    # if abs(z_difference) > 3e-3:
+    #     raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
     # This move shouldn't be happening as we only want to refocus, not shift the stage position
     # z_move = z_corrected_stage_movement(
     #     z_difference, microscope.specimen.stage.current_position.t)

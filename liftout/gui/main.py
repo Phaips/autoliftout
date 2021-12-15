@@ -3,14 +3,14 @@ import logging
 import sys
 import time
 import traceback
-from re import M
-from tkinter import Tk, filedialog
+import os
+from enum import Enum
+
 
 import matplotlib
 import matplotlib.pyplot as plt
-import mock
 import numpy as np
-import yaml
+import liftout
 from liftout import utils
 from liftout.detection import utils as detection_utils
 from liftout.fibsem import acquire, calibration, milling, movement
@@ -22,16 +22,12 @@ from matplotlib.backends.backend_qt5agg import \
     NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from liftout.gui.DraggablePatch import  DraggablePatch
+from liftout.gui.DraggablePatch import DraggablePatch
 matplotlib.use('Agg')
-import os
-from enum import Enum
 
-import liftout
-import PIL
 import scipy.ndimage as ndi
-import skimage
 from autoscript_sdb_microscope_client.structures import *
+from autoscript_sdb_microscope_client.enumerations import *
 from liftout.fibsem.sample import Sample
 from PIL import Image
 
@@ -51,6 +47,7 @@ METRE_TO_MICRON = 1e-6
 
 _translate = QtCore.QCoreApplication.translate
 
+
 class AutoLiftoutStatus(Enum):
     Initialisation = -1
     Setup = 0
@@ -60,6 +57,7 @@ class AutoLiftoutStatus(Enum):
     Reset = 4
     Thinning = 5
     Finished = 6
+
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, ip_address='10.0.0.1', offline=False):
@@ -117,6 +115,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.initialize_hardware(offline=offline)
 
         if self.microscope:
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
 
@@ -137,7 +136,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'filter_strength': 0,
                                'crosshairs': True,
                                'milling_patterns': None}
-
 
         # initial image settings
         self.image_settings = {}
@@ -227,10 +225,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition")
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
-        # movement.auto_link_stage(self.microscope) # Removed as it causes problems, and should be done before starting
-
         # Select landing points and check eucentric height
         movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
+        movement.auto_link_stage(self.microscope)  # TODO: TEST
         self.ensure_eucentricity()
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -269,11 +266,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             raise ValueError(f'Expected "lamella" or "landing" as feature_type')
 
+        movement.auto_link_stage(self.microscope) # TODO: TEST
+
         while select_another_position:
             if feature_type == 'lamella':
                 self.ensure_eucentricity()
                 movement.move_to_trenching_angle(self.microscope, settings=self.settings)
-
 
             # refresh
             self.update_image_settings(hfw=self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"], save=False)
@@ -343,10 +341,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: maybe update images here?
         # lowres calibration
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"]) #900e-6
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])  # 900e-6
 
         # highres calibration
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"]) # 200e-6
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"])  # 200e-6
 
     def user_based_eucentric_height_adjustment(self, hfw=None):
 
@@ -366,7 +364,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
-            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"])) # clip to max hfw for ion, 900e-6 #TODO: implement this before taking images...?
+            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"]))  # clip to max hfw for ion, 900e-6 #TODO: implement this before taking images...?
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single',
@@ -464,7 +462,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 sample = Sample(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
-
 
         # TODO: test whether this is accurate, maybe move to start of run_liftout
         # if sample.park_position.x is not None:
@@ -961,9 +958,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     if self.response:
                         feature_2_px = (self.yclick, self.xclick)
 
-
             # TODO: wrap this in a function
-            #### show the user the manually corrected movement and confirm
+            # show the user the manually corrected movement and confirm
             from liftout.detection.detection import draw_two_features
             final_detection_img = Image.fromarray(self.downscaled_image).convert("RGB")
             final_detection_img = draw_two_features(final_detection_img, feature_1_px, feature_2_px)
@@ -1038,7 +1034,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
 
-        z_distance = distance_y_m / np.sin(np.deg2rad(52)) # TODO: MAGIC_NUMBER
+        z_distance = distance_y_m / np.sin(np.deg2rad(52))  # TODO: MAGIC_NUMBER
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: z-move complete: {z_move}")
@@ -1377,8 +1373,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"{self.current_sample.sample_no:02d}_drift_correction_thinning"
         )
-        # self.correct_stage_drift_with_ML()
 
+
+        # self.correct_stage_drift_with_ML()
         # TODO: use this manual version instead of ML?
         # TODO: check the hfw, we might need more zoom
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1400,12 +1397,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###################################### THIN_LAMELLA ######################################
 
         # NEW THINNING
-        self.update_image_settings() # TODO: TO_TEST (new thinning code)
+        self.update_image_settings()
         calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
 
         ###################################################################################################
 
-        # TODO: take super high res reference (30um)
         # take reference images and finish
 
         self.update_image_settings(
@@ -1506,7 +1502,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         TEST_VALIDATE_DETECTION = False
         TEST_DRAW_PATTERNS = False
-        TEST_BEAM_SHIFT = True
+        TEST_BEAM_SHIFT = False
+        TEST_AUTO_LINK = True
 
         if TEST_VALIDATE_DETECTION:
 
@@ -1529,6 +1526,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings()
             calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
 
+        if TEST_AUTO_LINK:
+            logging.info("TESTING AUTO LINK STAGE")
+            # TODO: expected z, tolerance?
+            # self.microscope.specimen.stage
+
+
+            # 4e-3 is an arbitary amount, we can focus at any distance
+            # if there is a large difference between the stage z and working distance we need to refocus /link
+
+
+
+
+
+            eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
+            # working distance = focus distance
+            #  stage.working_distance
+            movement.auto_link_stage(microscope=self.microscope, expected_z=3.9e-3)
 
 
 
