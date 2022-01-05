@@ -585,3 +585,80 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     #   mill lower region
 
     return
+
+
+def auto_focus_and_link(microscope):
+    import skimage
+
+    from skimage.morphology import disk
+    from skimage.filters.rank import gradient
+
+    PLOT = True
+
+    image_settings = {}
+    image_settings["resolution"] = "768x512"  # "1536x1024"
+    image_settings["dwell_time"] = 0.3e-6
+    image_settings["hfw"] = 50e-6
+    image_settings["autocontrast"] = True
+    image_settings["beam_type"] = BeamType.ELECTRON
+    image_settings["gamma"] = {
+        "correction": True,
+        "min_gamma": 0.15,
+        "max_gamma": 1.8,
+        "scale_factor": 0.01,
+        "threshold": 46,
+    }
+    image_settings["save"] = False
+    image_settings["label"] = ""
+    image_settings["save_path"] = None
+    print(image_settings)
+
+    microscope.beams.electron_beam.working_distance.value = 4e-3
+    current_working_distance = microscope.beams.electron_beam.working_distance.value
+
+    print("Initial: ", current_working_distance)
+
+    working_distances = [
+        current_working_distance - 0.5e-3,
+        current_working_distance - 0.25e-3,
+        current_working_distance,
+        current_working_distance + 0.25e-3,
+        current_working_distance + 0.5e-3
+    ]
+
+    # loop through working distances and calculate the sharpness (acutance)
+    # highest acutance is best focus
+    sharpeness_metric = []
+    for i, wd in enumerate(working_distances):
+        microscope.beams.electron_beam.working_distance.value = wd
+        img = acquire.new_image(microscope, image_settings)
+
+        print(f"Img {i}: {img.metadata.optics.working_distance:.5f}")
+
+        # sharpness (Acutance: https://en.wikipedia.org/wiki/Acutance
+        out = gradient(skimage.filters.median(np.copy(img.data)), disk(5))
+
+        if PLOT:
+            import matplotlib.pyplot as plt
+            plt.subplot(1, 2, 1)
+            plt.imshow(img.data, cmap="gray")
+            plt.subplot(1, 2, 2)
+            plt.imshow(out, cmap="gray")
+            plt.show()
+
+        sharpness = np.mean(out)
+        sharpeness_metric.append(sharpness)
+
+    # select working distance with max acutance
+    idx = np.argmax(sharpeness_metric)
+
+    print(*zip(working_distances, sharpeness_metric))
+    print(idx, working_distances[idx], sharpeness_metric[idx])
+
+    # reset working distance
+    microscope.beams.electron_beam.working_distance.value = working_distances[idx]
+
+    # run fine auto focus and link
+    microscope.imaging.set_active_view(1)  # set to Ebeam
+    microscope.auto_functions.run_auto_focus()
+    microscope.specimen.stage.link()
