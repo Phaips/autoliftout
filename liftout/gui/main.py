@@ -115,7 +115,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.initialize_hardware(offline=offline)
 
         if self.microscope:
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN) # TODO: TEST
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
 
@@ -162,7 +162,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.setup_connections()
 
-
         self.pre_run_validation()
 
         # DEVELOPER ONLY
@@ -179,14 +178,31 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         validation_errors = []
         validation_checks = [
             "axes_homed",
+            "beam_calibration",
             "needle_calibration",
-            "link_and_focus"
+            "link_and_focus",
+            "stage_coordinate_system",
+            "check_beam_shift_is_zero"
 
         ]
         import random
         for check in validation_checks:
             if random.random() > 0.5:
                 validation_errors.append(check)
+
+        # validate zero beamshift
+        logging.info("BEAM SHIFT: SHOULD BE ZERO")
+        logging.info(f"ELECTRON BEAM: {self.microscope.beams.electron_beam.beam_shift.value}")
+        logging.info(f"ION BEAM: {self.microscope.beams.ion_beam.beam_shift.value}")
+
+        # DOESNT WORK
+        # self.microscope.beams.electron_beam.beam_shift.value = (0, 0)
+        # self.microscope.beams.ion_beam.beam_shift.value = (0, 0)
+        # logging.info(f"ELECTRON BEAM: {self.microscope.beams.electron_beam.beam_shift.value}")
+        # logging.info(f"ION BEAM: {self.microscope.beams.ion_beam.beam_shift.value}")
+        # logging.info(f"BEAM SHIFT RESET")
+
+
 
         if validation_errors:
             logging.warning(f"validation_errors={validation_errors}")
@@ -208,6 +224,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
+        # TODO: do we need to link here?
+        # movement.auto_link_stage(self.microscope)
 
         # NOTE: can't take ion beam image with such a high hfw
         acquire.new_image(self.microscope, self.image_settings)
@@ -227,7 +245,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Select landing points and check eucentric height
         movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
-        movement.auto_link_stage(self.microscope)  # TODO: TEST
+        movement.auto_link_stage(self.microscope, hfw=400e-6)  # TODO: TEST # TODO: move into movement functions?
         self.ensure_eucentricity()
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -235,6 +253,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
+
+        # TODO: we should really save in absolute coordiantes, then covert to specimen on load?
         # save
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
@@ -260,13 +280,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if feature_type == 'lamella':
             movement.move_to_sample_grid(self.microscope, settings=self.settings)
+            movement.auto_link_stage(self.microscope)
         elif feature_type == 'landing':
             movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
+            movement.auto_link_stage(self.microscope, hfw=400e-6)
             self.ensure_eucentricity(flat_to_sem=False)
         else:
             raise ValueError(f'Expected "lamella" or "landing" as feature_type')
-
-        movement.auto_link_stage(self.microscope) # TODO: TEST
 
         while select_another_position:
             if feature_type == 'lamella':
@@ -695,6 +715,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
+        movement.auto_link_stage(self.microscope)
 
         if not self.MILLING_COMPLETED_THIS_RUN:
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
@@ -982,6 +1003,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to landing coordinate # TODO: wrap in safe movement func
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r))
+        movement.auto_link_stage(self.microscope, hfw=400e-6)
         self.stage.absolute_move(landing_coord)
 
         # eucentricity correction
@@ -1149,8 +1173,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         rotation = self.settings["cut"]["rotation"]
         hfw = self.settings["cut"]["hfw"]
         vertical_gap = self.settings["cut"]["gap"]
+        horizontal_gap = self.settings["cut"]["hgap"] # TODO:  TO_TEST
 
-        cut_coord = {"center_x": -distance_x_m,
+        cut_coord = {"center_x": -distance_x_m - horizontal_gap,
                      "center_y": distance_y_m - vertical_gap,
                      "width": width,
                      "height": height,
@@ -1534,9 +1559,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # 4e-3 is an arbitary amount, we can focus at any distance
             # if there is a large difference between the stage z and working distance we need to refocus /link
-
-
-
 
 
             eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
@@ -2079,6 +2101,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
+
 
 def display_error_message(message, title="Error"):
     """PyQt dialog box displaying an error message."""

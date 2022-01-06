@@ -593,7 +593,7 @@ def auto_focus_and_link(microscope):
     from skimage.morphology import disk
     from skimage.filters.rank import gradient
 
-    PLOT = True
+    PLOT = False
 
     image_settings = {}
     image_settings["resolution"] = "768x512"  # "1536x1024"

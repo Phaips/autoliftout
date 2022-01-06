@@ -397,7 +397,7 @@ def flat_to_beam(
     return stage.current_position
 
 
-def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
+def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     """Automatically focus and link sample stage z-height.
     expected_z : float, optional
         Correct height for linked stage in z, in meters, by default 4e-3
@@ -414,10 +414,11 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6):
 
     microscope.imaging.set_active_view(1)
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
-    microscope.beams.electron_beam.horizontal_field_width.value = 0.000150
+    microscope.beams.electron_beam.horizontal_field_width.value = hfw
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
+    # TODO: replace with auto_focus_and_link if performance of focus is poor
     # z_difference = expected_z - microscope.specimen.stage.current_position.z
     # if abs(z_difference) > 3e-3:
     #     raise RuntimeError("ERROR: the reported stage position is likely incorrect!")

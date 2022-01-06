@@ -82,7 +82,7 @@ def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
             pattern.height,
             depth=depth,
         )
-        tmp_pattern.rotation = np.deg2rad(pattern.rotation)
+        tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
     run_milling(microscope, settings)
 
 

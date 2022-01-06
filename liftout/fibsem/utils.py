@@ -72,6 +72,7 @@ def sputter_platinum(microscope, settings, whole_grid=False):
         logging.warning("Consider adjusting the patterning line depth.")
 
     # Cleanup
+    microscope.patterning.clear_patterns()
     microscope.beams.electron_beam.unblank()
     microscope.patterning.set_default_application_file(
         settings["system"]["application_file"]

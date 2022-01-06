@@ -73,7 +73,7 @@ lamella:
   lamella_width: 12e-6 # in meters
   lamella_height: 5e-6 # in meters
   total_cut_height: 10e-6 # in meters
-  milling_depth: 2.2e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   hfw: 150e-6
   protocol_stages: # stages will be milled in the order they appear here
@@ -85,7 +85,7 @@ lamella:
     - percentage_roi_height: 0.8 # fractional percentage of total_cut height
       percentage_from_lamella_surface: 0.0 # fractional percentage
       milling_current: 2.4e-9 # in Amps
-      milling_depth: 2.2e-6 # in meters
+      milling_depth: 5e-6 # in meters
 needle:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
@@ -102,7 +102,7 @@ jcut:
   jcut_length: 9e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 1.7e-6 # in meters
+  jcut_milling_depth: 5e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false
@@ -128,6 +128,7 @@ cut:
   rotation: 0
   hfw: 100e-6
   gap: 2e-6
+  hgap: 4e-6
 thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)
   tilt_angle: 21 # deg
