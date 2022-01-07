@@ -1,6 +1,7 @@
 from liftout.fibsem.acquire import *
 import numpy as np
 from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
+from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem
 import time
 
 pretilt = 27  # TODO: add to protocol
@@ -111,13 +112,13 @@ def move_to_liftout_angle(
         settings=settings,
         beam_type=BeamType.ELECTRON,
     )
-    microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle)))
+    # microscope.specimen.stage.relative_move(StagePosition(t=np.deg2rad(liftout_angle))) # TODO: REMOVE?
     logging.info(f"movement: move to liftout angle ({liftout_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
 def move_to_landing_angle(
-    microscope, settings, landing_angle=18):
+    microscope, settings, landing_angle=13):
     """Tilt the sample stage to the correct angle for the landing posts."""
     flat_to_beam(
         microscope,
@@ -252,7 +253,8 @@ def insert_needle(microscope):
     """
     needle = microscope.specimen.manipulator
     logging.info(f"movement: inserting needle to park position.")
-    needle.insert()
+    park_position = needle.get_saved_position(ManipulatorSavedPosition.PARK, ManipulatorCoordinateSystem.RAW)
+    needle.insert(park_position)
     park_position = needle.current_position
     logging.info(f"movement: inserted needle to {park_position}.")
     return park_position
@@ -404,13 +406,15 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     tolerance : float, optional
         Must be within this absolute tolerance of expected stage z height,
         in meters, by default 1e-4
+
+    Notes:
+        - Focusing determines the working distance (focal distance) of the
+        - Relinking is required whenever there is a significant change in vertical distance, i.e. moving
+          from the landing grid to the sample grid.
+        - Linking determines the specimen coordinate system, as it is defined as the relative dimensions of the top of stage
+          to the instruments.
     """
-    # SAMPLE GRID expected_z = 3.9e-3
-    # LANDING GRID expected_z = 4.05e-3
-    # How to auto-link z for the landing posts
-    #    1. Make landing grid flat to SEM
-    #    2. Zoom really far in on a flat part that isn't part of the posts
-    #    3. Auto-link z, using a DIFFERENT expected_z height (4.05 mm)
+
 
     microscope.imaging.set_active_view(1)
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
@@ -419,34 +423,11 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     # TODO: replace with auto_focus_and_link if performance of focus is poor
-    # z_difference = expected_z - microscope.specimen.stage.current_position.z
-    # if abs(z_difference) > 3e-3:
-    #     raise RuntimeError("ERROR: the reported stage position is likely incorrect!")
-    # This move shouldn't be happening as we only want to refocus, not shift the stage position
-    # z_move = z_corrected_stage_movement(
-    #     z_difference, microscope.specimen.stage.current_position.t)
-    # microscope.specimen.stage.relative_move(z_move)
-    # counter = 0
-    # while not linked_within_z_tolerance(microscope,
-    #                                     expected_z=expected_z,
-    #                                     tolerance=tolerance):
-    #     if counter > 3:
-    #         raise (UserWarning("Could not auto-link z stage height."))
-    #         break
-    #     # Focus and re-link z stage height
-    #     logging.info('Automatically focusing and linking stage z-height.')
-    #     microscope.auto_functions.run_auto_focus()
-    #     microscope.specimen.stage.link()
-    #     z_difference = expected_z - microscope.specimen.stage.current_position.z
-    #
-    #     # This move shouldn't be happening as we only want to refocus, not shift the stage position
-    #     # z_move = z_corrected_stage_movement(
-    #     #     z_difference, microscope.specimen.stage.current_position.t)
-    #     # microscope.specimen.stage.relative_move(z_move)
-    #     logging.info(f"auto_link stage z: :{microscope.specimen.stage.current_position.z}")
     # # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
-    # new_electron_image(microscope)
+
+
+
 
 
 def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
@@ -536,8 +517,7 @@ def reset_needle_park_position(microscope, new_park_position):
     If the programs stops while the need is inserted and near the stage there is a chance
     it will hit the stage when reinserted if we do not do this.
 
-    TODO: Determine the initial park position after needle calibration and use that as a default
-    TODO: Call this before liftout starts to prevent crashing.
+    # TODO: Remove as this is now replaced by AutoScript 4.6
 
     """
     # # recalibrating needle park position

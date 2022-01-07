@@ -55,14 +55,17 @@ def jcut_severing_pattern(microscope, settings):
     return jcut_severing_pattern
 
 
-def run_milling(microscope, settings, *, imaging_current=20e-12):
+def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current=None):
     if settings["imaging"]["imaging_current"]:
         imaging_current = settings["imaging"]["imaging_current"]
     logging.info("milling: running ion beam milling now...")
     microscope.imaging.set_active_view(2)  # the ion beam view
-    microscope.beams.ion_beam.beam_current.value = settings["jcut"][
-        "jcut_milling_current"
-    ]
+    if milling_current is None:
+        microscope.beams.ion_beam.beam_current.value = settings["jcut"][
+            "jcut_milling_current"
+        ]
+    else:
+        microscope.beams.ion_beam.beam_current.value = milling_current
     microscope.patterning.run()
     logging.info("milling: returning to the ion beam imaging current now.")
     microscope.patterning.clear_patterns()
@@ -71,7 +74,7 @@ def run_milling(microscope, settings, *, imaging_current=20e-12):
     logging.info("milling: ion beam milling complete.")
 
 
-def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
+def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float, milling_current: float = None):
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.clear_patterns()
     for pattern in patterns:
@@ -83,7 +86,7 @@ def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float):
             depth=depth,
         )
         tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
-    run_milling(microscope, settings)
+    run_milling(microscope=microscope, settings=settings, milling_current=milling_current)
 
 
 def mill_thin_lamella(microscope, settings):
@@ -575,3 +578,33 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
         logging.info(f"d: {depth}, r: {rotation_degrees}")
 
     return sharpen_patterns
+
+
+def flatten_landing_pattern(microscope, settings):
+    """Create flatten_landing milling pattern in the center of the ion beam field of view.
+    Parameters
+    ----------
+    microscope : AutoScript microscope instance.
+        The AutoScript microscope object.
+    settings : dict
+
+    Returns
+    -------
+    autoscript_sdb_microscope_client.structures.RectanglePattern
+        Rectangle milling pattern used to flatten the landing area.
+    """
+
+    # setup
+    setup_ion_milling(microscope, application_file="autolamella")
+
+    # draw flatten landing pattern
+    pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x=settings["flatten_landing"]["center_x"],
+        center_y=settings["flatten_landing"]["center_y"],
+        width=settings["flatten_landing"]["width"],
+        height=settings["flatten_landing"]["height"],
+        depth=settings["flatten_landing"]["depth"]
+    )
+    pattern.scan_direction = "LeftToRight"
+
+    return pattern

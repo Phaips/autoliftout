@@ -124,7 +124,7 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
         beam_type = BeamType.ION
     if mode is None:
         beam_type = BeamType.ELECTRON
-    lp_ratio = 6
+    lp_ratio = 3
     hp_ratio = 64
     sigma_factor = 10
     sigma_ratio = 1536
@@ -139,17 +139,16 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
     logging.info(
         f"calibration: align using {beam_type.name} reference image in mode {mode}."
     )
-
+    print("Hello")
     # TODO: possibly hard-code these numbers at fixed resolutions?
-    lowpass_pixels = int(
-        max(new_image.data.shape) / lp_ratio
-    )  # =128 @ 1536x1024, good for e-beam images
+    lowpass_pixels = int(max(new_image.data.shape) * 0.66)   # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int(
         max(new_image.data.shape) / hp_ratio
     )  # =6 @ 1536x1024, good for e-beam images
-    sigma = int(
-        sigma_factor * max(new_image.data.shape) / sigma_ratio
-    )  # =2 @ 1536x1024, good for e-beam images
+    sigma = 6
+    #         int(
+    #     sigma_factor * max(new_image.data.shape) / sigma_ratio
+    # )  # =2 @ 1536x1024, good for e-beam images
     # TODO: ask Sergey about maths/check if we can use pixel_to_real_value on dx
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
         new_image,
@@ -262,8 +261,8 @@ def shift_from_crosscorrelation_AdornedImages(
     logging.info(f"img2 is X-shifted by  {err[1]}; Y-shifted by {err[0]}")
     x_shift = err[1] * pixelsize_x_2
     y_shift = err[0] * pixelsize_y_2
-    logging.info(f"X-shift =  {x_shift} meters")
-    logging.info(f"Y-shift =  {y_shift} meters")
+    logging.info(f"X-shift =  {x_shift:.2e} meters")
+    logging.info(f"Y-shift =  {y_shift:.2e} meters")
     return x_shift, y_shift  # metres
 
 
@@ -296,7 +295,7 @@ def crosscorrelation(img1, img2, bp="no", *args, **kwargs):
         img2ft[0, 0] = 0
         tmp = img2ft * np.conj(img2ft)
         img2ft = s * img2ft / np.sqrt(tmp.sum())
-        xcorr = np.real(fftpack.fftshift(fftpack.ifft2(img1ft * np.conj(img2ft))))
+        xcorr = np.real(fftpack.ifft2(img1ft * np.conj(img2ft)))
     elif bp == "no":
         img1ft = fftpack.fft2(img1)
         img2ft = np.conj(fftpack.fft2(img2))
@@ -382,6 +381,7 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
 
 def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
+    # TODO: refactor this function
     # rotate and tilt thinning angle
 
     # user clicks on lamella position
@@ -449,6 +449,8 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     # TODO: will this mean we have to change params for each cross-correlation?
     # TODO: update label here?
 
+
+    # TODO: mask out the lamella area when cross-correlating
 
 
     # for stage_number, stage_settings in protocol_stages:
@@ -576,7 +578,6 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
     logging.info("Thin Lamella Finished.")
 
-    # TODO: reset to the imaging current
     # for stage in stages:
     #   align
     #   mill stage

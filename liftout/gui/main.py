@@ -115,7 +115,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.initialize_hardware(offline=offline)
 
         if self.microscope:
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN) # TODO: TEST
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
 
@@ -182,7 +182,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             "needle_calibration",
             "link_and_focus",
             "stage_coordinate_system",
-            "check_beam_shift_is_zero"
+            "check_beam_shift_is_zero",
+            "ion_beam_working_distance"   # 16.5mm
 
         ]
         import random
@@ -245,7 +246,39 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Select landing points and check eucentric height
         movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
-        movement.auto_link_stage(self.microscope, hfw=400e-6)  # TODO: TEST # TODO: move into movement functions?
+        # tilt to 0
+        self.microscope.specimen.stage.absolute_move(StagePosition(t=0))
+
+        # centre a feature
+        self.update_image_settings(
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
+            beam_type=BeamType.ELECTRON,
+            save=False,
+            label="centre_grid",
+        )
+
+        self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
+        self.update_popup_settings(message='Please double click to centre the landing posts in the SEM.',
+                                   click="double",
+                                   crosshairs=True,
+                                   filter_strength=self.filter_strength)
+        self.ask_user(image=self.image_SEM)
+        
+        # adjust focus
+        movement.auto_link_stage(self.microscope, hfw=400e-6)
+
+        # move back to 4mm
+        self.microscope.specimen.stage.absolute_move(StagePosition(z=4e-3))
+        # movement.auto_link_stage(self.microscope, hfw=400e-6)
+
+        # tilt flat to electron
+        movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
+        movement.auto_link_stage(self.microscope, hfw=400e-6)
+
+    # movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
+
         self.ensure_eucentricity()
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
@@ -256,6 +289,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: we should really save in absolute coordiantes, then covert to specimen on load?
         # save
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -265,6 +299,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples.append(sample)
 
         self.pushButton_autoliftout.setEnabled(True)
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"{self.current_status.name} FINISHED")
@@ -283,7 +318,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             movement.auto_link_stage(self.microscope)
         elif feature_type == 'landing':
             movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
-            movement.auto_link_stage(self.microscope, hfw=400e-6)
+            movement.auto_link_stage(self.microscope, hfw=900e-6)
             self.ensure_eucentricity(flat_to_sem=False)
         else:
             raise ValueError(f'Expected "lamella" or "landing" as feature_type')
@@ -305,6 +340,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
             coordinates.append(self.stage.current_position)
             if feature_type == 'landing':
                 self.update_image_settings(
@@ -324,6 +360,35 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     label=f"{len(coordinates):02d}_ref_landing_high_res"
                 )
                 eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+                #######################################################################
+                # mill the edge of the landing post flat
+                logging.info(f"Preparing to flatten landing surface.")
+                flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
+
+                self.update_display(beam_type=BeamType.ION, image_type='last')
+                self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+                                           crosshairs=False, milling_patterns=flatten_landing_pattern)
+                self.ask_user(image=self.image_FIB)
+                if self.response:
+                    # TODO: refactor this into draw_patterns_and_mill
+                    # additional args: pattern_type, scan_direction, milling_current
+                    self.microscope.imaging.set_active_view(2)  # the ion beam view
+                    self.microscope.patterning.clear_patterns()
+                    for pattern in self.patterns:
+                        tmp_pattern = self.microscope.patterning.create_cleaning_cross_section(
+                            center_x=pattern.center_x,
+                            center_y=pattern.center_y,
+                            width=pattern.width,
+                            height=pattern.height,
+                            depth=self.settings["flatten_landing"]["depth"]
+                        )
+                        tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
+                        tmp_pattern.scan_direction = "LeftToRight"
+                    milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.2e-9)
+                logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
+                #######################################################################
+
             elif feature_type == 'lamella':
                 self.update_image_settings(
                     resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -350,6 +415,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user()
             select_another_position = self.response
 
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         logging.info(f"{self.current_status.name}: finished selecting {len(coordinates)} {feature_type} points.")
 
         return coordinates, images
@@ -414,9 +480,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info("gui: run liftout started")
         logging.info(f"gui: running liftout on {len(self.samples)} samples.")
 
-        # recalibrate park position coordinates
-        # reset_needle_park_position(microscope=self.microscope, new_park_position=)
-
         for sample in self.samples:
 
             self.current_sample = sample
@@ -467,7 +530,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         sample = Sample(save_path, None)
         yaml_file = sample.setup_yaml_file()
 
+
         num_of_samples = len(yaml_file["sample"])
+
         if num_of_samples == 0:
             # error out if no sample.yaml found...
             error_msg = "sample.yaml file has no stored sample coordinates."
@@ -478,15 +543,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
             for sample_no in yaml_file["sample"].keys():
                 sample = Sample(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
-
-        # TODO: test whether this is accurate, maybe move to start of run_liftout
-        # if sample.park_position.x is not None:
-            # movement.reset_needle_park_position(microscope=self.microscope, new_park_position=sample.park_position)
-
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
@@ -510,10 +572,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # stage.absolute_move(StagePosition(r=stage_position.r))
             # stage.absolute_move(stage_position)
 
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
         self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
         self.stage.absolute_move(lamella_coordinates)
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
@@ -716,6 +780,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
         movement.auto_link_stage(self.microscope)
+
+        # check focus distance is within tolerance
+        eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
+
+        if abs(eb_image.metadata.optics.working_distance - 4e-3) > 0.5e-3:
+            logging.warning("Autofocus has failed")
+            self.update_popup_settings(message='Autofocus has failed, please correct the focus manually', filter_strength=self.filter_strength, crosshairs=False)
+            self.ask_user()
 
         if not self.MILLING_COMPLETED_THIS_RUN:
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
@@ -1001,12 +1073,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name} STARTED")
 
         # move to landing coordinate # TODO: wrap in safe movement func
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+
         self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r))
         movement.auto_link_stage(self.microscope, hfw=400e-6)
         self.stage.absolute_move(landing_coord)
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # eucentricity correction
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
@@ -1327,7 +1401,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             logging.info(f"{self.current_status.name}: needle sharpening milling started")
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=cut_coord_bottom["depth"])
+                                           patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
         logging.info(f"{self.current_status.name} | SHARPEN_NEEDLE | FINISHED")
         #################################################################################################
@@ -1369,7 +1443,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # thinning position
         thinning_rotation_angle = self.settings["thin_lamella"]["rotation_angle"]  # 180 deg # TODO: convert to absolute movement for safety (50deg, aka start angle)
-        thinning_tilt_angle = self.settings["thin_lamella"]["tilt_angle"]  # 21 deg
+        thinning_tilt_angle = self.settings["thin_lamella"]["tilt_angle"]  # 0 deg
 
         # rotate to thinning angle
         self.microscope.specimen.stage.relative_move(StagePosition(r=np.deg2rad(thinning_rotation_angle)), stage_settings)
@@ -1394,15 +1468,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
             label=f"{self.current_sample.sample_no:02d}_drift_correction_thinning"
         )
 
-
-        # self.correct_stage_drift_with_ML()
-        # TODO: use this manual version instead of ML?
-        # TODO: check the hfw, we might need more zoom
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
                                            f'Press Yes when the feature is centered', click='double',
@@ -1528,7 +1598,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_VALIDATE_DETECTION = False
         TEST_DRAW_PATTERNS = False
         TEST_BEAM_SHIFT = False
-        TEST_AUTO_LINK = True
+        TEST_AUTO_LINK = False
+        TEST_FLATTEN_LANDING = True
 
         if TEST_VALIDATE_DETECTION:
 
@@ -1553,20 +1624,42 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if TEST_AUTO_LINK:
             logging.info("TESTING AUTO LINK STAGE")
-            # TODO: expected z, tolerance?
-            # self.microscope.specimen.stage
 
-
-            # 4e-3 is an arbitary amount, we can focus at any distance
+            # 4e-3 is an arbitary amount, we can focus at any distance, but the eucentric height (hardware defined) is at 4e-3
             # if there is a large difference between the stage z and working distance we need to refocus /link
-
 
             eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
             # working distance = focus distance
             #  stage.working_distance
             movement.auto_link_stage(microscope=self.microscope, expected_z=3.9e-3)
 
+        if TEST_FLATTEN_LANDING:
+            # logging.info(f"Flatten Landing Pattern")
+            # flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
 
+
+            logging.info(f"Preparing to flatten landing surface.")
+            flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
+
+            self.update_display(beam_type=BeamType.ION, image_type='last')
+            self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+                                       crosshairs=False, milling_patterns=flatten_landing_pattern)
+            self.ask_user(image=self.image_FIB)
+            if self.response:
+                self.microscope.imaging.set_active_view(2)  # the ion beam view
+                self.microscope.patterning.clear_patterns()
+                for pattern in self.patterns:
+                    tmp_pattern = self.microscope.patterning.create_cleaning_cross_section(
+                        center_x=pattern.center_x,
+                        center_y=pattern.center_y,
+                        width=pattern.width,
+                        height=pattern.height,
+                        depth=self.settings["flatten_landing"]["depth"]
+                    )
+                    tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
+                    tmp_pattern.scan_direction = "LeftToRight"
+            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.4e-9)
+            logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -1985,6 +2078,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setEnabled(True) # enable the main window
 
     def test_draw_patterns(self):
+        # TODO: REMOVE
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         if not self.offline:
