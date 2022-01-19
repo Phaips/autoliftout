@@ -60,7 +60,7 @@ class AutoLiftoutStatus(Enum):
 
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
-    def __init__(self, ip_address='10.0.0.1', offline=False):
+    def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
         # setup logging
@@ -109,7 +109,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.yclick = None
 
         # initialise hardware
-        self.ip_address = ip_address
+        self.ip_address = self.settings["system"]["ip_address"]
         self.microscope = None
 
         self.initialize_hardware(offline=offline)
@@ -162,14 +162,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.setup_connections()
 
-        self.pre_run_validation()
+        if self.microscope:
+            self.pre_run_validation()
 
         # DEVELOPER ONLY
         self.ADDITIONAL_CONFIRMATION = True
         self.MILLING_COMPLETED_THIS_RUN = False
 
         logging.info(f"{self.current_status.name} FINISHED")
-
 
     def pre_run_validation(self):
         logging.info(f"Running pre run validation")
@@ -289,7 +289,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: we should really save in absolute coordiantes, then covert to specimen on load?
         # save
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -543,12 +543,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+            # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
             for sample_no in yaml_file["sample"].keys():
                 sample = Sample(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+            # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
@@ -572,12 +572,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # stage.absolute_move(StagePosition(r=stage_position.r))
             # stage.absolute_move(stage_position)
 
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+
         stage_settings = MoveSettings(rotate_compucentric=True)
-        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-        self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
+        self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
+        self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
         self.stage.absolute_move(lamella_coordinates)
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
@@ -1073,14 +1073,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name} STARTED")
 
         # move to landing coordinate # TODO: wrap in safe movement func
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         stage_settings = MoveSettings(rotate_compucentric=True)
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
-        self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r))
-        movement.auto_link_stage(self.microscope, hfw=400e-6)
+        self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r, coordinate_system=landing_coord.coordinate_system))
         self.stage.absolute_move(landing_coord)
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+        movement.auto_link_stage(self.microscope, hfw=400e-6)
+        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # eucentricity correction
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
@@ -2211,23 +2211,22 @@ def display_error_message(message, title="Error"):
     return error_dialog
 
 
-
 def main(offline=True):
     if offline is False:
-        launch_gui(ip_address='10.0.0.1', offline=offline)
+        launch_gui(offline=offline)
     else:
         try:
-            launch_gui(ip_address='localhost', offline=offline)
+            launch_gui(offline=offline)
         except Exception:
             import pdb
             traceback.print_exc()
             pdb.set_trace()
 
 
-def launch_gui(ip_address='10.0.0.1', offline=False):
+def launch_gui(offline=False):
     """Launch the `autoliftout` main application window."""
     app = QtWidgets.QApplication([])
-    qt_app = GUIMainWindow(ip_address=ip_address, offline=offline)
+    qt_app = GUIMainWindow(offline=offline)
     app.aboutToQuit.connect(qt_app.disconnect)  # cleanup & teardown
     qt_app.show()
     sys.exit(app.exec_())

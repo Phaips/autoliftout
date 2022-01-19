@@ -63,6 +63,7 @@ class Sample:
             "z": self.lamella_coordinates.z,
             "r": self.lamella_coordinates.r,
             "t": self.lamella_coordinates.t,
+            "coordinate_system": self.lamella_coordinates.coordinate_system
         }
 
         landing_coordinates_dict = {
@@ -71,6 +72,8 @@ class Sample:
             "z": self.landing_coordinates.z,
             "r": self.landing_coordinates.r,
             "t": self.landing_coordinates.t,
+            "coordinate_system": self.landing_coordinates.coordinate_system
+
         }
 
         milling_coordinates_dict = {
@@ -79,6 +82,8 @@ class Sample:
             "z": self.milling_coordinates.z,
             "r": self.milling_coordinates.r,
             "t": self.milling_coordinates.t,
+            "coordinate_system": self.milling_coordinates.coordinate_system
+
         }
 
         jcut_coordinates_dict = {
@@ -87,6 +92,8 @@ class Sample:
             "z": self.jcut_coordinates.z,
             "r": self.jcut_coordinates.r,
             "t": self.jcut_coordinates.t,
+            "coordinate_system": self.jcut_coordinates.coordinate_system
+
         }
 
         liftout_coordinates_dict = {
@@ -95,6 +102,8 @@ class Sample:
             "z": self.liftout_coordinates.z,
             "r": self.liftout_coordinates.r,
             "t": self.liftout_coordinates.t,
+            "coordinate_system": self.liftout_coordinates.coordinate_system
+
         }
 
         park_position_dict = {
@@ -102,6 +111,7 @@ class Sample:
             "y": self.park_position.y,
             "z": self.park_position.z,
             "r": self.park_position.r,
+
         }
 
         last_stage_position_dict = {
@@ -110,6 +120,8 @@ class Sample:
             "z": self.last_stage_position.z,
             "r": self.last_stage_position.r,
             "t": self.last_stage_position.t,
+            "coordinate_system": self.last_stage_position.coordinate_system
+
         }
 
         last_needle_position_dict = {
@@ -159,6 +171,7 @@ class Sample:
             z=sample_dict["lamella_coordinates"]["z"],
             r=sample_dict["lamella_coordinates"]["r"],
             t=sample_dict["lamella_coordinates"]["t"],
+            coordinate_system=sample_dict["lamella_coordinates"]["coordinate_system"]
         )
 
         self.landing_coordinates = StagePosition(
@@ -167,6 +180,7 @@ class Sample:
             z=sample_dict["landing_coordinates"]["z"],
             r=sample_dict["landing_coordinates"]["r"],
             t=sample_dict["landing_coordinates"]["t"],
+            coordinate_system=sample_dict["landing_coordinates"]["coordinate_system"]
         )
 
         self.milling_coordinates = StagePosition(
@@ -175,6 +189,8 @@ class Sample:
             z=sample_dict["milling_coordinates"]["z"],
             r=sample_dict["milling_coordinates"]["r"],
             t=sample_dict["milling_coordinates"]["t"],
+            coordinate_system=sample_dict["milling_coordinates"]["coordinate_system"]
+
         )
 
         self.jcut_coordinates = StagePosition(
@@ -183,6 +199,8 @@ class Sample:
             z=sample_dict["jcut_coordinates"]["z"],
             r=sample_dict["jcut_coordinates"]["r"],
             t=sample_dict["jcut_coordinates"]["t"],
+            coordinate_system=sample_dict["jcut_coordinates"]["coordinate_system"]
+
         )
 
         self.liftout_coordinates = StagePosition(
@@ -191,6 +209,7 @@ class Sample:
             z=sample_dict["liftout_coordinates"]["z"],
             r=sample_dict["liftout_coordinates"]["r"],
             t=sample_dict["liftout_coordinates"]["t"],
+            coordinate_system=sample_dict["liftout_coordinates"]["coordinate_system"]
         )
 
         self.park_position = ManipulatorPosition(
