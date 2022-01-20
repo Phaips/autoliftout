@@ -12,6 +12,7 @@ initial_position:
     x: -0.0026853
     y: 0.0031637
     z: 0.0039457213
+    coordinate_system: "Raw"
   landing_grid:
     # x is +6 mm from sample grid center
     x: 0.0033147
@@ -19,6 +20,7 @@ initial_position:
     y: 0.00276
     # z is the same as sample grid center
     z: 0.0039338733
+    coordinate_system: "Raw"
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
@@ -133,7 +135,7 @@ flatten_landing:
   center_x: 0
   center_y: 0
   width: 2e-6
-  height: 15e-6
+  height: 25e-6
   depth: 10e-6
 thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)

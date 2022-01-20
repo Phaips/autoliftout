@@ -223,6 +223,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label="grid",
         )
 
+        # check if focus is good enough
+        eb_image = acquire.new_image(self.microscope, self.image_settings)
+        if eb_image.metadata.optics.working_distance >= 6.0e-3: # TODO: MAXIMUM_WORKING_DISTANCE
+            self.update_popup_settings(message="The working distance seems to be incorrect, please manually fix the focus.", crosshairs=False)
+            self.ask_user(image=None)
+
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
         # TODO: do we need to link here?
@@ -275,7 +281,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # tilt flat to electron
         movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
-        movement.auto_link_stage(self.microscope, hfw=400e-6)
+        movement.auto_link_stage(self.microscope, hfw=600e-6)
 
     # movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
 
@@ -287,9 +293,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
 
-        # TODO: we should really save in absolute coordiantes, then covert to specimen on load?
         # save
-        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)

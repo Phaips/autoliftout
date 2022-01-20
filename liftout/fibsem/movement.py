@@ -170,6 +170,7 @@ def move_to_sample_grid(microscope, settings):
         x=float(settings["initial_position"]["sample_grid"]["x"]),
         y=float(settings["initial_position"]["sample_grid"]["y"]),
         z=float(settings["initial_position"]["sample_grid"]["z"]),
+        # TODO: raw coordinates
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
