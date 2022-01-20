@@ -295,7 +295,7 @@ def crosscorrelation(img1, img2, bp="no", *args, **kwargs):
         img2ft[0, 0] = 0
         tmp = img2ft * np.conj(img2ft)
         img2ft = s * img2ft / np.sqrt(tmp.sum())
-        xcorr = np.real(fftpack.ifft2(img1ft * np.conj(img2ft)))
+        xcorr = np.real(fftpack.fftshift(fftpack.ifft2(img1ft * np.conj(img2ft))))
     elif bp == "no":
         img1ft = fftpack.fft2(img1)
         img2ft = np.conj(fftpack.fft2(img2))
