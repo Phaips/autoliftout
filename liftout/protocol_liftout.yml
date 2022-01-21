@@ -9,17 +9,17 @@ system:
   pretilt_angle: 27 # degrees
 initial_position:
   sample_grid: # need to check the coordinate systems
-    x: -0.0026853
-    y: 0.0031637
-    z: 0.0039457213
+    x: -3.09083e-3
+    y: 3.45775e-3
+    z: 31.34629e-3
     coordinate_system: "Raw"
   landing_grid:
     # x is +6 mm from sample grid center
-    x: 0.0033147
+    x: 2.90925e-3
     # y is the same as sample grid center
-    y: 0.00276
+    y: 3.45775e-3
     # z is the same as sample grid center
-    z: 0.0039338733
+    z: 31.34629e-3
     coordinate_system: "Raw"
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
@@ -73,7 +73,7 @@ calibration:
   stage_height_limit: 3.7e-3 # relative coordinates
 lamella:
   lamella_width: 12e-6 # in meters
-  lamella_height: 5e-6 # in meters
+  lamella_height: 8e-6 # in meters
   total_cut_height: 10e-6 # in meters
   milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
@@ -104,7 +104,7 @@ jcut:
   jcut_length: 9e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 5e-6 # in meters
+  jcut_milling_depth: 8e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false
@@ -140,8 +140,8 @@ flatten_landing:
 thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)
   tilt_angle: 0 # deg
-  lamella_width:  4e-6 # In meters. Width of lamella.
-  lamella_height: 0.25e-6 # In meters. Thickness of lamella.
+  lamella_width:  8e-6 # In meters. Width of lamella.
+  lamella_height: 0.3e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.

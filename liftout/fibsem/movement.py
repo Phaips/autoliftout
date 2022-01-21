@@ -117,8 +117,7 @@ def move_to_liftout_angle(
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_angle(
-    microscope, settings, landing_angle=13):
+def move_to_landing_angle(microscope, settings, landing_angle=13):
     """Tilt the sample stage to the correct angle for the landing posts."""
     flat_to_beam(
         microscope,
@@ -140,8 +139,6 @@ def move_to_jcut_angle(microscope, settings, jcut_angle=6.0):
         The AutoScript microscope object instance.
     jcut_angle : float, optional
         Tilt angle for the stage when milling the J-cut, in degrees
-    pretilt_angle : float, optional
-        The pre-tilt angle of the sample holder, in degrees.
     Returns
     -------
     autoscript_sdb_microscope_client.structures.StagePosition
@@ -170,7 +167,7 @@ def move_to_sample_grid(microscope, settings):
         x=float(settings["initial_position"]["sample_grid"]["x"]),
         y=float(settings["initial_position"]["sample_grid"]["y"]),
         z=float(settings["initial_position"]["sample_grid"]["z"]),
-        # TODO: raw coordinates
+        coordinate_system=settings["initial_position"]["sample_grid"]["coordinate_system"] # TODO: raw coordinates
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
@@ -190,21 +187,27 @@ def move_to_landing_grid(
     ----------
     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
         The AutoScript microscope object instance.
-    pretilt_angle : float, optional
-        The pre-tilt angle of the sample holder, in degrees.
     flat_to_sem : bool, optional
         Whether to keep the landing post grid surface flat to the SEM.
     """
+
+    # initially tilt flat for safety
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    microscope.specimen.stage.absolute_move(StagePosition(t=0), stage_settings)
+
+    # move to landing grid initial position
+    landing_grid_position = StagePosition(
+        x=float(settings["initial_position"]["landing_grid"]["x"]),
+        y=float(settings["initial_position"]["landing_grid"]["y"]),
+        z=float(settings["initial_position"]["landing_grid"]["z"]),
+        coordinate_system=settings["initial_position"]["landing_grid"]["coordinate_system"]  # TODO: raw coordinates
+    )
+    logging.info(f"movement: moving to landing grid {landing_grid_position}")
+    microscope.specimen.stage.absolute_move(landing_grid_position)
+
     if flat_to_sem:
         flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
-        landing_grid_position = StagePosition(
-            x=float(settings["initial_position"]["landing_grid"]["x"]),
-            y=float(settings["initial_position"]["landing_grid"]["y"]),
-            z=float(settings["initial_position"]["landing_grid"]["z"]),
-        )
 
-        logging.info(f"movement: moving to landing grid {landing_grid_position}")
-        microscope.specimen.stage.absolute_move(landing_grid_position)
     else:
         move_to_landing_angle(
             microscope, settings=settings)
@@ -415,8 +418,6 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
         - Linking determines the specimen coordinate system, as it is defined as the relative dimensions of the top of stage
           to the instruments.
     """
-
-
     microscope.imaging.set_active_view(1)
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
     microscope.beams.electron_beam.horizontal_field_width.value = hfw
@@ -426,10 +427,6 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     # TODO: replace with auto_focus_and_link if performance of focus is poor
     # # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
-
-
-
-
 
 def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
     """Stage movement in X.
@@ -460,7 +457,7 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     # TODO: add settings, need to read pretilt
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    assert pretilt == 27 #27
+    assert pretilt == 27  # 27
     if beam_type == BeamType.ELECTRON:
         tilt_adjustment = np.deg2rad(-pretilt)
     elif beam_type == BeamType.ION:

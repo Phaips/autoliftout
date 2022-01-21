@@ -250,42 +250,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition")
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
-        # Select landing points and check eucentric height
-        movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
-        # tilt to 0
-        self.microscope.specimen.stage.absolute_move(StagePosition(t=0))
 
-        # centre a feature
+
+        #######
+        # Select landing points and check eucentric height
+        # movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
+        # # tilt to 0
+        # self.microscope.specimen.stage.absolute_move(StagePosition(t=0))
+        #
+        # # centre a feature
+        # self.update_image_settings(
+        #     resolution=self.settings["imaging"]["resolution"],
+        #     dwell_time=self.settings["imaging"]["dwell_time"],
+        #     hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
+        #     beam_type=BeamType.ELECTRON,
+        #     save=False,
+        #     label="centre_grid",
+        # )
+        #
+        # self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
+        # self.update_popup_settings(message='Please double click to centre the landing posts in the SEM.',
+        #                            click="double",
+        #                            crosshairs=True,
+        #                            filter_strength=self.filter_strength)
+        # self.ask_user(image=self.image_SEM)
+        #
+        # # adjust focus
+        # movement.auto_link_stage(self.microscope, hfw=400e-6)
+        #
+        # # move back to 4mm
+        # self.microscope.specimen.stage.absolute_move(StagePosition(z=4e-3))
+        # # movement.auto_link_stage(self.microscope, hfw=400e-6)
+        #
+        # # tilt flat to electron
+        # movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
+        # movement.auto_link_stage(self.microscope, hfw=600e-6)
+        #
+        # self.ensure_eucentricity()
+
+        ######
+        # select initial lamella and landing points
+        # TODO: replace with PIESCOPE
+        # TODO: MAGIC_NUMBER
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
+            hfw=900e-6,
             beam_type=BeamType.ELECTRON,
-            save=False,
+            save=True,
             label="centre_grid",
         )
-
-        self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
-        self.update_popup_settings(message='Please double click to centre the landing posts in the SEM.',
-                                   click="double",
-                                   crosshairs=True,
-                                   filter_strength=self.filter_strength)
-        self.ask_user(image=self.image_SEM)
-        
-        # adjust focus
-        movement.auto_link_stage(self.microscope, hfw=400e-6)
-
-        # move back to 4mm
-        self.microscope.specimen.stage.absolute_move(StagePosition(z=4e-3))
-        # movement.auto_link_stage(self.microscope, hfw=400e-6)
-
-        # tilt flat to electron
-        movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
-        movement.auto_link_stage(self.microscope, hfw=600e-6)
-
-    # movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
-
-        self.ensure_eucentricity()
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
         self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
@@ -432,6 +446,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: maybe update images here?
         # lowres calibration
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])  # 900e-6
+
+        # TODO: midres eucentric calibration
 
         # highres calibration
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"])  # 200e-6
@@ -771,7 +787,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: label will overwrite previous, needs a unique identifier
         self.update_image_settings(
             save=True,
-            label=f'{self.current_sample.sample_no:02d}_drift_correction_ML_final'
+            label=f'{self.current_sample.sample_no:02d}_drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         )
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -960,7 +976,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # detection is based on centre of lamella, we want to land of the edge.
             # therefore subtract half the height from the movement.
             lamella_height = self.settings["lamella"]["lamella_height"]
-            gap = lamella_height / 2
+            gap = lamella_height / 4
             zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
@@ -1339,7 +1355,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         logging.info(f"{self.current_status.name} FINISHED")
-
 
     def reset_needle(self):
 
