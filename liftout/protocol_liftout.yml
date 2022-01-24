@@ -9,17 +9,17 @@ system:
   pretilt_angle: 27 # degrees
 initial_position:
   sample_grid: # need to check the coordinate systems
-    x: -3.09083e-3
-    y: 3.45775e-3
-    z: 31.34629e-3
+    x: -3.2375e-3
+    y: 3.9354e-3
+    z: 31.379e-3
     coordinate_system: "Raw"
   landing_grid:
     # x is +6 mm from sample grid center
-    x: 2.90925e-3
+    x: 2.76265e-3
     # y is the same as sample grid center
-    y: 3.45775e-3
+    y: 3.9354e-3
     # z is the same as sample grid center
-    z: 31.34629e-3
+    z: 31.379e-3
     coordinate_system: "Raw"
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
@@ -68,6 +68,7 @@ reference_images:
   thinning_ref_img_hfw_superres: 30e-6
 calibration:
   eucentric_hfw_lowres: 900e-6
+  eucentric_hfw_midres: 400e-6
   eucentric_hfw_highres: 200e-6
   drift_correction_hfw_highres: 80e-6
   stage_height_limit: 3.7e-3 # relative coordinates
@@ -101,10 +102,10 @@ machine_learning:
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees
-  jcut_length: 9e-6 # in meters
+  jcut_length: 12e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 8e-6 # in meters
+  jcut_milling_depth: 5e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
   mill_lhs_jcut_pattern: true # true or false
   mill_rhs_jcut_pattern: true # true or false

@@ -468,8 +468,8 @@ def _create_mill_pattern(
         center_x, center_y, width, height, depth
     )
     pattern.rotation = np.deg2rad(rotation_degrees)
-    logging.info(f"milling: create milling pattern,  x:{center_x:e}, y: {center_y:e}")
-    logging.info(f"w: {width:e}, h: {height:e}, d: {depth:e}, r:{rotation_degrees:.3f}")
+    logging.info(f"milling: create milling pattern,  x:{center_x:.2e}, y: {center_y:.2e}")
+    logging.info(f"w: {width:.2e}, h: {height:.2e}, d: {depth:.2e}, r:{rotation_degrees:.3f}")
     return pattern
 
 

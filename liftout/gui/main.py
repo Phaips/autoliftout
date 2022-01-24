@@ -184,6 +184,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             "stage_coordinate_system",
             "check_beam_shift_is_zero",
             "ion_beam_working_distance"   # 16.5mm
+            "check_if_needle_is_inserted"
 
         ]
         import random
@@ -204,6 +205,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # logging.info(f"BEAM SHIFT RESET")
 
 
+        # ion beam currents
+        # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9
 
         if validation_errors:
             logging.warning(f"validation_errors={validation_errors}")
@@ -306,8 +309,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
 
-
-        # save
+        # save coordinates
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
             sample = Sample(self.save_path, i)
@@ -448,6 +450,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])  # 900e-6
 
         # TODO: midres eucentric calibration
+        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_midres"])  # 400e-6
 
         # highres calibration
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"])  # 200e-6
@@ -758,7 +761,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        # TO_TEST
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_highres"],
                                    save=True, label=f"{self.current_sample.sample_no:02d}_jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)

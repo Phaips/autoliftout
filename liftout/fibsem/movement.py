@@ -465,8 +465,8 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     tilt_radians = stage_tilt + tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
-    logging.info(f"drift correction: the corrected Y shift is {y_move:e} meters")
-    logging.info(f"drift correction: the corrected Z shift is  {z_move:e} meters")
+    logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
+    logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")
     return StagePosition(x=0, y=y_move, z=z_move)
 
 
