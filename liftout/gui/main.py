@@ -406,6 +406,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
                         tmp_pattern.scan_direction = "LeftToRight"
                     milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.2e-9)
+                else:
+                    self.microscope.patterning.clear_patterns()
                 logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
                 #######################################################################
 
@@ -1620,8 +1622,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_DRAW_PATTERNS = False
         TEST_BEAM_SHIFT = False
         TEST_AUTO_LINK = False
-        TEST_FLATTEN_LANDING = True
+        TEST_FLATTEN_LANDING = False
+        TEST_ROTATED_PATTERNS = False
 
+        if self.current_sample is None:
+            self.current_sample = Sample(".", 99)
+            # self.current_sample.sample_no = 99
         if TEST_VALIDATE_DETECTION:
 
             self.raw_image = AdornedImage(data=test_image)
@@ -1681,6 +1687,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     tmp_pattern.scan_direction = "LeftToRight"
             milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.4e-9)
             logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
+
+        if TEST_ROTATED_PATTERNS:
+            # create sharpening patterns
+            cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=0, y_0=0)
+            logging.info(f"{self.current_status.name}: calculate needle sharpen pattern")
+
+            sharpen_patterns = milling.create_sharpen_needle_patterns(
+                self.microscope, cut_coord_bottom, cut_coord_top
+            )
+
+            # confirm and run milling
+            self.update_display(beam_type=BeamType.ION, image_type='last')
+
+            self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+                                       crosshairs=False, milling_patterns=sharpen_patterns)
+            self.ask_user(image=self.image_FIB)
+
+            if self.response:
+                logging.info(f"{self.current_status.name}: needle sharpening milling started")
+                milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+                                               patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -1959,12 +1986,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                         width = pattern.width / pixel_size
                         height = pattern.height / pixel_size
-                        rotation = pattern.rotation
+                        rotation = -pattern.rotation
                         # Rectangle is defined from bottom left due to mpl
                         # Microscope (0, 0) is middle of image, y+ = up
                         # Image (0, 0) is top left corner, y+ = down
-                        rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2)
-                        rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2)
+
+                        rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
+                        rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
 
                     pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
                     pattern.set_hatch('/////')

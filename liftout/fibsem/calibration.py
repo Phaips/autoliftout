@@ -393,6 +393,16 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     image_settings["save"] = True
     image_settings["label"] = "crosscorrelation_1"
 
+
+    # TODO: check if we need to autofocus and how
+    AUTOFOCUS_BEFORE_CROSSCORRELATION = True
+    if AUTOFOCUS_BEFORE_CROSSCORRELATION:
+        microscope.imaging.set_active_view(2)
+        microscope.beams.ion_beam.horizontal_field_width.value = image_settings["hfw"]
+        autocontrast(microscope, beam_type=image_settings["beam_type"])
+        microscope.auto_functions.run_auto_focus()
+        microscope.specimen.stage.link()
+
     # initial reference image
     ref_image = acquire.new_image(microscope, image_settings)
 
@@ -471,7 +481,7 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
         # align using cross correlation
         img1 = ref_image
-        image_settings["label"] = "crosscorrelation_2"
+        image_settings["label"] = f"thin_crosscorrelation_{stage_number + 1}"
         img2 = acquire.new_image(microscope, settings=image_settings)
         dx, dy = shift_from_crosscorrelation_AdornedImages(
             img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True

@@ -25,7 +25,7 @@ imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
   dwell_time: 1e-6
   resolution: "1536x1024"
-  imaging_current: 20e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe
+  imaging_current: 20e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe # 3kV eB
   save: False
   autocontrast: True
   max_eb_hfw: 2700e-6
@@ -118,7 +118,7 @@ weld:
 sharpen:
   height: 2.5e-6
   width:  20e-6
-  depth: 5e-6
+  depth: 8e-6
   bias: 0.25e-6
   hfw: 150e-6
   tip_angle: 10
@@ -127,7 +127,7 @@ sharpen:
 cut:
   width: 12e-6
   height: 0.5e-6
-  depth: 15e-6
+  depth: 20e-6
   rotation: 0
   hfw: 100e-6
   gap: 2e-6
@@ -142,7 +142,7 @@ thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)
   tilt_angle: 0 # deg
   lamella_width:  8e-6 # In meters. Width of lamella.
-  lamella_height: 0.3e-6 # In meters. Thickness of lamella.
+  lamella_height: 0.5e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
@@ -165,6 +165,7 @@ thin_lamella: # Lamella parameters
     percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
     milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
     milling_current: 20e-12 # In Amperes. Overrides the default current.
+    lamella_width: 4.0e-6 # In meters. Width of lamella.
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"

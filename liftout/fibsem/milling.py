@@ -571,7 +571,7 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
         pattern = microscope.patterning.create_rectangle(
             center_x, center_y, width, height, depth
         )
-        pattern.rotation = np.deg2rad(rotation_degrees)
+        pattern.rotation = -np.deg2rad(rotation_degrees)
         sharpen_patterns.append(pattern)
         logging.info(f"milling: create sharpen needle pattern")
         logging.info(f"x: {center_x}, y: {center_y}, w: {width}, h: {height}")
