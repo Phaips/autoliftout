@@ -1476,13 +1476,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: rotate to thinning angle: {thinning_rotation_angle}")
         logging.info(f"{self.current_status.name}: tilt to thinning angle: {thinning_tilt_angle}")
 
+        # ensure eucentricity for thinning milling
+        self.ensure_eucentricity(flat_to_sem=False)
+
+        # TODO: check if working distance of the ion beam is 16.5mm once eucentric
+
         # lamella images
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_21deg_tilt"
+            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_0_deg_tilt"
         )
 
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1493,7 +1498,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_drift_correction_thinning"
+            label=f"{self.current_sample.sample_no:02d}_thinning_drift_correction_medres"
         )
 
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1508,7 +1513,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_cleanup_lamella_pre_movement"
+            label=f"{self.current_sample.sample_no:02d}_thinning_drift_correction_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
 
@@ -1516,7 +1521,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # NEW THINNING
         self.update_image_settings()
-        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings)
+        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings, sample_no=self.current_sample.sample_no)
 
         ###################################################################################################
 
@@ -1527,7 +1532,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_superres"
+            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_superres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1537,7 +1542,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_highres"
+            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_highres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1547,7 +1552,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_lamella_post_thinning_lowres"
+            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_lowres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1620,7 +1625,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         TEST_VALIDATE_DETECTION = False
         TEST_DRAW_PATTERNS = False
-        TEST_BEAM_SHIFT = False
+        TEST_BEAM_SHIFT = True
         TEST_AUTO_LINK = False
         TEST_FLATTEN_LANDING = False
         TEST_ROTATED_PATTERNS = False

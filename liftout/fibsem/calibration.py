@@ -379,7 +379,7 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
 
 
 
-def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
+def test_thin_lamella(microscope, settings, image_settings, sample_no=99):
 
     # TODO: refactor this function
     # rotate and tilt thinning angle
@@ -391,17 +391,17 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     image_settings["beam_type"] = BeamType.ION
     image_settings["gamma"]["correction"] = False
     image_settings["save"] = True
-    image_settings["label"] = "crosscorrelation_1"
+    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_crosscorrelation_ref"
 
 
     # TODO: check if we need to autofocus and how
-    AUTOFOCUS_BEFORE_CROSSCORRELATION = True
-    if AUTOFOCUS_BEFORE_CROSSCORRELATION:
-        microscope.imaging.set_active_view(2)
-        microscope.beams.ion_beam.horizontal_field_width.value = image_settings["hfw"]
-        autocontrast(microscope, beam_type=image_settings["beam_type"])
-        microscope.auto_functions.run_auto_focus()
-        microscope.specimen.stage.link()
+    # AUTOFOCUS_BEFORE_CROSSCORRELATION = True
+    # if AUTOFOCUS_BEFORE_CROSSCORRELATION:
+    #     microscope.imaging.set_active_view(2)
+    #     microscope.beams.ion_beam.horizontal_field_width.value = image_settings["hfw"]
+    #     autocontrast(microscope, beam_type=image_settings["beam_type"])
+    #     microscope.auto_functions.run_auto_focus()
+    #     microscope.specimen.stage.link()
 
     # initial reference image
     ref_image = acquire.new_image(microscope, image_settings)
@@ -409,9 +409,11 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     # adjust beamshift by known amount
     # microscope.beams.ion_beam.beam_shift.value += (1e-6, 2e-6)
 
+    # TODO: remove this? not required
+    ############
     # align using cross correlation
     img1 = ref_image
-    image_settings["label"] = "crosscorrelation_2"
+    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_crosscorrelation_shift"
     img2 = acquire.new_image(microscope, settings=image_settings)
     dx, dy = shift_from_crosscorrelation_AdornedImages(
         img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
@@ -422,6 +424,8 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
 
     # retake image
     _ = acquire.new_image(microscope, image_settings)
+
+    ##########
 
     # load protocol settings
     protocol_stages = []
@@ -458,8 +462,6 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     # TODO: revert to previous imaging current?
     # TODO: will this mean we have to change params for each cross-correlation?
     # TODO: update label here?
-
-
     # TODO: mask out the lamella area when cross-correlating
 
 
@@ -479,9 +481,12 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     # MILL THIN LAMELLA
     for stage_number, stage_settings in enumerate(protocol_stages):
 
+        # setup milling (change current etc)
+        milling.setup_milling(microscope, settings, stage_settings)
+
         # align using cross correlation
         img1 = ref_image
-        image_settings["label"] = f"thin_crosscorrelation_{stage_number + 1}"
+        image_settings["label"] = f"{sample_no:02d}_thinning_lamella_stage_{stage_number + 1}"
         img2 = acquire.new_image(microscope, settings=image_settings)
         dx, dy = shift_from_crosscorrelation_AdornedImages(
             img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
@@ -496,14 +501,12 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
             )
         )
 
-        milling.setup_milling(microscope, settings, stage_settings)
-
         # Create and mill patterns
 
         # upper region
         """Create cleaning cross section milling pattern above lamella position."""
         microscope.imaging.set_active_view(2)  # the ion beam view
-        lamella_center_x = 0
+        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
         lamella_center_y = 0
         milling_depth = stage_settings["milling_depth"]
         center_y = (
@@ -534,7 +537,7 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
         # lower region
         """Create cleaning cross section milling pattern below lamella position."""
         microscope.imaging.set_active_view(2)  # the ion beam view
-        lamella_center_x = 0
+        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
         lamella_center_y = 0
         milling_depth = stage_settings["milling_depth"]
         center_y = (
@@ -586,6 +589,9 @@ def test_thin_lamella(microscope, settings, image_settings, ref_image=None):
     microscope.patterning.mode = "Serial"
     logging.info("milling: ion beam milling complete.")
 
+    # take final reference image
+    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_final_polishing"
+    _ = acquire.new_image(microscope, settings=image_settings)
     logging.info("Thin Lamella Finished.")
 
     # for stage in stages:

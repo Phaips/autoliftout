@@ -123,9 +123,9 @@ sharpen:
   hfw: 150e-6
   tip_angle: 10
   needle_angle: 40
-  sharpen_milling_current: 0.74e-9 # in Amps
+  sharpen_milling_current: 6.2e-9 # in Amps
 cut:
-  width: 12e-6
+  width: 8e-6
   height: 0.5e-6
   depth: 20e-6
   rotation: 0
@@ -141,8 +141,8 @@ flatten_landing:
 thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)
   tilt_angle: 0 # deg
-  lamella_width:  8e-6 # In meters. Width of lamella.
-  lamella_height: 0.5e-6 # In meters. Thickness of lamella.
+  lamella_width:  3.5e-6 # In meters. Width of lamella.
+  lamella_height: 0.4e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
@@ -161,11 +161,11 @@ thin_lamella: # Lamella parameters
     milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
     milling_current: 0.2e-9 # In Amperes. Overrides the default current.
   # Polishing cut, stage 3
-  - percentage_roi_height: 0.3 # think this should be 1 if the only stage # Milling size as fraction of total_cut_height.
+  - percentage_roi_height: 0.1 # think this should be 1 if the only stage # Milling size as fraction of total_cut_height.
     percentage_from_lamella_surface: 0. # Fraction from surface of lamella.
     milling_depth: 0.4e-6 # In meters. Overrides the default miling depth.
     milling_current: 20e-12 # In Amperes. Overrides the default current.
-    lamella_width: 4.0e-6 # In meters. Width of lamella.
+#    lamella_width: 4e-6 # In meters. Width of lamella.
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"
