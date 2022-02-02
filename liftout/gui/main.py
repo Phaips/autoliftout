@@ -206,7 +206,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # ion beam currents
-        # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9
+        # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9, 6.2e-9
 
         if validation_errors:
             logging.warning(f"validation_errors={validation_errors}")
@@ -515,7 +515,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.single_liftout(landing_coord, lamella_coord,
                             landing_reference_images, lamella_area_reference_images)
 
-        # NOTE: thinning needs to happen after all lamella landed due to platinum depositions...
+        # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
         self.update_popup_settings(message="Do you want to start lamella thinning?", crosshairs=False)
         self.ask_user()
         logging.info(f"Perform Thinning: {self.response}")
@@ -980,7 +980,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # detection is based on centre of lamella, we want to land of the edge.
             # therefore subtract half the height from the movement.
             lamella_height = self.settings["lamella"]["lamella_height"]
-            gap = lamella_height / 4
+            gap = lamella_height / 6
             zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
@@ -1453,6 +1453,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f" {self.current_status.name} STARTED")
 
         # move to landing coord
+        # TODO: safe rotation first?
         self.microscope.specimen.stage.absolute_move(landing_coord)
         logging.info(f"{self.current_status.name}: move to landing coordinates: {landing_coord}")
 

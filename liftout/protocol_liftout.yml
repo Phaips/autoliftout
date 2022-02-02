@@ -142,7 +142,7 @@ thin_lamella: # Lamella parameters
   rotation_angle: 180 # deg (relative)
   tilt_angle: 0 # deg
   lamella_width:  3.5e-6 # In meters. Width of lamella.
-  lamella_height: 0.4e-6 # In meters. Thickness of lamella.
+  lamella_height: 0.45e-6 # In meters. Thickness of lamella.
   total_cut_height: 5e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
