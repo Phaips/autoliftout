@@ -19,14 +19,11 @@ def configure_logging(save_path='', log_filename='logfile', log_level=logging.IN
         # Multiple handlers can be added to your logging configuration.
         # By default log messages are appended to the file if it exists already
         handlers=[
-            logging.FileHandler(logfile), #save_path+'/'+log_filename+timestamp+'.log'), 
+            logging.FileHandler(logfile),
             logging.StreamHandler(),
         ])
 
-    # FEATURE_FLAG
-    # assert logfile == save_path+'/'+log_filename+timestamp+'.log'
     return logfile
-    # return save_path+'/'+log_filename+timestamp+'.log'
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -84,8 +81,5 @@ def make_logging_directory(prefix='run'):
     return save_directory
 
 def save_image(image, save_path, label=''):
-    path_old = f'{save_path}/img/{label}.tif'
     path = os.path.join(save_path, "img", f"{label}.tif")
-    # assert path == path_new
     image.save(path)
-    # FEATURE_FLAG
