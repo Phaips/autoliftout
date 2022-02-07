@@ -160,6 +160,9 @@ class SamplePosition:
 
         sample_dict = sample_yaml["sample"][self.sample_no]
 
+        self.sample_id = sample_dict["sample_id"]
+
+
         # load stage positions from yaml
         self.lamella_coordinates = StagePosition(
             x=sample_dict["lamella_coordinates"]["x"],
@@ -213,34 +216,29 @@ class SamplePosition:
         # load images from disk
         sample_no = sample_dict["sample_no"]
         ref_landing_lowres_eb = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif"
+            self.data_path, str(self.sample_id), "ref_landing_low_res_eb.tif"
         )
         ref_landing_highres_eb = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif"
+            self.data_path, str(self.sample_id), "ref_landing_high_res_eb.tif"
         )
         ref_landing_lowres_ib = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_ib.tif"
+            self.data_path, str(self.sample_id), "ref_landing_low_res_ib.tif"
         )
         ref_landing_highres_ib = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_ib.tif"
+            self.data_path, str(self.sample_id), "ref_landing_high_res_ib.tif"
         )
         ref_lamella_lowres_eb = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif"
+            self.data_path, str(self.sample_id), "ref_lamella_low_res_eb.tif"
         )
         ref_lamella_highres_eb = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif"
+            self.data_path, str(self.sample_id), "ref_lamella_high_res_eb.tif"
         )
         ref_lamella_lowres_ib = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_ib.tif"
+            self.data_path, str(self.sample_id), "ref_lamella_low_res_ib.tif"
         )
         ref_lamella_highres_ib = os.path.join(
-            self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_ib.tif"
+            self.data_path, str(self.sample_id), "ref_lamella_high_res_ib.tif"
         )
-
-        # new path
-        # os.path.join(
-        #     self.data_path, self.experiment_name, self.sample_id, "img", f"ref_lamella_high_res_ib.tif"
-        # )
 
         # load the adorned images and format
         for fname in [

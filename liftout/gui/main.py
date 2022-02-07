@@ -339,6 +339,57 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         print("hi")
 
+    def new_load_sample_positions(self):
+
+        logging.info(f"LOAD COORDINATES STARTED")
+        # input save path
+        save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
+                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+        if not save_path:
+            error_msg = "Load Coordinates: No Folder selected."
+            logging.warning(error_msg)
+            display_error_message(error_msg)
+            return
+
+        ##########
+        # read the sample.yaml: get how many samples in there, loop through
+
+        # test if the file exists
+        yaml_file = os.path.join(save_path, "sample.yaml")
+
+        if not os.path.exists(yaml_file):
+            error_msg = "sample.yaml file could not be found in this directory."
+            logging.error(error_msg)
+            display_error_message(error_msg)
+            return
+
+        # test if there are any samples in the file?
+        sample = SamplePosition(save_path, None)
+        yaml_file = sample.setup_yaml_file()
+
+
+        num_of_samples = len(yaml_file["sample"])
+
+        if num_of_samples == 0:
+            # error out if no sample.yaml found...
+            error_msg = "sample.yaml file has no stored sample coordinates."
+            logging.error(error_msg)
+            display_error_message(error_msg)
+            return
+
+        else:
+            # load the samples
+            self.samples = []
+
+            for sample_no in yaml_file["sample"].keys():
+                sample = SamplePosition(save_path, sample_no)
+                sample.load_data_from_file()
+                self.samples.append(sample)
+        self.pushButton_autoliftout.setEnabled(True)
+
+        logging.info(f"{len(self.samples)} samples loaded from {save_path}")
+        logging.info(f"LOAD COORDINATES FINISHED")
+
     def select_initial_sample_positions(self, sample_no):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
@@ -1752,10 +1803,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_autoliftout.setEnabled(0)  # disable unless sample positions are loaded.
 
         # FIBSEM methods
-        self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
+        # self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
+        self.pushButton_load_sample_data.clicked.connect(lambda: self.new_load_sample_positions())
 
 
-        # TESTING METHODS (TO BE REMOVED)
+
+    # TESTING METHODS (TO BE REMOVED)
         # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
 
         # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
