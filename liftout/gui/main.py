@@ -339,27 +339,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             x=sample_no, y=sample_no, z=sample_no, r=sample_no, t=sample_no, coordinate_system=CoordinateSystem.RAW
         )
 
-
-        def update_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric: bool = False):
-
-            from liftout.fibsem.sampleposition import MicroscopeState
-
-            current_microscope_state = MicroscopeState
-            current_microscope_state.timestamp = utils.current_timestamp()
-            current_microscope_state.eucentric_calibration = eucentric
-            current_microscope_state.last_completed_stage = stage
-            current_microscope_state.absolute_position = microscope.stage.current_position
-             #TOOD:
-            
-            return current_microscope_state
-
-        # TODO: save microscope state
-        sample_position.microscope_state.timestamp = utils.current_timestamp()
-        sample_position.microscope_state.eucentric_calibration = True
-        sample_position.microscope_state.last_completed_stage = AutoLiftoutStatus.Setup
-
-
-
+        # save microscope state
+        # TODO: check if current_status works?
+        sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
+                                                                                   stage=self.current_status,
+                                                                                   eucentric=True)
         sample_position.save_data()
 
         self.update_image_settings(

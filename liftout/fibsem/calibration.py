@@ -6,6 +6,7 @@ from scipy import fftpack, misc
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
 from liftout.detection import detection
+from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStatus
 from liftout.model import models
 
 BeamType = acquire.BeamType
@@ -679,3 +680,25 @@ def auto_focus_and_link(microscope):
     microscope.imaging.set_active_view(1)  # set to Ebeam
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
+
+
+def get_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric: bool = False):
+
+
+    current_microscope_state = MicroscopeState()
+    current_microscope_state.timestamp = utils.current_timestamp()
+    current_microscope_state.eucentric_calibration = eucentric
+    current_microscope_state.last_completed_stage = stage
+    current_microscope_state.absolute_position = microscope.stage.current_position
+
+    # working_distance
+    eb_image = acquire.last_image(microscope, BeamType.ELECTRON)
+    ib_image = acquire.last_image(microscope, BeamType.ION)
+    current_microscope_state.eb_working_distance = eb_image.metadata.optics.working_distance
+    current_microscope_state.ib_working_distance = ib_image.metadata.optics.working_distance
+
+    # beam_currents
+    current_microscope_state.eb_beam_current = microscope.beams.electron_beam.beam_current.value
+    current_microscope_state.ib_beam_current = microscope.beams.ion_beam.beam_current.value
+
+    return current_microscope_state
