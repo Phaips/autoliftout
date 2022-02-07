@@ -63,14 +63,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
-        self.run_name = f"experiment_name_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
+
+        # load experiment
+        self.new_load_sample_positions()
 
         # setup logging
-        self.save_path = utils.make_logging_directory(prefix=self.run_name)
-        self.log_path = utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
-        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
+        # self.save_path = utils.make_logging_directory(prefix=self.run_name)
+        # self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
 
         # load config
+        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
         self.pretilt_degrees = self.settings["system"]["pretilt_angle"]
         assert self.pretilt_degrees == 27  # TODO: remove this once this has been cleaned up in other files
@@ -121,7 +123,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
 
-        self.samples = []
         self.current_sample = None
 
         # initial display
@@ -333,23 +334,43 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # select corresponding sample landing positions
         for current_sample_position in self.samples:
 
-            self.select_landing_sample_positions(current_sample_position)
+            # check if landing position already selected? so it doesnt overwrite
+            if current_sample_position.landing_selected is False:
+                self.select_landing_sample_positions(current_sample_position)
+
+        # load all the data from disk (to load images)
+        for sample_position in self.samples:
+            sample_position.load_data_from_file()
 
         # reset microscope coordinate system
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-        print("hi")
+        logging.info(f"Selected {len(self.samples)} initial sample and landing positions.")
 
     def new_load_sample_positions(self):
 
-        logging.info(f"LOAD COORDINATES STARTED")
+        # logging.info(f"LOAD COORDINATES STARTED")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+
+        # start from scratch
         if not save_path:
-            error_msg = "Load Coordinates: No Folder selected."
-            logging.warning(error_msg)
-            display_error_message(error_msg)
+            self.run_name = f"experiment_name_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
+            self.save_path = utils.make_logging_directory(prefix=self.run_name)
+            self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
+            self.samples = []
             return
+        else:
+            self.save_path = save_path
+            self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
+
+        # TODO: improve the part below this
+        # if not save_path:
+        #     error_msg = "Load Coordinates: No Folder selected."
+        #     logging.warning(error_msg)
+        #     display_error_message(error_msg)
+        #
+        #     return
 
         ##########
         # read the sample.yaml: get how many samples in there, loop through
@@ -385,10 +406,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 sample = SamplePosition(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
-        self.pushButton_autoliftout.setEnabled(True)
+
+
+        # update the save_path to what was stored in the sample_yaml
+        # self.save_path = yaml_file["data_path"]
+
+        # TODO: also update the logging path
+        # cant just update like this, dont think it can be reconfigured once set?
+        # self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
+
+
+        # self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
-        logging.info(f"LOAD COORDINATES FINISHED")
+        logging.info(f"Reload Experiment Finished")
 
     def select_initial_sample_positions(self, sample_no):
         """Select the initial sample positions for liftout"""
@@ -440,6 +471,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return sample_position
 
     def select_landing_sample_positions(self, current_sample_position: SamplePosition):
+        logging.info(f"Selecting Landing Position: {current_sample_position.sample_id}")
 
         #####################
         # select landing coordinates
@@ -453,6 +485,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         current_sample_position.landing_coordinates = StagePosition(
             x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
         )
+        current_sample_position.landing_selected = True
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],

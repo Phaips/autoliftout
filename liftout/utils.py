@@ -11,7 +11,7 @@ def configure_logging(save_path='', log_filename='logfile', log_level=logging.IN
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
         '%Y%m%d.%H%M%S')
 
-    logfile = os.path.join(save_path, f"{log_filename}{timestamp}.log")
+    logfile = os.path.join(save_path, f"{log_filename}.log")
 
     logging.basicConfig(
         format="%(asctime)s — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
@@ -76,8 +76,8 @@ def make_logging_directory(prefix='run'):
     os.makedirs(directory, exist_ok=True)
     timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
 
-    save_directory = os.path.join(directory, prefix, timestamp)
-    os.makedirs(os.path.join(save_directory, "img"), exist_ok=True)
+    save_directory = os.path.join(directory, prefix)
+    os.makedirs(os.path.join(save_directory), exist_ok=True)
     return save_directory
 
 

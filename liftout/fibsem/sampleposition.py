@@ -61,6 +61,7 @@ class SamplePosition:
         self.data_path = os.path.join(data_path)
         self.created_timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         self.sample_no = sample_no
+        self.landing_selected: bool = False
 
         self.sample_id = uuid.uuid4()
         self.microscope_state: MicroscopeState = MicroscopeState()
@@ -137,6 +138,7 @@ class SamplePosition:
             "updated": datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S'),
             "sample_no": self.sample_no,
             "sample_id": str(self.sample_id),
+            "landing_selected": self.landing_selected,
             "lamella_coordinates": lamella_coordinates_dict,
             "landing_coordinates": landing_coordinates_dict,
             "microscope_state": microscope_state_dict
@@ -160,8 +162,10 @@ class SamplePosition:
 
         sample_dict = sample_yaml["sample"][self.sample_no]
 
+        self.created_timestamp = sample_dict["created"]
+        self.updated_timestamp = sample_dict["updated"]
         self.sample_id = sample_dict["sample_id"]
-
+        self.landing_selected = sample_dict["landing_selected"]
 
         # load stage positions from yaml
         self.lamella_coordinates = StagePosition(
@@ -182,74 +186,46 @@ class SamplePosition:
             coordinate_system=sample_dict["landing_coordinates"]["coordinate_system"]
         )
 
-        # self.microscope_state = MicroscopeState(
-        #     timestamp=sample_dict["microscope_state_dict"]["timestamp"],
-        #     absolute_position=,
-        #     eb_working_distance=,
-        #     ib_working_distance=,
-        #     eb_beam_current=,
-        #     ib_beam_current=,
-        #     eucentric_calibration=,
-        #     last_completed_stage=
-        #
-        # )
-        # microscope_state_dict = {
-        #     "timestamp": self.microscope_state.timestamp,
-        #     "absolute_position": {
-        #         "x": self.microscope_state.absolute_position.x,
-        #         "y": self.microscope_state.absolute_position.y,
-        #         "z": self.microscope_state.absolute_position.z,
-        #         "r": self.microscope_state.absolute_position.r,
-        #         "t": self.microscope_state.absolute_position.t,
-        #         "coordinate_system": self.microscope_state.absolute_position.coordinate_system
-        #     },
-        #     "eb_working_distance": self.microscope_state.eb_working_distance,
-        #     "ib_working_distance": self.microscope_state.ib_working_distance,
-        #     "eb_beam_current": self.microscope_state.eb_beam_current,
-        #     "ib_beam_current": self.microscope_state.ib_beam_current,
-        #     "eucentric_calibration": self.microscope_state.eucentric_calibration,
-        #     "last_completed_stage": self.microscope_state.last_completed_stage,
-        # }
-
-
+        # load micrscope state
+        self.microscope_state = MicroscopeState(
+            timestamp=sample_dict["microscope_state"]["timestamp"],
+            absolute_position=StagePosition(
+                x=sample_dict["microscope_state"]["absolute_position"]["x"],
+                y=sample_dict["microscope_state"]["absolute_position"]["y"],
+                z=sample_dict["microscope_state"]["absolute_position"]["z"],
+                r=sample_dict["microscope_state"]["absolute_position"]["r"],
+                t=sample_dict["microscope_state"]["absolute_position"]["t"],
+                coordinate_system=sample_dict["microscope_state"]["absolute_position"]["coordinate_system"]
+            ),
+            eb_working_distance=sample_dict["microscope_state"]["eb_working_distance"],
+            ib_working_distance=sample_dict["microscope_state"]["ib_working_distance"],
+            eb_beam_current=sample_dict["microscope_state"]["eb_beam_current"],
+            ib_beam_current=sample_dict["microscope_state"]["ib_beam_current"],
+            eucentric_calibration=sample_dict["microscope_state"]["eucentric_calibration"],
+            last_completed_stage=sample_dict["microscope_state"]["last_completed_stage"]
+        )
 
         # load images from disk
-        sample_no = sample_dict["sample_no"]
-        ref_landing_lowres_eb = os.path.join(
-            self.data_path, str(self.sample_id), "ref_landing_low_res_eb.tif"
-        )
-        ref_landing_highres_eb = os.path.join(
-            self.data_path, str(self.sample_id), "ref_landing_high_res_eb.tif"
-        )
-        ref_landing_lowres_ib = os.path.join(
-            self.data_path, str(self.sample_id), "ref_landing_low_res_ib.tif"
-        )
-        ref_landing_highres_ib = os.path.join(
-            self.data_path, str(self.sample_id), "ref_landing_high_res_ib.tif"
-        )
-        ref_lamella_lowres_eb = os.path.join(
-            self.data_path, str(self.sample_id), "ref_lamella_low_res_eb.tif"
-        )
-        ref_lamella_highres_eb = os.path.join(
-            self.data_path, str(self.sample_id), "ref_lamella_high_res_eb.tif"
-        )
-        ref_lamella_lowres_ib = os.path.join(
-            self.data_path, str(self.sample_id), "ref_lamella_low_res_ib.tif"
-        )
-        ref_lamella_highres_ib = os.path.join(
-            self.data_path, str(self.sample_id), "ref_lamella_high_res_ib.tif"
-        )
+        ref_landing_lowres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_landing_low_res_eb.tif")
+        ref_landing_highres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_landing_high_res_eb.tif")
+        ref_landing_lowres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_landing_low_res_ib.tif")
+        ref_landing_highres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_landing_high_res_ib.tif")
+        ref_lamella_lowres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_lamella_low_res_eb.tif")
+        ref_lamella_highres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_lamella_high_res_eb.tif")
+        ref_lamella_lowres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_lamella_low_res_ib.tif")
+        ref_lamella_highres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_lamella_high_res_ib.tif")
 
         # load the adorned images and format
-        for fname in [
-            ref_landing_lowres_eb,
-            ref_landing_highres_eb,
-            ref_landing_lowres_ib,
-            ref_landing_highres_ib,
-        ]:
-            img = AdornedImage.load(fname)
+        if self.landing_selected:
+            for fname in [
+                ref_landing_lowres_eb,
+                ref_landing_highres_eb,
+                ref_landing_lowres_ib,
+                ref_landing_highres_ib,
+            ]:
+                img = AdornedImage.load(fname)
 
-            self.landing_ref_images.append(img)
+                self.landing_ref_images.append(img)
 
         for fname in [
             ref_lamella_lowres_eb,
