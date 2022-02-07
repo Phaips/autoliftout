@@ -63,8 +63,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
+        self.run_name = f"experiment_name_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
+
         # setup logging
-        self.save_path = utils.make_logging_directory(prefix="run")
+        self.save_path = utils.make_logging_directory(prefix=self.run_name)
         self.log_path = utils.configure_logging(save_path=self.save_path, log_filename='logfile_')
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
 
@@ -254,44 +256,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
 
-
-        #######
-        # Select landing points and check eucentric height
-        # movement.move_to_landing_grid(self.microscope, self.settings, flat_to_sem=True)
-        # # tilt to 0
-        # self.microscope.specimen.stage.absolute_move(StagePosition(t=0))
-        #
-        # # centre a feature
-        # self.update_image_settings(
-        #     resolution=self.settings["imaging"]["resolution"],
-        #     dwell_time=self.settings["imaging"]["dwell_time"],
-        #     hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
-        #     beam_type=BeamType.ELECTRON,
-        #     save=False,
-        #     label="centre_grid",
-        # )
-        #
-        # self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
-        # self.update_popup_settings(message='Please double click to centre the landing posts in the SEM.',
-        #                            click="double",
-        #                            crosshairs=True,
-        #                            filter_strength=self.filter_strength)
-        # self.ask_user(image=self.image_SEM)
-        #
-        # # adjust focus
-        # movement.auto_link_stage(self.microscope, hfw=400e-6)
-        #
-        # # move back to 4mm
-        # self.microscope.specimen.stage.absolute_move(StagePosition(z=4e-3))
-        # # movement.auto_link_stage(self.microscope, hfw=400e-6)
-        #
-        # # tilt flat to electron
-        # movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
-        # movement.auto_link_stage(self.microscope, hfw=600e-6)
-        #
-        # self.ensure_eucentricity()
-
-        ######
         # select initial lamella and landing points
         # TODO: replace with PIESCOPE
         # TODO: MAGIC_NUMBER
@@ -305,6 +269,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
+
+
+
+
+        # TODO: new select sample positions / landing
+
+
+
         self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
@@ -315,6 +287,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             sample = SamplePosition(self.save_path, i)
             sample.lamella_coordinates = lamella_coordinates
             sample.landing_coordinates = landing_coordinates
+            # TODO: save images here?
             sample.save_data()
             self.samples.append(sample)
 
@@ -323,6 +296,94 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"{self.current_status.name} FINISHED")
+
+    def new_sample_positon_selection(self):
+
+        # new sample position selection
+
+        select_another_sample_position = True
+        self.samples = []
+        sample_no = 0
+        while select_another_sample_position:
+            sample_position = self.select_initial_sample_positions(sample_no=sample_no)
+            sample_position.save_data()
+            self.samples.append(sample_position)
+            sample_no += 1
+            if sample_no >= 2:
+                break
+
+        # select corresponding sample landing positions
+        for current_sample_position in self.samples:
+
+            # select landing coordinates:
+
+            current_sample_position.landing_coordinates = StagePosition(
+                x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
+            )
+
+            # save coordinates
+            current_sample_position.save_data()
+
+            # save images?
+
+            # sample sample
+
+        print("hi")
+
+    def select_initial_sample_positions(self, sample_no):
+        """Select the initial sample positions for liftout"""
+        sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
+
+        # TODO: add selection here
+        sample_position.lamella_coordinates = StagePosition(
+            x=sample_no, y=sample_no, z=sample_no, r=sample_no, t=sample_no, coordinate_system=CoordinateSystem.RAW
+        )
+
+
+        def update_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric: bool = False):
+
+            from liftout.fibsem.sampleposition import MicroscopeState
+
+            current_microscope_state = MicroscopeState
+            current_microscope_state.timestamp = utils.current_timestamp()
+            current_microscope_state.eucentric_calibration = eucentric
+            current_microscope_state.last_completed_stage = stage
+            current_microscope_state.absolute_position = microscope.stage.current_position
+             #TOOD:
+            
+            return current_microscope_state
+
+        # TODO: save microscope state
+        sample_position.microscope_state.timestamp = utils.current_timestamp()
+        sample_position.microscope_state.eucentric_calibration = True
+        sample_position.microscope_state.last_completed_stage = AutoLiftoutStatus.Setup
+
+
+
+        sample_position.save_data()
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
+            label="ref_landing_low_res"
+        )
+        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
+            label="ref_lamella_high_res"
+        )
+        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+        return sample_position
+
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
@@ -451,7 +512,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # lowres calibration
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])  # 900e-6
 
-        # TODO: midres eucentric calibration
+        # midres eucentric calibration
         self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_midres"])  # 400e-6
 
         # highres calibration
@@ -1624,10 +1685,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         TEST_VALIDATE_DETECTION = False
         TEST_DRAW_PATTERNS = False
-        TEST_BEAM_SHIFT = True
+        TEST_BEAM_SHIFT = False
         TEST_AUTO_LINK = False
         TEST_FLATTEN_LANDING = False
         TEST_ROTATED_PATTERNS = False
+        TEST_SAMPLE_POSITIONS = True
 
         if self.current_sample is None:
             self.current_sample = SamplePosition(".", 99)
@@ -1712,6 +1774,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 logging.info(f"{self.current_status.name}: needle sharpening milling started")
                 milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                                patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
+
+        if TEST_SAMPLE_POSITIONS:
+            self.new_sample_positon_selection()
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -2049,6 +2114,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["gamma"] = self.settings["gamma"] if gamma is None else gamma
         self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
         self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
+
+        # TODO: update the save path with the sample_position.sample_id if available
+        # if self.current_sample:
+        #     self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample.sample_id))
+        # else:
         self.image_settings["save_path"] = self.save_path if save_path is None else save_path
 
         logging.debug(f"Image Settings: {self.image_settings}")
@@ -2226,13 +2296,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                             f"\n\tCurrent Sample: {self.current_sample.sample_no} "
                                             f"\n\tLamella Coordinate: {self.current_sample.lamella_coordinates}"
                                             f"\n\tLanding Coordinate: {self.current_sample.landing_coordinates}"
-                                            f"\n\tPark Position: {self.current_sample.park_position}")
+                                            )
             else:
                 self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
                                             f"\n\tSample No: {self.samples[0].sample_no} "
                                             f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
                                             f"\n\tLanding Coordinate: {self.samples[0].landing_coordinates}"
-                                            f"\n\tPark Position: {self.samples[0].park_position}")
+                                            )
             self.label_status_2.setStyleSheet("background-color: lightgreen; padding: 10px")
         else:
             self.label_status_2.setText("No Sample Positions Loaded")
@@ -2286,5 +2356,5 @@ def launch_gui(offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)

@@ -83,3 +83,8 @@ def make_logging_directory(prefix='run'):
 def save_image(image, save_path, label=''):
     path = os.path.join(save_path, "img", f"{label}.tif")
     image.save(path)
+
+
+def current_timestamp():
+
+    return datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')

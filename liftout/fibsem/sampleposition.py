@@ -3,7 +3,8 @@ from enum import Enum
 
 import yaml
 import os
-
+import datetime
+import time
 # from liftout.gui.main import AutoLiftoutStatus
 from dataclasses import dataclass
 import uuid
@@ -58,7 +59,7 @@ class SamplePosition:
         self.lamella_ref_images = list()  # TODO: change to ReferenceImages
 
         self.data_path = os.path.join(data_path)
-        self.timestamp = os.path.basename(self.data_path)
+        self.created_timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         self.sample_no = sample_no
 
         self.sample_id = uuid.uuid4()
@@ -76,7 +77,7 @@ class SamplePosition:
         else:
             # create new yaml file
             sample_yaml = {
-                "timestamp": self.timestamp,
+                "created": datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S'),
                 "data_path": self.data_path,
                 "sample": {},
             }
@@ -85,8 +86,11 @@ class SamplePosition:
     def save_data(self):
         """Save the lamella and landing coordinates, and reference to data path"""
 
-        # check if yaml file already exists for this timestamp..
+        # check if yaml file already exists for this sample..
         sample_yaml = self.setup_yaml_file()
+
+        # create dir for reference images
+        os.makedirs(os.path.join(self.data_path, str(self.sample_id), "img"), exist_ok=True)
 
         # format coordinate data for saving
         lamella_coordinates_dict = {
@@ -108,13 +112,34 @@ class SamplePosition:
 
         }
 
+        microscope_state_dict = {
+            "timestamp": self.microscope_state.timestamp,
+            "absolute_position": {
+                "x": self.microscope_state.absolute_position.x,
+                "y": self.microscope_state.absolute_position.y,
+                "z": self.microscope_state.absolute_position.z,
+                "r": self.microscope_state.absolute_position.r,
+                "t": self.microscope_state.absolute_position.t,
+                "coordinate_system": self.microscope_state.absolute_position.coordinate_system
+            },
+            "eb_working_distance": self.microscope_state.eb_working_distance,
+            "ib_working_distance": self.microscope_state.ib_working_distance,
+            "eb_beam_current": self.microscope_state.eb_beam_current,
+            "ib_beam_current": self.microscope_state.ib_beam_current,
+            "eucentric_calibration": self.microscope_state.eucentric_calibration,
+            "last_completed_stage": str(self.microscope_state.last_completed_stage),
+        }
+
         # save stage position to yml file
         save_dict = {
-            "timestamp": self.timestamp,
+
+            "created": self.created_timestamp,
+            "updated": datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S'),
             "sample_no": self.sample_no,
+            "sample_id": str(self.sample_id),
             "lamella_coordinates": lamella_coordinates_dict,
             "landing_coordinates": landing_coordinates_dict,
-            # "data_path": self.data_path
+            "microscope_state": microscope_state_dict
         }
 
         # format dictionary
@@ -153,6 +178,37 @@ class SamplePosition:
             t=sample_dict["landing_coordinates"]["t"],
             coordinate_system=sample_dict["landing_coordinates"]["coordinate_system"]
         )
+
+        # self.microscope_state = MicroscopeState(
+        #     timestamp=sample_dict["microscope_state_dict"]["timestamp"],
+        #     absolute_position=,
+        #     eb_working_distance=,
+        #     ib_working_distance=,
+        #     eb_beam_current=,
+        #     ib_beam_current=,
+        #     eucentric_calibration=,
+        #     last_completed_stage=
+        #
+        # )
+        # microscope_state_dict = {
+        #     "timestamp": self.microscope_state.timestamp,
+        #     "absolute_position": {
+        #         "x": self.microscope_state.absolute_position.x,
+        #         "y": self.microscope_state.absolute_position.y,
+        #         "z": self.microscope_state.absolute_position.z,
+        #         "r": self.microscope_state.absolute_position.r,
+        #         "t": self.microscope_state.absolute_position.t,
+        #         "coordinate_system": self.microscope_state.absolute_position.coordinate_system
+        #     },
+        #     "eb_working_distance": self.microscope_state.eb_working_distance,
+        #     "ib_working_distance": self.microscope_state.ib_working_distance,
+        #     "eb_beam_current": self.microscope_state.eb_beam_current,
+        #     "ib_beam_current": self.microscope_state.ib_beam_current,
+        #     "eucentric_calibration": self.microscope_state.eucentric_calibration,
+        #     "last_completed_stage": self.microscope_state.last_completed_stage,
+        # }
+
+
 
         # load images from disk
         sample_no = sample_dict["sample_no"]
