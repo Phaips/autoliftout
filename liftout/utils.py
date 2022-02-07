@@ -80,8 +80,9 @@ def make_logging_directory(prefix='run'):
     os.makedirs(os.path.join(save_directory, "img"), exist_ok=True)
     return save_directory
 
+
 def save_image(image, save_path, label=''):
-    path = os.path.join(save_path, "img", f"{label}.tif")
+    path = os.path.join(save_path,  f"{label}.tif")
     image.save(path)
 
 

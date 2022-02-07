@@ -90,7 +90,7 @@ class SamplePosition:
         sample_yaml = self.setup_yaml_file()
 
         # create dir for reference images
-        os.makedirs(os.path.join(self.data_path, str(self.sample_id), "img"), exist_ok=True)
+        os.makedirs(os.path.join(self.data_path, str(self.sample_id)), exist_ok=True)
 
         # format coordinate data for saving
         lamella_coordinates_dict = {
