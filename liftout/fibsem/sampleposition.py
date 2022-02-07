@@ -1,10 +1,9 @@
-import glob
+
 from enum import Enum
-from pprint import pprint
-import matplotlib.pyplot as plt
+
 import yaml
 import os
-import numpy as np
+
 # from liftout.gui.main import AutoLiftoutStatus
 from dataclasses import dataclass
 import uuid
@@ -13,6 +12,7 @@ try:
     from autoscript_sdb_microscope_client.structures import *
 except:
     from liftout.tests.mock_autoscript_sdb_microscope_client import *
+
 
 # TODO: move this to a separate file (and the one from main too)
 class AutoLiftoutStatus(Enum):
@@ -37,15 +37,25 @@ class MicroscopeState:
     eucentric_calibration: bool = False  # whether eucentricity has been recently verified
     last_completed_stage: AutoLiftoutStatus = None
 
+@dataclass
+class ReferenceImages:
+    low_res_eb: AdornedImage
+    high_res_eb: AdornedImage
+    low_res_ib: AdornedImage
+    high_res_ib: AdornedImage
+
+    def __iter__(self):
+
+        yield self.low_res_eb, self.high_res_eb, self.low_res_ib, self.high_res_ib
+
 
 class SamplePosition:
     def __init__(self, data_path, sample_no):
         self.landing_coordinates = StagePosition()
         self.lamella_coordinates = StagePosition()
 
-        self.landing_ref_images = list()
-        self.lamella_ref_images = list()
-        self.status = NotImplemented
+        self.landing_ref_images = list()  # TODO: change to ReferenceImages
+        self.lamella_ref_images = list()  # TODO: change to ReferenceImages
 
         self.data_path = os.path.join(data_path)
         self.timestamp = os.path.basename(self.data_path)
@@ -171,6 +181,11 @@ class SamplePosition:
             self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_ib.tif"
         )
 
+        # new path
+        # os.path.join(
+        #     self.data_path, self.experiment_name, self.sample_id, "img", f"ref_lamella_high_res_ib.tif"
+        # )
+
         # load the adorned images and format
         for fname in [
             ref_landing_lowres_eb,
@@ -205,25 +220,10 @@ class SamplePosition:
             self.landing_ref_images,
         )
 
-    def save_current_position(
-        self,
-        stage_position: StagePosition,
-        needle_position: ManipulatorPosition,
-    ):
-        """Save the current sample stage and needle positions and state for recovery"""
-
-        # save the current sample positions
-        self.last_stage_position = stage_position
-        self.last_needle_position = needle_position
-        self.last_status = self.status
-
-        # save to disk
-        self.save_data()
-
     def save_current_state(self):
-
+        """Save the current microscope state"""
         return NotImplemented
 
     def load_sample_state(self):
-
+        """Load the current microscope state"""
         return NotImplemented

@@ -151,20 +151,6 @@ def test_get_sample_data(tmp_data_path, saved_sample):
     assert len(landing_imgs) == 4
 
 
-def test_save_current_position(tmp_data_path):
-
-    stage_position = StagePosition(1, 2, 3, 4, 5)
-    needle_position = ManipulatorPosition(1, 2, 3, 4)
-
-    sample = SamplePosition(tmp_data_path, 1)
-    sample.save_current_position(
-        stage_position=stage_position, needle_position=needle_position
-    )
-
-    assert sample.last_stage_position == stage_position
-    assert sample.last_needle_position == needle_position
-
-
 # #https://mq-software-carpentry.github.io/python-testing/07-fixtures/
 
 # # TODO: use tmpdir
