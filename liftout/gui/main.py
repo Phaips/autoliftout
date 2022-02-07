@@ -299,17 +299,24 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def new_sample_positon_selection(self):
 
-        # select the initial positions to mill lamella
-        select_another_sample_position = True
-        self.samples = []
-        sample_no = 0
+        # check if samples already has been loaded, and then append from there
+        if self.samples:
+            # sample_positions have already been loaded
+            self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
+                                               f'{len(self.samples)} positions selected so far.', crosshairs=False)
+            self.ask_user()
+            sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
+            select_another_sample_position = self.response
+        else:
+            # select the initial positions to mill lamella
+            select_another_sample_position = True
+            self.samples = []
+            sample_no = 0
 
         while select_another_sample_position:
             sample_position = self.select_initial_sample_positions(sample_no=sample_no)
-            sample_position.save_data()
             self.samples.append(sample_position)
             sample_no += 1
-
 
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
@@ -326,43 +333,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # select corresponding sample landing positions
         for current_sample_position in self.samples:
 
-            #####################
-            # select landing coordinates
-            # current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
-
-            # mill the landing edge flat
-            # self.mill_flat_landing_edge()
-
-            #####################
-            # TODO: remove this for above
-            current_sample_position.landing_coordinates = StagePosition(
-                x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
-            )
-
-            self.update_image_settings(
-                resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
-                dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
-                hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
-                save=True,
-                save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
-                label="ref_landing_low_res"
-            )
-            eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
-
-            self.update_image_settings(
-                resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
-                dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
-                hfw=self.settings['reference_images']['landing_post_ref_img_hfw_highres'],
-                save=True,
-                save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
-                label="ref_landing_high_res"
-            )
-            eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
-
-            # save coordinates
-            current_sample_position.save_data()
-
-
+            self.select_landing_sample_positions(current_sample_position)
 
         # reset microscope coordinate system
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
@@ -416,6 +387,45 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         return sample_position
+
+    def select_landing_sample_positions(self, current_sample_position: SamplePosition):
+
+        #####################
+        # select landing coordinates
+        # current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
+
+        # mill the landing edge flat
+        # self.mill_flat_landing_edge()
+
+        #####################
+        # TODO: remove this for above
+        current_sample_position.landing_coordinates = StagePosition(
+            x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
+        )
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
+            label="ref_landing_low_res"
+        )
+        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['landing_post_ref_img_hfw_highres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
+            label="ref_landing_high_res"
+        )
+        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+        # save coordinates
+        current_sample_position.save_data()
+
 
     def user_select_feature(self, feature_type):
         """Get the user to centre the beam on the desired feature"""
