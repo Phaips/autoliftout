@@ -299,40 +299,89 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def new_sample_positon_selection(self):
 
-        # new sample position selection
-
+        # select the initial positions to mill lamella
         select_another_sample_position = True
         self.samples = []
         sample_no = 0
+
         while select_another_sample_position:
             sample_position = self.select_initial_sample_positions(sample_no=sample_no)
             sample_position.save_data()
             self.samples.append(sample_position)
             sample_no += 1
-            if sample_no >= 2:
-                break
+
+
+            self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
+                                               f'{len(self.samples)} positions selected so far.', crosshairs=False)
+            self.ask_user()
+            select_another_sample_position = self.response
+
+        ####################################
+        # # move to landing grid
+        # movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
+        # movement.auto_link_stage(self.microscope, hfw=900e-6)
+        # self.ensure_eucentricity(flat_to_sem=False)
+        ####################################
 
         # select corresponding sample landing positions
         for current_sample_position in self.samples:
 
-            # select landing coordinates:
+            #####################
+            # select landing coordinates
+            # current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
 
+            # mill the landing edge flat
+            # self.mill_flat_landing_edge()
+
+            #####################
+            # TODO: remove this for above
             current_sample_position.landing_coordinates = StagePosition(
                 x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
             )
 
+            self.update_image_settings(
+                resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
+                dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
+                hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
+                save=True,
+                save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
+                label="ref_landing_low_res"
+            )
+            eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
+            self.update_image_settings(
+                resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
+                dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
+                hfw=self.settings['reference_images']['landing_post_ref_img_hfw_highres'],
+                save=True,
+                save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
+                label="ref_landing_high_res"
+            )
+            eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+
             # save coordinates
             current_sample_position.save_data()
 
-            # save images?
 
-            # sample sample
 
+        # reset microscope coordinate system
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         print("hi")
 
     def select_initial_sample_positions(self, sample_no):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
+
+        # ############
+        # movement.move_to_sample_grid(self.microscope, settings=self.settings)
+        # movement.auto_link_stage(self.microscope)
+        #
+        # self.ensure_eucentricity()
+        # movement.move_to_trenching_angle(self.microscope, settings=self.settings)
+        #
+        # sample_position = self.user_select_feature(feature_type="lamella")
+        #
+        # ###################
 
         # TODO: add selection here
         sample_position.lamella_coordinates = StagePosition(
@@ -347,12 +396,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         sample_position.save_data()
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
-            hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
             save=True,
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
-            label="ref_landing_low_res"
+            label=f"ref_lamella_low_res"
         )
         eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
@@ -367,6 +416,55 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         return sample_position
+
+    def user_select_feature(self, feature_type):
+        """Get the user to centre the beam on the desired feature"""
+        # refresh
+        self.update_image_settings(hfw=self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"], save=False)
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        self.update_display(beam_type=BeamType.ION, image_type='new')
+
+        self.update_popup_settings(message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
+                                           f'Press Yes when the feature is centered', click='double',
+                                   filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_FIB)
+
+        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+
+        return self.stage.current_position
+
+    def mill_flat_landing_edge(self):
+
+        # mill the edge of the landing post flat
+        logging.info(f"Preparing to flatten landing surface.")
+        flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
+
+        self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+                                   crosshairs=False, milling_patterns=flatten_landing_pattern)
+        self.ask_user(image=self.image_FIB)
+        if self.response:
+            # TODO: refactor this into draw_patterns_and_mill
+            # additional args: pattern_type, scan_direction, milling_current
+            self.microscope.imaging.set_active_view(2)  # the ion beam view
+            self.microscope.patterning.clear_patterns()
+            for pattern in self.patterns:
+                tmp_pattern = self.microscope.patterning.create_cleaning_cross_section(
+                    center_x=pattern.center_x,
+                    center_y=pattern.center_y,
+                    width=pattern.width,
+                    height=pattern.height,
+                    depth=self.settings["flatten_landing"]["depth"]
+                )
+                tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
+                tmp_pattern.scan_direction = "LeftToRight"
+            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.2e-9)
+        else:
+            self.microscope.patterning.clear_patterns()
+        logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
+
 
 
     def select_initial_feature_coordinates(self, feature_type=''):

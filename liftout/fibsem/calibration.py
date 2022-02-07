@@ -8,6 +8,7 @@ from liftout.fibsem import acquire
 from liftout.detection import detection
 from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStatus
 from liftout.model import models
+from autoscript_sdb_microscope_client.enumerations import *
 
 BeamType = acquire.BeamType
 
@@ -683,14 +684,17 @@ def auto_focus_and_link(microscope):
 
 
 def get_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric: bool = False):
-
+    """Get the current microscope state """
 
     current_microscope_state = MicroscopeState()
     current_microscope_state.timestamp = utils.current_timestamp()
     current_microscope_state.eucentric_calibration = eucentric
     current_microscope_state.last_completed_stage = stage
-    current_microscope_state.absolute_position = microscope.stage.current_position
 
+    # get absolute stage coordinates (RAW)
+    microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+    current_microscope_state.absolute_position = microscope.specimen.stage.current_position
+    microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
     # working_distance
     eb_image = acquire.last_image(microscope, BeamType.ELECTRON)
     ib_image = acquire.last_image(microscope, BeamType.ION)
@@ -702,3 +706,16 @@ def get_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric
     current_microscope_state.ib_beam_current = microscope.beams.ion_beam.beam_current.value
 
     return current_microscope_state
+
+
+def set_microscope_state(microscope, microscope_state: MicroscopeState):
+
+    # move to position
+
+    # check eucentricity
+
+    # set working distance
+
+    # set beam currents
+
+    return NotImplemented
