@@ -63,7 +63,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
-
         # load experiment
         self.new_load_sample_positions()
 
@@ -351,21 +350,32 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def new_load_sample_positions(self):
 
-        # logging.info(f"LOAD COORDINATES STARTED")
-        # input save path
-        save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+        #####
+        user_response = input("Do you want to load a previous experiment? (y/n)")
+
+        load_experiment = True if user_response.lower() == "y" else False
+        if load_experiment:
+            # load_experiment
+            experiment_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
+                                                                   directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+            # if the user doesnt select a folder, start a new experiment
+            # TODO: include a check for invalid folders here too?
+            if experiment_path is "":
+                load_experiment = False
+            else:
+                self.save_path = experiment_path
+                self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
 
         # start from scratch
-        if not save_path:
-            self.run_name = f"experiment_name_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
+        if load_experiment is False:
+            ### create_experiment
+            experiment_name = input("Enter a name for the experiment: ")
+            self.run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
             self.save_path = utils.make_logging_directory(prefix=self.run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
             return
-        else:
-            self.save_path = save_path
-            self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
+
 
         # TODO: improve the part below this
         # if not save_path:
@@ -379,7 +389,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # read the sample.yaml: get how many samples in there, loop through
 
         # test if the file exists
-        yaml_file = os.path.join(save_path, "sample.yaml")
+        yaml_file = os.path.join(experiment_path, "sample.yaml")
 
         if not os.path.exists(yaml_file):
             error_msg = "sample.yaml file could not be found in this directory."
@@ -390,7 +400,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             return
 
         # test if there are any samples in the file?
-        sample = SamplePosition(save_path, None)
+        sample = SamplePosition(experiment_path, None)
         yaml_file = sample.setup_yaml_file()
 
 
@@ -408,11 +418,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples = []
 
             for sample_no in yaml_file["sample"].keys():
-                sample = SamplePosition(save_path, sample_no)
+                sample = SamplePosition(experiment_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
 
-        logging.info(f"{len(self.samples)} samples loaded from {save_path}")
+        logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
 
     def select_initial_sample_positions(self, sample_no):
