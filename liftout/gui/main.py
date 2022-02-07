@@ -168,6 +168,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.pre_run_validation()
 
+        # enable liftout if samples are loaded
+        if self.samples:
+            self.pushButton_autoliftout.setEnabled(True)
+
         # DEVELOPER ONLY
         self.ADDITIONAL_CONFIRMATION = True
         self.MILLING_COMPLETED_THIS_RUN = False
@@ -288,7 +292,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             sample = SamplePosition(self.save_path, i)
             sample.lamella_coordinates = lamella_coordinates
             sample.landing_coordinates = landing_coordinates
-            # TODO: save images here?
             sample.save_data()
             self.samples.append(sample)
 
@@ -302,7 +305,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # check if samples already has been loaded, and then append from there
         if self.samples:
-            # sample_positions have already been loaded
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
             self.ask_user()
@@ -314,6 +316,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples = []
             sample_no = 0
 
+        # allow the user to select additional lamella positions
         while select_another_sample_position:
             sample_position = self.select_initial_sample_positions(sample_no=sample_no)
             self.samples.append(sample_position)
@@ -380,8 +383,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not os.path.exists(yaml_file):
             error_msg = "sample.yaml file could not be found in this directory."
-            logging.error(error_msg)
-            display_error_message(error_msg)
+            logging.warning(error_msg)
+            # display_error_message(error_msg)
+            # TODO: gracefully handle the no sample.yaml found case. direct user to select samples?
+            self.samples = []
             return
 
         # test if there are any samples in the file?
@@ -407,17 +412,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 sample.load_data_from_file()
                 self.samples.append(sample)
 
-
-        # update the save_path to what was stored in the sample_yaml
-        # self.save_path = yaml_file["data_path"]
-
-        # TODO: also update the logging path
-        # cant just update like this, dont think it can be reconfigured once set?
-        # self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
-
-
-        # self.pushButton_autoliftout.setEnabled(True)
-
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
         logging.info(f"Reload Experiment Finished")
 
@@ -442,10 +436,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
         # save microscope state
-        # TODO: check if current_status works?
         sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
-                                                                                   stage=self.current_status,
-                                                                                   eucentric=True)
+                                                                                    stage=self.current_status,
+                                                                                    eucentric=True)
         sample_position.save_data()
 
         self.update_image_settings(
@@ -510,7 +503,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # save coordinates
         current_sample_position.save_data()
 
-
     def user_select_feature(self, feature_type):
         """Get the user to centre the beam on the desired feature"""
         # refresh
@@ -558,8 +550,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             self.microscope.patterning.clear_patterns()
         logging.info(f"{self.current_status.name} | FLATTEN_LANDING | FINISHED")
-
-
 
     def select_initial_feature_coordinates(self, feature_type=''):
         """
