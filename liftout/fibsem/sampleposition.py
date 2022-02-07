@@ -5,24 +5,43 @@ import matplotlib.pyplot as plt
 import yaml
 import os
 import numpy as np
+# from liftout.gui.main import AutoLiftoutStatus
+from dataclasses import dataclass
+import uuid
 
 try:
     from autoscript_sdb_microscope_client.structures import *
 except:
     from liftout.tests.mock_autoscript_sdb_microscope_client import *
 
+# TODO: move this to a separate file (and the one from main too)
+class AutoLiftoutStatus(Enum):
+    Initialisation = -1
+    Setup = 0
+    Milling = 1
+    Liftout = 2
+    Landing = 3
+    Reset = 4
+    Thinning = 5
+    Finished = 6
 
-class Sample:
+
+@dataclass
+class MicroscopeState:
+    timestamp: float = None
+    absolute_position: StagePosition = StagePosition()
+    eb_working_distance: float = None
+    ib_working_distance: float = None
+    eb_beam_current: float = None
+    ib_beam_current: float = None
+    eucentric_calibration: bool = False  # whether eucentricity has been recently verified
+    last_completed_stage: AutoLiftoutStatus = None
+
+
+class SamplePosition:
     def __init__(self, data_path, sample_no):
         self.landing_coordinates = StagePosition()
         self.lamella_coordinates = StagePosition()
-        self.milling_coordinates = StagePosition()
-        self.jcut_coordinates = StagePosition()
-        self.liftout_coordinates = StagePosition()
-        self.park_position = ManipulatorPosition()
-
-        self.last_stage_position = StagePosition()
-        self.last_needle_position = ManipulatorPosition()
 
         self.landing_ref_images = list()
         self.lamella_ref_images = list()
@@ -31,6 +50,9 @@ class Sample:
         self.data_path = os.path.join(data_path)
         self.timestamp = os.path.basename(self.data_path)
         self.sample_no = sample_no
+
+        self.sample_id = uuid.uuid4()
+        self.microscope_state: MicroscopeState = MicroscopeState()
 
     def setup_yaml_file(self):
         # check if yaml file already exists for this timestamp..
@@ -76,73 +98,12 @@ class Sample:
 
         }
 
-        milling_coordinates_dict = {
-            "x": self.milling_coordinates.x,
-            "y": self.milling_coordinates.y,
-            "z": self.milling_coordinates.z,
-            "r": self.milling_coordinates.r,
-            "t": self.milling_coordinates.t,
-            "coordinate_system": self.milling_coordinates.coordinate_system
-
-        }
-
-        jcut_coordinates_dict = {
-            "x": self.jcut_coordinates.x,
-            "y": self.jcut_coordinates.y,
-            "z": self.jcut_coordinates.z,
-            "r": self.jcut_coordinates.r,
-            "t": self.jcut_coordinates.t,
-            "coordinate_system": self.jcut_coordinates.coordinate_system
-
-        }
-
-        liftout_coordinates_dict = {
-            "x": self.liftout_coordinates.x,
-            "y": self.liftout_coordinates.y,
-            "z": self.liftout_coordinates.z,
-            "r": self.liftout_coordinates.r,
-            "t": self.liftout_coordinates.t,
-            "coordinate_system": self.liftout_coordinates.coordinate_system
-
-        }
-
-        park_position_dict = {
-            "x": self.park_position.x,
-            "y": self.park_position.y,
-            "z": self.park_position.z,
-            "r": self.park_position.r,
-
-        }
-
-        last_stage_position_dict = {
-            "x": self.last_stage_position.x,
-            "y": self.last_stage_position.y,
-            "z": self.last_stage_position.z,
-            "r": self.last_stage_position.r,
-            "t": self.last_stage_position.t,
-            "coordinate_system": self.last_stage_position.coordinate_system
-
-        }
-
-        last_needle_position_dict = {
-            "x": self.last_needle_position.x,
-            "y": self.last_needle_position.y,
-            "z": self.last_needle_position.z,
-            "r": self.last_needle_position.r,
-        }
-
         # save stage position to yml file
         save_dict = {
             "timestamp": self.timestamp,
             "sample_no": self.sample_no,
             "lamella_coordinates": lamella_coordinates_dict,
             "landing_coordinates": landing_coordinates_dict,
-            "milling_coordinates": milling_coordinates_dict,
-            "jcut_coordinates": jcut_coordinates_dict,
-            "liftout_coordinates": liftout_coordinates_dict,
-            "park_position": park_position_dict,
-            "last_stage_position": last_stage_position_dict,
-            "last_needle_position": last_needle_position_dict
             # "data_path": self.data_path
         }
 
@@ -183,42 +144,6 @@ class Sample:
             coordinate_system=sample_dict["landing_coordinates"]["coordinate_system"]
         )
 
-        self.milling_coordinates = StagePosition(
-            x=sample_dict["milling_coordinates"]["x"],
-            y=sample_dict["milling_coordinates"]["y"],
-            z=sample_dict["milling_coordinates"]["z"],
-            r=sample_dict["milling_coordinates"]["r"],
-            t=sample_dict["milling_coordinates"]["t"],
-            coordinate_system=sample_dict["milling_coordinates"]["coordinate_system"]
-
-        )
-
-        self.jcut_coordinates = StagePosition(
-            x=sample_dict["jcut_coordinates"]["x"],
-            y=sample_dict["jcut_coordinates"]["y"],
-            z=sample_dict["jcut_coordinates"]["z"],
-            r=sample_dict["jcut_coordinates"]["r"],
-            t=sample_dict["jcut_coordinates"]["t"],
-            coordinate_system=sample_dict["jcut_coordinates"]["coordinate_system"]
-
-        )
-
-        self.liftout_coordinates = StagePosition(
-            x=sample_dict["liftout_coordinates"]["x"],
-            y=sample_dict["liftout_coordinates"]["y"],
-            z=sample_dict["liftout_coordinates"]["z"],
-            r=sample_dict["liftout_coordinates"]["r"],
-            t=sample_dict["liftout_coordinates"]["t"],
-            coordinate_system=sample_dict["liftout_coordinates"]["coordinate_system"]
-        )
-
-        self.park_position = ManipulatorPosition(
-            x=sample_dict["park_position"]["x"],
-            y=sample_dict["park_position"]["y"],
-            z=sample_dict["park_position"]["z"],
-            r=sample_dict["park_position"]["r"],
-        )
-
         # load images from disk
         sample_no = sample_dict["sample_no"]
         ref_landing_lowres_eb = os.path.join(
@@ -245,14 +170,6 @@ class Sample:
         ref_lamella_highres_ib = os.path.join(
             self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_ib.tif"
         )
-        # ref_landing_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb.tif")
-        # ref_landing_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb.tif")
-        # ref_landing_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_low_res_eb_ib.tif")
-        # ref_landing_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_landing_high_res_eb_ib.tif")
-        # ref_lamella_lowres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb.tif")
-        # ref_lamella_highres_eb = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb.tif")
-        # ref_lamella_lowres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_low_res_eb_ib.tif")
-        # ref_lamella_highres_ib = os.path.join(self.data_path, "img", f"{sample_no:02d}_ref_lamella_high_res_eb_ib.tif")
 
         # load the adorned images and format
         for fname in [
@@ -302,3 +219,11 @@ class Sample:
 
         # save to disk
         self.save_data()
+
+    def save_current_state(self):
+
+        return NotImplemented
+
+    def load_sample_state(self):
+
+        return NotImplemented

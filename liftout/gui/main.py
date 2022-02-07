@@ -28,7 +28,7 @@ matplotlib.use('Agg')
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client.structures import *
 from autoscript_sdb_microscope_client.enumerations import *
-from liftout.fibsem.sample import Sample
+from liftout.fibsem.sampleposition import SamplePosition
 from PIL import Image
 
 # Required to not break imports
@@ -312,7 +312,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # save coordinates
         self.samples = []
         for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
-            sample = Sample(self.save_path, i)
+            sample = SamplePosition(self.save_path, i)
             sample.lamella_coordinates = lamella_coordinates
             sample.landing_coordinates = landing_coordinates
             sample.save_data()
@@ -552,7 +552,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             return
 
         # test if there are any samples in the file?
-        sample = Sample(save_path, None)
+        sample = SamplePosition(save_path, None)
         yaml_file = sample.setup_yaml_file()
 
 
@@ -568,12 +568,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             # load the samples
             self.samples = []
-            # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
             for sample_no in yaml_file["sample"].keys():
-                sample = Sample(save_path, sample_no)
+                sample = SamplePosition(save_path, sample_no)
                 sample.load_data_from_file()
                 self.samples.append(sample)
-            # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         self.pushButton_autoliftout.setEnabled(True)
 
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
@@ -1632,7 +1630,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_ROTATED_PATTERNS = False
 
         if self.current_sample is None:
-            self.current_sample = Sample(".", 99)
+            self.current_sample = SamplePosition(".", 99)
             # self.current_sample.sample_no = 99
         if TEST_VALIDATE_DETECTION:
 
@@ -2288,5 +2286,5 @@ def launch_gui(offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)

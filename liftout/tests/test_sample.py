@@ -4,7 +4,7 @@
 import os
 
 import pytest
-from liftout.fibsem.sample import *
+from liftout.fibsem.sampleposition import *
 from liftout.tests import data as test_data_path
 
 try:
@@ -35,7 +35,7 @@ def saved_sample(tmp_data_path):
     x, y, z, r, t = 1, 2, 3, 4, 5
     lamella_coordinates = StagePosition(x=x, y=y, z=z, r=r, t=t)
 
-    sample = Sample(tmp_data_path, sample_no)
+    sample = SamplePosition(tmp_data_path, sample_no)
     sample.lamella_coordinates = lamella_coordinates
     sample.save_data()
 
@@ -46,7 +46,7 @@ def saved_sample(tmp_data_path):
 def test_create_new_sample(tmp_data_path):
 
     sample_no = 1
-    sample = Sample(data_path=tmp_data_path, sample_no=sample_no)
+    sample = SamplePosition(data_path=tmp_data_path, sample_no=sample_no)
 
     assert sample.data_path == os.path.join(
         tmp_data_path
@@ -56,7 +56,7 @@ def test_create_new_sample(tmp_data_path):
 
 def test_create_new_yaml_file(tmp_data_path):
 
-    sample = Sample(tmp_data_path, 1)  # TODO: make fixture
+    sample = SamplePosition(tmp_data_path, 1)  # TODO: make fixture
 
     yaml_file = sample.setup_yaml_file()
 
@@ -69,7 +69,7 @@ def test_save_sample_data(tmp_data_path):
     x, y, z, r, t = 1, 2, 3, 4, 5
     lamella_coordinates = StagePosition(x=x, y=y, z=z, r=r, t=t)
 
-    sample = Sample(tmp_data_path, 1)
+    sample = SamplePosition(tmp_data_path, 1)
     sample.lamella_coordinates = lamella_coordinates
     sample.save_data()
     sample.load_data_from_file()
@@ -91,7 +91,7 @@ def test_save_sample_data_with_existing_data(tmp_data_path, saved_sample):
     saved_sample.save_data()
 
     del saved_sample
-    new_sample = Sample(tmp_data_path, sample_no)
+    new_sample = SamplePosition(tmp_data_path, sample_no)
     new_sample.load_data_from_file()
 
     assert new_sample.lamella_coordinates.x == new_lamella_coordinates.x
@@ -102,7 +102,7 @@ def test_save_sample_data_with_existing_data(tmp_data_path, saved_sample):
 
 def test_load_sample_data_from_file(tmp_data_path, saved_sample):
 
-    new_sample = Sample(tmp_data_path, 1)
+    new_sample = SamplePosition(tmp_data_path, 1)
     new_sample.load_data_from_file()
 
     assert saved_sample.lamella_coordinates.x == new_sample.lamella_coordinates.x
@@ -113,7 +113,7 @@ def test_load_sample_data_from_file(tmp_data_path, saved_sample):
 
 def test_load_sample_data_from_file_fails():
 
-    sample = Sample(".", 1)
+    sample = SamplePosition(".", 1)
     with pytest.raises(FileNotFoundError):
         sample.load_data_from_file()
 
@@ -129,7 +129,7 @@ def test_load_sample_data_from_file_with_no_sample_fails(saved_sample):
 
 def test_get_sample_data(tmp_data_path, saved_sample):
 
-    sample = Sample(tmp_data_path, 1)
+    sample = SamplePosition(tmp_data_path, 1)
     sample.load_data_from_file()
 
     lamella_coord, landing_coord, lamella_imgs, landing_imgs = sample.get_sample_data()
@@ -156,7 +156,7 @@ def test_save_current_position(tmp_data_path):
     stage_position = StagePosition(1, 2, 3, 4, 5)
     needle_position = ManipulatorPosition(1, 2, 3, 4)
 
-    sample = Sample(tmp_data_path, 1)
+    sample = SamplePosition(tmp_data_path, 1)
     sample.save_current_position(
         stage_position=stage_position, needle_position=needle_position
     )
