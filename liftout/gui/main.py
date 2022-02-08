@@ -123,7 +123,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
 
-        self.current_sample = None
+        self.current_sample_position = None
 
         # initial display
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -424,7 +424,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reset previously loaded samples
         self.samples = []
-        self.current_sample = None
+        self.current_sample_position = None
 
         # load the samples
         for sample_no in yaml_file["sample"].keys():
@@ -755,10 +755,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         for sample in self.samples:
 
-            self.current_sample = sample
+            self.current_sample_position = sample
             (lamella_coord, landing_coord,
                 lamella_area_reference_images,
-                landing_reference_images) = self.current_sample.get_sample_data()
+                landing_reference_images) = self.current_sample_position.get_sample_data()
 
             self.single_liftout(landing_coord, lamella_coord,
                             landing_reference_images, lamella_area_reference_images)
@@ -769,8 +769,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"Perform Thinning: {self.response}")
         if self.response:
             for sample in self.samples:
-                self.current_sample = sample
-                landing_coord = self.current_sample.landing_coordinates
+                self.current_sample_position = sample
+                landing_coord = self.current_sample_position.landing_coordinates
                 self.current_status = AutoLiftoutStage.Thinning
                 self.thin_lamella(landing_coord=landing_coord)
         logging.info(f"autoliftout complete")
@@ -828,8 +828,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def single_liftout(self, landing_coordinates, lamella_coordinates,
                        original_landing_images, original_lamella_area_images):
 
-        # logging.info(f"gui: starting liftout no. {self.current_sample.sample_no}")
-        logging.info(f"SINGLE_LIFTOUT | {self.current_sample.sample_no} | STARTED")
+        logging.info(f"SINGLE_LIFTOUT | {self.current_sample_position.sample_no} | STARTED")
 
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False
@@ -849,7 +848,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
         self.stage.absolute_move(lamella_coordinates)
 
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample.sample_no, mode='eb')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample_position.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
         if ret is False:
@@ -867,7 +866,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_image_settings(
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_post_drift_correction"
+            label=f"{self.current_sample_position.sample_no:02d}_post_drift_correction"
         )
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
@@ -924,8 +923,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # mill trenches for lamella
             milling.mill_trenches(self.microscope, self.settings)
 
-        self.current_sample.milling_coordinates = self.stage.current_position
-        self.current_sample.save_data()
+        # self.current_sample_position.milling_coordinates = self.stage.current_position
+        # self.current_sample_position.save_data()
 
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
@@ -942,7 +941,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_ref_trench_low_res"
+            label=f"{self.current_sample_position.sample_no:02d}_ref_trench_low_res"
         )
         eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
@@ -951,7 +950,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_ref_trench_high_res"
+            label=f"{self.current_sample_position.sample_no:02d}_ref_trench_high_res"
         )
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
@@ -963,7 +962,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample.sample_no, mode='ib')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample_position.sample_no, mode='ib')
 
         if ret is False:
             # cross-correlation has failed, manual correction required
@@ -975,17 +974,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
-                                   save=True, label=f"{self.current_sample.sample_no:02d}_drift_correction_ML")
+                                   save=True, label=f"{self.current_sample_position.sample_no:02d}_drift_correction_ML")
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML()
         movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings)
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
-                                   save=True, label=f"{self.current_sample.sample_no:02d}_drift_correction_ML")
+                                   save=True, label=f"{self.current_sample_position.sample_no:02d}_drift_correction_ML")
         self.correct_stage_drift_with_ML()
 
         # save jcut position
-        # self.current_sample.jcut_coordinates = self.stage.current_position
-        # self.current_sample.save_data()
+        # self.current_sample_position.jcut_coordinates = self.stage.current_position
+        # self.current_sample_position.save_data()
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
@@ -1006,11 +1005,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # take reference images of the jcut
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_lowres"],
-                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_lowres")
+                                   save=True, label=f"{self.current_sample_position.sample_no:02d}_jcut_lowres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_highres"],
-                                   save=True, label=f"{self.current_sample.sample_no:02d}_jcut_highres")
+                                   save=True, label=f"{self.current_sample_position.sample_no:02d}_jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
@@ -1037,7 +1036,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: label will overwrite previous, needs a unique identifier
         self.update_image_settings(
             save=True,
-            label=f'{self.current_sample.sample_no:02d}_drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+            label=f'{self.current_sample_position.sample_no:02d}_drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         )
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
@@ -1089,9 +1088,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: needle inserted to park positon: {park_position}")
 
         # save liftout position
-        # self.current_sample.park_position = park_position
-        # self.current_sample.liftout_coordinates = self.stage.current_position
-        # self.current_sample.save_data()
+        # self.current_sample_position.park_position = park_position
+        # self.current_sample_position.liftout_coordinates = self.stage.current_position
+        # self.current_sample_position.save_data()
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
@@ -1100,7 +1099,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False)
         logging.info(f"{self.current_status.name}: lamella to needle welding complete.")
 
-        self.update_image_settings(save=True, hfw=self.settings["platinum"]["weld"]["hfw"], label=f"{self.current_sample.sample_no:02d}_landed_Pt_sputter")
+        self.update_image_settings(save=True, hfw=self.settings["platinum"]["weld"]["hfw"], label=f"{self.current_sample_position.sample_no:02d}_landed_Pt_sputter")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         logging.info(f"{self.current_status.name} | MILL_SEVERING | STARTED")
@@ -1114,7 +1113,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-        self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"{self.current_sample.sample_no:02d}_jcut_sever")
+        self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"{self.current_sample_position.sample_no:02d}_jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
         logging.info(f"{self.current_status.name} | MILL_SEVERING | FINISHED")
 
@@ -1134,7 +1133,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             time.sleep(1)
 
         # reference images after liftout complete
-        self.image_settings['label'] = f"{self.current_sample.sample_no:02d}_liftout_of_trench"
+        self.image_settings['label'] = f"{self.current_sample_position.sample_no:02d}_liftout_of_trench"
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move needle to park position
@@ -1156,7 +1155,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_needle_liftout_start_position_lowres"
+            label=f"{self.current_sample_position.sample_no:02d}_needle_liftout_start_position_lowres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
         # high res
@@ -1165,7 +1164,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_needle_liftout_start_position_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_needle_liftout_start_position_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
 
@@ -1175,7 +1174,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### XY-MOVE (ELECTRON)
         self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_pre_movement_lowres"
+        self.image_settings["label"] = f"{self.current_sample_position.sample_no:02d}_needle_liftout_pre_movement_lowres"
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
@@ -1191,7 +1190,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_xy_movement_lowres"
+        self.image_settings["label"] = f"{self.current_sample_position.sample_no:02d}_needle_liftout_post_xy_movement_lowres"
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
         # calculate shift in xyz coordinates
@@ -1212,7 +1211,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             ### Z-MOVE FINAL (ION)
             self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
-            self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_needle_liftout_post_z_half_movement_highres"
+            self.image_settings["label"] = f"{self.current_sample_position.sample_no:02d}_needle_liftout_post_z_half_movement_highres"
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
             # calculate shift in xyz coordinates
@@ -1236,14 +1235,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_lowres"
+                label=f"{self.current_sample_position.sample_no:02d}_needle_liftout_landed_lowres"
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
 
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
                 save=True,
-                label=f"{self.current_sample.sample_no:02d}_needle_liftout_landed_highres"
+                label=f"{self.current_sample_position.sample_no:02d}_needle_liftout_landed_highres"
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | FINISHED")
@@ -1356,7 +1355,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample.sample_no, mode="land")
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample_position.sample_no, mode="land")
 
         if ret is False:
             # cross-correlation has failed, manual correction required
@@ -1378,7 +1377,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"],
             beam_type=BeamType.ELECTRON,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_needle_land_sample_lowres"
         )
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
@@ -1398,7 +1397,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"],
             beam_type=BeamType.ION,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_y_move"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_needle_land_sample_lowres_after_y_move"
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
 
@@ -1417,7 +1416,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             beam_type=BeamType.ELECTRON,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
         )
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
@@ -1437,7 +1436,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_needle_land_sample_lowres_after_z_move"
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
@@ -1452,7 +1451,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_weld_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_weld_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
@@ -1490,7 +1489,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_weld_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_weld_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
@@ -1506,7 +1505,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["cut"]["hfw"],
             beam_type=BeamType.ION,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_pre_cut_off"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_pre_cut_off"
         )
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
@@ -1551,7 +1550,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             beam_type=BeamType.ION,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_cut_lowres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_cut_lowres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
@@ -1561,7 +1560,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ION,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_cut_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_cut_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
@@ -1590,7 +1589,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_lowres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_lowres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1600,7 +1599,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_landing_lamella_final_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_landing_lamella_final_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
@@ -1631,7 +1630,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["imaging"]["horizontal_field_width"],
             beam_type=BeamType.ION,
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_sharpen_needle_initial"
+            label=f"{self.current_sample_position.sample_no:02d}_sharpen_needle_initial"
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
@@ -1646,7 +1645,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_status.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
 
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_sharpen_needle_centre"
+        self.image_settings["label"] = f"{self.current_sample_position.sample_no:02d}_sharpen_needle_centre"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
@@ -1676,7 +1675,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #################################################################################################
 
         # take reference images
-        self.image_settings["label"] = f"{self.current_sample.sample_no:02d}_sharpen_needle_final"
+        self.image_settings["label"] = f"{self.current_sample_position.sample_no:02d}_sharpen_needle_final"
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
@@ -1734,7 +1733,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_0_deg_tilt"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_lamella_0_deg_tilt"
         )
 
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1745,7 +1744,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_drift_correction_medres"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_drift_correction_medres"
         )
 
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1760,7 +1759,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_drift_correction_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_drift_correction_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
 
@@ -1768,7 +1767,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # NEW THINNING
         self.update_image_settings()
-        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings, sample_no=self.current_sample.sample_no)
+        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings, sample_no=self.current_sample_position.sample_no)
 
         ###################################################################################################
 
@@ -1779,7 +1778,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_superres"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_lamella_post_superres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1789,7 +1788,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_highres"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_lamella_post_highres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
@@ -1799,12 +1798,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
-            label=f"{self.current_sample.sample_no:02d}_thinning_lamella_post_lowres"
+            label=f"{self.current_sample_position.sample_no:02d}_thinning_lamella_post_lowres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        logging.info(f"{self.current_status.name}: thin lamella {self.current_sample.sample_no} complete.")
+        logging.info(f"{self.current_status.name}: thin lamella {self.current_sample_position.sample_no} complete.")
         logging.info(f" {self.current_status.name} FINISHED")
 
     def initialise_image_frames(self):
@@ -1867,9 +1866,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_SAMPLE_POSITIONS = True
         TEST_SAVE_PATH = False
 
-        # if self.current_sample is None:
-            # self.current_sample = SamplePosition(".", 99)
-            # self.current_sample.sample_no = 99
+        # if self.current_sample_position is None:
+            # self.current_sample_position = SamplePosition(".", 99)
+            # self.current_sample_position.sample_no = 99
         if TEST_VALIDATE_DETECTION:
 
             self.raw_image = AdornedImage(data=test_image)
@@ -1956,7 +1955,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if TEST_SAVE_PATH:
             if self.samples:
-                self.current_sample = self.samples[0]
+                self.current_sample_position = self.samples[0]
                 self.update_image_settings()
 
     def ask_user(self, image=None, second_image=None):
@@ -2297,8 +2296,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
 
         # change the save path to the current sample if available
-        if self.current_sample:
-            self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample.sample_id))
+        if self.current_sample_position:
+            self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
         else:
             self.image_settings["save_path"] = self.save_path if save_path is None else save_path
 
@@ -2469,11 +2468,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white"))
 
         if self.samples:
-            if self.current_sample:
+            if self.current_sample_position:
                 self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
-                                            f"\n\tCurrent Sample: {self.current_sample.sample_no} "
-                                            f"\n\tLamella Coordinate: {self.current_sample.lamella_coordinates}"
-                                            f"\n\tLanding Coordinate: {self.current_sample.landing_coordinates}"
+                                            f"\n\tCurrent Sample: {self.current_sample_position.sample_no} "
+                                            f"\n\tLamella Coordinate: {self.current_sample_position.lamella_coordinates}"
+                                            f"\n\tLanding Coordinate: {self.current_sample_position.landing_coordinates}"
                                             )
             else:
                 self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
