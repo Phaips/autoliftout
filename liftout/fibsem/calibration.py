@@ -6,7 +6,7 @@ from scipy import fftpack, misc
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
 from liftout.detection import detection
-from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStatus
+from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStage
 from liftout.model import models
 from autoscript_sdb_microscope_client.enumerations import *
 
@@ -683,7 +683,7 @@ def auto_focus_and_link(microscope):
     microscope.specimen.stage.link()
 
 
-def get_current_microscope_state(microscope, stage: AutoLiftoutStatus, eucentric: bool = False):
+def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric: bool = False):
     """Get the current microscope state """
 
     current_microscope_state = MicroscopeState()

@@ -14,10 +14,10 @@ def parse_log_file(fname):
     gamma_dict = {"gamma": [], "diff": []}
 
     try:
-        from liftout.gui.main import AutoLiftoutStatus
+        from liftout.gui.main import AutoLiftoutStage
     except ModuleNotFoundError:
         from enum import Enum
-        class AutoLiftoutStatus(Enum):
+        class AutoLiftoutStage(Enum):
             Initialisation = -1
             Setup = 0
             Milling = 1
@@ -27,7 +27,7 @@ def parse_log_file(fname):
             Thinning = 5
             Finished = 6
     
-    stages = [state.name for state in AutoLiftoutStatus] + ["SINGLE_LIFTOUT"]
+    stages = [state.name for state in AutoLiftoutStage] + ["SINGLE_LIFTOUT"]
     state_dict = dict.fromkeys(stages)
     for state in state_dict.keys():
         state_dict[state] = {"STARTED": None, "FINISHED": None}

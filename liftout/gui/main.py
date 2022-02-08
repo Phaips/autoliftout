@@ -21,6 +21,7 @@ from matplotlib.backends.backend_qt5agg import \
 from matplotlib.backends.backend_qt5agg import \
     NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit
 
 from liftout.gui.DraggablePatch import DraggablePatch
 matplotlib.use('Agg')
@@ -48,7 +49,7 @@ METRE_TO_MICRON = 1e-6
 _translate = QtCore.QCoreApplication.translate
 
 
-class AutoLiftoutStatus(Enum):
+class AutoLiftoutStage(Enum):
     Initialisation = -1
     Setup = 0
     Milling = 1
@@ -76,7 +77,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pretilt_degrees = self.settings["system"]["pretilt_angle"]
         assert self.pretilt_degrees == 27  # TODO: remove this once this has been cleaned up in other files
 
-        self.current_status = AutoLiftoutStatus.Initialisation
+        self.current_status = AutoLiftoutStage.Initialisation
         logging.info(f"{self.current_status.name} STARTED")
         logging.info(f"gui: starting in {'offline' if offline else 'online'} mode")
 
@@ -147,7 +148,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
-        self.current_status = AutoLiftoutStatus.Initialisation
+        self.current_status = AutoLiftoutStage.Initialisation
 
         # setup status information
         self.status_timer = QtCore.QTimer()
@@ -220,7 +221,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def initialise_autoliftout(self):
 
-        self.current_status = AutoLiftoutStatus.Setup
+        self.current_status = AutoLiftoutStage.Setup
         logging.info(f"{self.current_status.name} STARTED")
 
         self.update_image_settings(
@@ -234,7 +235,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # check if focus is good enough
         eb_image = acquire.new_image(self.microscope, self.image_settings)
-        if eb_image.metadata.optics.working_distance >= 6.0e-3: # TODO: MAXIMUM_WORKING_DISTANCE
+        if eb_image.metadata.optics.working_distance >= 6.0e-3:  # TODO: MAXIMUM_WORKING_DISTANCE
             self.update_popup_settings(message="The working distance seems to be incorrect, please manually fix the focus.", crosshairs=False)
             self.ask_user(image=None)
 
@@ -362,7 +363,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_experiment(self):
 
-        from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit
 
         # ui
         msg = QMessageBox()
@@ -375,8 +375,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # cmdline
         # user_response = input("Do you want to load a previous experiment? (y/n)")
         # load_experiment = True if user_response.lower() == "y" else False
-
-        #####
 
         if self.load_experiment:
             # load_experiment
@@ -774,7 +772,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             for sample in self.samples:
                 self.current_sample = sample
                 landing_coord = self.current_sample.landing_coordinates
-                self.current_status = AutoLiftoutStatus.Thinning
+                self.current_status = AutoLiftoutStage.Thinning
                 self.thin_lamella(landing_coord=landing_coord)
         logging.info(f"autoliftout complete")
 
@@ -903,7 +901,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.reset_needle()
 
     def mill_lamella(self):
-        self.current_status = AutoLiftoutStatus.Milling
+        self.current_status = AutoLiftoutStage.Milling
         logging.info(f"{self.current_status.name} STARTED")
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
@@ -987,8 +985,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.correct_stage_drift_with_ML()
 
         # save jcut position
-        self.current_sample.jcut_coordinates = self.stage.current_position
-        self.current_sample.save_data()
+        # self.current_sample.jcut_coordinates = self.stage.current_position
+        # self.current_sample.save_data()
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
@@ -1047,7 +1045,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
     def liftout_lamella(self):
-        self.current_status = AutoLiftoutStatus.Liftout
+        self.current_status = AutoLiftoutStage.Liftout
         logging.info(f" {self.current_status.name} STARTED")
 
         # get ready to do liftout by moving to liftout angle
@@ -1092,9 +1090,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_status.name}: needle inserted to park positon: {park_position}")
 
         # save liftout position
-        self.current_sample.park_position = park_position
-        self.current_sample.liftout_coordinates = self.stage.current_position
-        self.current_sample.save_data()
+        # self.current_sample.park_position = park_position
+        # self.current_sample.liftout_coordinates = self.stage.current_position
+        # self.current_sample.save_data()
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
@@ -1342,7 +1340,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_lamella(self, landing_coord, original_landing_images):
 
-        self.current_status = AutoLiftoutStatus.Landing
+        self.current_status = AutoLiftoutStage.Landing
         logging.info(f"{self.current_status.name} STARTED")
 
         # move to landing coordinate # TODO: wrap in safe movement func
@@ -1611,7 +1609,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def reset_needle(self):
 
-        self.current_status = AutoLiftoutStatus.Reset
+        self.current_status = AutoLiftoutStage.Reset
         logging.info(f" {self.current_status.name} STARTED")
 
         # move sample stage out
@@ -1698,7 +1696,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def thin_lamella(self, landing_coord):
         """Thinning: Thin the lamella thickness to size for imaging."""
 
-        self.current_status = AutoLiftoutStatus.Thinning
+        self.current_status = AutoLiftoutStage.Thinning
         logging.info(f" {self.current_status.name} STARTED")
 
         # move to landing coord
@@ -1854,22 +1852,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())
 
 
-
-    # TESTING METHODS (TO BE REMOVED)
-        # self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut)
-
-        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.update_popup_settings(click=None, crosshairs=True, milling_patterns=test_jcut))
-
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image, second_image=test_image))
-        # self.pushButton_test_popup.clicked.connect(lambda: self.ask_user(image=test_image)) # only one image works with jcut
-
-        # self.pushButton_test_popup.clicked.connect(lambda: self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=BeamType.ELECTRON))
-
+        # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
-        # self.pushButton_test_popup.clicked.connect(lambda: self.update_image_settings())
-
-        # self.pushButton_test_popup.clicked.connect(lambda: self.test_draw_patterns())
 
         logging.info("gui: setup connections finished")
 
@@ -1882,9 +1866,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_FLATTEN_LANDING = False
         TEST_ROTATED_PATTERNS = False
         TEST_SAMPLE_POSITIONS = True
+        TEST_SAVE_PATH = False
 
-        if self.current_sample is None:
-            self.current_sample = SamplePosition(".", 99)
+        # if self.current_sample is None:
+            # self.current_sample = SamplePosition(".", 99)
             # self.current_sample.sample_no = 99
         if TEST_VALIDATE_DETECTION:
 
@@ -1970,6 +1955,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if TEST_SAMPLE_POSITIONS:
             self.new_select_sample_positions()
 
+        if TEST_SAVE_PATH:
+            if self.samples:
+                self.current_sample = self.samples[0]
+                self.update_image_settings()
+
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
 
@@ -2031,7 +2021,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # yes/no buttons
         button_box = QtWidgets.QWidget(self.popup_window)
-        button_box.setFixedHeight(int(self.button_height*1.2))
+        button_box.setFixedHeight(int(self.button_height*1.2)) #TODO: MAGIC NUMBER
         button_layout = QtWidgets.QGridLayout()
         yes = QtWidgets.QPushButton('Yes')
         yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
@@ -2307,11 +2297,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
         self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
 
-        # TODO: update the save path with the sample_position.sample_id if available
-        # if self.current_sample:
-        #     self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample.sample_id))
-        # else:
-        self.image_settings["save_path"] = self.save_path if save_path is None else save_path
+        # change the save path to the current sample if available
+        if self.current_sample:
+            self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample.sample_id))
+        else:
+            self.image_settings["save_path"] = self.save_path if save_path is None else save_path
 
         logging.debug(f"Image Settings: {self.image_settings}")
 

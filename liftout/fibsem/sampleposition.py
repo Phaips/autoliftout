@@ -5,7 +5,6 @@ import yaml
 import os
 import datetime
 import time
-# from liftout.gui.main import AutoLiftoutStatus
 from dataclasses import dataclass
 import uuid
 
@@ -16,7 +15,7 @@ except:
 
 
 # TODO: move this to a separate file (and the one from main too)
-class AutoLiftoutStatus(Enum):
+class AutoLiftoutStage(Enum):
     Initialisation = -1
     Setup = 0
     Milling = 1
@@ -36,7 +35,7 @@ class MicroscopeState:
     eb_beam_current: float = None
     ib_beam_current: float = None
     eucentric_calibration: bool = False  # whether eucentricity has been recently verified
-    last_completed_stage: AutoLiftoutStatus = None
+    last_completed_stage: AutoLiftoutStage = None
 
 @dataclass
 class ReferenceImages:
