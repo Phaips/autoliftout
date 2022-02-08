@@ -750,18 +750,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_SEM)
 
     def run_liftout(self):
-        logging.info("gui: run liftout started")
+        logging.info(f"gui: run liftout started")
         logging.info(f"gui: running liftout on {len(self.samples)} samples.")
 
         for sample in self.samples:
 
             self.current_sample_position = sample
-            (lamella_coord, landing_coord,
-                lamella_area_reference_images,
-                landing_reference_images) = self.current_sample_position.get_sample_data()
-
-            self.single_liftout(landing_coord, lamella_coord,
-                            landing_reference_images, lamella_area_reference_images)
+            self.single_liftout()
 
         # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
         self.update_popup_settings(message="Do you want to start lamella thinning?", crosshairs=False)
@@ -776,7 +771,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"autoliftout complete")
 
     def load_coordinates(self):
-
+        # TODO: REMOVE
         logging.info(f"LOAD COORDINATES STARTED")
         # input save path
         save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
@@ -825,28 +820,24 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} samples loaded from {save_path}")
         logging.info(f"LOAD COORDINATES FINISHED")
 
-    def single_liftout(self, landing_coordinates, lamella_coordinates,
-                       original_landing_images, original_lamella_area_images):
+    def single_liftout(self):
+
+        (lamella_coordinates, landing_coordinates,
+            original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
 
         logging.info(f"SINGLE_LIFTOUT | {self.current_sample_position.sample_no} | STARTED")
 
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False
 
-        # TODO: use or code a safe_move function
-        def safe_stage_absolute_movement(microscope, stage_position: StagePosition, stage_settings: MoveSettings):
-            pass
-            # stage = microscope.specimen.stage
-            # stage_settings = MoveSettings(rotate_compucentric=True)
-            # stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-            # stage.absolute_move(StagePosition(r=stage_position.r))
-            # stage.absolute_move(stage_position)
+        # stage_settings = MoveSettings(rotate_compucentric=True)
+        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
+        # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
+        # self.stage.absolute_move(lamella_coordinates)
 
-
-        stage_settings = MoveSettings(rotate_compucentric=True)
-        self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
-        self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
-        self.stage.absolute_move(lamella_coordinates)
+        # TODO: TEST THIS
+        # move to saved lamella position
+        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample_position.sample_no, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
@@ -858,7 +849,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_SEM)
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
-
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                                            f'If not, double click to center the lamella, press Yes when centered.',
                                    click='double', filter_strength=self.filter_strength, allow_new_image=True)
@@ -866,7 +856,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_image_settings(
             save=True,
-            label=f"{self.current_sample_position.sample_no:02d}_post_drift_correction"
+            label="initial_position_post_drift_correction"
         )
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
@@ -1341,15 +1331,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_status = AutoLiftoutStage.Landing
         logging.info(f"{self.current_status.name} STARTED")
 
-        # move to landing coordinate # TODO: wrap in safe movement func
-        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
-        stage_settings = MoveSettings(rotate_compucentric=True)
-        self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+         # TODO: wrap in safe movement func
 
-        self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r, coordinate_system=landing_coord.coordinate_system))
-        self.stage.absolute_move(landing_coord)
+        # stage_settings = MoveSettings(rotate_compucentric=True)
+        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+        # self.stage.absolute_move(StagePosition(x=landing_coord.x, y=landing_coord.y, r=landing_coord.r, coordinate_system=landing_coord.coordinate_system))
+        # self.stage.absolute_move(landing_coord)
+
+        # TODO: TEST THIS
+        # move to landing coordinate
+        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coord)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
-        # self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # eucentricity correction
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM

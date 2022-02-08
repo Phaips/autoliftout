@@ -400,6 +400,25 @@ def flat_to_beam(
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     logging.info(f"movement: tilting stage to {tilt:.4f}")
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
+    # TODO: use safe_absolute_stage_movement instead here
+    return stage.current_position
+
+
+def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
+    """Move the stage to the desired position in a safe manner, using compucentric rotation.
+        Supports movements in the stage_position coordinate system
+    """
+    # TODO: TEST
+    stage = microscope.specimen.stage
+    stage_settings = MoveSettings(rotate_compucentric=True)
+
+    # tilt flat for large rotations to prevent collisions
+    if abs(np.rad2deg(stage_position.r - stage.current_position.r)) > 90:
+        stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=stage_position.coordinate_system), stage_settings)
+        logging.info(f"tilting to flat for large rotation.")
+    stage.absolute_move(StagePosition(r=stage_position.r, coordinate_system=stage_position.coordinate_system))
+    stage.absolute_move(stage_position)
+
     return stage.current_position
 
 
