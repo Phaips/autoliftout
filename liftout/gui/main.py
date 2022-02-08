@@ -284,18 +284,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         #### TODO: REMOVE THIS BLOCK
-        self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
-        self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
-        self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
-
-        # save coordinates
-        self.samples = []
-        for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
-            sample = SamplePosition(self.save_path, i)
-            sample.lamella_coordinates = lamella_coordinates
-            sample.landing_coordinates = landing_coordinates
-            sample.save_data()
-            self.samples.append(sample)
+        # self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
+        # self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
+        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
+        #
+        # # save coordinates
+        # self.samples = []
+        # for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
+        #     sample = SamplePosition(self.save_path, i)
+        #     sample.lamella_coordinates = lamella_coordinates
+        #     sample.landing_coordinates = landing_coordinates
+        #     sample.save_data()
+        #     self.samples.append(sample)
 
         ###############
         self.pushButton_autoliftout.setEnabled(True)
@@ -362,7 +362,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
     def setup_experiment(self):
-
 
         # ui
         msg = QMessageBox()
@@ -1813,11 +1812,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         plt.axis('off')
         plt.tight_layout()
         plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
-        self.canvas_SEM = _FigureCanvas(self.figure_SEM)
-        self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
-        self.label_SEM.setLayout(QtWidgets.QVBoxLayout())
-        self.label_SEM.layout().addWidget(self.toolbar_SEM)
-        self.label_SEM.layout().addWidget(self.canvas_SEM)
+        # self.canvas_SEM = _FigureCanvas(self.figure_SEM)
+        # self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
+        # self.label_SEM.setLayout(QtWidgets.QVBoxLayout())
+        # self.label_SEM.layout().addWidget(self.toolbar_SEM)
+        # self.label_SEM.layout().addWidget(self.canvas_SEM)
 
         # self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ELECTRON, click=None))
         # TODO: if grid not centred before initialise allow click = double temporarily
@@ -1826,11 +1825,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         plt.axis('off')
         plt.tight_layout()
         plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
-        self.canvas_FIB = _FigureCanvas(self.figure_FIB)
-        self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
-        self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
-        self.label_FIB.layout().addWidget(self.toolbar_FIB)
-        self.label_FIB.layout().addWidget(self.canvas_FIB)
+        # self.canvas_FIB = _FigureCanvas(self.figure_FIB)
+        # self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
+        # self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
+        # self.label_FIB.layout().addWidget(self.toolbar_FIB)
+        # self.label_FIB.layout().addWidget(self.canvas_FIB)
         # self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ION, click=None))
 
     def initialize_hardware(self, offline=False):
@@ -2417,12 +2416,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_SEM.data
                     # self.figure_SEM.clear()
-                    self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
-                    self.ax_SEM = self.figure_SEM.add_subplot(111)
-                    self.ax_SEM.get_xaxis().set_visible(False)
-                    self.ax_SEM.get_yaxis().set_visible(False)
-                    self.ax_SEM.imshow(image_array, cmap='gray')
-                    self.canvas_SEM.draw()
+                    # self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
+                    # self.ax_SEM = self.figure_SEM.add_subplot(111)
+                    # self.ax_SEM.get_xaxis().set_visible(False)
+                    # self.ax_SEM.get_yaxis().set_visible(False)
+                    # self.ax_SEM.imshow(image_array, cmap='gray')
+                    # self.canvas_SEM.draw()
                 if beam_type is BeamType.ION:
                     if image_type == 'new':
                         self.image_settings['beam_type'] = beam_type
@@ -2430,13 +2429,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     else:
                         self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
                     image_array = self.image_FIB.data
-                    self.figure_FIB.clear()
-                    self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
-                    self.ax_FIB = self.figure_FIB.add_subplot(111)
-                    self.ax_FIB.get_xaxis().set_visible(False)
-                    self.ax_FIB.get_yaxis().set_visible(False)
-                    self.ax_FIB.imshow(image_array, cmap='gray')
-                    self.canvas_FIB.draw()
+                    # self.figure_FIB.clear()
+                    # self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
+                    # self.ax_FIB = self.figure_FIB.add_subplot(111)
+                    # self.ax_FIB.get_xaxis().set_visible(False)
+                    # self.ax_FIB.get_yaxis().set_visible(False)
+                    # self.ax_FIB.imshow(image_array, cmap='gray')
+                    # self.canvas_FIB.draw()
 
             except Exception:
                 display_error_message(traceback.format_exc())
