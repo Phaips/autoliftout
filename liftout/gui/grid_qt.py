@@ -4,6 +4,12 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel
 from PyQt5.QtGui import QIcon, QImage, QPixmap
 from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5 import QtWidgets
+
+from liftout.fibsem.sampleposition import SamplePosition
+from autoscript_sdb_microscope_client.structures import AdornedImage
+
+import os
 
 class App(QDialog):
 
@@ -21,7 +27,6 @@ class App(QDialog):
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         self.createGridLayout()
-        from PyQt5 import QtWidgets
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidget(self.horizontalGroupBox)
 
@@ -32,19 +37,19 @@ class App(QDialog):
         self.show()
 
     def createGridLayout(self):
+        self.horizontalGroupBox = QGroupBox("Experiment Data")
 
-        import glob
-        import os
-        experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\experiment_name_20220207.174055"
-
+        experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\experiment_name_20220207.174055" # all
+        experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\test_exp_20220208.111741" # some iamges
+        # experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\testtest_20220208.103251" # no sample or iamges...
         # use the sample class:
-        from liftout.fibsem.sampleposition import SamplePosition
-        from autoscript_sdb_microscope_client.structures import  AdornedImage
+
 
         sample = SamplePosition(experiment_path, None)
         yaml_file = sample.setup_yaml_file()
         if len(yaml_file["sample"]) == 0:
             print("NO SAMPLES IN THIS FILE")
+
             return
 
         # reset previously loaded samples
@@ -57,14 +62,17 @@ class App(QDialog):
             sample.load_data_from_file()
             self.samples.append(sample)
 
+        self.draw_sample_grid_ui(experiment_path)
+
+    def draw_sample_grid_ui(self, experiment_path):
         ###################
         # TODO: port to liftout gui
-        self.horizontalGroupBox = QGroupBox("Experiment Data")
+
         gridLayout = QGridLayout()
 
         sample_images = [[] for _ in self.samples]
 
-                            # initial, mill, jcut, liftout, land, reset, thin, polish
+        # initial, mill, jcut, liftout, land, reset, thin, polish
         exemplar_filenames = ["ref_lamella_low_res_eb", "ref_trench_high_res_ib", "jcut_highres_ib",
                               "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
                               "thinning_lamella_stage_2_ib", "thinning_lamella_final_polishing_ib"]
@@ -87,12 +95,13 @@ class App(QDialog):
                 fname = os.path.join(experiment_path, sp.sample_id, f"{img_basename}.tif")
                 imageLabel = QLabel()
 
+
                 if os.path.exists(fname):
                     adorned_img = AdornedImage.load(fname)
                     image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
                     imageLabel.setPixmap(QPixmap.fromImage(image).scaled(150, 150))
                 qimage_labels.append(imageLabel)
-
+            # TODO: sort out sizing / spacing when there are no images present
             sample_images[i] = qimage_labels
 
             # diplay information on grid
@@ -105,7 +114,28 @@ class App(QDialog):
 
             # display sample position
             # TOD0: replace this with a plot showing the position?
+            def testColourMap(x, y):
+                # ref: https://stackoverflow.com/questions/30646152/python-matplotlib-pyqt-plot-to-qpixmap
+                import matplotlib.pyplot as plt
+                from matplotlib.backends.backend_qt5agg import \
+                    FigureCanvasQTAgg as _FigureCanvas
+
+                fig = plt.Figure()
+                canvas = _FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                # gradient = np.linspace(0, 1, 256)
+                # gradient = np.vstack((gradient, gradient))
+                # ax.imshow(gradient, aspect=10, cmap="magma")
+                ax.scatter(x=x, y=y, c="blue")
+                ax.set_axis_off()
+                canvas.draw()
+                size = canvas.size()
+                width, height = size.width(), size.height()
+                im = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32RGB32).scaled(150, 150)
+                return QPixmap(im)
+
             label_pos = QLabel()
+            # label_pos.setPixmap(testColourMap(sp.lamella_coordinates.x, sp.landing_coordinates.y))
             label_pos.setText(f"""
             Pos: x:{sp.lamella_coordinates.x:.3f}, y:{sp.lamella_coordinates.y:.3f}, z:{sp.lamella_coordinates.z:.3f}\n
             Land: x:{sp.landing_coordinates.x:.3f}, y:{sp.landing_coordinates.y:.3f}, z:{sp.landing_coordinates.z:.3f}\n
