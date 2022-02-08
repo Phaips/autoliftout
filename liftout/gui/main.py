@@ -64,7 +64,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         super(GUIMainWindow, self).__init__()
 
         # load experiment
-        self.new_load_sample_positions()
+        self.setup_experiment()
 
         # setup logging
         # self.save_path = utils.make_logging_directory(prefix=self.run_name)
@@ -277,10 +277,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
 
-        # TODO: new select sample positions / landing
+        #### TODO: ENABLE THIS BLOCK
+        self.new_select_sample_positions()
+        #####
 
 
-
+        #### TODO: REMOVE THIS BLOCK
         self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
         self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
         self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
@@ -294,13 +296,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             sample.save_data()
             self.samples.append(sample)
 
+        ###############
         self.pushButton_autoliftout.setEnabled(True)
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"{self.current_status.name} FINISHED")
 
-    def new_sample_positon_selection(self):
+    def new_select_sample_positions(self):
 
         # check if samples already has been loaded, and then append from there
         if self.samples:
@@ -317,7 +320,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # allow the user to select additional lamella positions
         while select_another_sample_position:
-            sample_position = self.select_initial_sample_positions(sample_no=sample_no)
+            sample_position = self.select_initial_lamella_positions(sample_no=sample_no)
             self.samples.append(sample_position)
             sample_no += 1
 
@@ -348,84 +351,94 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         logging.info(f"Selected {len(self.samples)} initial sample and landing positions.")
 
-    def new_load_sample_positions(self):
+    def load_experiment_button_pressed(self, btn):
+
+        if "Yes" in btn.text():
+            self.load_experiment = True
+        else:
+            self.load_experiment = False
+
+
+
+    def setup_experiment(self):
+
+        from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit
+
+        # ui
+        msg = QMessageBox()
+        msg.setWindowTitle("AutoLiftout Startup")
+        msg.setText("Do you want to load a previous experiment?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.buttonClicked.connect(self.load_experiment_button_pressed)
+        msg.exec_()
+
+        # cmdline
+        # user_response = input("Do you want to load a previous experiment? (y/n)")
+        # load_experiment = True if user_response.lower() == "y" else False
 
         #####
-        user_response = input("Do you want to load a previous experiment? (y/n)")
 
-        load_experiment = True if user_response.lower() == "y" else False
-        if load_experiment:
+        if self.load_experiment:
             # load_experiment
             experiment_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                                   directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+                                                                        directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
             # if the user doesnt select a folder, start a new experiment
             # TODO: include a check for invalid folders here too?
             if experiment_path is "":
-                load_experiment = False
+                self.load_experiment = False
             else:
                 self.save_path = experiment_path
                 self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
 
         # start from scratch
-        if load_experiment is False:
+        if self.load_experiment is False:
+
             ### create_experiment
-            experiment_name = input("Enter a name for the experiment: ")
+            experiment_name, okPressed = QInputDialog.getText(self, "New AutoLiftout Experiment",
+                                                              "Enter a name for your experiment:", QLineEdit.Normal, "default_experiment")
+            if not okPressed or experiment_name == "":
+                experiment_name = "default_experiment"
+
+            # experiment_name = input("Enter a name for the experiment: ")
+
             self.run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
             self.save_path = utils.make_logging_directory(prefix=self.run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
             return
 
-
-        # TODO: improve the part below this
-        # if not save_path:
-        #     error_msg = "Load Coordinates: No Folder selected."
-        #     logging.warning(error_msg)
-        #     display_error_message(error_msg)
-        #
-        #     return
-
-        ##########
-        # read the sample.yaml: get how many samples in there, loop through
-
-        # test if the file exists
+        # check if there are valid sample positions stored in this directory
+        # check if the file exists
         yaml_file = os.path.join(experiment_path, "sample.yaml")
-
         if not os.path.exists(yaml_file):
-            error_msg = "sample.yaml file could not be found in this directory."
+            error_msg = "This experiment does not contain any saved sample positions."
             logging.warning(error_msg)
-            # display_error_message(error_msg)
-            # TODO: gracefully handle the no sample.yaml found case. direct user to select samples?
             self.samples = []
             return
 
-        # test if there are any samples in the file?
+        # check if there are any sample positions stored in the file
         sample = SamplePosition(experiment_path, None)
         yaml_file = sample.setup_yaml_file()
-
-
-        num_of_samples = len(yaml_file["sample"])
-
-        if num_of_samples == 0:
-            # error out if no sample.yaml found...
-            error_msg = "sample.yaml file has no stored sample coordinates."
+        if len(yaml_file["sample"]) == 0:
+            error_msg = "This experiment does not contain any saved sample positions."
             logging.error(error_msg)
             display_error_message(error_msg)
             return
 
-        else:
-            # load the samples
-            self.samples = []
+        # reset previously loaded samples
+        self.samples = []
+        self.current_sample = None
 
-            for sample_no in yaml_file["sample"].keys():
-                sample = SamplePosition(experiment_path, sample_no)
-                sample.load_data_from_file()
-                self.samples.append(sample)
+        # load the samples
+        for sample_no in yaml_file["sample"].keys():
+            sample = SamplePosition(experiment_path, sample_no)
+            sample.load_data_from_file()
+            self.samples.append(sample)
 
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
 
-    def select_initial_sample_positions(self, sample_no):
+    def select_initial_lamella_positions(self, sample_no):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
 
@@ -566,6 +579,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         Options are 'lamella' or 'landing'
         """
 
+        # TODO: REMOVE THIS FUNCTION
         select_another_position = True
         coordinates = []
         images = []
@@ -1837,7 +1851,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # FIBSEM methods
         # self.pushButton_load_sample_data.clicked.connect(lambda: self.load_coordinates())
-        self.pushButton_load_sample_data.clicked.connect(lambda: self.new_load_sample_positions())
+        self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())
 
 
 
@@ -1954,7 +1968,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
         if TEST_SAMPLE_POSITIONS:
-            self.new_sample_positon_selection()
+            self.new_select_sample_positions()
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -2306,8 +2320,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         image = self.popup_settings['image']
         beam_type = self.image_settings['beam_type']
 
-
-
         if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
             return
         else:
@@ -2395,7 +2407,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if self.response:
                 milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                                patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
-
 
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""

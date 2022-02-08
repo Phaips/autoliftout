@@ -151,10 +151,9 @@ class SamplePosition:
         with open(os.path.join(self.data_path, "sample.yaml"), "w") as outfile:
             yaml.dump(sample_yaml, outfile)
 
-    def load_data_from_file(self, fname=None):
+    def load_data_from_file(self):
 
-        if fname is None:
-            fname = os.path.join(self.data_path, "sample.yaml")
+        fname = os.path.join(self.data_path, "sample.yaml")
 
         # load yaml file
         with open(fname, "r") as f:
