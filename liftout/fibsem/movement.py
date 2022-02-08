@@ -158,6 +158,7 @@ def move_to_sample_grid(microscope, settings):
     """Move stage and zoom out to see the whole sample grid.
     Assumes sample grid is mounted on the left hand side of the holder.
     """
+    # TODO: reorder this function so that the movement is safe, and the tilt happens last
     flat_to_beam(
         microscope,
         settings=settings,
