@@ -200,7 +200,7 @@ class SamplePosition:
             eb_beam_current=sample_dict["microscope_state"]["eb_beam_current"],
             ib_beam_current=sample_dict["microscope_state"]["ib_beam_current"],
             eucentric_calibration=sample_dict["microscope_state"]["eucentric_calibration"],
-            last_completed_stage=sample_dict["microscope_state"]["last_completed_stage"]
+            last_completed_stage=AutoLiftoutStage[sample_dict["microscope_state"]["last_completed_stage"].split(".")[-1]]
         )
 
         # load images from disk

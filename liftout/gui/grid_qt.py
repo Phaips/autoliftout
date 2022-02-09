@@ -40,7 +40,7 @@ class App(QDialog):
         self.horizontalGroupBox = QGroupBox("Experiment Data")
 
         experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\experiment_name_20220207.174055" # all
-        experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\test_exp_20220208.111741" # some iamges
+        # experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\test_exp_20220208.111741" # some iamges
         # experiment_path = r"C:\Users\Admin\Github\autoliftout\liftout\log\testtest_20220208.103251" # no sample or iamges...
         # use the sample class:
 
@@ -50,7 +50,7 @@ class App(QDialog):
         if len(yaml_file["sample"]) == 0:
             print("NO SAMPLES IN THIS FILE")
 
-            return
+            # return
 
         # reset previously loaded samples
         self.samples = []
@@ -62,13 +62,23 @@ class App(QDialog):
             sample.load_data_from_file()
             self.samples.append(sample)
 
-        self.draw_sample_grid_ui(experiment_path)
+        self.draw_sample_grid_ui()
 
-    def draw_sample_grid_ui(self, experiment_path):
+    def draw_sample_grid_ui(self):
+        self.horizontalGroupBox = QGroupBox("Experiment Data")
+
         ###################
         # TODO: port to liftout gui
 
         gridLayout = QGridLayout()
+
+        # Only add data is sample positions are added
+        if len(self.samples) == 0:
+            label = QLabel()
+            label.setText("No Sample Positions Selected.")
+            gridLayout.addWidget(label)
+            self.horizontalGroupBox.setLayout(gridLayout)
+            return
 
         sample_images = [[] for _ in self.samples]
 
@@ -92,7 +102,7 @@ class App(QDialog):
             # load the exemplar images for each sample
             qimage_labels = []
             for img_basename in exemplar_filenames:
-                fname = os.path.join(experiment_path, sp.sample_id, f"{img_basename}.tif")
+                fname = os.path.join(sp.data_path, sp.sample_id, f"{img_basename}.tif")
                 imageLabel = QLabel()
 
 
@@ -104,7 +114,7 @@ class App(QDialog):
             # TODO: sort out sizing / spacing when there are no images present
             sample_images[i] = qimage_labels
 
-            # diplay information on grid
+            # display information on grid
             row_id = i + 1
 
             # display sample no

@@ -21,7 +21,10 @@ from matplotlib.backends.backend_qt5agg import \
 from matplotlib.backends.backend_qt5agg import \
     NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit, QGroupBox, QGridLayout, QLabel
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5 import QtWidgets
 
 from liftout.gui.DraggablePatch import DraggablePatch
 matplotlib.use('Agg')
@@ -64,8 +67,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
+        self.UI_LOADED = False
+
         # load experiment
         self.setup_experiment()
+
 
         # setup logging
         # self.save_path = utils.make_logging_directory(prefix=self.run_name)
@@ -83,6 +89,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.offline = offline
         self.setupUi(self)
+        self.UI_LOADED = True # flag to check if ui has been loaded
         self.setWindowTitle('Autoliftout User Interface Main Window')
         self.popup_window = None
         self.popup_canvas = None
@@ -156,11 +163,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.status_timer.start(2000)
 
         # setup status labels
-        self.label_status_1.setStyleSheet("background-color: coral; padding: 10px")
-        self.label_status_1.setFont(QtGui.QFont("Arial", 14, weight=QtGui.QFont.Bold))
-        self.label_status_1.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
-        self.label_status_3.setStyleSheet("background-color: black;  color: white; padding:10px")
+        self.label_stage.setStyleSheet("background-color: coral; padding: 10px")
+        self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
+        self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
+        # self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
+        self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
         self.update_status()
 
         self.setup_connections()
@@ -176,7 +183,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ADDITIONAL_CONFIRMATION = True
         self.MILLING_COMPLETED_THIS_RUN = False
 
+        # Set up scroll area for display
+        # ui setup part 2
+        self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 24px")
+        self.update_scroll_ui()
+
         logging.info(f"{self.current_status.name} FINISHED")
+
+    def update_scroll_ui(self):
+
+        if self.UI_LOADED:
+            self.draw_sample_grid_ui()
+            self.scroll_area.setWidget(self.horizontalGroupBox)
+            self.horizontalGroupBox.update()
+            self.scroll_area.update()
 
     def pre_run_validation(self):
         logging.info(f"Running pre run validation")
@@ -363,6 +383,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_experiment(self):
 
+        CONTINUE_SETUP_EXPERIMENT = True
+        experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
+        experiment_name = os.path.basename(experiment_path)
+
         # ui
         msg = QMessageBox()
         msg.setWindowTitle("AutoLiftout Startup")
@@ -378,12 +402,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.load_experiment:
             # load_experiment
             experiment_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                                        directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+                                                                         directory=experiment_path)
             # if the user doesnt select a folder, start a new experiment
             # TODO: include a check for invalid folders here too?
             if experiment_path is "":
                 self.load_experiment = False
+                experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
             else:
+                experiment_name = os.path.basename(experiment_path)
                 self.save_path = experiment_path
                 self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
 
@@ -402,35 +428,47 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.save_path = utils.make_logging_directory(prefix=self.run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
-            return
+            CONTINUE_SETUP_EXPERIMENT = False
 
-        # check if there are valid sample positions stored in this directory
-        # check if the file exists
-        yaml_file = os.path.join(experiment_path, "sample.yaml")
-        if not os.path.exists(yaml_file):
-            error_msg = "This experiment does not contain any saved sample positions."
-            logging.warning(error_msg)
+        if CONTINUE_SETUP_EXPERIMENT:
+            # check if there are valid sample positions stored in this directory
+            # check if the file exists
+            yaml_file = os.path.join(experiment_path, "sample.yaml")
+            if not os.path.exists(yaml_file):
+                error_msg = "This experiment does not contain any saved sample positions."
+                logging.warning(error_msg)
+                self.samples = []
+                CONTINUE_SETUP_EXPERIMENT = False
+
+        if CONTINUE_SETUP_EXPERIMENT:
+            # check if there are any sample positions stored in the file
+            sample = SamplePosition(experiment_path, None)
+            yaml_file = sample.setup_yaml_file()
+            if len(yaml_file["sample"]) == 0:
+                error_msg = "This experiment does not contain any saved sample positions."
+                logging.error(error_msg)
+                display_error_message(error_msg)
+                CONTINUE_SETUP_EXPERIMENT = False
+
+        if CONTINUE_SETUP_EXPERIMENT:
+            # reset previously loaded samples
             self.samples = []
-            return
+            self.current_sample_position = None
 
-        # check if there are any sample positions stored in the file
-        sample = SamplePosition(experiment_path, None)
-        yaml_file = sample.setup_yaml_file()
-        if len(yaml_file["sample"]) == 0:
-            error_msg = "This experiment does not contain any saved sample positions."
-            logging.error(error_msg)
-            display_error_message(error_msg)
-            return
+            # load the samples
+            sample = SamplePosition(experiment_path, None)
+            yaml_file = sample.setup_yaml_file()
+            for sample_no in yaml_file["sample"].keys():
+                sample = SamplePosition(experiment_path, sample_no)
+                sample.load_data_from_file()
+                self.samples.append(sample)
 
-        # reset previously loaded samples
-        self.samples = []
-        self.current_sample_position = None
+        self.experiment_name = experiment_name
+        self.experiment_path = experiment_path
 
-        # load the samples
-        for sample_no in yaml_file["sample"].keys():
-            sample = SamplePosition(experiment_path, sample_no)
-            sample.load_data_from_file()
-            self.samples.append(sample)
+        # update the ui
+        self.update_scroll_ui()
+
 
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
@@ -2453,40 +2491,144 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.setEnabled(True)
 
         mode = "" if not self.offline else "\n(Offline Mode)"
-        self.label_status_1.setText(f"{self.current_status.name}{mode}")
+        self.label_stage.setText(f"{self.current_status.name}{mode}")
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Thinning": "mediumpurple", "Finished": "cyan"}
-        self.label_status_1.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white"))
-
-        if self.samples:
-            if self.current_sample_position:
-                self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
-                                            f"\n\tCurrent Sample: {self.current_sample_position.sample_no} "
-                                            f"\n\tLamella Coordinate: {self.current_sample_position.lamella_coordinates}"
-                                            f"\n\tLanding Coordinate: {self.current_sample_position.landing_coordinates}"
-                                            )
-            else:
-                self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
-                                            f"\n\tSample No: {self.samples[0].sample_no} "
-                                            f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
-                                            f"\n\tLanding Coordinate: {self.samples[0].landing_coordinates}"
-                                            )
-            self.label_status_2.setStyleSheet("background-color: lightgreen; padding: 10px")
-        else:
-            self.label_status_2.setText("No Sample Positions Loaded")
-            self.label_status_2.setStyleSheet("background-color: gray; padding: 10px")
+        self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white"))
+        #
+        # if self.samples:
+        #     # if self.current_sample_position:
+        #     #     self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
+        #     #                                 f"\n\tCurrent Sample: {self.current_sample_position.sample_no} "
+        #     #                                 f"\n\tLamella Coordinate: {self.current_sample_position.lamella_coordinates}"
+        #     #                                 f"\n\tLanding Coordinate: {self.current_sample_position.landing_coordinates}"
+        #     #                                 )
+        #     # else:
+        #     #     self.label_status_2.setText(f"{len(self.samples)} Sample Positions Loaded"
+        #     #                                 f"\n\tSample No: {self.samples[0].sample_no} "
+        #     #                                 f"\n\tLamella Coordinate: {self.samples[0].lamella_coordinates}"
+        #     #                                 f"\n\tLanding Coordinate: {self.samples[0].landing_coordinates}"
+        #     #                                 )
+        #     self.label_status_2.setStyleSheet("background-color: lightgreen; padding: 10px")
+        # else:
+        #     # self.label_status_2.setText("No Sample Positions Loaded")
+        #     self.label_status_2.setStyleSheet("background-color: gray; padding: 10px")
 
         # log info
         with open(self.log_path) as f:
             lines = f.read().splitlines()
-            log_line = "\n".join(lines[-5:])  # last five log msgs
-            self.label_status_3.setText(log_line)
+            log_line = "\n".join(lines[-1:])  # last log msg
+            log_msg = log_line.split("—")[-1].strip()
+            self.label_status.setText(log_msg)
 
         # logging.info(f"Random No: {np.random.random():.5f}")
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
+
+    def draw_sample_grid_ui(self):
+        self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})")
+
+        ###################
+
+        gridLayout = QGridLayout()
+
+        # Only add data is sample positions are added
+        if len(self.samples) == 0:
+            label = QLabel()
+            label.setText("No Sample Positions Selected.")
+            gridLayout.addWidget(label)
+            self.horizontalGroupBox.setLayout(gridLayout)
+            return
+
+        sample_images = [[] for _ in self.samples]
+
+        # initial, mill, jcut, liftout, land, reset, thin, polish
+        exemplar_filenames = ["ref_lamella_low_res_eb", "ref_trench_high_res_ib", "jcut_highres_ib",
+                              "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
+                              "thinning_lamella_stage_2_ib", "thinning_lamella_final_polishing_ib"]
+
+        # headers
+        headers = ["Sample No", "Position", "Reference", "Milling", "J-Cut", "Liftout", "Landing", "Reset", "Thinning", "Polishing"]
+        for j, title in enumerate(headers):
+            label_header = QLabel()
+            label_header.setText(title)
+            label_header.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 18px;")
+            label_header.setAlignment(Qt.AlignCenter)
+            gridLayout.addWidget(label_header, 0, j)
+
+        # TODO: can add more fields as neccessary
+        for i, sp in enumerate(self.samples):
+
+            # load the exemplar images for each sample
+            qimage_labels = []
+            for img_basename in exemplar_filenames:
+                fname = os.path.join(sp.data_path, sp.sample_id, f"{img_basename}.tif")
+                imageLabel = QLabel()
+
+                if os.path.exists(fname):
+                    adorned_img = AdornedImage.load(fname)
+                    image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
+                    imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
+                qimage_labels.append(imageLabel)
+            # TODO: sort out sizing / spacing when there are no images present
+            sample_images[i] = qimage_labels
+
+            # diplay information on grid
+            row_id = i + 1
+
+            # display sample no
+            label_sample = QLabel()
+            label_sample.setText(f"""Sample {i:02d} \n\nStage: {sp.microscope_state.last_completed_stage.name}""")
+            label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
+
+            gridLayout.addWidget(label_sample, row_id, 0)
+
+            # display sample position
+            # TOD0: replace this with a plot showing the position?
+            def testColourMap(x, y):
+                # ref: https://stackoverflow.com/questions/30646152/python-matplotlib-pyqt-plot-to-qpixmap
+                import matplotlib.pyplot as plt
+                from matplotlib.backends.backend_qt5agg import \
+                    FigureCanvasQTAgg as _FigureCanvas
+
+                fig = plt.Figure()
+                canvas = _FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                # gradient = np.linspace(0, 1, 256)
+                # gradient = np.vstack((gradient, gradient))
+                # ax.imshow(gradient, aspect=10, cmap="magma")
+                ax.scatter(x=x, y=y, c="blue")
+                ax.set_axis_off()
+                canvas.draw()
+                size = canvas.size()
+                width, height = size.width(), size.height()
+                im = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32RGB32).scaled(150, 150)
+                return QPixmap(im)
+
+            label_pos = QLabel()
+            # label_pos.setPixmap(testColourMap(sp.lamella_coordinates.x, sp.landing_coordinates.y))
+            label_pos.setText(f"""
+            Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n
+            Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n
+            """)
+            label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
+
+            gridLayout.addWidget(label_pos, row_id, 1)
+
+            # display exemplar images
+            gridLayout.addWidget(sample_images[i][0], row_id, 2)
+            gridLayout.addWidget(sample_images[i][1], row_id, 3)
+            gridLayout.addWidget(sample_images[i][2], row_id, 4)
+            gridLayout.addWidget(sample_images[i][3], row_id, 5)
+            gridLayout.addWidget(sample_images[i][4], row_id, 6)
+            gridLayout.addWidget(sample_images[i][5], row_id, 7)
+            gridLayout.addWidget(sample_images[i][6], row_id, 8)
+            gridLayout.addWidget(sample_images[i][7], row_id, 9)
+
+        self.horizontalGroupBox.setLayout(gridLayout)
+        ###################
 
 
 def display_error_message(message, title="Error"):
@@ -2525,5 +2667,5 @@ def launch_gui(offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = False
+    offline_mode = True
     main(offline=offline_mode)
