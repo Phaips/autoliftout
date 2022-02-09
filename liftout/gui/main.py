@@ -163,9 +163,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.status_timer.start(2000)
 
         # setup status labels
-        self.label_stage.setStyleSheet("background-color: coral; padding: 10px")
+        self.label_stage.setStyleSheet("background-color: coral; padding: 10px; border-radius: 5px")
         self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
         self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
+
         # self.label_status_2.setStyleSheet("background-color: coral; padding: 10px")
         self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
         self.update_status()
@@ -2495,7 +2496,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Thinning": "mediumpurple", "Finished": "cyan"}
-        self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white"))
+        self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_status.name]}; color: white; border-radius: 5px"))
         #
         # if self.samples:
         #     # if self.current_sample_position:
@@ -2537,7 +2538,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # Only add data is sample positions are added
         if len(self.samples) == 0:
             label = QLabel()
-            label.setText("No Sample Positions Selected.")
+            label.setText("No Sample Positions Selected. Please press initialise to begin.")
             gridLayout.addWidget(label)
             self.horizontalGroupBox.setLayout(gridLayout)
             return
@@ -2571,7 +2572,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     adorned_img = AdornedImage.load(fname)
                     image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
                     imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
+                # else:
+                #     img_np = np.zeros(shape=(125, 125), dtype=np.uint8)
+                #     image = QImage(img_np, img_np.data[1], img_np.shape[0], QImage.Format_Grayscale8)
+
                 qimage_labels.append(imageLabel)
+
             # TODO: sort out sizing / spacing when there are no images present
             sample_images[i] = qimage_labels
 
