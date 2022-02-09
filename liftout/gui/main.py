@@ -425,10 +425,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # experiment_name = input("Enter a name for the experiment: ")
 
-            self.run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')}"
+            self.run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%H%M%S')}"
             self.save_path = utils.make_logging_directory(prefix=self.run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
+            experiment_name = self.run_name
+            experiment_path = self.save_path
             CONTINUE_SETUP_EXPERIMENT = False
 
         if CONTINUE_SETUP_EXPERIMENT:
