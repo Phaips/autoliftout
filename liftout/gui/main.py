@@ -72,11 +72,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # load experiment
         self.setup_experiment()
 
-
-        # setup logging
-        # self.save_path = utils.make_logging_directory(prefix=self.run_name)
-        # self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
-
         # load config
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
@@ -423,11 +418,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # experiment_name = input("Enter a name for the experiment: ")
 
-            self.run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%H%M%S')}"
-            self.save_path = utils.make_logging_directory(prefix=self.run_name)
+            run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%H%M%S')}"
+            self.save_path = utils.make_logging_directory(prefix=run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
-            experiment_name = self.run_name
+            experiment_name = run_name
             experiment_path = self.save_path
             CONTINUE_SETUP_EXPERIMENT = False
 
@@ -469,7 +464,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # update the ui
         self.update_scroll_ui()
-
 
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
