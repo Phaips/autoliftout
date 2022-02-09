@@ -23,7 +23,8 @@ class AutoLiftoutStage(Enum):
     Landing = 3
     Reset = 4
     Thinning = 5
-    Finished = 6
+    Polishing = 6
+    Finished = 7
 
 
 @dataclass

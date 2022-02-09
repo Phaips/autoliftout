@@ -3,6 +3,9 @@ from autoscript_core.common import ApplicationServerException
 import numpy as np
 import math
 
+from liftout.fibsem import acquire, calibration
+BeamType = acquire.BeamType
+
 
 def mill_jcut(microscope, settings):
     """Create and mill the rectangle patter to sever the jcut completely.
@@ -89,15 +92,37 @@ def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float, m
     run_milling(microscope=microscope, settings=settings, milling_current=milling_current)
 
 
-def mill_thin_lamella(microscope, settings):
-    """Mill the trenches for thinning the lamella.
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-    settings :  Dictionary of user input argument settings.
-    confirm : bool, optional
-        Whether to ask the user to confirm before milling.
-    """
+def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin", ref_image=None):
+    """Align and mill thin lamella"""
+
+    image_settings["save"] = False
+    image_settings["hfw"] = 30e-6
+    image_settings["beam_type"] = BeamType.ION
+    image_settings["gamma"]["correction"] = False
+    image_settings["save"] = True
+    image_settings["label"] = f"thin_lamella_crosscorrelation_ref"
+
+    # initial reference image
+    if ref_image is None:
+        ref_image = acquire.new_image(microscope, image_settings)
+    #
+    # # align using cross correlation
+    # img1 = ref_image
+    # image_settings["label"] = f"thinning_lamella_crosscorrelation_shift"
+    # img2 = acquire.new_image(microscope, settings=image_settings)
+    # dx, dy = calibration.shift_from_crosscorrelation_AdornedImages(
+    #     img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
+    # )
+    #
+    # # adjust beamshift
+    # microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
+    #
+    # # retake image
+    # _ = acquire.new_image(microscope, image_settings)
+
+    ##########
+
+    # load protocol settings
     protocol_stages = []
 
     for stage_settings in settings["thin_lamella"]["protocol_stages"]:
@@ -106,18 +131,128 @@ def mill_thin_lamella(microscope, settings):
 
         protocol_stages.append(tmp_settings)
 
-    # protocol_stages = protocol_stage_settings(settings)
+    # FOR thinning, we do the first two stages, for polishing the last.
+    if milling_type == "thin":
+        protocol_stages = protocol_stages[:2]
+    if milling_type == "polishing":
+        protocol_stages = protocol_stages[-1]
+
+    # mill lamella
     for stage_number, stage_settings in enumerate(protocol_stages):
+
+        # setup milling (change current etc)
+        setup_milling(microscope, settings, stage_settings)
+
+        # align using cross correlation
+        img1 = ref_image
+        image_settings["label"] = f"thinning_lamella_stage_{stage_number + 1}"
+        img2 = acquire.new_image(microscope, settings=image_settings)
+        dx, dy = calibration.shift_from_crosscorrelation_AdornedImages(
+            img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
+        )
+
+        # adjust beamshift
+        microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
+        _ = acquire.new_image(microscope, image_settings)
+
         logging.info(
             "milling: protocol stage {} of {}".format(
                 stage_number + 1, len(protocol_stages)
             )
         )
-        mill_single_stage(microscope, settings, stage_settings, stage_number)
 
-    # Restore ion beam imaging current (20 pico-Amps)
-    logging.info(f"mill trenches complete, returning to imaging current")
-    microscope.beams.ion_beam.beam_current.value = 30e-12
+        # Create and mill patterns
+
+        # upper region
+        """Create cleaning cross section milling pattern above lamella position."""
+        microscope.imaging.set_active_view(2)  # the ion beam view
+        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
+        lamella_center_y = 0
+        milling_depth = stage_settings["milling_depth"]
+        center_y = (
+                lamella_center_y
+                + (0.5 * stage_settings["lamella_height"])
+                + (
+                        stage_settings["total_cut_height"]
+                        * stage_settings["percentage_from_lamella_surface"]
+                )
+                + (
+                        0.5
+                        * stage_settings["total_cut_height"]
+                        * stage_settings["percentage_roi_height"]
+                )
+        )
+        height = float(
+            stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
+        )
+        upper_milling_roi = microscope.patterning.create_cleaning_cross_section(
+            lamella_center_x,
+            center_y,
+            stage_settings["lamella_width"],
+            height,
+            milling_depth,
+        )
+        upper_milling_roi.scan_direction = "TopToBottom"
+
+        # lower region
+        """Create cleaning cross section milling pattern below lamella position."""
+        microscope.imaging.set_active_view(2)  # the ion beam view
+        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
+        lamella_center_y = 0
+        milling_depth = stage_settings["milling_depth"]
+        center_y = (
+                lamella_center_y
+                - (0.5 * stage_settings["lamella_height"])
+                - (
+                        stage_settings["total_cut_height"]
+                        * stage_settings["percentage_from_lamella_surface"]
+                )
+                - (
+                        0.5
+                        * stage_settings["total_cut_height"]
+                        * stage_settings["percentage_roi_height"]
+                )
+        )
+        height = float(
+            stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
+        )
+        lower_milling_roi = microscope.patterning.create_cleaning_cross_section(
+            lamella_center_x,
+            center_y,
+            stage_settings["lamella_width"],
+            height,
+            milling_depth,
+        )
+        lower_milling_roi.scan_direction = "BottomToTop"
+
+        # TODO: visualise the milling patterns?
+
+        logging.info(f"milling: milling thin lamella pattern...")
+        microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
+            "hfw"
+        ]
+        microscope.imaging.set_active_view(2)  # the ion beam view
+        _ = acquire.new_image(microscope, settings=image_settings)
+
+        try:
+            microscope.patterning.run()
+        except ApplicationServerException:
+            logging.error("ApplicationServerException: could not mill!")
+        microscope.patterning.clear_patterns()
+
+    # reset milling state and return to imaging current
+    logging.info("milling: returning to the ion beam imaging current now.")
+    microscope.patterning.clear_patterns()
+    microscope.beams.ion_beam.beam_current.value = settings["imaging"]["imaging_current"]
+    microscope.patterning.mode = "Serial"
+    logging.info("milling: ion beam milling complete.")
+
+    # take final reference image
+    image_settings["label"] = f"thinning_lamella_final_polishing"
+    _ = acquire.new_image(microscope, settings=image_settings)
+    logging.info("Thin Lamella Finished.")
+
+    return
 
 
 def mill_trenches(microscope, settings):

@@ -488,7 +488,7 @@ def test_thin_lamella(microscope, settings, image_settings, sample_no=99):
 
         # align using cross correlation
         img1 = ref_image
-        image_settings["label"] = f"{sample_no:02d}_thinning_lamella_stage_{stage_number + 1}"
+        image_settings["label"] = f"thinning_lamella_stage_{stage_number + 1}"
         img2 = acquire.new_image(microscope, settings=image_settings)
         dx, dy = shift_from_crosscorrelation_AdornedImages(
             img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
@@ -592,7 +592,7 @@ def test_thin_lamella(microscope, settings, image_settings, sample_no=99):
     logging.info("milling: ion beam milling complete.")
 
     # take final reference image
-    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_final_polishing"
+    image_settings["label"] = f"thinning_lamella_final_polishing"
     _ = acquire.new_image(microscope, settings=image_settings)
     logging.info("Thin Lamella Finished.")
 

@@ -43,7 +43,7 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     )  # sputter_application_file)
     microscope.patterning.set_default_beam_type(1)  # set electron beam for patterning
     multichem = microscope.gas.get_multichem()
-    multichem.insert()
+    multichem.insert(settings["platinum"]["position"])
     multichem.turn_heater_on(settings["platinum"]["gas"])  # "Pt cryo")
     time.sleep(3)
 
