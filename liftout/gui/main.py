@@ -380,8 +380,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             self.load_experiment = False
 
-
-
     def setup_experiment(self):
 
         CONTINUE_SETUP_EXPERIMENT = True
@@ -510,7 +508,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
             label=f"ref_lamella_low_res"
         )
-        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -520,7 +518,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
             label="ref_lamella_high_res"
         )
-        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         return sample_position
 
@@ -549,7 +547,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
             label="ref_landing_low_res"
         )
-        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
@@ -559,7 +557,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
             label="ref_landing_high_res"
         )
-        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         # save coordinates
         current_sample_position.save_data()
@@ -929,6 +927,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
             self.reset_needle()
 
+    def end_of_stage_update(self, eucentric: bool):
+
+        # TODO: this can only be called if current_sample_position exists, how to indicate
+        # save state information
+        microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
+                                                                    stage=self.current_status, eucentric=eucentric)
+        self.current_sample_position.microscope_state = microscope_state
+        self.current_sample_position.save_data()
+
+        # update ui
+        self.update_scroll_ui()
+
+        return
+
     def mill_lamella(self):
         self.current_status = AutoLiftoutStage.Milling
         logging.info(f"{self.current_status.name} STARTED")
@@ -1044,6 +1056,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.MILLING_COMPLETED_THIS_RUN = True
+        self.end_of_stage_update(eucentric=True)
         logging.info(f" {self.current_status.name} FINISHED")
 
     def correct_stage_drift_with_ML(self):
@@ -1170,6 +1183,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
+        self.end_of_stage_update(eucentric=True)
         logging.info(f"{self.current_status.name}: needle retracted. ")
         logging.info(f" {self.current_status.name} FINISHED")
 
@@ -1636,6 +1650,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
+        self.end_of_stage_update(eucentric=True)
         logging.info(f"{self.current_status.name} FINISHED")
 
     def reset_needle(self):
@@ -1722,6 +1737,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
         self.stage.absolute_move(StagePosition(x=0.0, y=0.0))
 
+
+        self.end_of_stage_update(eucentric=False)
         logging.info(f"{self.current_status.name} FINISHED")
 
     def thin_lamella(self, landing_coord):
