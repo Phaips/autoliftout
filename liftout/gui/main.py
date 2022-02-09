@@ -797,32 +797,33 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for sp in self.samples:
             self.current_sample_position = sp
             self.new_thin_lamella()
-
-            # save the microscope state, and update the ui
             self.end_of_stage_update(eucentric=True)
 
         # polish
         for sp in self.samples:
             self.current_sample_position = sp
             self.polish_lamella()
+            self.end_of_stage_update(eucentric=True)
 
-        # finish
-        # for sp in self.samples:
-        #   finish
+        # finish the experiment
+        self.current_status = AutoLiftoutStage.Finished
+        for sp in self.samples:
+            self.current_sample_position = sp
+            self.end_of_stage_update(eucentric=True)
 
 
 
-
-        # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
-        self.update_popup_settings(message="Do you want to start lamella thinning?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform Thinning: {self.response}")
-        if self.response:
-            for sample in self.samples:
-                self.current_sample_position = sample
-                landing_coord = self.current_sample_position.landing_coordinates
-                self.current_status = AutoLiftoutStage.Thinning
-                self.thin_lamella(landing_coord=landing_coord)
+        #
+        # # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
+        # self.update_popup_settings(message="Do you want to start lamella thinning?", crosshairs=False)
+        # self.ask_user()
+        # logging.info(f"Perform Thinning: {self.response}")
+        # if self.response:
+        #     for sample in self.samples:
+        #         self.current_sample_position = sample
+        #         landing_coord = self.current_sample_position.landing_coordinates
+        #         self.current_status = AutoLiftoutStage.Thinning
+        #         self.thin_lamella(landing_coord=landing_coord)
 
     def load_coordinates(self):
         # TODO: REMOVE
