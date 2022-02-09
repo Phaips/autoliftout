@@ -695,6 +695,7 @@ def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric:
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
     current_microscope_state.absolute_position = microscope.specimen.stage.current_position
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+
     # working_distance
     eb_image = acquire.last_image(microscope, BeamType.ELECTRON)
     ib_image = acquire.last_image(microscope, BeamType.ION)
@@ -709,13 +710,19 @@ def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric:
 
 
 def set_microscope_state(microscope, microscope_state: MicroscopeState):
-
+    # TODO: TEST
     # move to position
+    safe_absolute_stage_movement(microscope=microscope, stage_position=microscope_state.absolute_position)
 
-    # check eucentricity
+    # check eucentricity?
 
     # set working distance
+    microscope.beams.electron_beam.working_distance.value = microscope_state.eb_working_distance
+    microscope.beams.ion_beam.working_distance.value = microscope_state.ib_working_distance
 
     # set beam currents
+    microscope.beams.electron_beam.beam_current.value = microscope_state.eb_beam_current
+    microscope.beams.ion_beam.beam_current.value = microscope_state.ib_beam_current
 
-    return NotImplemented
+    return
+
