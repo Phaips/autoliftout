@@ -791,6 +791,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} lamella landings complete. Ready for thinning.")
 
     def run_lamella_thinning(self):
+        # TODO: make button for this
 
         self.THINNING_EUCENTRICITY_COMPLETED = False
         # thinning
@@ -1758,7 +1759,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def new_thin_lamella(self):
 
         self.current_status = AutoLiftoutStage.Thinning
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_status.name} | LAND_NEEDLE_ON_LAMELLA | STARTED")
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_status.name} | STARTED")
 
         thinning_coordinate = self.current_sample_position.landing_coordinates
         thinning_coordinate.r = np.deg2rad(self.settings["thin_lamella"]["rotation_angle"])  # TODO: check this rotation
@@ -1833,7 +1834,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
             save=True,
-            label=f"thinning_lamella_post_superres"
+            label=f"thin_lamella_post_superres"
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
