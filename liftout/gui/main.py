@@ -913,44 +913,45 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def single_liftout(self):
 
-        (lamella_coordinates, landing_coordinates,
-            original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-
-        logging.info(f"{self.current_sample_position.sample_no} | SINGLE_LIFTOUT |  | STARTED")
-
-        # initial state
-        self.MILLING_COMPLETED_THIS_RUN = False
-
-        # stage_settings = MoveSettings(rotate_compucentric=True)
-        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
-        # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
-        # self.stage.absolute_move(lamella_coordinates)
-
-        # TODO: TEST THIS
-        # move to saved lamella position
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
-
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
-                                              original_lamella_area_images, mode='eb')
-        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
-
-        if ret is False:
-            # cross-correlation has failed, manual correction required
-            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
-                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_SEM)
-            logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
-
-        self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
-                                                           f'If not, double click to center the lamella, press Yes when centered.',
-                                   click='double', filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_SEM)
-
-        self.update_image_settings(
-            save=True,
-            label="initial_position_post_drift_correction"
-        )
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        # # (lamella_coordinates, landing_coordinates,
+        # #     original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
+        #
+        # logging.info(f"{self.current_sample_position.sample_no} | SINGLE_LIFTOUT |  | STARTED")
+        #
+        # # initial state
+        # self.MILLING_COMPLETED_THIS_RUN = False
+        #
+        # # stage_settings = MoveSettings(rotate_compucentric=True)
+        # # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
+        # # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
+        # # self.stage.absolute_move(lamella_coordinates)
+        #
+        # # TODO: TEST THIS
+        # # move to saved lamella position
+        # movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
+        #
+        # ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+        #                                       original_lamella_area_images, mode='eb')
+        # self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+        #
+        # if ret is False:
+        #     # cross-correlation has failed, manual correction required
+        #     self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
+        #                  click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        #     self.ask_user(image=self.image_SEM)
+        #     logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
+        #
+        # self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
+        #                                                    f'If not, double click to center the lamella, press Yes when centered.',
+        #                            click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        # self.ask_user(image=self.image_SEM)
+        #
+        # self.update_image_settings(
+        #     save=True,
+        #     label="initial_position_post_drift_correction"
+        # )
+        # acquire.take_reference_images(self.microscope, self.settings)
+        # # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # mill
         self.update_popup_settings(message="Do you want to start milling?", crosshairs=False)
@@ -971,7 +972,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user()
         logging.info(f"Perform Landing: {self.response}")
         if self.response:
-            self.land_lamella(landing_coordinates, original_landing_images)
+            self.land_lamella()
 
         # reset
         self.update_popup_settings(message="Do you want to start reset?", crosshairs=False)
@@ -1015,10 +1016,48 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def mill_lamella_trench(self):
         self.current_stage = AutoLiftoutStage.Milling
 
+        (lamella_coordinates, landing_coordinates,
+            original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
 
+        # initial state
+        self.MILLING_COMPLETED_THIS_RUN = False
+
+        # stage_settings = MoveSettings(rotate_compucentric=True)
+        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
+        # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
+        # self.stage.absolute_move(lamella_coordinates)
+
+        # TODO: TEST THIS
+        # move to saved lamella position
+        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
+
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+                                              original_lamella_area_images, mode='eb')
+        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
+
+        # TODO: remove the cross correlation failure mode, as it does nothing because we immediately ask the user about it?
+        if ret is False:
+            # cross-correlation has failed, manual correction required
+            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
+                                       click='double', filter_strength=self.filter_strength, allow_new_image=True)
+            self.ask_user(image=self.image_SEM)
+            logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
+
+
+        self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
+                                           f'If not, double click to center the lamella, press Yes when centered.',
+                                   click='double', filter_strength=self.filter_strength, allow_new_image=True)
+        self.ask_user(image=self.image_SEM)
+
+        self.update_image_settings(
+            save=True,
+            label="initial_position_post_drift_correction"
+        )
+        acquire.take_reference_images(self.microscope, self.settings)
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-        stage_settings = MoveSettings(rotate_compucentric=True)
+        # stage_settings = MoveSettings(rotate_compucentric=True)
         movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
@@ -1028,6 +1067,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                       f'If not, double click to center the lamella position', click='double',
                                    filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
+
+        # TODO: we should update the lamella_coordinates here, and save the data?
 
         # MILL_TRENCHES
         protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="new_lamella")
@@ -1059,8 +1100,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ION, image_type="new")
             self.ask_user(image=self.image_FIB)
 
-        ##
-
         # reference images of milled trenches
         self.update_image_settings(
             resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -1080,13 +1119,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
-        reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
+        # reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
 
         # Mill Trenches is Finished Here...
         self.end_of_stage_update(eucentric=True)
 
         # jcut_
-        self.mill_lamella_jcut()
+        self.mill_lamella_jcut() # TODO: remove once run_autoliftout_workflow is implemented...
 
     def mill_lamella_jcut(self):
         ####################################### JCUT #######################################
