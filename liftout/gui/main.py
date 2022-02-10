@@ -2871,12 +2871,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 imageLabel = QLabel()
 
                 if os.path.exists(fname):
-                    adorned_img = AdornedImage.load(fname)
+                    adorned_img = sp.load_reference_image(img_basename)
                     image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
                     imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
-                # else:
-                #     img_np = np.zeros(shape=(125, 125), dtype=np.uint8)
-                #     image = QImage(img_np, img_np.data[1], img_np.shape[0], QImage.Format_Grayscale8)
 
                 qimage_labels.append(imageLabel)
 
