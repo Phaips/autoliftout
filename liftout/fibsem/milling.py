@@ -255,10 +255,38 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
     return
 
 
-def mill_trench_patterns(microscope, settings):
+def mill_trench_patterns(microscope , settings):
     """Calculate the trench milling patterns"""
 
-    return NotImplemented
+    centre_x = 0
+    centre_y = 0
+
+    lamella_width = settings["lamella_width"]
+    lamella_height = settings["lamella_height"]
+    trench_height = settings["trench_height"]
+    lower_trench_height = trench_height / 2
+    offset = settings["offset"]
+
+    centre_upper_y = centre_y + (lamella_height / 2 + trench_height / 2 + offset)
+    centre_lower_y = centre_y - (lamella_height / 2 + lower_trench_height / 2 + offset)
+
+    print("----------------------")
+    print("Width: ", lamella_width)
+    print("Height: ", lamella_height)
+    print("Offset: ", offset, " Trench Height: ",  trench_height)
+    print("Centres: ", centre_upper_y, centre_lower_y)
+
+    upper_bottom, upper_top = centre_upper_y - trench_height/2, centre_upper_y + trench_height/2
+    lower_bottom, lower_top = centre_lower_y - lower_trench_height/2, centre_lower_y + lower_trench_height/2
+    print("Upper Area: ",upper_bottom, ":", upper_top)
+    print("Lower Area: ", lower_bottom, ":", lower_top)
+
+    print(f"Cleaning Cross Section (TOP): {centre_x}, {centre_upper_y}, {trench_height}")
+    print(f"Cleaning Cross Section (BOT): {centre_x}, {centre_lower_y}, {trench_height}")
+
+    lower_pattern = None
+    upper_pattern = None
+    return lower_pattern, upper_pattern
 
 def new_mill_trenches(microscope, settings):
     """Mill the trenches for thinning the lamella.
@@ -266,11 +294,40 @@ def new_mill_trenches(microscope, settings):
     ----------
     microscope : Autoscript microscope object.
     settings :  Dictionary of user input argument settings.
-    confirm : bool, optional
-        Whether to ask the user to confirm before milling.
-    """
 
-    return NotImplemented
+    """
+    protocol_stages = []
+    for stage_settings in settings["new_lamella"]["protocol_stages"]:
+        tmp_settings = settings["new_lamella"].copy()
+        tmp_settings.update(stage_settings)
+        protocol_stages.append(tmp_settings)
+
+    for stage_number, stage_settings in enumerate(protocol_stages):
+        # setup milling (change current etc)
+        setup_milling(microscope, settings, stage_settings)
+
+        # create patterns
+        lp, up = mill_trench_patterns(microscope=None, settings=stage_settings)
+
+        logging.info(f"milling: milling trenches...")
+        microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
+            "hfw"
+        ]
+
+        try:
+            microscope.patterning.run()
+        except ApplicationServerException:
+            logging.error("ApplicationServerException: could not mill!")
+        microscope.patterning.clear_patterns()
+
+    # reset milling state and return to imaging current
+    logging.info("returning to the ion beam imaging current now.")
+    microscope.patterning.clear_patterns()
+    microscope.beams.ion_beam.beam_current.value = settings["imaging"]["imaging_current"]
+    microscope.patterning.mode = "Serial"
+    logging.info("ion beam milling complete.")
+
+    return
 
 
 def mill_trenches(microscope, settings):
