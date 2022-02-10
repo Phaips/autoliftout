@@ -2,6 +2,7 @@ import logging
 from autoscript_core.common import ApplicationServerException
 import numpy as np
 import math
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 from liftout.fibsem import acquire, calibration
 BeamType = acquire.BeamType
@@ -255,7 +256,7 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
     return
 
 
-def mill_trench_patterns(microscope , settings):
+def mill_trench_patterns(microscope: SdbMicroscopeClient, settings: dict):
     """Calculate the trench milling patterns"""
 
     centre_x = 0
@@ -264,8 +265,9 @@ def mill_trench_patterns(microscope , settings):
     lamella_width = settings["lamella_width"]
     lamella_height = settings["lamella_height"]
     trench_height = settings["trench_height"]
-    lower_trench_height = trench_height / 2
+    lower_trench_height = trench_height / settings["size_ratio"]
     offset = settings["offset"]
+    milling_depth = settings["milling_depth"]
 
     centre_upper_y = centre_y + (lamella_height / 2 + trench_height / 2 + offset)
     centre_lower_y = centre_y - (lamella_height / 2 + lower_trench_height / 2 + offset)
@@ -284,11 +286,37 @@ def mill_trench_patterns(microscope , settings):
     print(f"Cleaning Cross Section (TOP): {centre_x}, {centre_upper_y}, {trench_height}")
     print(f"Cleaning Cross Section (BOT): {centre_x}, {centre_lower_y}, {trench_height}")
 
-    lower_pattern = None
-    upper_pattern = None
-    return lower_pattern, upper_pattern
+    lower_pattern = microscope.patterning.create_cleaning_cross_section(
+        centre_x,
+        centre_lower_y,
+        lamella_width,
+        lower_trench_height,
+        milling_depth,
+    )
+    lower_pattern.scan_direction = "BottomToTop"
 
-def new_mill_trenches(microscope, settings):
+    upper_pattern = microscope.patterning.create_cleaning_cross_section(
+        centre_x,
+        centre_upper_y,
+        lamella_width,
+        trench_height,
+        milling_depth,
+    )
+    upper_pattern.scan_direction = "TopToBottom"
+
+    return [lower_pattern, upper_pattern]
+
+
+def get_milling_protocol_stages(settings, stage_name):
+    protocol_stages = []
+    for stage_settings in settings[stage_name]["protocol_stages"]:
+        tmp_settings = settings[stage_name].copy()
+        tmp_settings.update(stage_settings)
+        protocol_stages.append(tmp_settings)
+
+    return protocol_stages
+
+def mill_lamella_trenches(microscope: SdbMicroscopeClient, settings: dict):
     """Mill the trenches for thinning the lamella.
     Parameters
     ----------
@@ -296,11 +324,8 @@ def new_mill_trenches(microscope, settings):
     settings :  Dictionary of user input argument settings.
 
     """
-    protocol_stages = []
-    for stage_settings in settings["new_lamella"]["protocol_stages"]:
-        tmp_settings = settings["new_lamella"].copy()
-        tmp_settings.update(stage_settings)
-        protocol_stages.append(tmp_settings)
+
+    protocol_stages = get_milling_protocol_stages(settings=settings, stage_name="new_lamella")
 
     for stage_number, stage_settings in enumerate(protocol_stages):
         # setup milling (change current etc)

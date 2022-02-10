@@ -960,7 +960,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella(self):
         self.current_status = AutoLiftoutStage.Milling
-        logging.info(f"{self.current_status.name} STARTED")
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_status.name}  | STARTED")
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
         stage_settings = MoveSettings(rotate_compucentric=True)
@@ -974,14 +974,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
 
-        ## MILL_TRENCHES
-        logging.info(f"{self.current_status.name} | MILL_TRENCHES | STARTED")
-        self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
-        self.ask_user()
-        if self.response:
-            # mill trenches for lamella
-            milling.mill_trenches(self.microscope, self.settings)
+        # MILL_TRENCHES
+        protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="new_lamella")
+        trench_patterns = milling.mill_trench_patterns(microscope=self.microscope, settings=protocol_stages[1])  # only show final trenches...
 
+        # TODO: support moving the trench patterns?
+        self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+                                   crosshairs=False, milling_patterns=trench_patterns)
+        self.ask_user(image=self.image_FIB)
+        if self.response:
+
+            milling.mill_lamella_trenches(microscope=self.microscope, settings=self.settings)
+
+        ########################
+        # self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
+        # self.ask_user()
+        # if self.response:
+        #     # mill trenches for lamella
+        #     milling.mill_trenches(self.microscope, self.settings)
+
+        ########################
         # self.current_sample_position.milling_coordinates = self.stage.current_position
         # self.current_sample_position.save_data()
 
@@ -1020,7 +1033,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Movement to JCut is below
 
-
+        # TODO: dynamic reload of "trench_area_ref_imgs so the state can be reset?
         # move flat to electron beam
         movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON, )
 
@@ -1052,7 +1065,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
         self.current_status = AutoLiftoutStage.MillJCut
-        logging.info(f"{self.current_status.name} | MILL_JCUT | STARTED")
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_status.name} | MILL_JCUT | STARTED")
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
         self.update_display(beam_type=BeamType.ION, image_type='last')
@@ -1064,7 +1077,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-        logging.info(f"{self.current_status.name} | MILL_JCUT | FINISHED")
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_status.name} | MILL_JCUT | FINISHED")
         ##
 
         # take reference images of the jcut
