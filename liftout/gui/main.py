@@ -812,8 +812,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.current_sample_position = sp
             self.end_of_stage_update(eucentric=True)
 
-
-
         #
         # # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
         # self.update_popup_settings(message="Do you want to start lamella thinning?", crosshairs=False)
@@ -826,55 +824,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #         self.current_status = AutoLiftoutStage.Thinning
         #         self.thin_lamella(landing_coord=landing_coord)
 
-    def load_coordinates(self):
-        # TODO: REMOVE
-        logging.info(f"LOAD COORDINATES STARTED")
-        # input save path
-        save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-                                                               directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
-        if not save_path:
-            error_msg = "Load Coordinates: No Folder selected."
-            logging.warning(error_msg)
-            display_error_message(error_msg)
-            return
 
-        ##########
-        # read the sample.yaml: get how many samples in there, loop through
-
-        # test if the file exists
-        yaml_file = os.path.join(save_path, "sample.yaml")
-
-        if not os.path.exists(yaml_file):
-            error_msg = "sample.yaml file could not be found in this directory."
-            logging.error(error_msg)
-            display_error_message(error_msg)
-            return
-
-        # test if there are any samples in the file?
-        sample = SamplePosition(save_path, None)
-        yaml_file = sample.setup_yaml_file()
-
-
-        num_of_samples = len(yaml_file["sample"])
-
-        if num_of_samples == 0:
-            # error out if no sample.yaml found...
-            error_msg = "sample.yaml file has no stored sample coordinates."
-            logging.error(error_msg)
-            display_error_message(error_msg)
-            return
-
-        else:
-            # load the samples
-            self.samples = []
-            for sample_no in yaml_file["sample"].keys():
-                sample = SamplePosition(save_path, sample_no)
-                sample.load_data_from_file()
-                self.samples.append(sample)
-        self.pushButton_autoliftout.setEnabled(True)
-
-        logging.info(f"{len(self.samples)} samples loaded from {save_path}")
-        logging.info(f"LOAD COORDINATES FINISHED")
+    # def load_coordinates(self):
+    #     # TODO: REMOVE
+    #     logging.info(f"LOAD COORDINATES STARTED")
+    #     # input save path
+    #     save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
+    #                                                            directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
+    #     if not save_path:
+    #         error_msg = "Load Coordinates: No Folder selected."
+    #         logging.warning(error_msg)
+    #         display_error_message(error_msg)
+    #         return
+    #
+    #     ##########
+    #     # read the sample.yaml: get how many samples in there, loop through
+    #
+    #     # test if the file exists
+    #     yaml_file = os.path.join(save_path, "sample.yaml")
+    #
+    #     if not os.path.exists(yaml_file):
+    #         error_msg = "sample.yaml file could not be found in this directory."
+    #         logging.error(error_msg)
+    #         display_error_message(error_msg)
+    #         return
+    #
+    #     # test if there are any samples in the file?
+    #     sample = SamplePosition(save_path, None)
+    #     yaml_file = sample.setup_yaml_file()
+    #
+    #
+    #     num_of_samples = len(yaml_file["sample"])
+    #
+    #     if num_of_samples == 0:
+    #         # error out if no sample.yaml found...
+    #         error_msg = "sample.yaml file has no stored sample coordinates."
+    #         logging.error(error_msg)
+    #         display_error_message(error_msg)
+    #         return
+    #
+    #     else:
+    #         # load the samples
+    #         self.samples = []
+    #         for sample_no in yaml_file["sample"].keys():
+    #             sample = SamplePosition(save_path, sample_no)
+    #             sample.load_data_from_file()
+    #             self.samples.append(sample)
+    #     self.pushButton_autoliftout.setEnabled(True)
+    #
+    #     logging.info(f"{len(self.samples)} samples loaded from {save_path}")
+    #     logging.info(f"LOAD COORDINATES FINISHED")
 
     def single_liftout(self):
 
@@ -949,7 +948,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: this can only be called if current_sample_position exists, how to indicate
         # save state information
         microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
-                                                                    stage=self.current_status, eucentric=eucentric)
+                                                                    stage=self.current_status,
+                                                                    eucentric=eucentric)
         self.current_sample_position.microscope_state = microscope_state
         self.current_sample_position.save_data()
 
@@ -1015,6 +1015,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
 
+        # Mill Trenches is Finished Here...
+
+
+        # Movement to JCut is below
+
 
         # move flat to electron beam
         movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON, )
@@ -1031,12 +1036,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_SEM)
             logging.info(f"{self.current_status.name}: cross-correlation manually corrected")
 
-
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
         # then using ML, tilting/correcting in steps so drift isn't too large
-        self.correct_stage_drift_with_ML()
-        movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings)
+        self.correct_stage_drift_with_ML() # TODO: test if we can remove this
+        movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) # TODO: MAGIC_NUMBER
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
         self.correct_stage_drift_with_ML()
@@ -1047,6 +1051,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
+        self.current_status = AutoLiftoutStage.MillJCut
         logging.info(f"{self.current_status.name} | MILL_JCUT | STARTED")
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 

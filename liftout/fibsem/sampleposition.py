@@ -18,13 +18,14 @@ except:
 class AutoLiftoutStage(Enum):
     Initialisation = -1
     Setup = 0
-    Milling = 1
-    Liftout = 2
-    Landing = 3
-    Reset = 4
-    Thinning = 5
-    Polishing = 6
-    Finished = 7
+    MillTrench = 1
+    MillJCut = 2
+    Liftout = 3
+    Landing = 4
+    Reset = 5
+    Thinning = 6
+    Polishing = 7
+    Finished = 8
 
 
 @dataclass
