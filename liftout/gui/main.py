@@ -794,6 +794,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"AutoLiftout Workflow started for {len(self.samples)} sample positions.")
 
+        # TODO: move this to the INIT
+        # TODO: add setup and thinning / polishing stages
+        self.autoliftout_stages = {
+            AutoLiftoutStage.MillTrench: self.mill_lamella_trench,
+            AutoLiftoutStage.MillJCut: self.mill_lamella_jcut,
+            AutoLiftoutStage.Liftout: self.liftout_lamella,
+            AutoLiftoutStage.Landing: self.land_lamella,
+            AutoLiftoutStage.Reset: self.reset_needle,
+            AutoLiftoutStage.Thinning: self.new_thin_lamella,
+            AutoLiftoutStage.Polishing: self.polish_lamella
+        }
+
         for sp in self.samples:
             self.current_sample_position = sp
 
@@ -805,10 +817,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_popup_settings(message=msg, crosshairs=False)
                 self.ask_user()
 
-                # TODO: check the interaction between this and start_of_stage_update
+                # TODO: check the interaction between start_of_stage_update, running the stage, and end_of_stage_update
                 self.start_of_stage_update(next_stage=next_stage)
 
+                # run the next workflow stage
+                # self.autoliftout_stages[next_stage]()
+
                 # advance workflow
+                self.end_of_stage_update(eucentric=True) # TODO: how to find out if we are eucentric?
 
     def run_thinning_workflow(self):
         # TODO: make button for this
@@ -941,7 +957,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user()
         logging.info(f"Perform Milling: {self.response}")
         if self.response:
-            self.mill_lamella()
+            self.mill_lamella_trench()
 
         # liftout
         self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
@@ -996,7 +1012,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return
 
-    def mill_lamella(self):
+    def mill_lamella_trench(self):
         self.current_stage = AutoLiftoutStage.Milling
 
 
@@ -1074,6 +1090,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella_jcut(self):
         ####################################### JCUT #######################################
+        self.current_stage = AutoLiftoutStage.MillJCut
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
+
         # Movement to JCut is below
 
         # TODO: load to the lamella coordinates?
@@ -1108,15 +1127,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML() # TODO: test if we can remove this
         stage_settings = MoveSettings(rotate_compucentric=True)
-        movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) # TODO: MAGIC_NUMBER
+        movement.move_relative(self.microscope, t=np.deg2rad(self.settings["jcut"]["jcut_angle"]), settings=stage_settings)
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
         self.correct_stage_drift_with_ML()
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
-        self.current_stage = AutoLiftoutStage.MillJCut
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name} | MILL_JCUT | STARTED")
+
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
         self.update_display(beam_type=BeamType.ION, image_type='last')
@@ -1149,7 +1167,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         label = self.image_settings['label']
         # if self.image_settings["hfw"] > 200e-6:
         #     self.image_settings["hfw"] = 150e-6
-        for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
+        for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION): # TODO this probably only needs to happen once, not three times...
             self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=beamType)
 
@@ -2057,7 +2075,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def polish_lamella(self):
 
         # TODO: we will also need to save the reference images from the thinning stage if we want to crosscorrelate back to them here?
-        # we can probably just load them from disk?
+        # we can probably just load them from disk? See jcut for an example
+        # TODO: add a helper method to SamplePosition?
 
         self.current_stage = AutoLiftoutStage.Polishing
         logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage} | STARTED")
