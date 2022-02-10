@@ -1067,17 +1067,31 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Mill Trenches is Finished Here...
         self.end_of_stage_update(eucentric=True)
-        # TODO: dynamic reload of "trench_area_ref_imgs so the state can be reset?
 
+        # jcut_
+        self.mill_lamella_jcut()
 
+    def mill_lamella_jcut(self):
+        ####################################### JCUT #######################################
         # Movement to JCut is below
+
+        # TODO: load to the lamella coordinates?
+
+        # load the reference images # TODO: TEST
+        reference_images_low_and_high_res = []
+        for fname in ["ref_trench_low_res_eb", "ref_trench_high_res_eb", "ref_trench_low_res_ib", "ref_trench_high_res_ib"]:
+
+            img = AdornedImage.load(os.path.join(self.current_sample_position.data_path,
+                                                 str(self.current_sample_position.sample_id), f"{fname}.tif"))
+            reference_images_low_and_high_res.append(img)
 
         # move flat to electron beam
         movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON, )
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res, self.current_sample_position.sample_no, mode='ib')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res,
+                                              self.current_sample_position.sample_no, mode='ib')
 
         if ret is False:
             # cross-correlation has failed, manual correction required
@@ -1089,16 +1103,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
+
         # then using ML, tilting/correcting in steps so drift isn't too large
         self.correct_stage_drift_with_ML() # TODO: test if we can remove this
+        stage_settings = MoveSettings(rotate_compucentric=True)
         movement.move_relative(self.microscope, t=np.deg2rad(6), settings=stage_settings) # TODO: MAGIC_NUMBER
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
         self.correct_stage_drift_with_ML()
-
-        # save jcut position
-        # self.current_sample_position.jcut_coordinates = self.stage.current_position
-        # self.current_sample_position.save_data()
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
