@@ -914,7 +914,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to saved lamella position
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
 
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_lamella_area_images, self.current_sample_position.sample_no, mode='eb')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+                                              original_lamella_area_images, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
         if ret is False:
@@ -1090,8 +1091,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, reference_images_low_and_high_res,
-                                              self.current_sample_position.sample_no, mode='ib')
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+                                              reference_images_low_and_high_res, mode='ib')
 
         if ret is False:
             # cross-correlation has failed, manual correction required
@@ -1486,7 +1487,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings, original_landing_images, self.current_sample_position.sample_no, mode="land")
+        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+                                              original_landing_images, mode="land")
 
         if ret is False:
             # cross-correlation has failed, manual correction required

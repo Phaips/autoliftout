@@ -28,7 +28,7 @@ def validate_scanning_rotation(microscope):
 
 
 def correct_stage_drift(
-    microscope, image_settings, reference_images, liftout_counter, mode="eb"
+    microscope, image_settings, reference_images, mode="eb"
 ):
 
     ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
@@ -62,12 +62,11 @@ def correct_stage_drift(
     # TODO: 'coarse alignment' status
     image_settings["hfw"] = field_width_lowres
     image_settings["save"] = True
-    # image_settings['label'] = f'{liftout_counter:02d}_drift_correction_lamella_low_res'  # TODO: add to protocol
 
     if mode == "land":
         image_settings[
             "label"
-        ] = f"{liftout_counter:02d}_{mode}_drift_correction_landing_low_res"  # TODO: add to protocol
+        ] = f"{mode}_drift_correction_landing_low_res"  # TODO: add to protocol
         new_eb_lowres, new_ib_lowres = take_reference_images(
             microscope, settings=image_settings
         )
@@ -81,7 +80,7 @@ def correct_stage_drift(
 
         image_settings[
             "label"
-        ] = f"{liftout_counter:02d}_drift_correction_landing_high_res"  # TODO: add to protocol
+        ] = f"drift_correction_landing_high_res"  # TODO: add to protocol
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, settings=image_settings
         )
@@ -94,7 +93,7 @@ def correct_stage_drift(
 
             image_settings[
                 "label"
-            ] = f"{liftout_counter:02d}_{mode}_drift_correction_lamella_low_res_{i}"  # TODO: add to protocol
+            ] = f"{mode}_drift_correction_lamella_low_res_{i}"  # TODO: add to protocol
             new_eb_lowres, new_ib_lowres = take_reference_images(
                 microscope, settings=image_settings
             )
@@ -108,7 +107,7 @@ def correct_stage_drift(
 
         image_settings[
             "label"
-        ] = f"{liftout_counter:02d}_drift_correction_lamella_high_res"  # TODO: add to protocol
+        ] = f"drift_correction_lamella_high_res"  # TODO: add to protocol
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, settings=image_settings
         )
