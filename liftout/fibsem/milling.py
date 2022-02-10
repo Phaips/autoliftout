@@ -255,6 +255,24 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
     return
 
 
+def mill_trench_patterns(microscope, settings):
+    """Calculate the trench milling patterns"""
+
+    return NotImplemented
+
+def new_mill_trenches(microscope, settings):
+    """Mill the trenches for thinning the lamella.
+    Parameters
+    ----------
+    microscope : Autoscript microscope object.
+    settings :  Dictionary of user input argument settings.
+    confirm : bool, optional
+        Whether to ask the user to confirm before milling.
+    """
+
+    return NotImplemented
+
+
 def mill_trenches(microscope, settings):
     """Mill the trenches for thinning the lamella.
     Parameters
