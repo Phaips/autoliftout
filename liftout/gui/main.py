@@ -795,8 +795,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"AutoLiftout Workflow started for {len(self.samples)} sample positions.")
 
         # TODO: move this to the INIT
-        # TODO: add setup and thinning / polishing stages
         self.autoliftout_stages = {
+            AutoLiftoutStage.Setup: self.initialise_autoliftout,  # TODO: rename this to setup_autoliftout, and button too
             AutoLiftoutStage.MillTrench: self.mill_lamella_trench,
             AutoLiftoutStage.MillJCut: self.mill_lamella_jcut,
             AutoLiftoutStage.Liftout: self.liftout_lamella,
