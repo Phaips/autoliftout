@@ -1484,12 +1484,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return feature_1_px, feature_2_px
 
-    def land_lamella(self, landing_coord, original_landing_images):
+    def land_lamella(self):
 
         self.current_stage = AutoLiftoutStage.Landing
         logging.info(f"{self.current_stage.name} STARTED")
 
-         # TODO: wrap in safe movement func
+        # load positions and reference images,
+        (lamella_coordinates, landing_coordinates,
+         original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
 
         # stage_settings = MoveSettings(rotate_compucentric=True)
         # self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
@@ -1498,7 +1500,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: TEST THIS
         # move to landing coordinate
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coord)
+        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
         # eucentricity correction
