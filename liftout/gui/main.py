@@ -1101,8 +1101,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         reference_images_low_and_high_res = []
         for fname in ["ref_trench_low_res_eb", "ref_trench_high_res_eb", "ref_trench_low_res_ib", "ref_trench_high_res_ib"]:
 
-            img = AdornedImage.load(os.path.join(self.current_sample_position.data_path,
-                                                 str(self.current_sample_position.sample_id), f"{fname}.tif"))
+            img = self.current_sample_position.load_reference_image(fname)
             reference_images_low_and_high_res.append(img)
 
         # move flat to electron beam

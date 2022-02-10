@@ -250,10 +250,18 @@ class SamplePosition:
             self.landing_ref_images,
         )
 
-    def save_current_state(self):
-        """Save the current microscope state"""
-        return NotImplemented
+    def load_reference_image(self, fname) -> AdornedImage:
+        """Load a specific reference image for this sample position from disk
+        Args:
+            fname: str
+                the filename of the reference image to load
+        Returns:
+            adorned_img: AdornedImage
+                the reference image loaded as an AdornedImage
+        """
 
-    def load_sample_state(self):
-        """Load the current microscope state"""
-        return NotImplemented
+        adorned_img = AdornedImage.load(
+            os.path.join(self.data_path, str(self.sample_id), f"{fname}.tif")
+        )
+
+        return adorned_img
