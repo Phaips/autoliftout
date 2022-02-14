@@ -96,7 +96,7 @@ new_lamella:
   milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   hfw: 150e-6
-  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  size_ratio: 2.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
     - milling_current: 2.4e-9

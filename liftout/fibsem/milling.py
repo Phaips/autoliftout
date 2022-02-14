@@ -271,20 +271,20 @@ def mill_trench_patterns(microscope: SdbMicroscopeClient, settings: dict):
 
     centre_upper_y = centre_y + (lamella_height / 2 + trench_height / 2 + offset)
     centre_lower_y = centre_y - (lamella_height / 2 + lower_trench_height / 2 + offset)
-
-    print("----------------------")
-    print("Width: ", lamella_width)
-    print("Height: ", lamella_height)
-    print("Offset: ", offset, " Trench Height: ",  trench_height)
-    print("Centres: ", centre_upper_y, centre_lower_y)
-
-    upper_bottom, upper_top = centre_upper_y - trench_height/2, centre_upper_y + trench_height/2
-    lower_bottom, lower_top = centre_lower_y - lower_trench_height/2, centre_lower_y + lower_trench_height/2
-    print("Upper Area: ",upper_bottom, ":", upper_top)
-    print("Lower Area: ", lower_bottom, ":", lower_top)
-
-    print(f"Cleaning Cross Section (TOP): {centre_x}, {centre_upper_y}, {trench_height}")
-    print(f"Cleaning Cross Section (BOT): {centre_x}, {centre_lower_y}, {trench_height}")
+    #
+    # print("----------------------")
+    # print("Width: ", lamella_width)
+    # print("Height: ", lamella_height)
+    # print("Offset: ", offset, " Trench Height: ",  trench_height)
+    # print("Centres: ", centre_upper_y, centre_lower_y)
+    #
+    # upper_bottom, upper_top = centre_upper_y - trench_height/2, centre_upper_y + trench_height/2
+    # lower_bottom, lower_top = centre_lower_y - lower_trench_height/2, centre_lower_y + lower_trench_height/2
+    # # print("Upper Area: ",upper_bottom, ":", upper_top)
+    # # print("Lower Area: ", lower_bottom, ":", lower_top)
+    # #
+    # # print(f"Cleaning Cross Section (TOP): {centre_x}, {centre_upper_y}, {trench_height}")
+    # # print(f"Cleaning Cross Section (BOT): {centre_x}, {centre_lower_y}, {trench_height}")
 
     lower_pattern = microscope.patterning.create_cleaning_cross_section(
         centre_x,
@@ -332,7 +332,7 @@ def mill_lamella_trenches(microscope: SdbMicroscopeClient, settings: dict):
         setup_milling(microscope, settings, stage_settings)
 
         # create patterns
-        lp, up = mill_trench_patterns(microscope=None, settings=stage_settings)
+        lp, up = mill_trench_patterns(microscope=microscope, settings=stage_settings)
 
         logging.info(f"milling: milling trenches...")
         microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[

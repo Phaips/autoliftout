@@ -319,6 +319,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def new_select_sample_positions(self):
 
+
         # check if samples already has been loaded, and then append from there
         if self.samples:
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
@@ -342,12 +343,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
             self.ask_user()
             select_another_sample_position = self.response
+            self.update_scroll_ui()
 
         ####################################
         # # move to landing grid
-        # movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
-        # movement.auto_link_stage(self.microscope, hfw=900e-6)
-        # self.ensure_eucentricity(flat_to_sem=False)
+        movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
+        movement.auto_link_stage(self.microscope, hfw=900e-6)
+        self.ensure_eucentricity(flat_to_sem=False)
         ####################################
 
         # select corresponding sample landing positions
@@ -360,6 +362,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # load all the data from disk (to load images)
         for sample_position in self.samples:
             sample_position.load_data_from_file()
+
+        self.update_scroll_ui()
 
         # reset microscope coordinate system
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
@@ -469,21 +473,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
 
-        # ############
-        # movement.move_to_sample_grid(self.microscope, settings=self.settings)
-        # movement.auto_link_stage(self.microscope)
-        #
-        # self.ensure_eucentricity()
-        # movement.move_to_trenching_angle(self.microscope, settings=self.settings)
-        #
-        # sample_position = self.user_select_feature(feature_type="lamella")
-        #
-        # ###################
+        movement.move_to_sample_grid(self.microscope, settings=self.settings)
+        movement.auto_link_stage(self.microscope)
 
-        # TODO: add selection here
-        sample_position.lamella_coordinates = StagePosition(
-            x=sample_no, y=sample_no, z=sample_no, r=sample_no, t=sample_no, coordinate_system=CoordinateSystem.RAW
-        )
+        self.ensure_eucentricity()
+        movement.move_to_trenching_angle(self.microscope, settings=self.settings)
+
+        sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
 
         # save microscope state
         sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
@@ -516,18 +512,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def select_landing_sample_positions(self, current_sample_position: SamplePosition):
         logging.info(f"Selecting Landing Position: {current_sample_position.sample_id}")
 
-        #####################
         # select landing coordinates
-        # current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
+        current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
 
         # mill the landing edge flat
-        # self.mill_flat_landing_edge()
+        self.mill_flat_landing_edge()
 
-        #####################
-        # TODO: remove this for above
-        current_sample_position.landing_coordinates = StagePosition(
-            x=1, y=2, z=3, r=4, t=5, coordinate_system=CoordinateSystem.RAW
-        )
         current_sample_position.landing_selected = True
 
         self.update_image_settings(
@@ -813,15 +803,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
                 msg = f"The last completed stage for sample position {str(sp.sample_id)[-6:]} is {sp.microscope_state.last_completed_stage.name}. " \
-                      f"Would you like to continue from {next_stage.name}?\n"
+                      f"\nWould you like to continue from {next_stage.name}?\n"
                 self.update_popup_settings(message=msg, crosshairs=False)
                 self.ask_user()
+
+                # TODO: what to do if we say no?
+                # if self.response:
 
                 # TODO: check the interaction between start_of_stage_update, running the stage, and end_of_stage_update
                 self.start_of_stage_update(next_stage=next_stage)
 
                 # run the next workflow stage
-                # self.autoliftout_stages[next_stage]()
+                self.autoliftout_stages[next_stage]()
 
                 # advance workflow
                 self.end_of_stage_update(eucentric=True) # TODO: how to find out if we are eucentric?
@@ -913,52 +906,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def single_liftout(self):
 
-        # # (lamella_coordinates, landing_coordinates,
-        # #     original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-        #
-        # logging.info(f"{self.current_sample_position.sample_no} | SINGLE_LIFTOUT |  | STARTED")
-        #
-        # # initial state
-        # self.MILLING_COMPLETED_THIS_RUN = False
-        #
-        # # stage_settings = MoveSettings(rotate_compucentric=True)
-        # # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
-        # # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
-        # # self.stage.absolute_move(lamella_coordinates)
-        #
-        # # TODO: TEST THIS
-        # # move to saved lamella position
-        # movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
-        #
-        # ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
-        #                                       original_lamella_area_images, mode='eb')
-        # self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
-        #
-        # if ret is False:
-        #     # cross-correlation has failed, manual correction required
-        #     self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
-        #                  click='double', filter_strength=self.filter_strength, allow_new_image=True)
-        #     self.ask_user(image=self.image_SEM)
-        #     logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
-        #
-        # self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
-        #                                                    f'If not, double click to center the lamella, press Yes when centered.',
-        #                            click='double', filter_strength=self.filter_strength, allow_new_image=True)
-        # self.ask_user(image=self.image_SEM)
-        #
-        # self.update_image_settings(
-        #     save=True,
-        #     label="initial_position_post_drift_correction"
-        # )
-        # acquire.take_reference_images(self.microscope, self.settings)
-        # # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-
-        # mill
-        self.update_popup_settings(message="Do you want to start milling?", crosshairs=False)
+        # mill trench
+        self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
         self.ask_user()
-        logging.info(f"Perform Milling: {self.response}")
+        logging.info(f"Perform MillTrench: {self.response}")
         if self.response:
             self.mill_lamella_trench()
+
+        # mill jcut
+        self.update_popup_settings(message="Do you want to start milling j-cut?", crosshairs=False)
+        self.ask_user()
+        logging.info(f"Perform MillJcut: {self.response}")
+        if self.response:
+            self.mill_lamella_jcut()
 
         # liftout
         self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
@@ -1014,20 +974,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         return
 
     def mill_lamella_trench(self):
-        self.current_stage = AutoLiftoutStage.Milling
+        # self.current_stage = AutoLiftoutStage.MillTrench # TODO: REMOVE
 
+        # TODO: change this to load ref images from disk
         (lamella_coordinates, landing_coordinates,
             original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
+        # TODO: some bug here maybe?
 
         # initial state
         self.MILLING_COMPLETED_THIS_RUN = False
 
-        # stage_settings = MoveSettings(rotate_compucentric=True)
-        # self.stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=lamella_coordinates.coordinate_system), stage_settings)
-        # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r, coordinate_system=lamella_coordinates.coordinate_system))
-        # self.stage.absolute_move(lamella_coordinates)
-
-        # TODO: TEST THIS
         # move to saved lamella position
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
 
@@ -1053,11 +1009,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label="initial_position_post_drift_correction"
         )
-        acquire.take_reference_images(self.microscope, self.settings)
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-        # stage_settings = MoveSettings(rotate_compucentric=True)
         movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
@@ -1083,17 +1037,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             milling.mill_lamella_trenches(microscope=self.microscope, settings=self.settings)
 
-        ########################
-        # self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
-        # self.ask_user()
-        # if self.response:
-        #     # mill trenches for lamella
-        #     milling.mill_trenches(self.microscope, self.settings)
-
-        ########################
-        # self.current_sample_position.milling_coordinates = self.stage.current_position
-        # self.current_sample_position.save_data()
-
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
@@ -1108,7 +1051,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"ref_trench_low_res"
         )
-        eb_lowres, ib_lowres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -1117,24 +1060,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"ref_trench_high_res"
         )
-        eb_highres, ib_highres = acquire.take_reference_images(self.microscope, settings=self.image_settings)
-
-        # reference_images_low_and_high_res = (eb_lowres, eb_highres, ib_lowres, ib_highres)
+        acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         # Mill Trenches is Finished Here...
         self.end_of_stage_update(eucentric=True)
 
-        # jcut_
-        self.mill_lamella_jcut() # TODO: remove once run_autoliftout_workflow is implemented...
 
     def mill_lamella_jcut(self):
         ####################################### JCUT #######################################
-        self.current_stage = AutoLiftoutStage.MillJCut
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
 
         # Movement to JCut is below
 
-        # TODO: load to the lamella coordinates?
+        # TODO: remove once using start_of stage update
+        self.current_stage = AutoLiftoutStage.MillJCut
+        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
+        movement.safe_absolute_stage_movement(microscope=self.microscope,
+                                              stage_position=self.current_sample_position.lamella_coordinates)
 
         # load the reference images # TODO: TEST
         reference_images_low_and_high_res = []
@@ -1163,7 +1104,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    save=True, label=f"drift_correction_ML")
 
         # then using ML, tilting/correcting in steps so drift isn't too large
-        self.correct_stage_drift_with_ML() # TODO: test if we can remove this
+        # self.correct_stage_drift_with_ML() # TODO: test if we can remove this
         stage_settings = MoveSettings(rotate_compucentric=True)
         movement.move_relative(self.microscope, t=np.deg2rad(self.settings["jcut"]["jcut_angle"]), settings=stage_settings)
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
@@ -1243,10 +1184,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_popup_settings(message='Autofocus has failed, please correct the focus manually', filter_strength=self.filter_strength, crosshairs=False)
             self.ask_user()
 
-        if not self.MILLING_COMPLETED_THIS_RUN:
-            self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
-            self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-            movement.move_to_liftout_angle(self.microscope, self.settings)
+        # if not self.MILLING_COMPLETED_THIS_RUN:
+        #     self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
+        #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        #     movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1271,11 +1212,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         park_position = movement.move_needle_to_liftout_position(self.microscope)
         logging.info(f"{self.current_stage.name}: needle inserted to park positon: {park_position}")
-
-        # save liftout position
-        # self.current_sample_position.park_position = park_position
-        # self.current_sample_position.liftout_coordinates = self.stage.current_position
-        # self.current_sample_position.save_data()
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
@@ -2236,7 +2172,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info("gui: setup connections started")
         # Protocol and information table connections
         self.pushButton_initialise.clicked.connect(lambda: self.initialise_autoliftout())
-        self.pushButton_autoliftout.clicked.connect(lambda: self.run_liftout())
+        # self.pushButton_autoliftout.clicked.connect(lambda: self.run_liftout())
+        self.pushButton_autoliftout.clicked.connect(lambda: self.run_autoliftout_workflow())
         self.pushButton_autoliftout.setEnabled(0)  # disable unless sample positions are loaded.
 
         # FIBSEM methods
@@ -2855,7 +2792,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         mode = "" if not self.offline else "\n(Offline Mode)"
         self.label_stage.setText(f"{self.current_stage.name}{mode}")
         status_colors = {"Initialisation": "gray", "Setup": "gold",
-                         "Milling": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
+                         "MillTrench": "coral", "MillJCut": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Thinning": "mediumpurple", "Finished": "cyan"}
         self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_stage.name]}; color: white; border-radius: 5px"))
 
@@ -2906,7 +2843,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # load the exemplar images for each sample
             qimage_labels = []
             for img_basename in exemplar_filenames:
-                fname = os.path.join(sp.data_path, sp.sample_id, f"{img_basename}.tif")
+                fname = os.path.join(sp.data_path, str(sp.sample_id), f"{img_basename}.tif")
                 imageLabel = QLabel()
 
                 if os.path.exists(fname):
@@ -2953,10 +2890,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             label_pos = QLabel()
             # label_pos.setPixmap(testColourMap(sp.lamella_coordinates.x, sp.landing_coordinates.y))
-            label_pos.setText(f"""
-            Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n
-            Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n
-            """)
+            pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
+            if sp.landing_coordinates.x is not None:
+
+                pos_text += f"Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n"
+                
+            label_pos.setText(pos_text)
             label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
 
             gridLayout.addWidget(label_pos, row_id, 1)
@@ -3011,5 +2950,5 @@ def launch_gui(offline=False):
 
 
 if __name__ == "__main__":
-    offline_mode = True
+    offline_mode = False
     main(offline=offline_mode)

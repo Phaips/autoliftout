@@ -168,7 +168,8 @@ def move_to_sample_grid(microscope, settings):
         x=float(settings["initial_position"]["sample_grid"]["x"]),
         y=float(settings["initial_position"]["sample_grid"]["y"]),
         z=float(settings["initial_position"]["sample_grid"]["z"]),
-        coordinate_system=settings["initial_position"]["sample_grid"]["coordinate_system"] # TODO: raw coordinates
+        r=np.deg2rad(float(settings["system"]["stage_rotation_flat_to_electron"])),
+        coordinate_system=settings["initial_position"]["sample_grid"]["coordinate_system"]
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
     microscope.specimen.stage.absolute_move(sample_grid_center)
@@ -201,6 +202,7 @@ def move_to_landing_grid(
         x=float(settings["initial_position"]["landing_grid"]["x"]),
         y=float(settings["initial_position"]["landing_grid"]["y"]),
         z=float(settings["initial_position"]["landing_grid"]["z"]),
+        r=np.deg2rad(float(settings["system"]["stage_rotation_flat_to_electron"])),
         coordinate_system=settings["initial_position"]["landing_grid"]["coordinate_system"]  # TODO: raw coordinates
     )
     logging.info(f"movement: moving to landing grid {landing_grid_position}")
