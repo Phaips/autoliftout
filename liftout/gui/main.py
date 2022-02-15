@@ -41,7 +41,7 @@ BeamType = acquire.BeamType
 test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
 # test_image = np.zeros_like(test_image, dtype='uint16')
-test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e-6), (-100.e-6, 0.e-6, 30.e-6, 400.e-6)]
+# test_jcut = [(0.e-6, 200.e-6, 200.e-6, 30.e-6), (100.e-6, 175.e-6, 30.e-6, 100.e-6), (-100.e-6, 0.e-6, 30.e-6, 400.e-6)]
 
 
 # conversions
@@ -174,7 +174,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # DEVELOPER ONLY
         self.ADDITIONAL_CONFIRMATION = True
-        self.MILLING_COMPLETED_THIS_RUN = False
+        self.INITIAL_SELECTION_EUCENTRICITY = False
+        # self.MILLING_COMPLETED_THIS_RUN = False
 
         # Set up scroll area for display
         # ui setup part 2
@@ -288,29 +289,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
 
-
-
-
-        #### TODO: ENABLE THIS BLOCK
+        # select the positions
         self.new_select_sample_positions()
-        #####
 
-
-        #### TODO: REMOVE THIS BLOCK
-        # self.landing_coordinates, self.original_landing_images = self.select_initial_feature_coordinates(feature_type='landing')
-        # self.lamella_coordinates, self.original_trench_images = self.select_initial_feature_coordinates(feature_type='lamella')
-        # self.zipped_coordinates = list(zip(self.lamella_coordinates, self.landing_coordinates))
-        #
-        # # save coordinates
-        # self.samples = []
-        # for i, (lamella_coordinates, landing_coordinates) in enumerate(self.zipped_coordinates, 1):
-        #     sample = SamplePosition(self.save_path, i)
-        #     sample.lamella_coordinates = lamella_coordinates
-        #     sample.landing_coordinates = landing_coordinates
-        #     sample.save_data()
-        #     self.samples.append(sample)
-
-        ###############
+        # enable autoliftout workflow
         self.pushButton_autoliftout.setEnabled(True)
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
@@ -318,7 +300,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name} FINISHED")
 
     def new_select_sample_positions(self):
-
 
         # check if samples already has been loaded, and then append from there
         if self.samples:
@@ -349,7 +330,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # # move to landing grid
         movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
         movement.auto_link_stage(self.microscope, hfw=900e-6)
-        self.ensure_eucentricity(flat_to_sem=False)
+        self.ensure_eucentricity(flat_to_sem=False) # TODO: add INITIAL_LANDING_EUCENTRICITY FLAG?
         ####################################
 
         # select corresponding sample landing positions
@@ -473,12 +454,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
 
-        movement.move_to_sample_grid(self.microscope, settings=self.settings)
-        movement.auto_link_stage(self.microscope)
+        # TODO we only need to do this initially then we can just select more points....
+        if self.INITIAL_SELECTION_EUCENTRICITY is False:
+            movement.move_to_sample_grid(self.microscope, settings=self.settings)
+            movement.auto_link_stage(self.microscope)
+            self.ensure_eucentricity()
+            movement.move_to_trenching_angle(self.microscope, settings=self.settings)
+            self.INITIAL_SELECTION_EUCENTRICITY = True
 
-        self.ensure_eucentricity()
-        movement.move_to_trenching_angle(self.microscope, settings=self.settings)
-
+        # select lamella position
         sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
 
         # save microscope state
@@ -567,7 +551,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"Preparing to flatten landing surface.")
         flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
 
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.update_image_settings(hfw=100e-6, save=False)
+        self.update_display(beam_type=BeamType.ION, image_type='new')
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
                                    crosshairs=False, milling_patterns=flatten_landing_pattern)
         self.ask_user(image=self.image_FIB)
@@ -817,7 +802,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.autoliftout_stages[next_stage]()
 
                 # advance workflow
-                self.end_of_stage_update(eucentric=True) # TODO: how to find out if we are eucentric?
+                self.end_of_stage_update(eucentric=True)  # TODO: how to find out if we are eucentric?
 
     def run_thinning_workflow(self):
         # TODO: make button for this
@@ -854,92 +839,43 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #         self.thin_lamella(landing_coord=landing_coord)
 
 
-    # def load_coordinates(self):
-    #     # TODO: REMOVE
-    #     logging.info(f"LOAD COORDINATES STARTED")
-    #     # input save path
-    #     save_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
-    #                                                            directory=os.path.join(os.path.dirname(liftout.__file__), "log"))
-    #     if not save_path:
-    #         error_msg = "Load Coordinates: No Folder selected."
-    #         logging.warning(error_msg)
-    #         display_error_message(error_msg)
-    #         return
-    #
-    #     ##########
-    #     # read the sample.yaml: get how many samples in there, loop through
-    #
-    #     # test if the file exists
-    #     yaml_file = os.path.join(save_path, "sample.yaml")
-    #
-    #     if not os.path.exists(yaml_file):
-    #         error_msg = "sample.yaml file could not be found in this directory."
-    #         logging.error(error_msg)
-    #         display_error_message(error_msg)
-    #         return
-    #
-    #     # test if there are any samples in the file?
-    #     sample = SamplePosition(save_path, None)
-    #     yaml_file = sample.setup_yaml_file()
-    #
-    #
-    #     num_of_samples = len(yaml_file["sample"])
-    #
-    #     if num_of_samples == 0:
-    #         # error out if no sample.yaml found...
-    #         error_msg = "sample.yaml file has no stored sample coordinates."
-    #         logging.error(error_msg)
-    #         display_error_message(error_msg)
-    #         return
-    #
-    #     else:
-    #         # load the samples
-    #         self.samples = []
-    #         for sample_no in yaml_file["sample"].keys():
-    #             sample = SamplePosition(save_path, sample_no)
-    #             sample.load_data_from_file()
-    #             self.samples.append(sample)
-    #     self.pushButton_autoliftout.setEnabled(True)
-    #
-    #     logging.info(f"{len(self.samples)} samples loaded from {save_path}")
-    #     logging.info(f"LOAD COORDINATES FINISHED")
 
-    def single_liftout(self):
-
-        # mill trench
-        self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform MillTrench: {self.response}")
-        if self.response:
-            self.mill_lamella_trench()
-
-        # mill jcut
-        self.update_popup_settings(message="Do you want to start milling j-cut?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform MillJcut: {self.response}")
-        if self.response:
-            self.mill_lamella_jcut()
-
-        # liftout
-        self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform Liftout: {self.response}")
-        if self.response:
-            self.liftout_lamella()
-
-        # landing
-        self.update_popup_settings(message="Do you want to start landing?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform Landing: {self.response}")
-        if self.response:
-            self.land_lamella()
-
-        # reset
-        self.update_popup_settings(message="Do you want to start reset?", crosshairs=False)
-        self.ask_user()
-        logging.info(f"Perform Reset: {self.response}")
-        if self.response:
-            self.reset_needle()
+    # def single_liftout(self):
+    #
+    #     # mill trench
+    #     self.update_popup_settings(message="Do you want to start milling trenches?", crosshairs=False)
+    #     self.ask_user()
+    #     logging.info(f"Perform MillTrench: {self.response}")
+    #     if self.response:
+    #         self.mill_lamella_trench()
+    #
+    #     # mill jcut
+    #     self.update_popup_settings(message="Do you want to start milling j-cut?", crosshairs=False)
+    #     self.ask_user()
+    #     logging.info(f"Perform MillJcut: {self.response}")
+    #     if self.response:
+    #         self.mill_lamella_jcut()
+    #
+    #     # liftout
+    #     self.update_popup_settings(message="Do you want to start liftout?", crosshairs=False)
+    #     self.ask_user()
+    #     logging.info(f"Perform Liftout: {self.response}")
+    #     if self.response:
+    #         self.liftout_lamella()
+    #
+    #     # landing
+    #     self.update_popup_settings(message="Do you want to start landing?", crosshairs=False)
+    #     self.ask_user()
+    #     logging.info(f"Perform Landing: {self.response}")
+    #     if self.response:
+    #         self.land_lamella()
+    #
+    #     # reset
+    #     self.update_popup_settings(message="Do you want to start reset?", crosshairs=False)
+    #     self.ask_user()
+    #     logging.info(f"Perform Reset: {self.response}")
+    #     if self.response:
+    #         self.reset_needle()
 
     def end_of_stage_update(self, eucentric: bool) -> None:
         """Save the current microscope state configuration to disk, and log that the stage has been completed."""
@@ -979,10 +915,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: change this to load ref images from disk
         (lamella_coordinates, landing_coordinates,
             original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-        # TODO: some bug here maybe?
+        # TODO: some bug here maybe? when continueing the run after selecting points, but not when reloading...
 
         # initial state
-        self.MILLING_COMPLETED_THIS_RUN = False
+        # self.MILLING_COMPLETED_THIS_RUN = False
 
         # move to saved lamella position
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
@@ -998,7 +934,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                        click='double', filter_strength=self.filter_strength, allow_new_image=True)
             self.ask_user(image=self.image_SEM)
             logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
-
 
         self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
                                            f'If not, double click to center the lamella, press Yes when centered.',
@@ -1063,8 +998,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, settings=self.image_settings)
 
         # Mill Trenches is Finished Here...
-        self.end_of_stage_update(eucentric=True)
-
+        # self.end_of_stage_update(eucentric=True)
 
     def mill_lamella_jcut(self):
         ####################################### JCUT #######################################
@@ -1072,12 +1006,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # Movement to JCut is below
 
         # TODO: remove once using start_of stage update
-        self.current_stage = AutoLiftoutStage.MillJCut
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
+        # self.current_stage = AutoLiftoutStage.MillJCut
+        # logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
         movement.safe_absolute_stage_movement(microscope=self.microscope,
                                               stage_position=self.current_sample_position.lamella_coordinates)
 
-        # load the reference images # TODO: TEST
+        # load the reference images
         reference_images_low_and_high_res = []
         for fname in ["ref_trench_low_res_eb", "ref_trench_high_res_eb", "ref_trench_low_res_ib", "ref_trench_high_res_ib"]:
 
@@ -1137,9 +1071,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    save=True, label=f"jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        self.MILLING_COMPLETED_THIS_RUN = True
-        self.end_of_stage_update(eucentric=True)
-        logging.info(f" {self.current_stage.name} FINISHED")
+        # self.MILLING_COMPLETED_THIS_RUN = True
+        # self.end_of_stage_update(eucentric=True)
+        # logging.info(f" {self.current_stage.name} FINISHED")
 
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
@@ -1169,8 +1103,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
     def liftout_lamella(self):
-        self.current_stage = AutoLiftoutStage.Liftout
-        logging.info(f" {self.current_stage.name} STARTED")
+        # self.current_stage = AutoLiftoutStage.Liftout
+        # logging.info(f" {self.current_stage.name} STARTED")
+
+        # TODO: need to check we are in the correct position (JCUT)
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
@@ -1182,12 +1118,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if abs(eb_image.metadata.optics.working_distance - 4e-3) > 0.5e-3:
             logging.warning("Autofocus has failed")
             self.update_popup_settings(message='Autofocus has failed, please correct the focus manually', filter_strength=self.filter_strength, crosshairs=False)
-            self.ask_user()
+            self.ask_user() # TODO: better message
 
-        # if not self.MILLING_COMPLETED_THIS_RUN:
-        #     self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
-        #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-        #     movement.move_to_liftout_angle(self.microscope, self.settings)
+        # TODO: ask user if eucentricity is good enough?
+        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
+        # self.image_SEM, self.image_FIB = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
+        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
+                                   filter_strength=self.filter_strength, crosshairs=True, allow_new_image=False, click=None)
+
+        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)  # TODO: show both images
+        if self.response:
+            self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
+            self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+            movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1260,9 +1205,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
-        self.end_of_stage_update(eucentric=True)
-        logging.info(f"{self.current_stage.name}: needle retracted. ")
-        logging.info(f" {self.current_stage.name} FINISHED")
+        # self.end_of_stage_update(eucentric=True)
+        # logging.info(f"{self.current_stage.name}: needle retracted. ")
+        # logging.info(f" {self.current_stage.name} FINISHED")
 
     def land_needle_on_milled_lamella(self):
 
@@ -1460,8 +1405,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_lamella(self):
 
-        self.current_stage = AutoLiftoutStage.Landing
-        logging.info(f"{self.current_stage.name} STARTED")
+        # self.current_stage = AutoLiftoutStage.Landing
+        # logging.info(f"{self.current_stage.name} STARTED")
 
         # load positions and reference images,
         (lamella_coordinates, landing_coordinates,
@@ -1477,8 +1422,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
-        # eucentricity correction
-        self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
+        # # eucentricity correction
+        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
+        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
+        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
+                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
+        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
+        if self.response:
+            self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
@@ -1643,7 +1595,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         rotation = self.settings["cut"]["rotation"]
         hfw = self.settings["cut"]["hfw"]
         vertical_gap = self.settings["cut"]["gap"]
-        horizontal_gap = self.settings["cut"]["hgap"] # TODO:  TO_TEST
+        horizontal_gap = self.settings["cut"]["hgap"]
 
         cut_coord = {"center_x": -distance_x_m - horizontal_gap,
                      "center_y": distance_y_m - vertical_gap,
@@ -1730,13 +1682,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        self.end_of_stage_update(eucentric=True)
-        logging.info(f"{self.current_stage.name} FINISHED")
+        # self.end_of_stage_update(eucentric=True)
+        # logging.info(f"{self.current_stage.name} FINISHED")
 
     def reset_needle(self):
 
-        self.current_stage = AutoLiftoutStage.Reset
-        logging.info(f" {self.current_stage.name} STARTED")
+        # self.current_stage = AutoLiftoutStage.Reset
+        # logging.info(f" {self.current_stage.name} STARTED")
 
         # move sample stage out
         movement.move_sample_stage_out(self.microscope)
@@ -1817,8 +1769,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
         self.stage.absolute_move(StagePosition(x=0.0, y=0.0))
 
-        self.end_of_stage_update(eucentric=False)
-        logging.info(f"{self.current_stage.name} FINISHED")
+        # self.end_of_stage_update(eucentric=False)
+        # logging.info(f"{self.current_stage.name} FINISHED")
 
     def new_thin_lamella(self):
 
@@ -2742,7 +2694,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
-                    image_array = self.image_SEM.data
+                    # image_array = self.image_SEM.data
                     # self.figure_SEM.clear()
                     # self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
                     # self.ax_SEM = self.figure_SEM.add_subplot(111)
@@ -2756,7 +2708,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         self.image_FIB = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
-                    image_array = self.image_FIB.data
+                    # image_array = self.image_FIB.data
                     # self.figure_FIB.clear()
                     # self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
                     # self.ax_FIB = self.figure_FIB.add_subplot(111)

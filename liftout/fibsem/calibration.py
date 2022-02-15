@@ -140,7 +140,6 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
     logging.info(
         f"calibration: align using {beam_type.name} reference image in mode {mode}."
     )
-    print("Hello")
     # TODO: possibly hard-code these numbers at fixed resolutions?
     lowpass_pixels = int(max(new_image.data.shape) * 0.66)   # =128 @ 1536x1024, good for e-beam images
     highpass_pixels = int(

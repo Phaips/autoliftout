@@ -1,7 +1,7 @@
 from liftout.fibsem.acquire import *
 import numpy as np
 from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
-from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem
+from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem, CoordinateSystem
 import time
 
 pretilt = 27  # TODO: add to protocol
@@ -125,8 +125,8 @@ def move_to_landing_angle(microscope, settings, landing_angle=13):
         beam_type=BeamType.ION,
     )  # stage tilt 25
     microscope.specimen.stage.relative_move(
-        StagePosition(t=np.deg2rad(landing_angle))
-    )  # more tilt by 18
+        StagePosition(t=np.deg2rad(landing_angle)) # TODO: MAGIC_NUMBER
+    )  # more tilt by 13
     logging.info(f"movement: move to landing angle ({landing_angle} deg) complete.")
     return microscope.specimen.stage.current_position
 
@@ -159,11 +159,7 @@ def move_to_sample_grid(microscope, settings):
     Assumes sample grid is mounted on the left hand side of the holder.
     """
     # TODO: reorder this function so that the movement is safe, and the tilt happens last
-    flat_to_beam(
-        microscope,
-        settings=settings,
-        beam_type=BeamType.ELECTRON,
-    )
+
     sample_grid_center = StagePosition(
         x=float(settings["initial_position"]["sample_grid"]["x"]),
         y=float(settings["initial_position"]["sample_grid"]["y"]),
@@ -172,7 +168,16 @@ def move_to_sample_grid(microscope, settings):
         coordinate_system=settings["initial_position"]["sample_grid"]["coordinate_system"]
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
-    microscope.specimen.stage.absolute_move(sample_grid_center)
+    # microscope.specimen.stage.absolute_move(sample_grid_center)
+    safe_absolute_stage_movement(microscope=microscope, stage_position=sample_grid_center)
+
+    # move flat to the electron beam
+    flat_to_beam(
+        microscope,
+        settings=settings,
+        beam_type=BeamType.ELECTRON,
+    )
+
     # Zoom out so you can see the whole sample grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
@@ -194,8 +199,6 @@ def move_to_landing_grid(
     """
 
     # initially tilt flat for safety
-    stage_settings = MoveSettings(rotate_compucentric=True)
-    microscope.specimen.stage.absolute_move(StagePosition(t=0), stage_settings)
 
     # move to landing grid initial position
     landing_grid_position = StagePosition(
@@ -206,7 +209,8 @@ def move_to_landing_grid(
         coordinate_system=settings["initial_position"]["landing_grid"]["coordinate_system"]  # TODO: raw coordinates
     )
     logging.info(f"movement: moving to landing grid {landing_grid_position}")
-    microscope.specimen.stage.absolute_move(landing_grid_position)
+    # microscope.specimen.stage.absolute_move(landing_grid_position)
+    safe_absolute_stage_movement(microscope=microscope, stage_position=landing_grid_position)
 
     if flat_to_sem:
         flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
@@ -214,6 +218,7 @@ def move_to_landing_grid(
     else:
         move_to_landing_angle(
             microscope, settings=settings)
+
     # Zoom out so you can see the whole landing grid
     microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
     microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
@@ -385,16 +390,17 @@ def flat_to_beam(
 
     stage = microscope.specimen.stage
     pretilt_angle = settings["system"]["pretilt_angle"]  # 27
-    assert pretilt_angle == 27  # TODO: REMOVE PRETILT_ANGLE FROM PARAMS TO_TEST
+
     if beam_type is BeamType.ELECTRON:
         rotation = settings["system"]["stage_rotation_flat_to_electron"]
         tilt = np.deg2rad(pretilt_angle)
     if beam_type is BeamType.ION:
         rotation = settings["system"]["stage_rotation_flat_to_ion"]
-        tilt = np.deg2rad(52 - pretilt_angle)  # MAGIC_NUMBER
+        tilt = np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"] - pretilt_angle)  # MAGIC_NUMBER
     rotation = np.deg2rad(rotation)
     stage_settings = MoveSettings(rotate_compucentric=True)
     logging.info(f"movement: moving flat to {beam_type.name}")
+
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
     if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
@@ -403,7 +409,7 @@ def flat_to_beam(
     stage.absolute_move(StagePosition(r=rotation), stage_settings)
     logging.info(f"movement: tilting stage to {tilt:.4f}")
     stage.absolute_move(StagePosition(t=tilt), stage_settings)
-    # TODO: use safe_absolute_stage_movement instead here
+
     return stage.current_position
 
 
@@ -411,17 +417,19 @@ def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
     """Move the stage to the desired position in a safe manner, using compucentric rotation.
         Supports movements in the stage_position coordinate system
     """
-    # TODO: TEST
+
     stage = microscope.specimen.stage
     stage_settings = MoveSettings(rotate_compucentric=True)
+    # stage_position.coordinate_system = CoordinateSystem.Raw
 
     # tilt flat for large rotations to prevent collisions
     if abs(np.rad2deg(stage_position.r - stage.current_position.r)) > 90:
         stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=stage_position.coordinate_system), stage_settings)
         logging.info(f"tilting to flat for large rotation.")
-    stage.absolute_move(StagePosition(r=stage_position.r, coordinate_system=stage_position.coordinate_system))
-    stage.absolute_move(stage_position)
-
+    stage.absolute_move(StagePosition(r=stage_position.r, coordinate_system=stage_position.coordinate_system), stage_settings)
+    logging.info(f"safe moving to {stage_position}")
+    stage.absolute_move(stage_position, stage_settings)
+    logging.info(f"safe movement complete.")
     return stage.current_position
 
 

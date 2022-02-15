@@ -265,12 +265,12 @@ def mill_trench_patterns(microscope: SdbMicroscopeClient, settings: dict):
     lamella_width = settings["lamella_width"]
     lamella_height = settings["lamella_height"]
     trench_height = settings["trench_height"]
-    lower_trench_height = trench_height / settings["size_ratio"]
+    upper_trench_height = trench_height / settings["size_ratio"]
     offset = settings["offset"]
     milling_depth = settings["milling_depth"]
 
-    centre_upper_y = centre_y + (lamella_height / 2 + trench_height / 2 + offset)
-    centre_lower_y = centre_y - (lamella_height / 2 + lower_trench_height / 2 + offset)
+    centre_upper_y = centre_y + (lamella_height / 2 + upper_trench_height / 2 + offset)
+    centre_lower_y = centre_y - (lamella_height / 2 + trench_height / 2 + offset)
     #
     # print("----------------------")
     # print("Width: ", lamella_width)
@@ -290,7 +290,7 @@ def mill_trench_patterns(microscope: SdbMicroscopeClient, settings: dict):
         centre_x,
         centre_lower_y,
         lamella_width,
-        lower_trench_height,
+        trench_height,
         milling_depth,
     )
     lower_pattern.scan_direction = "BottomToTop"
@@ -299,7 +299,7 @@ def mill_trench_patterns(microscope: SdbMicroscopeClient, settings: dict):
         centre_x,
         centre_upper_y,
         lamella_width,
-        trench_height,
+        upper_trench_height,
         milling_depth,
     )
     upper_pattern.scan_direction = "TopToBottom"
@@ -580,8 +580,8 @@ def jcut_milling_patterns(microscope, settings):
     ----------
     microscope : AutoScript microscope instance.
         The AutoScript microscope object.
-    settings["jcut"] : dict
-        Dictionary of J-cut parameter settings.
+    settings : dict
+        Dictionary of parameter settings.
     Returns
     -------
     (autoscript_sdb_microscope_client.structures.RectanglePattern,

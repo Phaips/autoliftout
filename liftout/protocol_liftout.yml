@@ -6,20 +6,24 @@ system:
   application_file_cleaning_cross_section: "autolamella"
   stage_rotation_flat_to_electron: 50 # degrees
   stage_rotation_flat_to_ion: 230 # degrees
-  pretilt_angle: 27 # degrees
+  pretilt_angle: 27 # degrees (flat to electron tilt)
+  stage_tilt_flat_to_ion: 52 # degrees
 initial_position:
   sample_grid: # need to check the coordinate systems
     x: -3.2375e-3
     y: 3.9354e-3
-    z: 31.379e-3
+    z: 30.95e-3
+#    x: -3.2375e-3
+#    y: 3.9354e-3
+#    z: 31.379e-3
     coordinate_system: "Raw"
   landing_grid:
     # x is +6 mm from sample grid center
-    x: 2.76265e-3
+    x: 2.76265e-3 # x: 2.76265e-3
     # y is the same as sample grid center
-    y: 3.9354e-3
+    y: 3.9354e-3 # y: 3.9354e-3
     # z is the same as sample grid center
-    z: 31.379e-3
+    z: 30.95e-3 # z: 31.379e-3
     coordinate_system: "Raw"
 imaging:
   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
@@ -111,14 +115,10 @@ needle:
   dwell_time: 1e-6
   resolution: "1536x1024"
 machine_learning:
-  eb_brightness: 0.4
-  eb_contrast: 0.70
-  ib_brightness: 0.41
-  ib_contrast: 0.86
   weights: boost_n05_model.pt
 jcut:
   jcut_milling_current: 0.74e-9 # in Amps
-  jcut_angle: 6  # in degrees (relative)
+  jcut_angle: 6  # in degrees (relative from trench)
   jcut_length: 12e-6 # in meters
   jcut_lamella_depth: 5e-6 # in meters
   jcut_trench_thickness: 1e-6 # in meters
