@@ -811,20 +811,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # thinning
         for sp in self.samples:
             self.current_sample_position = sp
-            self.new_thin_lamella()
-            self.end_of_stage_update(eucentric=True)
+            if self.current_sample_position.microscope_state.last_completed_stage == AutoLiftoutStage.Reset:
+                self.start_of_stage_update(next_stage=AutoLiftoutStage.Thinning)
+                self.new_thin_lamella()
+                self.end_of_stage_update(eucentric=True)
 
         # polish
         for sp in self.samples:
             self.current_sample_position = sp
-            self.polish_lamella()
-            self.end_of_stage_update(eucentric=True)
+            if self.current_sample_position.microscope_state.last_completed_stage == AutoLiftoutStage.Thinning:
+                self.start_of_stage_update(next_stage=AutoLiftoutStage.Polishing)
+                self.polish_lamella()
+                self.end_of_stage_update(eucentric=True)
 
         # finish the experiment
         self.current_stage = AutoLiftoutStage.Finished
         for sp in self.samples:
             self.current_sample_position = sp
-            self.end_of_stage_update(eucentric=True)
+            if self.current_sample_position.microscope_state.last_completed_stage == AutoLiftoutStage.Polishing:
+                self.end_of_stage_update(eucentric=True)
 
         #
         # # NOTE: thinning needs to happen after all lamella landed due to contamination buildup...
@@ -1774,32 +1779,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def new_thin_lamella(self):
 
-        self.current_stage = AutoLiftoutStage.Thinning
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name} | STARTED")
+        # TODO: i want a way to restore generalised landing eucentricity, extension
+        # save the landing eucentricty
+        # save the thinning eucentricity, and then for each thin / polish step, reset to that state,
+        # then have the user click on the lamella they want to thin.
+        # TODO: add to the sample class, the landing_eucentric_state, sample_eucentric_state, and thinning_eucentric_state
 
-        thinning_coordinate = self.current_sample_position.landing_coordinates
-        thinning_coordinate.r = np.deg2rad(self.settings["thin_lamella"]["rotation_angle"])  # TODO: check this rotation
-        thinning_coordinate.t = np.deg2rad(self.settings["thin_lamella"]["tilt_angle"])
+        # move to the initial landing coordinates
+        movement.safe_absolute_stage_movement(microscope=self.microscope,
+                                              stage_position=self.current_sample_position.landing_coordinates)
 
-        # complete eucentricity at this angle if it hasn't been conducted
-        if not self.THINNING_EUCENTRICITY_COMPLETED:
+        # ensure_eucentricity # TODO: Maybe remove, not required?
+        self.ensure_eucentricity(flat_to_sem=False)
 
-            # move to the initial landing coordinates
-            movement.safe_absolute_stage_movement(microscope=self.microscope,
-                                                  stage_position=self.current_sample_position.landing_coordinates)
-            # ensure_eucentricity
-            self.ensure_eucentricity(flat_to_sem=False)
+        # rotate_and_tilt_to_thinning_angle
+        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        movement.move_to_thinning_angle(microscope=self.microscope, settings=self.settings)
 
-            # rotate_and_tilt_to_thinning_angle
-            self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-            movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=thinning_coordinate)
-
-            # ensure_eucentricity at thinning angle
-            self.ensure_eucentricity(flat_to_sem=False)
-            self.THINNING_EUCENTRICITY_COMPLETED = True
-
-        # move to thinning coord
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=thinning_coordinate)
+        # ensure_eucentricity at thinning angle
+        self.ensure_eucentricity(flat_to_sem=False)
 
         # lamella images
         self.update_image_settings(
@@ -1807,7 +1805,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time =self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
             save=True,
-            label=f"thinning_lamella_0_deg_tilt"
+            label=f"thin_lamella_0_deg_tilt"
         )
 
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1818,7 +1816,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
             save=True,
-            label=f"thinning_drift_correction_medres"
+            label=f"thin_drift_correction_medres"
         )
 
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1833,7 +1831,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["imaging"]["dwell_time"],
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=True,
-            label=f"thinning_drift_correction_highres"
+            label=f"thin_drift_correction_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
 
@@ -1854,151 +1852,131 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-        #
-        # self.update_image_settings(
-        #     resolution=self.settings["imaging"]["resolution"],
-        #     dwell_time =self.settings["imaging"]["dwell_time"],
-        #     hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
-        #     save=True,
-        #     label=f"thinning_lamella_post_highres"
-        # )
-        #
-        # acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-        #
-        # self.update_image_settings(
-        #     resolution=self.settings["imaging"]["resolution"],
-        #     dwell_time =self.settings["imaging"]["dwell_time"],
-        #     hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
-        #     save=True,
-        #     label=f"thinning_lamella_post_lowres"
-        # )
-        #
-        # acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
         return
 
-    def thin_lamella(self, landing_coord):
-        """Thinning: Thin the lamella thickness to size for imaging."""
-
-        self.current_stage = AutoLiftoutStage.Thinning
-        logging.info(f" {self.current_stage.name} STARTED")
-
-        # move to landing coord
-        # TODO: safe rotation first?
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coord)
-        # self.microscope.specimen.stage.absolute_move(landing_coord)
-        logging.info(f"{self.current_stage.name}: move to landing coordinates: {landing_coord}")
-
-        self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
-        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-
-        # move to the thinning position
-        thinning_coordinate = landing_coord
-        thinning_coordinate.r = np.deg2rad(self.settings["thin_lamella"]["rotation_angle"])  # TODO: check this rotation
-        thinning_coordinate.t = np.deg2rad(self.settings["thin_lamella"]["tilt_angle"])
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=thinning_coordinate)
-
-
-        # tilt to 0 rotate 180 move to 21 deg
-        # tilt to zero, to prevent hitting anything
-        # stage_settings = MoveSettings(rotate_compucentric=True)
-        # self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-        #
-        # # thinning position
-        # thinning_rotation_angle = self.settings["thin_lamella"]["rotation_angle"]  # 180 deg # TODO: convert to absolute movement for safety (50deg, aka start angle)
-        # thinning_tilt_angle = self.settings["thin_lamella"]["tilt_angle"]  # 0 deg
-        #
-        # # rotate to thinning angle
-        # self.microscope.specimen.stage.relative_move(StagePosition(r=np.deg2rad(thinning_rotation_angle)), stage_settings)
-        #
-        # # tilt to thinning angle
-        # self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(thinning_tilt_angle)), stage_settings)
-        # logging.info(f"{self.current_status.name}: rotate to thinning angle: {thinning_rotation_angle}")
-        # logging.info(f"{self.current_status.name}: tilt to thinning angle: {thinning_tilt_angle}")
-
-        # ensure eucentricity for thinning milling
-        self.ensure_eucentricity(flat_to_sem=False)
-
-        # TODO: check if working distance of the ion beam is 16.5mm once eucentric
-
-        # lamella images
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
-            save=True,
-            label=f"thinning_lamella_0_deg_tilt"
-        )
-
-        acquire.take_reference_images(self.microscope, self.image_settings)
-
-        # realign lamella to image centre
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
-            save=True,
-            label=f"thinning_drift_correction_medres"
-        )
-
-        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
-                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_FIB)
-
-        # take reference images
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
-            save=True,
-            label=f"thinning_drift_correction_highres"
-        )
-        acquire.take_reference_images(self.microscope, self.image_settings)
-
-        ###################################### THIN_LAMELLA ######################################
-
-        # NEW THINNING
-        self.update_image_settings()
-        calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings, sample_no=self.current_sample_position.sample_no)
-
-        ###################################################################################################
-
-        # take reference images and finish
-
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
-            save=True,
-            label=f"thinning_lamella_post_superres"
-        )
-
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
-            save=True,
-            label=f"thinning_lamella_post_highres"
-        )
-
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time =self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
-            save=True,
-            label=f"thinning_lamella_post_lowres"
-        )
-
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-
-        logging.info(f"{self.current_stage.name}: thin lamella {self.current_sample_position.sample_no} complete.")
-        logging.info(f" {self.current_stage.name} FINISHED")
+    # def thin_lamella(self, landing_coord):
+    #     """Thinning: Thin the lamella thickness to size for imaging."""
+    #
+    #     self.current_stage = AutoLiftoutStage.Thinning
+    #     logging.info(f" {self.current_stage.name} STARTED")
+    #
+    #     # move to landing coord
+    #     # TODO: safe rotation first?
+    #     movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coord)
+    #     # self.microscope.specimen.stage.absolute_move(landing_coord)
+    #     logging.info(f"{self.current_stage.name}: move to landing coordinates: {landing_coord}")
+    #
+    #     self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
+    #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+    #
+    #     # move to the thinning position
+    #     thinning_coordinate = landing_coord
+    #     thinning_coordinate.r = np.deg2rad(self.settings["thin_lamella"]["rotation_angle"])  # TODO: check this rotation
+    #     thinning_coordinate.t = np.deg2rad(self.settings["thin_lamella"]["tilt_angle"])
+    #     movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=thinning_coordinate)
+    #
+    #
+    #     # tilt to 0 rotate 180 move to 21 deg
+    #     # tilt to zero, to prevent hitting anything
+    #     # stage_settings = MoveSettings(rotate_compucentric=True)
+    #     # self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+    #     #
+    #     # # thinning position
+    #     # thinning_rotation_angle = self.settings["thin_lamella"]["rotation_angle"]  # 180 deg # TODO: convert to absolute movement for safety (50deg, aka start angle)
+    #     # thinning_tilt_angle = self.settings["thin_lamella"]["tilt_angle"]  # 0 deg
+    #     #
+    #     # # rotate to thinning angle
+    #     # self.microscope.specimen.stage.relative_move(StagePosition(r=np.deg2rad(thinning_rotation_angle)), stage_settings)
+    #     #
+    #     # # tilt to thinning angle
+    #     # self.microscope.specimen.stage.absolute_move(StagePosition(t=np.deg2rad(thinning_tilt_angle)), stage_settings)
+    #     # logging.info(f"{self.current_status.name}: rotate to thinning angle: {thinning_rotation_angle}")
+    #     # logging.info(f"{self.current_status.name}: tilt to thinning angle: {thinning_tilt_angle}")
+    #
+    #     # ensure eucentricity for thinning milling
+    #     self.ensure_eucentricity(flat_to_sem=False)
+    #
+    #     # TODO: check if working distance of the ion beam is 16.5mm once eucentric
+    #
+    #     # lamella images
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time =self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_lowres"],
+    #         save=True,
+    #         label=f"thinning_lamella_0_deg_tilt"
+    #     )
+    #
+    #     acquire.take_reference_images(self.microscope, self.image_settings)
+    #
+    #     # realign lamella to image centre
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time=self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
+    #         save=True,
+    #         label=f"thinning_drift_correction_medres"
+    #     )
+    #
+    #     self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
+    #     self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
+    #                                        f'Press Yes when the feature is centered', click='double',
+    #                                filter_strength=self.filter_strength, allow_new_image=True)
+    #     self.ask_user(image=self.image_FIB)
+    #
+    #     # take reference images
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time=self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
+    #         save=True,
+    #         label=f"thinning_drift_correction_highres"
+    #     )
+    #     acquire.take_reference_images(self.microscope, self.image_settings)
+    #
+    #     ###################################### THIN_LAMELLA ######################################
+    #
+    #     # NEW THINNING
+    #     self.update_image_settings()
+    #     calibration.test_thin_lamella(microscope=self.microscope, settings=self.settings, image_settings=self.image_settings, sample_no=self.current_sample_position.sample_no)
+    #
+    #     ###################################################################################################
+    #
+    #     # take reference images and finish
+    #
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time =self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_superres"],
+    #         save=True,
+    #         label=f"thinning_lamella_post_superres"
+    #     )
+    #
+    #     acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+    #
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time =self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
+    #         save=True,
+    #         label=f"thinning_lamella_post_highres"
+    #     )
+    #
+    #     acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+    #
+    #     self.update_image_settings(
+    #         resolution=self.settings["imaging"]["resolution"],
+    #         dwell_time =self.settings["imaging"]["dwell_time"],
+    #         hfw=self.settings["reference_images"]["thinning_ref_img_hfw_medres"],
+    #         save=True,
+    #         label=f"thinning_lamella_post_lowres"
+    #     )
+    #
+    #     acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+    #
+    #     logging.info(f"{self.current_stage.name}: thin lamella {self.current_sample_position.sample_no} complete.")
+    #     logging.info(f" {self.current_stage.name} FINISHED")
 
     def polish_lamella(self):
 
@@ -2126,6 +2104,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_initialise.clicked.connect(lambda: self.initialise_autoliftout())
         # self.pushButton_autoliftout.clicked.connect(lambda: self.run_liftout())
         self.pushButton_autoliftout.clicked.connect(lambda: self.run_autoliftout_workflow())
+        self.pushButton_thinning.clicked.connect(lambda: self.run_thinning_workflow())
         self.pushButton_autoliftout.setEnabled(0)  # disable unless sample positions are loaded.
 
         # FIBSEM methods
@@ -2778,7 +2757,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # initial, mill, jcut, liftout, land, reset, thin, polish
         exemplar_filenames = ["ref_lamella_low_res_eb", "ref_trench_high_res_ib", "jcut_highres_ib",
                               "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
-                              "thinning_lamella_stage_2_ib", "thinning_lamella_final_polishing_ib"]
+                              "thin_lamella_stage_2_ib", "thin_lamella_final_polishing_ib"]
 
         # headers
         headers = ["Sample No", "Position", "Reference", "Milling", "J-Cut", "Liftout", "Landing", "Reset", "Thinning", "Polishing"]

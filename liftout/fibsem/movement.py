@@ -413,6 +413,29 @@ def flat_to_beam(
     return stage.current_position
 
 
+def move_to_thinning_angle(microscope, settings):
+    """ Rotate and tilt the stage to the thinning angle, assumes from the landing position"""
+    stage = microscope.specimen.stage
+
+    # tilt to zero for safety
+    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+
+    # thinning position
+    thinning_rotation_angle = np.deg2rad(settings["thin_lamella"]["rotation_angle"])
+    thinning_tilt_angle = np.deg2rad(settings["thin_lamella"]["tilt_angle"])
+
+    # rotate to thinning angle
+    logging.info(f"rotate to thinning angle: {thinning_rotation_angle}")
+    stage.absolute_move(StagePosition(r=thinning_rotation_angle), stage_settings)
+
+    # tilt to thinning angle
+    logging.info(f"tilt to thinning angle: {thinning_tilt_angle}")
+    stage.absolute_move(StagePosition(t=thinning_tilt_angle), stage_settings)
+
+    return stage.current_position
+
+
 def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
     """Move the stage to the desired position in a safe manner, using compucentric rotation.
         Supports movements in the stage_position coordinate system
@@ -420,7 +443,6 @@ def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
 
     stage = microscope.specimen.stage
     stage_settings = MoveSettings(rotate_compucentric=True)
-    # stage_position.coordinate_system = CoordinateSystem.Raw
 
     # tilt flat for large rotations to prevent collisions
     if abs(np.rad2deg(stage_position.r - stage.current_position.r)) > 90:

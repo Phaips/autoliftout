@@ -199,7 +199,7 @@
                    </size>
                   </property>
                   <property name="text">
-                   <string>Initialise</string>
+                   <string>Select Sample Positions</string>
                   </property>
                  </widget>
                 </item>
@@ -212,7 +212,20 @@
                    </size>
                   </property>
                   <property name="text">
-                   <string>Run autoliftout</string>
+                   <string>Run AutoLiftout</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_thinning">
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>Run Thinning</string>
                   </property>
                  </widget>
                 </item>
