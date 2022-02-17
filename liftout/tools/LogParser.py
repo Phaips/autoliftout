@@ -125,6 +125,10 @@ def generate_report_data(statistics: dict, log_dir):
 
     print("Generating Run Statistics and Plots")
 
+    report_dir = os.path.join(log_dir, "report")
+    os.makedirs(report_dir, exist_ok=True)
+
+
     # gamma
     df_gamma = pd.DataFrame(statistics["gamma"])
 
@@ -133,7 +137,7 @@ def generate_report_data(statistics: dict, log_dir):
     plt.title("Gamma Correction Distribution")
     plt.xlabel("Gamma Correction")
     plt.ylabel("Count")
-    plt.savefig(os.path.join(log_dir, "report", "gamma_statistics.png"))
+    plt.savefig(os.path.join(report_dir, "gamma_statistics.png"))
     plt.show()
 
     # ml_statistics
@@ -149,13 +153,13 @@ def generate_report_data(statistics: dict, log_dir):
     ax = df_ml[["true", "false"]].plot.bar(title="Machine Learning Evaluation (Count)")
     ax.set_ylabel("Count")
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.savefig(os.path.join(log_dir,"ml_statistics.png"))
+    plt.savefig(os.path.join(report_dir,"ml_statistics.png"))
 
     fig = plt.figure()
     ax = df_ml[["percentage"]].plot.bar(title="Machine Learning Evaluation (Accuracy)")
     ax.set_ylabel("Accuracy (%)")
     # ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.savefig(os.path.join(log_dir,"ml_accuracy.png"))
+    plt.savefig(os.path.join(report_dir, "ml_accuracy.png"))
 
     # https://www.tutorialspoint.com/matplotlib/matplotlib_bar_plot.htm
 
@@ -166,7 +170,7 @@ def generate_report_data(statistics: dict, log_dir):
     ax.set_ylabel("Number of User Clicks")
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.legend(loc="best")
-    plt.savefig(os.path.join(log_dir,"clicks.png"))
+    plt.savefig(os.path.join(report_dir, "clicks.png"))
 
     # stage duration history
     for sp_id in statistics["stage"]:
@@ -183,7 +187,7 @@ def generate_report_data(statistics: dict, log_dir):
         df_stage = pd.DataFrame([stage_duration_dict])
         ax = df_stage.plot.bar(title=f"Stage Duration ({sp_id[-6:]})")
         ax.set_ylabel("Duration (mins)")
-        plt.savefig(os.path.join(log_dir, f"{sp_id}_duration.png"))
+        plt.savefig(os.path.join(report_dir, f"{sp_id}_duration.png"))
 
     report_statistics = {
         "click": df_click,
