@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import os.path
 
-import pandas as pd
 from liftout.fibsem.sampleposition import AutoLiftoutStage, SamplePosition
-from collections import defaultdict
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -127,7 +125,6 @@ def generate_report_data(statistics: dict, log_dir):
 
     report_dir = os.path.join(log_dir, "report")
     os.makedirs(report_dir, exist_ok=True)
-
 
     # gamma
     df_gamma = pd.DataFrame(statistics["gamma"])
