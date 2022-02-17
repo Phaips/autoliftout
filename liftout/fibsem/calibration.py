@@ -149,7 +149,7 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
     #         int(
     #     sigma_factor * max(new_image.data.shape) / sigma_ratio
     # )  # =2 @ 1536x1024, good for e-beam images
-    # TODO: ask Sergey about maths/check if we can use pixel_to_real_value on dx
+
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
         new_image,
         ref_image,
@@ -179,7 +179,6 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
         return True
 
 
-# TODO: figure out a better name
 def identify_shift_using_machine_learning(
     microscope, image_settings, settings, shift_type
 ):
@@ -377,233 +376,6 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
     return mask
 
 
-
-
-def test_thin_lamella(microscope, settings, image_settings, sample_no=99):
-
-    # TODO: refactor this function
-    # rotate and tilt thinning angle
-
-    # user clicks on lamella position
-
-    image_settings["save"] = False
-    image_settings["hfw"] = 30e-6
-    image_settings["beam_type"] = BeamType.ION
-    image_settings["gamma"]["correction"] = False
-    image_settings["save"] = True
-    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_crosscorrelation_ref"
-
-
-    # TODO: check if we need to autofocus and how
-    # AUTOFOCUS_BEFORE_CROSSCORRELATION = True
-    # if AUTOFOCUS_BEFORE_CROSSCORRELATION:
-    #     microscope.imaging.set_active_view(2)
-    #     microscope.beams.ion_beam.horizontal_field_width.value = image_settings["hfw"]
-    #     autocontrast(microscope, beam_type=image_settings["beam_type"])
-    #     microscope.auto_functions.run_auto_focus()
-    #     microscope.specimen.stage.link()
-
-    # initial reference image
-    ref_image = acquire.new_image(microscope, image_settings)
-
-    # adjust beamshift by known amount
-    # microscope.beams.ion_beam.beam_shift.value += (1e-6, 2e-6)
-
-    # TODO: remove this? not required
-    ############
-    # align using cross correlation
-    img1 = ref_image
-    image_settings["label"] = f"{sample_no:02d}_thinning_lamella_crosscorrelation_shift"
-    img2 = acquire.new_image(microscope, settings=image_settings)
-    dx, dy = shift_from_crosscorrelation_AdornedImages(
-        img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
-    )
-
-    # adjust beamshift
-    microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
-
-    # retake image
-    _ = acquire.new_image(microscope, image_settings)
-
-    ##########
-
-    # load protocol settings
-    protocol_stages = []
-
-    for stage_settings in settings["thin_lamella"]["protocol_stages"]:
-        tmp_settings = settings["thin_lamella"].copy()
-        tmp_settings.update(stage_settings)
-
-        protocol_stages.append(tmp_settings)
-
-
-    #####################
-
-    # TODO: need to align for each imaging current...
-    # # high_current
-    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[0]['milling_current']}"
-    # microscope.beams.ion_beam.beam_current.value = protocol_stages[0]["milling_current"]
-    # img_ref_high_current = acquire.new_image(microscope, image_settings)
-    #
-    # # med_current
-    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[1]['milling_current']}"
-    # microscope.beams.ion_beam.beam_current.value = protocol_stages[1]["milling_current"]
-    # img_ref_med_current = acquire.new_image(microscope, image_settings)
-    #
-    # # low_current
-    # image_settings["label"] = f"crosscorrelation_ref_{protocol_stages[2]['milling_current']}"
-    # microscope.beams.ion_beam.beam_current.value = protocol_stages[2]["milling_current"]
-    # img_ref_low_current = acquire.new_image(microscope, image_settings)
-    #
-    # img_refs = [img_ref_high_current, img_ref_med_current, img_ref_low_current]
-
-    # maybe a dictionary with the beam_current as key would be better?
-    # TODO: make this a loop?
-    # TODO: revert to previous imaging current?
-    # TODO: will this mean we have to change params for each cross-correlation?
-    # TODO: update label here?
-    # TODO: mask out the lamella area when cross-correlating
-
-
-    # for stage_number, stage_settings in protocol_stages:
-    #
-    #     img1 = img_refs[stage_number]
-
-
-    ########################
-
-    # mill
-    from liftout.fibsem import milling
-
-    ## MILL THIN LAMELLA
-    # load protocol stages
-
-    # MILL THIN LAMELLA
-    for stage_number, stage_settings in enumerate(protocol_stages):
-
-        # setup milling (change current etc)
-        milling.setup_milling(microscope, settings, stage_settings)
-
-        # align using cross correlation
-        img1 = ref_image
-        image_settings["label"] = f"thinning_lamella_stage_{stage_number + 1}"
-        img2 = acquire.new_image(microscope, settings=image_settings)
-        dx, dy = shift_from_crosscorrelation_AdornedImages(
-            img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
-        )
-
-        # adjust beamshift
-        microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
-        _ = acquire.new_image(microscope, image_settings)
-        logging.info(
-            "milling: protocol stage {} of {}".format(
-                stage_number + 1, len(protocol_stages)
-            )
-        )
-
-        # Create and mill patterns
-
-        # upper region
-        """Create cleaning cross section milling pattern above lamella position."""
-        microscope.imaging.set_active_view(2)  # the ion beam view
-        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
-        lamella_center_y = 0
-        milling_depth = stage_settings["milling_depth"]
-        center_y = (
-            lamella_center_y
-            + (0.5 * stage_settings["lamella_height"])
-            + (
-                stage_settings["total_cut_height"]
-                * stage_settings["percentage_from_lamella_surface"]
-            )
-            + (
-                0.5
-                * stage_settings["total_cut_height"]
-                * stage_settings["percentage_roi_height"]
-            )
-        )
-        height = float(
-            stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
-        )
-        upper_milling_roi = microscope.patterning.create_cleaning_cross_section(
-            lamella_center_x,
-            center_y,
-            stage_settings["lamella_width"],
-            height,
-            milling_depth,
-        )
-        upper_milling_roi.scan_direction = "TopToBottom"
-
-        # lower region
-        """Create cleaning cross section milling pattern below lamella position."""
-        microscope.imaging.set_active_view(2)  # the ion beam view
-        lamella_center_x = - stage_settings["lamella_width"] * 0.5 + 0.25e-6
-        lamella_center_y = 0
-        milling_depth = stage_settings["milling_depth"]
-        center_y = (
-            lamella_center_y
-            - (0.5 * stage_settings["lamella_height"])
-            - (
-                stage_settings["total_cut_height"]
-                * stage_settings["percentage_from_lamella_surface"]
-            )
-            - (
-                0.5
-                * stage_settings["total_cut_height"]
-                * stage_settings["percentage_roi_height"]
-            )
-        )
-        height = float(
-            stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
-        )
-        lower_milling_roi = microscope.patterning.create_cleaning_cross_section(
-            lamella_center_x,
-            center_y,
-            stage_settings["lamella_width"],
-            height,
-            milling_depth,
-        )
-        lower_milling_roi.scan_direction = "BottomToTop"
-
-        # TODO: visualise the milling patterns?
-
-        from autoscript_core.common import ApplicationServerException
-
-        logging.info(f"milling: milling thin lamella pattern...")
-        microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
-            "hfw"
-        ]
-        microscope.imaging.set_active_view(2)  # the ion beam view
-        _ = acquire.new_image(microscope, settings=image_settings)
-
-        try:
-            microscope.patterning.run()
-        except ApplicationServerException:
-            logging.error("ApplicationServerException: could not mill!")
-        microscope.patterning.clear_patterns()
-
-    # reset milling state and return to imaging current
-    logging.info("milling: returning to the ion beam imaging current now.")
-    microscope.patterning.clear_patterns()
-    microscope.beams.ion_beam.beam_current.value = settings["imaging"]["imaging_current"]
-    microscope.patterning.mode = "Serial"
-    logging.info("milling: ion beam milling complete.")
-
-    # take final reference image
-    image_settings["label"] = f"thinning_lamella_final_polishing"
-    _ = acquire.new_image(microscope, settings=image_settings)
-    logging.info("Thin Lamella Finished.")
-
-    # for stage in stages:
-    #   align
-    #   mill stage
-    #   setup milling
-    #   mill upper region
-    #   mill lower region
-
-    return
-
-
 def auto_focus_and_link(microscope):
     import skimage
 
@@ -708,7 +480,7 @@ def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric:
 
 
 def set_microscope_state(microscope, microscope_state: MicroscopeState):
-    # TODO: TEST
+    """Reset the microscope state to the provided state"""
     # move to position
     safe_absolute_stage_movement(microscope=microscope, stage_position=microscope_state.absolute_position)
 

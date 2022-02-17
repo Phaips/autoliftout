@@ -1,9 +1,11 @@
 import os
 import yaml
 import time
+import json
 import logging
 import datetime
 import liftout
+
 
 # TODO: better logs: https://www.toptal.com/python/in-depth-python-logging
 def configure_logging(save_path='', log_filename='logfile', log_level=logging.INFO):
@@ -89,3 +91,8 @@ def save_image(image, save_path, label=''):
 def current_timestamp():
 
     return datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+
+def save_metadata(settings, path):
+    fname = os.path.join(path, "metadata.json")
+    with open(fname, "w") as fp:
+        json.dump(settings, fp, sort_keys=True, indent=4)
