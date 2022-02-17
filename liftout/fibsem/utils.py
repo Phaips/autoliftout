@@ -49,11 +49,12 @@ def sputter_platinum(microscope, settings, whole_grid=False):
 
     # Create sputtering pattern
     microscope.beams.electron_beam.horizontal_field_width.value = hfw
+    horizontal_offset = 30e-6
     pattern = microscope.patterning.create_line(
-        -line_pattern_length / 2,  # x_start
-        +line_pattern_length,  # y_start
-        +line_pattern_length / 2,  # x_end
-        +line_pattern_length,  # y_end
+        -horizontal_offset - (line_pattern_length / 2),  # x_start
+        0,  # y_start
+        -horizontal_offset + (line_pattern_length / 2),  # x_end
+        0,  # y_end
         2e-6,
     )  # milling depth
     pattern.time = sputter_time + 0.1

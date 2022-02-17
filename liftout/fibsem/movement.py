@@ -244,8 +244,7 @@ def move_needle_to_liftout_position(microscope):
     park_position = insert_needle(microscope)
 
     move_needle_closer(microscope)
-    multichem = microscope.gas.get_multichem()
-    multichem.insert()
+
     return park_position
 
 

@@ -220,17 +220,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if random.random() > 0.5:
                 validation_errors.append(check)
 
-        # validate zero beamshift
-        logging.info("BEAM SHIFT: SHOULD BE ZERO")
-        logging.info(f"ELECTRON BEAM: {self.microscope.beams.electron_beam.beam_shift.value}")
-        logging.info(f"ION BEAM: {self.microscope.beams.ion_beam.beam_shift.value}")
+        calibration.reset_beam_shifts(microscope=self.microscope)
 
-        # DOESNT WORK
-        # self.microscope.beams.electron_beam.beam_shift.value = (0, 0)
-        # self.microscope.beams.ion_beam.beam_shift.value = (0, 0)
-        # logging.info(f"ELECTRON BEAM: {self.microscope.beams.electron_beam.beam_shift.value}")
-        # logging.info(f"ION BEAM: {self.microscope.beams.ion_beam.beam_shift.value}")
-        # logging.info(f"BEAM SHIFT RESET")
 
 
         # ion beam currents
@@ -731,9 +722,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
         # TODO: some bug here maybe? when continueing the run after selecting points, but not when reloading...
 
-        # # move to saved lamella position
-        # movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=lamella_coordinates)
-
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_lamella_area_images, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
@@ -758,7 +746,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-        movement.move_to_trenching_angle(self.microscope, self.settings)
+        movement.move_to_trenching_angle(self.microscope, self.settings) # TODO: we can probably remove this
 
         # Take an ion beam image at the *milling current*
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
@@ -909,28 +897,30 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
-        movement.auto_link_stage(self.microscope)
-
-        # check focus distance is within tolerance
-        eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
-
-        if abs(eb_image.metadata.optics.working_distance - 4e-3) > 0.5e-3:
-            logging.warning("Autofocus has failed")
-            self.update_popup_settings(message='Autofocus has failed, please correct the focus manually', filter_strength=self.filter_strength, crosshairs=False)
-            self.ask_user()  # TODO: better message
 
 
+        # check eucentric height
         self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
         # self.image_SEM, self.image_FIB = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
         self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-                                   filter_strength=self.filter_strength, crosshairs=True, allow_new_image=False, click=None)
+                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
         self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
         if self.response:
             self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
             self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
             movement.move_to_liftout_angle(self.microscope, self.settings)
+
+        # check focus distance is within tolerance
+        movement.auto_link_stage(self.microscope)
+        eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
+
+        if not calibration.check_working_distance_is_within_tolerance(eb_image, ib_image, settings=self.settings):
+            logging.warning("Autofocus has failed")
+            self.update_popup_settings(message='Autofocus has failed, please correct the focus manually',
+                                       filter_strength=self.filter_strength, crosshairs=False)
+            self.ask_user()  # TODO: better message
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1211,7 +1201,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
-        # # eucentricity correction
+        # # eucentricity correction # TODO: convert to function
         self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
@@ -1745,7 +1735,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_autoliftout.clicked.connect(lambda: self.run_autoliftout_workflow())
         self.pushButton_thinning.clicked.connect(lambda: self.run_thinning_workflow())
         self.pushButton_autoliftout.setEnabled(False)  # disable unless sample positions are loaded.
-        self.pushButton_thinning.setEnabled(False) # disable unless sample positions are loaded
+        self.pushButton_thinning.setEnabled(False)  # disable unless sample positions are loaded
 
         # FIBSEM methods
         self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())

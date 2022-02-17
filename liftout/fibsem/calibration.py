@@ -496,3 +496,25 @@ def set_microscope_state(microscope, microscope_state: MicroscopeState):
 
     return
 
+
+def reset_beam_shifts(microscope):
+
+    # validate zero beamshift
+    logging.info("BEAM SHIFT: SHOULD BE ZERO")
+    logging.info(f"ELECTRON BEAM: {microscope.beams.electron_beam.beam_shift.value}")
+    logging.info(f"ION BEAM: {microscope.beams.ion_beam.beam_shift.value}")
+
+    # DOESNT WORK
+    eb_beam_shift_x, eb_beam_shift_y = microscope.beams.electron_beam.beam_shift.value
+    ib_beam_shift_x, ib_beam_shift_y = microscope.beams.ion_beam.beam_shift.value
+
+    logging.info("Reseting beam shifts to zero...")
+    microscope.beams.electron_beam.beam_shift.value -= (eb_beam_shift_x, eb_beam_shift_y)
+    microscope.beams.ion_beam.beam_shift.value -= (ib_beam_shift_x, ib_beam_shift_y)
+    logging.info(f"Beam shifts reset to zero.")
+
+
+def check_working_distance_is_within_tolerance(eb_image, ib_image, settings):
+    eb_eucentric_height = settings["calibration"]["eucentric_height_eb"]
+    eb_eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+    return abs(eb_image.metadata.optics.working_distance - eb_eucentric_height) <= eb_eucentric_tolerance
