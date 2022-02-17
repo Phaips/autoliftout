@@ -113,7 +113,7 @@ def correct_stage_drift(
         )
         ret = align_using_reference_images(ref_highres, new_eb_highres, stage)
 
-    logging.info(f"calibration: image cross correlation finished {ret}")
+    logging.info(f"CROSSCORRELATION | {mode} | {ret}")
     return ret
 
 
@@ -481,37 +481,41 @@ def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric:
 
 def set_microscope_state(microscope, microscope_state: MicroscopeState):
     """Reset the microscope state to the provided state"""
+
+    logging.info(f"restoring microscope state.")
     # move to position
     safe_absolute_stage_movement(microscope=microscope, stage_position=microscope_state.absolute_position)
 
     # check eucentricity?
 
     # set working distance
+    logging.info(f"restoring ebeam working distance:  {microscope_state.eb_working_distance*1e3:.4f}mm")
     microscope.beams.electron_beam.working_distance.value = microscope_state.eb_working_distance
+    logging.info(f"restoring ibeam working distance:  {microscope_state.ib_working_distance*1e3:.4f}mm")
     microscope.beams.ion_beam.working_distance.value = microscope_state.ib_working_distance
 
     # set beam currents
+    logging.info(f"restoring ebeam current: {microscope_state.eb_beam_current:.2e}A")
     microscope.beams.electron_beam.beam_current.value = microscope_state.eb_beam_current
+    logging.info(f"restoring ibeam current: {microscope_state.ib_beam_current:.2e}A")
     microscope.beams.ion_beam.beam_current.value = microscope_state.ib_beam_current
 
+    logging.info(f"microscope state restored")
     return
 
 
 def reset_beam_shifts(microscope):
 
     # validate zero beamshift
-    logging.info("BEAM SHIFT: SHOULD BE ZERO")
-    logging.info(f"ELECTRON BEAM: {microscope.beams.electron_beam.beam_shift.value}")
-    logging.info(f"ION BEAM: {microscope.beams.ion_beam.beam_shift.value}")
-
-    # DOESNT WORK
     eb_beam_shift_x, eb_beam_shift_y = microscope.beams.electron_beam.beam_shift.value
     ib_beam_shift_x, ib_beam_shift_y = microscope.beams.ion_beam.beam_shift.value
 
-    logging.info("Reseting beam shifts to zero...")
+    logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
     microscope.beams.electron_beam.beam_shift.value -= (eb_beam_shift_x, eb_beam_shift_y)
+    logging.info(f"reseting ibeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
+
     microscope.beams.ion_beam.beam_shift.value -= (ib_beam_shift_x, ib_beam_shift_y)
-    logging.info(f"Beam shifts reset to zero.")
+    logging.info(f"reset beam shifts to zero complete")
 
 
 def check_working_distance_is_within_tolerance(eb_image, ib_image, settings):

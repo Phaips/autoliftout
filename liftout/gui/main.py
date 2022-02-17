@@ -81,10 +81,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # save the metadata
         utils.save_metadata(self.settings, self.save_path)
 
-
         self.current_stage = AutoLiftoutStage.Initialisation
-        logging.info(f"{self.current_stage.name} STARTED")
-        logging.info(f"gui: starting in {'offline' if offline else 'online'} mode")
+        logging.info(f"INIT | {self.current_stage.name} | STARTED")
+        logging.info(f"GUI | {'offline' if offline else 'online'} Mode")
 
         self.offline = offline
         self.setupUi(self)
@@ -189,7 +188,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 24px")
         self.update_scroll_ui()
 
-        logging.info(f"{self.current_stage.name} | FINISHED")
+        logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
     def update_scroll_ui(self):
 
@@ -234,7 +233,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def setup_autoliftout(self):
 
         self.current_stage = AutoLiftoutStage.Setup
-        logging.info(f"{self.current_stage.name} STARTED")
+        logging.info(f"INIT | {self.current_stage.name} | STARTED")
 
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
@@ -294,7 +293,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
-        logging.info(f"{self.current_stage.name} FINISHED")
+        logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
     def select_sample_positions(self):
 
@@ -570,7 +569,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.2e-9)
         else:
             self.microscope.patterning.clear_patterns()
-        logging.info(f"{self.current_stage.name} | FLATTEN_LANDING | FINISHED")
 
     def ensure_eucentricity(self, flat_to_sem=True):
         calibration.validate_scanning_rotation(self.microscope)
@@ -682,7 +680,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if self.current_sample_position.microscope_state.last_completed_stage == AutoLiftoutStage.Polishing:
                 self.end_of_stage_update(eucentric=True)
 
-
     def end_of_stage_update(self, eucentric: bool) -> None:
         """Save the current microscope state configuration to disk, and log that the stage has been completed."""
         # TODO: this can only be called if current_sample_position exists, how to indicate
@@ -703,8 +700,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def start_of_stage_update(self, next_stage: AutoLiftoutStage) -> None:
         """Check the last completed stage and reload the microscope state if required. Log that the stage has started. """
         last_completed_stage = self.current_sample_position.microscope_state.last_completed_stage
-
-        # TODO: if the last completed stage is liftout... need to confirm the lamella is still attached to needle?
 
         if last_completed_stage.value == next_stage.value - 1:
             logging.info(f"{self.current_sample_position.sample_id} restarting from end of stage: {last_completed_stage.name}")
@@ -841,7 +836,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
+        self.update_display(beam_type=BeamType.ION, image_type='new')
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
                             crosshairs=False, milling_patterns=jcut_patterns)
         self.ask_user(image=self.image_FIB)
@@ -850,7 +846,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
 
-        logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name} | MILL_JCUT | FINISHED")
         ##
 
         # take reference images of the jcut
@@ -862,9 +857,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    save=True, label=f"jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        # self.MILLING_COMPLETED_THIS_RUN = True
-        # self.end_of_stage_update(eucentric=True)
-        # logging.info(f" {self.current_stage.name} FINISHED")
 
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
@@ -956,7 +948,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(save=True, hfw=self.settings["platinum"]["weld"]["hfw"], label=f"needle_landed_Pt_sputter")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        logging.info(f"{self.current_stage.name} | MILL_SEVERING | STARTED")
         jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings)
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
@@ -969,7 +960,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
-        logging.info(f"{self.current_stage.name} | MILL_SEVERING | FINISHED")
 
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
@@ -993,13 +983,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
-        # self.end_of_stage_update(eucentric=True)
-        # logging.info(f"{self.current_stage.name}: needle retracted. ")
-        # logging.info(f" {self.current_stage.name} FINISHED")
+
 
     def land_needle_on_milled_lamella(self):
 
-        logging.info(f"{self.current_stage.name} | LAND_NEEDLE_ON_LAMELLA | STARTED")
 
         needle = self.microscope.specimen.manipulator
 
@@ -1100,7 +1087,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 label=f"needle_liftout_landed_highres"
             )
             acquire.take_reference_images(self.microscope, self.image_settings)
-            logging.info(f"{self.current_stage.name} | LAND_NEEDLE_ON_LAMELLA | FINISHED")
             ###
 
         else:
@@ -1133,8 +1119,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         DETECTIONS_ARE_CORRECT = self.response
         if DETECTIONS_ARE_CORRECT:
-            logging.info(f"ml_detection: {feature_1_type}: {self.response}")
-            logging.info(f"ml_detection: {feature_2_type}: {self.response}")
+            logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage} | ml_detection | {feature_1_type} | {self.response}")
+            logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage} | ml_detection | {feature_2_type} | {self.response}")
 
         # if something wasn't correctly identified
         # if not self.response:
@@ -1144,7 +1130,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
             self.ask_user(image=self.overlay_image)
 
-            logging.info(f"ml_detection: {feature_1_type}: {self.response}")
+            logging.info(f"{self.current_sample_position.sample_id} | ml_detection | {feature_1_type} | {self.response}")
 
             # if feature 1 wasn't correctly identified
             if not self.response:
@@ -1162,8 +1148,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
                 self.ask_user(image=self.overlay_image)
 
-                logging.info(f"ml_detection: {feature_2_type}: {self.response}")
-                # if feature 2 wasn't correctly identified 
+                logging.info(f"{self.current_sample_position.sample_id} | ml_detection | {feature_2_type} | {self.response}")
+
+                # if feature 2 wasn't correctly identified
                 if not self.response:
 
                     self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
@@ -1225,7 +1212,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name}: initial landing calibration complete.")
 
         ############################## LAND_LAMELLA ##############################
-        logging.info(f"{self.current_stage.name} | LAND_LAMELLA | STARTED")
         park_position = movement.move_needle_to_landing_position(self.microscope)
 
         #### Y-MOVE (ELECTRON)
@@ -1319,11 +1305,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_popup_settings(message="Was the landing successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
             self.ask_user(image=self.image_SEM)
 
-        logging.info(f"{self.current_stage.name} | LAND_LAMELLA | FINISHED")
         #################################################################################################
 
         ############################## WELD TO LANDING POST #############################################
-        logging.info(f"{self.current_stage.name} | MILLING_WELD | STARTED")
 
         weld_pattern = milling.weld_to_landing_post(self.microscope, self.settings)
         self.update_display(beam_type=BeamType.ION, image_type='last')
@@ -1337,7 +1321,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=self.settings["weld"]["depth"])
 
-        logging.info(f"{self.current_stage.name} | MILLING_WELD | FINISHED")
 
         #################################################################################################
 
@@ -1355,7 +1338,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         ###################################### CUT_OFF_NEEDLE ######################################
-        logging.info(f"{self.current_stage.name} | CUT_OFF_NEEDLE | STARTED")
 
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
@@ -1398,7 +1380,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=cut_coord["depth"])
 
-        logging.info(f"{self.current_stage.name} | CUT_OFF_NEEDLE | FINISHED")
         #################################################################################################
 
         # reference images
@@ -1461,20 +1442,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
 
-        # self.end_of_stage_update(eucentric=True)
-        # logging.info(f"{self.current_stage.name} FINISHED")
 
     def reset_needle(self):
-
-        # self.current_stage = AutoLiftoutStage.Reset
-        # logging.info(f" {self.current_stage.name} STARTED")
 
         # move sample stage out
         movement.move_sample_stage_out(self.microscope)
         logging.info(f"{self.current_stage.name}: moved sample stage out")
 
         ###################################### SHARPEN_NEEDLE ######################################
-        logging.info(f"{self.current_stage.name} | SHARPEN_NEEDLE | STARTED")
 
         # move needle in
         park_position = movement.insert_needle(self.microscope)
@@ -1531,7 +1506,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
                                            patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
-        logging.info(f"{self.current_stage.name} | SHARPEN_NEEDLE | FINISHED")
         #################################################################################################
 
         # take reference images
@@ -1810,7 +1784,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
                     tmp_pattern.scan_direction = "LeftToRight"
             milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.4e-9)
-            logging.info(f"{self.current_stage.name} | FLATTEN_LANDING | FINISHED")
 
         if TEST_ROTATED_PATTERNS:
             # create sharpening patterns

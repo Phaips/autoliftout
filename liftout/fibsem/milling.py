@@ -143,7 +143,7 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
 
         logging.info(
             "milling: protocol stage {} of {}".format(
-                stage_number + 1, len(protocol_stages)
+                stage_number + 1, len(stage_protocol_stages)
             )
         )
 
@@ -306,7 +306,7 @@ def mill_lamella_trenches(microscope: SdbMicroscopeClient, settings: dict):
         # create patterns
         mill_trench_patterns(microscope=microscope, settings=stage_settings)
 
-        logging.info(f"milling: milling trenches...")
+        logging.info(f"milling: milling trenches... stage {stage_number+1}")
         microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
             "hfw"
         ]

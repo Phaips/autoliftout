@@ -48,7 +48,7 @@ def gamma_correction(
     gam = np.clip(min_gamma, 1 + diff * scale_factor, max_gamma)
     if abs(diff) < threshold:
         gam = 1.0
-    logging.info(f"gamma_correction: diff: {diff:.3f}, gam: {gam:.3f} ")
+    logging.info(f"GAMMA_CORRECTION | {diff:.3f} | {gam:.3f}")
     image_data = exposure.adjust_gamma(image.data, gam)
     reference = AdornedImage(data=image_data)
     reference.metadata = image.metadata
