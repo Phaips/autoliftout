@@ -276,7 +276,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=900e-6, # TODO: MAGIC_NUMBER
+            hfw=self.settings["reference_images"]["grid_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
             label="centre_grid",
@@ -1245,7 +1245,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
 
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))  # TODO: MAGIC_NUMBER
+        z_distance = distance_y_m / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_stage.name}: z-move complete: {z_move}")
@@ -1474,7 +1474,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         x_move = movement.x_corrected_needle_movement(distance_x_m)
         self.needle.relative_move(x_move)
-        z_distance = distance_y_m / np.sin(np.deg2rad(52))  # TODO: MAGIC_NUMBER
+        z_distance = distance_y_m / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_stage.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
@@ -1875,7 +1875,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # yes/no buttons
         button_box = QtWidgets.QWidget(self.popup_window)
-        button_box.setFixedHeight(int(self.button_height*1.2))  # TODO: MAGIC_NUMBER
+        button_box.setFixedHeight(int(self.button_height*1.2))
         button_layout = QtWidgets.QGridLayout()
         yes = QtWidgets.QPushButton('Yes')
         yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))

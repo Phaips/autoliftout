@@ -117,15 +117,17 @@ def move_to_liftout_angle(
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_angle(microscope, settings, landing_angle=13):
+def move_to_landing_angle(microscope, settings):
     """Tilt the sample stage to the correct angle for the landing posts."""
+
+    landing_angle = np.deg2rad(settings["system"]["stage_tilt_landing"])
     flat_to_beam(
         microscope,
         settings=settings,
         beam_type=BeamType.ION,
     )  # stage tilt 25
     microscope.specimen.stage.relative_move(
-        StagePosition(t=np.deg2rad(landing_angle)) # TODO: MAGIC_NUMBER
+        StagePosition(t=landing_angle)
     )  # more tilt by 13
     logging.info(f"movement: move to landing angle ({landing_angle} deg) complete.")
     return microscope.specimen.stage.current_position
@@ -395,7 +397,7 @@ def flat_to_beam(
         tilt = np.deg2rad(pretilt_angle)
     if beam_type is BeamType.ION:
         rotation = settings["system"]["stage_rotation_flat_to_ion"]
-        tilt = np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"] - pretilt_angle)  # MAGIC_NUMBER
+        tilt = np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"] - pretilt_angle)
     rotation = np.deg2rad(rotation)
     stage_settings = MoveSettings(rotate_compucentric=True)
     logging.info(f"movement: moving flat to {beam_type.name}")
