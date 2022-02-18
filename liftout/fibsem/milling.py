@@ -116,7 +116,6 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
 
         protocol_stages.append(tmp_settings)
 
-    # TODO: separate these two in the protocol
     # FOR thinning, we do the first two stages, for polishing the last.
     if milling_type == "thin":
         stage_protocol_stages = protocol_stages[:2].copy()
@@ -211,9 +210,7 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
         )
         lower_milling_roi.scan_direction = "BottomToTop"
 
-        # TODO: visualise the milling patterns?
-
-        logging.info(f"milling: milling thin lamella pattern...")
+        logging.info(f"milling thin lamella pattern...")
         microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
             "hfw"
         ]

@@ -13,6 +13,7 @@ import numpy as np
 import liftout
 from liftout import utils
 from liftout.detection import utils as detection_utils
+from liftout.detection import detection
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.gui.qtdesigner_files import main as gui_main
@@ -76,7 +77,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
         self.pretilt_degrees = self.settings["system"]["pretilt_angle"]
-        assert self.pretilt_degrees == 27  # TODO: remove this once this has been cleaned up in other files
 
         # save the metadata
         utils.save_metadata(self.settings, self.save_path)
@@ -252,8 +252,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
-        # TODO: do we need to link here?
-        # movement.auto_link_stage(self.microscope)
+        # movement.auto_link_stage(self.microscope) # dont think we need to link
 
         # NOTE: can't take ion beam image with such a high hfw
         acquire.new_image(self.microscope, self.image_settings)
@@ -376,7 +375,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             experiment_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                          directory=experiment_path)
             # if the user doesnt select a folder, start a new experiment
-            # TODO: include a check for invalid folders here too?
+            # nb. should we include a check for invalid folders here too?
             if experiment_path is "":
                 self.load_experiment = False
                 experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
@@ -474,7 +473,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
             label=f"ref_lamella_low_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -484,7 +483,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
             label="ref_lamella_high_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         return sample_position
 
@@ -507,7 +506,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
             label="ref_landing_low_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
@@ -517,7 +516,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
             label="ref_landing_high_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         # save coordinates
         current_sample_position.save_data()
@@ -602,7 +601,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.response:
             self.image_settings['beam_type'] = BeamType.ION
-            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"]))  # clip to max hfw for ion, 900e-6 #TODO: implement this before taking images...?
+            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"]))  # clip to max hfw for ion, 900e-6
             self.update_display(beam_type=BeamType.ION, image_type='new')
             self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
                                                            f'Press Yes when happy with the location', click='single',
@@ -610,17 +609,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
 
         else:
-            logging.warning('calibration: electron image not centered')
+            logging.warning('electron image not centered')
             return
 
         self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(self.stage.current_position.t) * real_y
         self.stage.relative_move(StagePosition(z=delta_z))
-        logging.info(f"eucentric: moving height by {delta_z:.4f}m")
+        logging.info(f"moving height by {delta_z:.4f}m")
         if self.response:
             self.update_display(beam_type=BeamType.ION, image_type='new')
-        # TODO: Could replace this with an autocorrelation (maybe with a fallback to asking for a user click if the correlation values are too low)
         self.image_settings['beam_type'] = BeamType.ELECTRON
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
@@ -652,7 +650,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.autoliftout_stages[next_stage]()
 
                 # advance workflow
-                self.end_of_stage_update(eucentric=True)  # TODO: how to find out if we are eucentric?
+                self.end_of_stage_update(eucentric=True)
 
     def run_thinning_workflow(self):
 
@@ -721,7 +719,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                               original_lamella_area_images, mode='eb')
         self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
-        # TODO: remove the cross correlation failure mode, as it does nothing because we immediately ask the user about it?
         if ret is False:
             # cross-correlation has failed, manual correction required
             self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
@@ -780,7 +777,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"ref_trench_low_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
@@ -789,7 +786,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"ref_trench_high_res"
         )
-        acquire.take_reference_images(self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         # Mill Trenches is Finished Here...
         # self.end_of_stage_update(eucentric=True)
@@ -806,7 +803,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             reference_images_low_and_high_res.append(img)
 
         # move flat to electron beam
-        movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON, )
+        movement.flat_to_beam(self.microscope, self.settings, beam_type=BeamType.ELECTRON)
 
         # make sure drift hasn't been too much since milling trenches
         # first using reference images
@@ -876,7 +873,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
             self.update_display(beam_type=BeamType.ION, image_type="new")
 
-        # TODO: label will overwrite previous, needs a unique identifier
         self.update_image_settings(
             save=True,
             label=f'drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
@@ -910,9 +906,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not calibration.check_working_distance_is_within_tolerance(eb_image, ib_image, settings=self.settings):
             logging.warning("Autofocus has failed")
-            self.update_popup_settings(message='Autofocus has failed, please correct the focus manually',
+            self.update_popup_settings(message='The AutoFocus routine has failed, please correct the focus manually.',
                                        filter_strength=self.filter_strength, crosshairs=False)
-            self.ask_user()  # TODO: better message
+            self.ask_user()
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1164,10 +1160,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # TODO: wrap this in a function
             # show the user the manually corrected movement and confirm
-            from liftout.detection.detection import draw_two_features
-            final_detection_img = Image.fromarray(self.downscaled_image).convert("RGB")
-            final_detection_img = draw_two_features(final_detection_img, feature_1_px, feature_2_px)
-            final_detection_img = np.array(final_detection_img.convert("RGB"))
+
+            final_detection_img = detection.draw_final_detection_image(img, self.downscaled_image)
             self.update_popup_settings(
                 message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
                 click=None, crosshairs=False
@@ -1188,7 +1182,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
-        # # eucentricity correction # TODO: convert to function
+        # # eucentricity correction
         self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
         self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
         self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
@@ -1297,7 +1291,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_lamella_final_weld_highres"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -1332,7 +1326,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_lamella_final_weld_highres"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -1391,7 +1385,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_lamella_final_cut_lowres"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
@@ -1401,7 +1395,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_lamella_final_cut_highres"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
@@ -1431,7 +1425,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_final_lowres"
         )
 
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
@@ -1440,7 +1434,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_lamella_final_highres"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
 
     def reset_needle(self):
@@ -1466,7 +1460,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"sharpen_needle_initial"
         )
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -1480,7 +1474,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
 
         self.image_settings["label"] = f"sharpen_needle_centre"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -1510,7 +1504,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # take reference images
         self.image_settings["label"] = f"sharpen_needle_final"
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
@@ -1595,7 +1589,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"thin_lamella_post_superres"
         )
 
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         return
 
@@ -1644,7 +1638,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"polish_lamella_post_superres"
         )
 
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
@@ -1654,7 +1648,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"polish_lamella_post_highres"
         )
 
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
@@ -1664,7 +1658,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"polish_lamella_post_lowres"
         )
 
-        acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         logging.info(f"{self.current_stage.name}: polish lamella {self.current_sample_position.sample_no} complete.")
 
@@ -1730,9 +1724,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_SAMPLE_POSITIONS = True
         TEST_SAVE_PATH = False
 
-        # if self.current_sample_position is None:
-            # self.current_sample_position = SamplePosition(".", 99)
-            # self.current_sample_position.sample_no = 99
         if TEST_VALIDATE_DETECTION:
 
             self.raw_image = AdornedImage(data=test_image)
@@ -1746,65 +1737,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             feature_2_type = random.choice(supported_feature_types)
 
             feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
-
-        if TEST_AUTO_LINK:
-            logging.info("TESTING AUTO LINK STAGE")
-
-            # 4e-3 is an arbitary amount, we can focus at any distance, but the eucentric height (hardware defined) is at 4e-3
-            # if there is a large difference between the stage z and working distance we need to refocus /link
-
-            eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
-            # working distance = focus distance
-            #  stage.working_distance
-            movement.auto_link_stage(microscope=self.microscope, expected_z=3.9e-3)
-
-        if TEST_FLATTEN_LANDING:
-            # logging.info(f"Flatten Landing Pattern")
-            # flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
-
-
-            logging.info(f"Preparing to flatten landing surface.")
-            flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
-
-            self.update_display(beam_type=BeamType.ION, image_type='last')
-            self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                       crosshairs=False, milling_patterns=flatten_landing_pattern)
-            self.ask_user(image=self.image_FIB)
-            if self.response:
-                self.microscope.imaging.set_active_view(2)  # the ion beam view
-                self.microscope.patterning.clear_patterns()
-                for pattern in self.patterns:
-                    tmp_pattern = self.microscope.patterning.create_cleaning_cross_section(
-                        center_x=pattern.center_x,
-                        center_y=pattern.center_y,
-                        width=pattern.width,
-                        height=pattern.height,
-                        depth=self.settings["flatten_landing"]["depth"]
-                    )
-                    tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
-                    tmp_pattern.scan_direction = "LeftToRight"
-            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.4e-9)
-
-        if TEST_ROTATED_PATTERNS:
-            # create sharpening patterns
-            cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings, x_0=0, y_0=0)
-            logging.info(f"{self.current_stage.name}: calculate needle sharpen pattern")
-
-            sharpen_patterns = milling.create_sharpen_needle_patterns(
-                self.microscope, cut_coord_bottom, cut_coord_top
-            )
-
-            # confirm and run milling
-            self.update_display(beam_type=BeamType.ION, image_type='last')
-
-            self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                       crosshairs=False, milling_patterns=sharpen_patterns)
-            self.ask_user(image=self.image_FIB)
-
-            if self.response:
-                logging.info(f"{self.current_stage.name}: needle sharpening milling started")
-                milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                               patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()

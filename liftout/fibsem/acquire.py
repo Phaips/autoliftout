@@ -27,14 +27,13 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
     microscope.auto_functions.run_auto_cb()
 
 
-# TODO: these settings should be image_settings for consistency
-def take_reference_images(microscope, settings):
-    tmp_beam_type = settings["beam_type"]
-    settings["beam_type"] = BeamType.ELECTRON
-    eb_image = new_image(microscope, settings)
-    settings["beam_type"] = BeamType.ION
-    ib_image = new_image(microscope, settings)
-    settings["beam_type"] = tmp_beam_type  # reset to original beam type
+def take_reference_images(microscope, image_settings):
+    tmp_beam_type = image_settings["beam_type"]
+    image_settings["beam_type"] = BeamType.ELECTRON
+    eb_image = new_image(microscope, image_settings)
+    image_settings["beam_type"] = BeamType.ION
+    ib_image = new_image(microscope, image_settings)
+    image_settings["beam_type"] = tmp_beam_type  # reset to original beam type
     return eb_image, ib_image
 
 

@@ -13,8 +13,6 @@ try:
 except:
     from liftout.tests.mock_autoscript_sdb_microscope_client import *
 
-
-# TODO: move this to a separate file (and the one from main too)
 class AutoLiftoutStage(Enum):
     Initialisation = -1
     Setup = 0

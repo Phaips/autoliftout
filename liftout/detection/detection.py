@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 
 
-import glob
-from random import shuffle
-
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import PIL
-import torch
-import torch.nn.functional as F
+
 from PIL import Image, ImageDraw
-from torchvision import transforms
 from skimage import feature
 from scipy.spatial import distance
 
 import liftout.detection.DetectionModel as DetectionModel
-from liftout.detection.utils import *
+from liftout.detection import utils
+
 
 # TODO: convert detection types to enum
+
 
 class Detector:
 
@@ -30,9 +26,7 @@ class Detector:
             "needle_tip_to_lamella_centre",
             "lamella_centre_to_image_centre",
             "lamella_edge_to_landing_post",
-            "needle_tip_to_image_centre",
-            # "thin_lamella_top_to_centre",
-            # "thin_lamella_bottom_to_centre"
+            "needle_tip_to_image_centre"
         ]
 
     def detect_features(self, img, mask, shift_type):
@@ -57,9 +51,9 @@ class Detector:
             raise ValueError("ERROR: shift type calculation is not supported")
 
         # detect feature shift
-        if shift_type=="needle_tip_to_lamella_centre":
-            feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
-            feature_2_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
+        if shift_type == "needle_tip_to_lamella_centre":
+            feature_1_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+            feature_2_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
 
             feature_1_type = "lamella_centre"
             feature_2_type = "needle_tip"
@@ -67,9 +61,9 @@ class Detector:
             feature_1_color = "red"
             feature_2_color = "green"
 
-        if shift_type=="lamella_centre_to_image_centre":
-            feature_1_px, lamella_mask = detect_lamella_centre(img, mask) # lamella_centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+        if shift_type == "lamella_centre_to_image_centre":
+            feature_1_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
 
             feature_1_type = "lamella_centre"
             feature_2_type = "image_centre"
@@ -77,14 +71,13 @@ class Detector:
             feature_1_color = "red"
             feature_2_color = "white"
 
-        if shift_type=="lamella_edge_to_landing_post":
-
+        if shift_type == "lamella_edge_to_landing_post":
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
-            landing_px=(img_landing.size[1]//2, img_landing.size[0]//2)
+            landing_px = (img_landing.size[1] // 2, img_landing.size[0] // 2)
 
-            feature_1_px, lamella_mask = detect_lamella_edge(img, mask) # lamella_centre
-            feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px) # landing post # TODO: initial landing point?
+            feature_1_px, lamella_mask = detect_lamella_edge(img, mask)  # lamella_centre
+            feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post # TODO: initial landing point?
 
             feature_1_type = "lamella_edge"
             feature_2_type = "landing_post"
@@ -92,9 +85,9 @@ class Detector:
             feature_1_color = "red"
             feature_2_color = "white"
 
-        if shift_type=="needle_tip_to_image_centre":
-            feature_1_px, needle_mask = detect_needle_tip(img, mask) # needle_tip
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+        if shift_type == "needle_tip_to_image_centre":
+            feature_1_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
 
             feature_1_type = "needle_tip"
             feature_2_type = "image_centre"
@@ -106,7 +99,7 @@ class Detector:
             # top_thin_px
             feature_1_px, left_mask = detect_thin_region(img, mask, top=True)
             # img centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
 
             feature_1_type = "top_thin"
             feature_2_type = "image_centre"
@@ -115,11 +108,10 @@ class Detector:
             feature_2_color = "white"
 
         if shift_type == "thin_lamella_bottom_to_centre":
-
             # bottom_thin_px
             feature_1_px, left_mask = detect_thin_region(img, mask, top=False)
             # img centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2) # midpoint
+            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
 
             feature_1_type = "bottom_thin"
             feature_2_type = "image_centre"
@@ -129,7 +121,7 @@ class Detector:
 
         return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
 
-    def locate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False, validate=True):
+    def locate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False):
         """
         Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
@@ -147,9 +139,9 @@ class Detector:
 
         # check image type
         if hasattr(adorned_img, 'data'):
-            img = adorned_img.data # extract image data from AdornedImage
+            img = adorned_img.data  # extract image data from AdornedImage
         if isinstance(adorned_img, np.ndarray):
-            img = adorned_img # adorned image is just numpy array
+            img = adorned_img  # adorned image is just numpy array
 
         # run image through model
         mask = self.detection_model.model_inference(img)
@@ -165,6 +157,7 @@ class Detector:
         img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
 
         return img_blend, img_downscale, feature_1_px, feature_1_type, feature_2_px, feature_2_type
+
 
 # Detection and Drawing Tools
 
@@ -219,12 +212,13 @@ def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
     draw.rectangle(rect_px, fill="white", width=5)
 
     if crosshairs:
-        draw_crosshairs(draw, mask, px, color=color)
+        utils.draw_crosshairs(draw, mask, px, color=color)
 
     return mask
 
+
 def draw_two_features(
-    mask, feature_1, feature_2, color_1="red", color_2="green", line=True):
+        mask, feature_1, feature_2, color_1="red", color_2="green", line=True):
     """ Draw two detected features on the same mask, and optionally a line between
 
     args:
@@ -251,6 +245,7 @@ def draw_two_features(
         )
 
     return mask
+
 
 def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
     """ Draw the detection overlay onto base image
@@ -286,6 +281,7 @@ def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
         plt.show()
 
     return alpha_blend
+
 
 def detect_centre_point(mask, color, threshold=25):
     """ Detect the centre (mean) point of the mask for a given color (label)
@@ -351,9 +347,10 @@ def detect_right_edge(mask, color, threshold=25, left=False):
 
     return edge_px
 
+
 def detect_needle_tip(img, mask, threshold=200):
     """Detect the needle tip"""
-    color = (0, 255, 0) # fixed color
+    color = (0, 255, 0)  # fixed color
 
     # TODO: extract filter from detection?
     mask_filt, px_filt = extract_class_pixels(mask, color)
@@ -364,9 +361,10 @@ def detect_needle_tip(img, mask, threshold=200):
 
     return edge_px, needle_mask
 
+
 def detect_lamella_centre(img, mask, threshold=25):
     """Detect the centre of the lamella"""
-    color = (255, 0, 0) # fixed color
+    color = (255, 0, 0)  # fixed color
 
     # TODO: extract filter from detection?
     mask_filt, px_filt = extract_class_pixels(mask, color)
@@ -377,16 +375,18 @@ def detect_lamella_centre(img, mask, threshold=25):
 
     return centre_px, lamella_mask
 
+
 def detect_lamella_edge(img, mask, threshold=25):
     """Detect the right edge of the lamella"""
-    color = (255, 0, 0) # fixed color
+    color = (255, 0, 0)  # fixed color
 
-    mask_filt, px_filt = extract_class_pixels(mask, color) # this is duplicate in detect_func
+    mask_filt, px_filt = extract_class_pixels(mask, color)  # this is duplicate in detect_func
     edge_px = detect_right_edge(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, edge_px, color, crosshairs=True)
     lamella_mask = draw_overlay(img, mask_draw)
 
     return edge_px, lamella_mask
+
 
 def detect_closest_edge(img, landing_px):
     """ Identify the closest edge point to the initially selected point
@@ -402,7 +402,7 @@ def detect_closest_edge(img, landing_px):
         img = np.asarray(img)
 
     # identify edge pixels
-    edges = feature.canny(img, sigma=3) # sigma higher usually better
+    edges = feature.canny(img, sigma=3)  # sigma higher usually better
     edge_mask = np.where(edges)
     edge_px = list(zip(edge_mask[0], edge_mask[1]))
 
@@ -419,7 +419,6 @@ def detect_closest_edge(img, landing_px):
 
         # select point with min
         if dst < min_dst:
-
             min_dst = dst
             landing_edge_px = px
 
@@ -501,21 +500,21 @@ def detect_thin_region(img, mask, top=True):
         img = PIL.Image.fromarray(img)
 
     color = (255, 0, 0)
-    threshold=25
-    min_height = 20 # minimum lamella thin height
+    threshold = 25
+    min_height = 20  # minimum lamella thin height
 
     # detect centre
     centre_px, centre_mask = detect_lamella_centre(img, mask)
 
     # detect bounding box around lamella
-    bbox = detect_bounding_box(mask, color, threshold=threshold) #top, bot, left, right
+    bbox = detect_bounding_box(mask, color, threshold=threshold)  # top, bot, left, right
 
     mask_draw = draw_feature(img, bbox[:2], color="blue", crosshairs=True)
     landing_mask = draw_overlay(img, mask_draw, alpha=0.5)
 
     # detect top and bottom edges
     w = bbox[3] - bbox[1]
-    h = min(bbox[2] - bbox[0], min_height) #
+    h = min(bbox[2] - bbox[0], min_height)  #
 
     # thin top and bottom edges to leave only small lamella slice
     # bbox method
@@ -524,8 +523,8 @@ def detect_thin_region(img, mask, top=True):
     # left_px = bbox[1] + w/2
 
     # centre px method
-    top_px = centre_px[0] - h/6
-    bottom_px = centre_px[0] + h /6
+    top_px = centre_px[0] - h / 6
+    bottom_px = centre_px[0] + h / 6
     left_px = centre_px[1]
 
     # top and bottom cut start (left and up/down)
@@ -537,3 +536,11 @@ def detect_thin_region(img, mask, top=True):
     else:
         return bottom_thin_px, landing_mask
     # TODO: this is fooled by small red specks need a way to aggregate a whole detection clump and ignore outliers...
+
+
+def draw_final_detection_image(img: np.ndarray, feature_1_px, feature_2_px) -> np.ndarray:
+    """Draw the final features on the image"""
+    final_detection_img = Image.fromarray(img).convert("RGB")
+    final_detection_img = draw_two_features(final_detection_img, feature_1_px, feature_2_px)
+    final_detection_img = np.array(final_detection_img.convert("RGB"))
+    return final_detection_img

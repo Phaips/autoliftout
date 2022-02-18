@@ -30,7 +30,7 @@ def validate_scanning_rotation(microscope):
 def correct_stage_drift(
     microscope, image_settings, reference_images, mode="eb"
 ):
-
+    # TODO: refactor the whole cross-correlation workflow (de-duplicate it)
     ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
 
     lowres_count = 1
@@ -47,7 +47,6 @@ def correct_stage_drift(
         ref_highres = ref_ib_highres
 
     stage = microscope.specimen.stage
-    # TODO: user input resolution, must match (protocol)
     image_settings["resolution"] = "1536x1024"
     image_settings["dwell_time"] = 1e-6
 
@@ -58,17 +57,13 @@ def correct_stage_drift(
     microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
 
-    # TODO: refactor this code
-    # TODO: 'coarse alignment' status
     image_settings["hfw"] = field_width_lowres
     image_settings["save"] = True
 
     if mode == "land":
-        image_settings[
-            "label"
-        ] = f"{mode}_drift_correction_landing_low_res"  # TODO: add to protocol
+        image_settings["label"] = f"{mode}_drift_correction_landing_low_res"
         new_eb_lowres, new_ib_lowres = take_reference_images(
-            microscope, settings=image_settings
+            microscope, image_settings=image_settings
         )
         ret = align_using_reference_images(ref_lowres, new_ib_lowres, stage, mode=mode)
         if ret is False:
@@ -77,25 +72,20 @@ def correct_stage_drift(
         # fine alignment
         image_settings["hfw"] = field_width_highres
         image_settings["save"] = True
-
-        image_settings[
-            "label"
-        ] = f"drift_correction_landing_high_res"  # TODO: add to protocol
+        image_settings["label"] = f"drift_correction_landing_high_res"
         new_eb_highres, new_ib_highres = take_reference_images(
-            microscope, settings=image_settings
+            microscope, image_settings=image_settings
         )
         ret = align_using_reference_images(
             ref_highres, new_ib_highres, stage, mode=mode
         )
-        # TODO: deduplicate this bit ^
+
     else:
         for i in range(lowres_count):
 
-            image_settings[
-                "label"
-            ] = f"{mode}_drift_correction_lamella_low_res_{i}"  # TODO: add to protocol
+            image_settings["label"] = f"{mode}_drift_correction_lamella_low_res_{i}"
             new_eb_lowres, new_ib_lowres = take_reference_images(
-                microscope, settings=image_settings
+                microscope, image_settings=image_settings
             )
             ret = align_using_reference_images(ref_lowres, new_eb_lowres, stage)
             if ret is False:
@@ -104,12 +94,9 @@ def correct_stage_drift(
         # fine alignment
         image_settings["hfw"] = field_width_highres
         image_settings["save"] = True
-
-        image_settings[
-            "label"
-        ] = f"drift_correction_lamella_high_res"  # TODO: add to protocol
+        image_settings["label"] = f"drift_correction_lamella_high_res"
         new_eb_highres, new_ib_highres = take_reference_images(
-            microscope, settings=image_settings
+            microscope, image_settings=image_settings
         )
         ret = align_using_reference_images(ref_highres, new_eb_highres, stage)
 
@@ -119,36 +106,18 @@ def correct_stage_drift(
 
 def align_using_reference_images(ref_image, new_image, stage, mode=None):
 
-    # TODO: Read in from protocol
-    # TODO: there are three different types of cross-corellation, E-E, E-I, I-I
+    # three different types of cross correlation, E-E, E-I, I-I
     if mode == "land":
         beam_type = BeamType.ION
     if mode is None:
         beam_type = BeamType.ELECTRON
     lp_ratio = 3
     hp_ratio = 64
-    sigma_factor = 10
-    sigma_ratio = 1536
 
-    # These are the old cross-correlation values
-    # elif mode is not "land":
-    #     lp_ratio = 12
-    #     hp_ratio = 256
-    #     sigma_factor = 2
-    #     sigma_ratio = 1536
-    #     beam_type = BeamType.ELECTRON
-    logging.info(
-        f"calibration: align using {beam_type.name} reference image in mode {mode}."
-    )
-    # TODO: possibly hard-code these numbers at fixed resolutions?
+    logging.info(f"aligning using {beam_type.name} reference image in mode {mode}.")
     lowpass_pixels = int(max(new_image.data.shape) * 0.66)   # =128 @ 1536x1024, good for e-beam images
-    highpass_pixels = int(
-        max(new_image.data.shape) / hp_ratio
-    )  # =6 @ 1536x1024, good for e-beam images
+    highpass_pixels = int(max(new_image.data.shape) / hp_ratio)
     sigma = 6
-    #         int(
-    #     sigma_factor * max(new_image.data.shape) / sigma_ratio
-    # )  # =2 @ 1536x1024, good for e-beam images
 
     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
         new_image,
