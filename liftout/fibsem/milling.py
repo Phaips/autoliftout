@@ -71,11 +71,11 @@ def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current
     else:
         microscope.beams.ion_beam.beam_current.value = milling_current
     microscope.patterning.run()
-    logging.info("milling: returning to the ion beam imaging current now.")
+    logging.info("returning to the ion beam imaging current now.")
     microscope.patterning.clear_patterns()
     microscope.beams.ion_beam.beam_current.value = imaging_current
     microscope.patterning.mode = "Serial"
-    logging.info("milling: ion beam milling complete.")
+    logging.info("ion beam milling complete.")
 
 
 def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float, milling_current: float = None):

@@ -214,6 +214,8 @@ class SamplePosition:
         ref_lamella_highres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_lamella_high_res_ib.tif")
 
         # load the adorned images and format
+        self.landing_ref_images = []
+        self.lamella_ref_images = []
         if self.landing_selected:
             for fname in [
                 ref_landing_lowres_eb,
@@ -238,8 +240,7 @@ class SamplePosition:
     def get_sample_data(self):
         """Return the sample data formatted for liftout from the specificed data_path."""
 
-        if not self.lamella_ref_images or not self.landing_ref_images:
-            self.load_data_from_file()  # TODO: probably only need to load the images.. separate functionality for load
+        self.load_data_from_file()
 
         return (
             self.lamella_coordinates,

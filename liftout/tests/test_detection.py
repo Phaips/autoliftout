@@ -14,7 +14,6 @@ from liftout.model import models
 
 @pytest.fixture
 def weights_file():
-    # TODO: read from protocol
     yield os.path.join(os.path.dirname(models.__file__), "boost_n05_model.pt")
 
 

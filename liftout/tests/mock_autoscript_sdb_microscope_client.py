@@ -4,9 +4,6 @@ from attr import dataclass
 import numpy as np
 import PIL
 
-# TODO: maybe make these dataclasses - need tot est more
-# TODO: remove, only for testing without lib
-
 @dataclass
 class StagePosition:
     """ Mock StagePosition because dont have access to autoscript"""

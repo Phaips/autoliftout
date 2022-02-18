@@ -15,8 +15,6 @@ from liftout.detection import utils
 @pytest.fixture
 def test_image_fname():
     """ Return the filename of a test image """
-    #TODO:  there has to be a better way to do this
-    # filenames = glob.glob("./**/*test_image.tif", recursive=True)
 
     # fname = filenames[0]
     from liftout.tests import data
@@ -49,7 +47,6 @@ def test_load_image_from_file(test_image_fname):
     
     assert type(img) == np.ndarray
     assert img.shape == (1024, 1536)
-    # TODO: create the AdornedImage version of this and test
 
 
 
@@ -57,5 +54,5 @@ def test_parse_metadata_df(test_image_fname):
 
     df_metadata = utils.parse_metadata(test_image_fname)
 
-    # assert len(df_metadata.columns) == 50 # TODO: actually implement this properly
+    # assert len(df_metadata.columns) == 50
     assert type(df_metadata) == pd.DataFrame

@@ -654,7 +654,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_thinning_workflow(self):
 
-        self.THINNING_EUCENTRICITY_COMPLETED = False
         # thinning
         for sp in self.samples:
             self.current_sample_position = sp
@@ -713,7 +712,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: change this to load ref images from disk
         (lamella_coordinates, landing_coordinates,
             original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-        # TODO: some bug here maybe? when continueing the run after selecting points, but not when reloading...
+        # TODO: some bug here maybe? when continuing the run after selecting points, but not when reloading...
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_lamella_area_images, mode='eb')
@@ -1158,10 +1157,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                     if self.response:
                         feature_2_px = (self.yclick, self.xclick)
 
-            # TODO: wrap this in a function
             # show the user the manually corrected movement and confirm
-
-            final_detection_img = detection.draw_final_detection_image(img, self.downscaled_image)
+            final_detection_img = detection.draw_final_detection_image(self.downscaled_image, feature_1_px, feature_2_px)
             self.update_popup_settings(
                 message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
                 click=None, crosshairs=False
@@ -1607,7 +1604,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"polish_drift_correction_medres"
         )
 
-        # TODO: check if we need to manually realign or if the cross correlation is good enough?
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
                                            f'Press Yes when the feature is centered', click='double',
@@ -1664,31 +1660,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return
 
-    # def initialise_image_frames(self):
-        # self.figure_SEM = plt.figure()
-        # plt.axis('off')
-        # plt.tight_layout()
-        # plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
-        # self.canvas_SEM = _FigureCanvas(self.figure_SEM)
-        # self.toolbar_SEM = _NavigationToolbar(self.canvas_SEM, self)
-        # self.label_SEM.setLayout(QtWidgets.QVBoxLayout())
-        # self.label_SEM.layout().addWidget(self.toolbar_SEM)
-        # self.label_SEM.layout().addWidget(self.canvas_SEM)
-
-        # self.canvas_SEM.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ELECTRON, click=None))
-        # TODO: if grid not centred before initialise allow click = double temporarily
-
-        # self.figure_FIB = plt.figure()
-        # plt.axis('off')
-        # plt.tight_layout()
-        # plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
-        # self.canvas_FIB = _FigureCanvas(self.figure_FIB)
-        # self.toolbar_FIB = _NavigationToolbar(self.canvas_FIB, self)
-        # self.label_FIB.setLayout(QtWidgets.QVBoxLayout())
-        # self.label_FIB.layout().addWidget(self.toolbar_FIB)
-        # self.label_FIB.layout().addWidget(self.canvas_FIB)
-        # self.canvas_FIB.mpl_connect('button_press_event', lambda event: self.on_gui_click(event, beam_type=BeamType.ION, click=None))
-
     def initialize_hardware(self, offline=False):
         if offline is False:
             self.connect_to_microscope(ip_address=self.ip_address)
@@ -1716,11 +1687,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
 
         TEST_VALIDATE_DETECTION = False
-        TEST_DRAW_PATTERNS = False
-        TEST_BEAM_SHIFT = False
-        TEST_AUTO_LINK = False
-        TEST_FLATTEN_LANDING = False
-        TEST_ROTATED_PATTERNS = False
         TEST_SAMPLE_POSITIONS = True
         TEST_SAVE_PATH = False
 
@@ -2183,28 +2149,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                         self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
-                    # image_array = self.image_SEM.data
-                    # self.figure_SEM.clear()
-                    # self.figure_SEM.patch.set_facecolor((240/255, 240/255, 240/255))
-                    # self.ax_SEM = self.figure_SEM.add_subplot(111)
-                    # self.ax_SEM.get_xaxis().set_visible(False)
-                    # self.ax_SEM.get_yaxis().set_visible(False)
-                    # self.ax_SEM.imshow(image_array, cmap='gray')
-                    # self.canvas_SEM.draw()
+
                 if beam_type is BeamType.ION:
                     if image_type == 'new':
                         self.image_settings['beam_type'] = beam_type
                         self.image_FIB = acquire.new_image(self.microscope, self.image_settings)
                     else:
                         self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
-                    # image_array = self.image_FIB.data
-                    # self.figure_FIB.clear()
-                    # self.figure_FIB.patch.set_facecolor((240/255, 240/255, 240/255))
-                    # self.ax_FIB = self.figure_FIB.add_subplot(111)
-                    # self.ax_FIB.get_xaxis().set_visible(False)
-                    # self.ax_FIB.get_yaxis().set_visible(False)
-                    # self.ax_FIB.imshow(image_array, cmap='gray')
-                    # self.canvas_FIB.draw()
 
             except Exception:
                 display_error_message(traceback.format_exc())

@@ -18,8 +18,11 @@ def parse_log_file(log_dir):
         ml_dict[feature_type] = [0, 0]
 
     # gamma correction applied to images
-    gamma_dict = {"gamma": [], "diff": []}
+    gamma_dict = {"gamma": {"Electron": [], "Ion": [], "Photon": [], "all": []},
+                  "diff": []}
 
+    # cross correlation success
+    cc_dict = {"True": 0, "Total": 0}
 
     # stage durations
     samples = []
@@ -67,9 +70,13 @@ def parse_log_file(log_dir):
 
             # gama correction parsing
             if "gamma_correction" in func:
-                diff, gam = msg.split("|")[-2:]
+                beam_type, diff, gam = msg.split("|")[-3:]
+                beam_type = beam_type.strip()
+                if  beam_type in ["Electron", "Ion", "Photon"]:
+                    print(beam_type, diff, gam)
+                    gamma_dict["gamma"][beam_type].append(float(gam))
                 gamma_dict["diff"].append(float(diff))
-                gamma_dict["gamma"].append(float(gam))
+                gamma_dict["gamma"]["all"].append(float(gam))
 
             # state parsing
             if "stage_update" in func and "|" in msg:
@@ -108,15 +115,22 @@ def parse_log_file(log_dir):
                 click = msg.split("|")[1].strip()
                 click_dict[stage] += 1
 
+            if "CROSSCORRELATION" in msg:
+
+                mode = msg.split("|")[-2].strip()
+                suc = msg.split("|")[-1].strip()
+                if suc == "True":
+                    cc_dict["True"] += 1
+                cc_dict["Total"] += 1
+
     statistics = {
         "click": dict(click_dict),
         "ml": dict(ml_dict),
         "gamma": dict(gamma_dict),
-        "stage": dict(sample_dict)
+        "stage": dict(sample_dict),
+        "crosscorrelation": dict(cc_dict)
     }
     return statistics
-
-
 
 # TODO: move to utils
 def generate_report_data(statistics: dict, log_dir):
@@ -127,14 +141,26 @@ def generate_report_data(statistics: dict, log_dir):
     os.makedirs(report_dir, exist_ok=True)
 
     # gamma
-    df_gamma = pd.DataFrame(statistics["gamma"])
+    df_gamma = pd.DataFrame(statistics["gamma"]["gamma"]["all"])
 
     fig = plt.figure()
-    plt.hist(df_gamma["gamma"], bins=15, alpha=0.5)
-    plt.title("Gamma Correction Distribution")
+    plt.hist(df_gamma[0], bins=15, alpha=0.5)
+    plt.title("Gamma Correction Distribution (Overall)")
     plt.xlabel("Gamma Correction")
     plt.ylabel("Count")
     plt.savefig(os.path.join(report_dir, "gamma_statistics.png"))
+    plt.show()
+
+    gam_electron = statistics["gamma"]["gamma"]["Electron"]
+    gam_ion = statistics["gamma"]["gamma"]["Ion"]
+
+    plt.hist(gam_electron, alpha=0.5, label="Electron")
+    plt.hist(gam_ion, alpha=0.5, label="Ion")
+    plt.legend(loc="best")
+    plt.title("Gamma Correction Evaluation (Beams)")
+    plt.xlabel("Gamma Corection")
+    plt.ylabel("Count")
+    plt.savefig(os.path.join(report_dir, "gamma_beams.png"))
     plt.show()
 
     # ml_statistics
@@ -159,6 +185,15 @@ def generate_report_data(statistics: dict, log_dir):
     plt.savefig(os.path.join(report_dir, "ml_accuracy.png"))
 
     # https://www.tutorialspoint.com/matplotlib/matplotlib_bar_plot.htm
+
+    # crosscorrelation
+    df_cc = pd.DataFrame([statistics["crosscorrelation"]])
+    df_cc["False"] = df_cc["Total"] - df_cc["True"]
+    df_cc["percentage"] = df_cc["True"] / df_cc["Total"]
+
+    ax = df_cc[["True", "False"]].plot.bar(title="CrossCorrelation Evaluation")
+    ax.set_ylabel("Count")
+    plt.savefig(os.path.join(report_dir, "cc_accuracy.png"))
 
     # clicks
 

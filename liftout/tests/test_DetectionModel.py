@@ -73,18 +73,18 @@ def test_decode_segmap(detection_model):
     zeros = np.zeros((256, 384, 1), dtype=np.uint8)
 
     rgb_mask = detection_model.decode_segmap(zeros)
-    rgb_mask = rgb_mask.reshape(256, 384, 3)  # TODO: this should be decode_output
+    rgb_mask = rgb_mask.reshape(256, 384, 3)  #
 
     assert np.all(rgb_mask == [0, 0, 0])  # assert black
 
     ones = np.ones_like(zeros)
     rgb_mask = detection_model.decode_segmap(ones)
-    rgb_mask = rgb_mask.reshape(256, 384, 3)  # TODO: this should be decode_output
+    rgb_mask = rgb_mask.reshape(256, 384, 3)
 
     assert np.all(rgb_mask == [255, 0, 0])  # assert red
 
     twos = np.ones_like(zeros) * 2
     rgb_mask = detection_model.decode_segmap(twos)
-    rgb_mask = rgb_mask.reshape(256, 384, 3)  # TODO: this should be decode_output
+    rgb_mask = rgb_mask.reshape(256, 384, 3)
 
     assert np.all(rgb_mask == [0, 255, 0])  # assert green
