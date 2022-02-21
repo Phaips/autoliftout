@@ -569,6 +569,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         else:
             self.microscope.patterning.clear_patterns()
 
+    def ask_user_to_confirm_eucentricity(self, flat_to_sem: bool):
+        # # eucentricity correction
+        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
+        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
+        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
+                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
+        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
+        if self.response:
+            self.ensure_eucentricity(flat_to_sem=flat_to_sem)  # liftout angle is flat to SEM
+        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+
     def ensure_eucentricity(self, flat_to_sem=True):
         calibration.validate_scanning_rotation(self.microscope)
         if flat_to_sem:
@@ -748,6 +760,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
 
         # TODO: we should update the lamella_coordinates here, and save the data?
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+        self.current_sample_position.lamella_coordinates = self.microscope.specimen.stage.current_position
+        self.current_sample_position.save_data()
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # MILL_TRENCHES
         protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="new_lamella")
@@ -887,17 +903,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # check eucentric height
-        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
-        # self.image_SEM, self.image_FIB = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
-        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
-        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-        if self.response:
-            self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
-            self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-            movement.move_to_liftout_angle(self.microscope, self.settings)
+        self.ask_user_to_confirm_eucentricity(flat_to_sem=True)  # liftout angle is flat to SEM
+        #
+        # self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
+        # # self.image_SEM, self.image_FIB = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        # self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
+        # self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
+        #                            filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
+        # self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
+        # if self.response:
+        #     self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
+        #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        #     movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # check focus distance is within tolerance
         movement.auto_link_stage(self.microscope)
@@ -1179,16 +1197,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
-        # # eucentricity correction
-        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
-        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
-        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-        if self.response:
-            self.ensure_eucentricity(flat_to_sem=False)  # liftout angle is flat to SEM
-        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        # confirm eucentricity
+        self.ask_user_to_confirm_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
+        # # # eucentricity correction
+        # self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
+        # self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
+        # self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
+        #                            filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
+        # self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
+        # if self.response:
+        #     self.ensure_eucentricity(flat_to_sem=False)
+        # self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_landing_images, mode="land")
@@ -2246,12 +2266,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             sample_images[i] = qimage_labels
 
-            # diplay information on grid
+            # display information on grid
             row_id = i + 1
 
             # display sample no
             label_sample = QLabel()
-            label_sample.setText(f"""Sample {i:02d} \n\nStage: {sp.microscope_state.last_completed_stage.name}""")
+            label_sample.setText(f"""Sample {i:02d} ({str(sp.sample_id)[-6:]}) \n\nStage: {sp.microscope_state.last_completed_stage.name}""")
             label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
 
             gridLayout.addWidget(label_sample, row_id, 0)

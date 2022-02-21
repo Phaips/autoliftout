@@ -775,9 +775,9 @@ def create_sharpen_needle_patterns(microscope, cut_coord_bottom, cut_coord_top):
         )
         pattern.rotation = -np.deg2rad(rotation_degrees)
         sharpen_patterns.append(pattern)
-        logging.info(f"milling: create sharpen needle pattern")
-        logging.info(f"x: {center_x}, y: {center_y}, w: {width}, h: {height}")
-        logging.info(f"d: {depth}, r: {rotation_degrees}")
+        logging.info(f"create sharpen needle pattern")
+        logging.info(f"x: {center_x:.2e}, y: {center_y:.2e}, w: {width:.2e}, h: {height:.2e}")
+        logging.info(f"d: {depth:.2e}, r: {rotation_degrees} deg")
 
     return sharpen_patterns
 

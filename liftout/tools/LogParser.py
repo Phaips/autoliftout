@@ -72,8 +72,8 @@ def parse_log_file(log_dir):
             if "gamma_correction" in func:
                 beam_type, diff, gam = msg.split("|")[-3:]
                 beam_type = beam_type.strip()
-                if  beam_type in ["Electron", "Ion", "Photon"]:
-                    print(beam_type, diff, gam)
+                if beam_type in ["Electron", "Ion", "Photon"]:
+                    # print(beam_type, diff, gam)
                     gamma_dict["gamma"][beam_type].append(float(gam))
                 gamma_dict["diff"].append(float(diff))
                 gamma_dict["gamma"]["all"].append(float(gam))
@@ -168,7 +168,7 @@ def generate_report_data(statistics: dict, log_dir):
     df = df.rename(index={0: "true", 1: "total"})
     df_ml = df.T
     df_ml["false"] = df_ml["total"] - df_ml["true"]
-    df_ml["percentage"] = df_ml["true"] / df_ml["total"]
+    df_ml["percentage"] = df_ml["true"] / df_ml["total"] * 100
 
     print(df_ml)
     # plotting
@@ -193,6 +193,7 @@ def generate_report_data(statistics: dict, log_dir):
 
     ax = df_cc[["True", "False"]].plot.bar(title="CrossCorrelation Evaluation")
     ax.set_ylabel("Count")
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.savefig(os.path.join(report_dir, "cc_accuracy.png"))
 
     # clicks

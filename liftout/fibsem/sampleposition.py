@@ -24,6 +24,7 @@ class AutoLiftoutStage(Enum):
     Thinning = 6
     Polishing = 7
     Finished = 8
+    Failure = 99
 
 
 @dataclass
