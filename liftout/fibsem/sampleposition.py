@@ -205,6 +205,7 @@ class SamplePosition:
         )
 
         # load images from disk
+        # TODO: change this to to use self.load_reference_images)
         ref_landing_lowres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_landing_low_res_eb.tif")
         ref_landing_highres_eb = os.path.join(self.data_path, str(self.sample_id), "ref_landing_high_res_eb.tif")
         ref_landing_lowres_ib = os.path.join(self.data_path, str(self.sample_id), "ref_landing_low_res_ib.tif")

@@ -479,10 +479,9 @@ def reset_beam_shifts(microscope):
     eb_beam_shift_x, eb_beam_shift_y = microscope.beams.electron_beam.beam_shift.value
     ib_beam_shift_x, ib_beam_shift_y = microscope.beams.ion_beam.beam_shift.value
 
-    logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
-    microscope.beams.electron_beam.beam_shift.value -= (eb_beam_shift_x, eb_beam_shift_y)
+    # logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
+    # microscope.beams.electron_beam.beam_shift.value -= (eb_beam_shift_x, eb_beam_shift_y) #TODO: re-enable...maybe
     logging.info(f"reseting ibeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
-
     microscope.beams.ion_beam.beam_shift.value -= (ib_beam_shift_x, ib_beam_shift_y)
     logging.info(f"reset beam shifts to zero complete")
 

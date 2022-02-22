@@ -83,7 +83,7 @@ calibration:
   stage_height_limit: 3.7e-3 # relative coordinates
 lamella:
   lamella_width: 12e-6 # in meters
-  lamella_height: 8e-6 # in meters
+  lamella_height: 10e-6 # in meters
   total_cut_height: 10e-6 # in meters
   milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9

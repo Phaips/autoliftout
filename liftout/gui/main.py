@@ -297,6 +297,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def select_sample_positions(self):
 
         # check if samples already has been loaded, and then append from there
+        self.current_sample_position = None # reset the current sample
         if self.samples:
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
@@ -648,21 +649,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.Reset.value:
 
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
-                msg = f"The last completed stage for sample position {str(sp.sample_id)[-6:]} is {sp.microscope_state.last_completed_stage.name}. " \
+                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) is {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
                 self.update_popup_settings(message=msg, crosshairs=False)
                 self.ask_user()
 
-                # TODO: what to do if we say no?
-                # if self.response:
+                if self.response:
 
-                self.start_of_stage_update(next_stage=next_stage)
+                    self.start_of_stage_update(next_stage=next_stage)
 
-                # run the next workflow stage
-                self.autoliftout_stages[next_stage]()
+                    # run the next workflow stage
+                    self.autoliftout_stages[next_stage]()
 
-                # advance workflow
-                self.end_of_stage_update(eucentric=True)
+                    # advance workflow
+                    self.end_of_stage_update(eucentric=True)
+                else:
+                    break # go to the next sample
 
     def run_thinning_workflow(self):
 
@@ -721,10 +723,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella_trench(self):
 
-        # TODO: change this to load ref images from disk
         (lamella_coordinates, landing_coordinates,
             original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-        # TODO: some bug here maybe? when continuing the run after selecting points, but not when reloading...
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_lamella_area_images, mode='eb')
@@ -749,17 +749,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-        movement.move_to_trenching_angle(self.microscope, self.settings) # TODO: we can probably remove this
+        movement.move_to_trenching_angle(self.microscope, self.settings)
 
         # Take an ion beam image at the *milling current*
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
         self.update_display(beam_type=BeamType.ION, image_type='new')
         self.update_popup_settings(message=f'Have you centered the lamella position in the ion beam?\n'
-                                                      f'If not, double click to center the lamella position', click='double',
+                                           f'If not, double click to center the lamella position', click='double',
                                    filter_strength=self.filter_strength, allow_new_image=True)
         self.ask_user(image=self.image_FIB)
 
-        # TODO: we should update the lamella_coordinates here, and save the data?
+        # update the lamella coordinates, and save
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.current_sample_position.lamella_coordinates = self.microscope.specimen.stage.current_position
         self.current_sample_position.save_data()
@@ -901,21 +901,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
 
-
         # check eucentric height
         self.ask_user_to_confirm_eucentricity(flat_to_sem=True)  # liftout angle is flat to SEM
-        #
-        # self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
-        # # self.image_SEM, self.image_FIB = acquire.take_reference_images(microscope=self.microscope, settings=self.image_settings)
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        # self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
-        # self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-        #                            filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
-        # self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-        # if self.response:
-        #     self.ensure_eucentricity(flat_to_sem=True) # liftout angle is flat to SEM
-        #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-        #     movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # check focus distance is within tolerance
         movement.auto_link_stage(self.microscope)
@@ -1060,52 +1047,44 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type='new')
         ###
 
-        self.update_popup_settings(message='Is the needle safe to move another half step?', click=None, filter_strength=self.filter_strength)
-        self.ask_user(image=self.image_FIB)
 
-        if self.response:
-            ### Z-MOVE FINAL (ION)
-            self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
-            self.image_settings["label"] = f"needle_liftout_post_z_half_movement_highres"
-            distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
+        ### Z-MOVE FINAL (ION)
+        self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
+        self.image_settings["label"] = f"needle_liftout_post_z_half_movement_highres"
+        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
-            # calculate shift in xyz coordinates
-            z_distance = distance_y_m / np.cos(self.stage.current_position.t)
+        # calculate shift in xyz coordinates
+        z_distance = distance_y_m / np.cos(self.stage.current_position.t)
 
-            # move in x
-            x_move = movement.x_corrected_needle_movement(-distance_x_m)
-            self.needle.relative_move(x_move)
+        # move in x
+        x_move = movement.x_corrected_needle_movement(-distance_x_m)
+        self.needle.relative_move(x_move)
 
-            # move in z
-            # detection is based on centre of lamella, we want to land of the edge.
-            # therefore subtract half the height from the movement.
-            lamella_height = self.settings["lamella"]["lamella_height"]
-            gap = lamella_height / 6
-            zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
-            self.needle.relative_move(zy_move_gap)
+        # move in z
+        # detection is based on centre of lamella, we want to land of the edge.
+        # therefore subtract half the height from the movement.
+        lamella_height = self.settings["lamella"]["lamella_height"]
+        gap = lamella_height / 6
+        zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
+        self.needle.relative_move(zy_move_gap)
 
-            logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
-            logging.info(f"{self.current_stage.name}: needle zy-move: {zy_move_gap}")
+        logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
+        logging.info(f"{self.current_stage.name}: needle zy-move: {zy_move_gap}")
 
-            self.update_image_settings(
-                hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
-                save=True,
-                label=f"needle_liftout_landed_lowres"
-            )
-            acquire.take_reference_images(self.microscope, self.image_settings)
+        self.update_image_settings(
+            hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
+            save=True,
+            label=f"needle_liftout_landed_lowres"
+        )
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
-            self.update_image_settings(
-                hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
-                save=True,
-                label=f"needle_liftout_landed_highres"
-            )
-            acquire.take_reference_images(self.microscope, self.image_settings)
-            ###
-
-        else:
-            logging.warning(f"{self.current_stage.name}: needle not safe to move onto lamella.")
-            logging.warning(f"{self.current_stage.name}: needle landing cancelled by user.")
-            return
+        self.update_image_settings(
+            hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
+            save=True,
+            label=f"needle_liftout_landed_highres"
+        )
+        acquire.take_reference_images(self.microscope, self.image_settings)
+        ###
 
     def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
         self.image_settings['beam_type'] = beamType
@@ -1199,16 +1178,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # confirm eucentricity
         self.ask_user_to_confirm_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
-        # # # eucentricity correction
-        # self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        # self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
-        # self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-        #                            filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
-        # self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-        # if self.response:
-        #     self.ensure_eucentricity(flat_to_sem=False)
-        # self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_landing_images, mode="land")
@@ -1547,14 +1516,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                               stage_position=self.current_sample_position.landing_coordinates)
 
         # ensure_eucentricity # TODO: Maybe remove, not required?
-        self.ensure_eucentricity(flat_to_sem=False)
+        self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
 
         # rotate_and_tilt_to_thinning_angle
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
         movement.move_to_thinning_angle(microscope=self.microscope, settings=self.settings)
 
         # ensure_eucentricity at thinning angle
-        self.ensure_eucentricity(flat_to_sem=False)
+        self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
 
         # lamella images
         self.update_image_settings(
@@ -1575,7 +1544,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"thin_drift_correction_medres"
         )
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
+        self.update_image_settings(
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
+            save=False
+        )
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
                                            f'Press Yes when the feature is centered', click='double',
@@ -1623,7 +1599,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"polish_drift_correction_medres"
         )
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
+        self.update_image_settings(
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
+            save=False
+        )
         self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
         self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
                                            f'Press Yes when the feature is centered', click='double',
