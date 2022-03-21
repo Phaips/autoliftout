@@ -61,8 +61,6 @@ if len(filenames) > 0:
         )
     )
 
-
-
     weights_file = os.path.join(
         os.path.dirname(models.__file__), settings["machine_learning"]["weights"]
     )
