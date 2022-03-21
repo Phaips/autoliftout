@@ -113,6 +113,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.initialize_hardware(offline=offline)
 
+
         if self.microscope:
             self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
             self.stage = self.microscope.specimen.stage
@@ -188,6 +189,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 24px")
         self.update_scroll_ui()
 
+        # self.setWindowModality(QtCore.Qt.ApplicationModal)
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
     def update_scroll_ui(self):
@@ -458,7 +460,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.INITIAL_SELECTION_EUCENTRICITY = True
 
         # select lamella position
-        sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
+        if self.settings["system"]["piescope_enabled"]:
+            # TODO: PIESCOPE
+            logging.info("USING PIESCOPE TO SELECT POINTS")
+
+            import piescope_gui.main
+            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
+            self.piescope_gui_main_window.show()
+
+            print(self.piescope_gui_main_window.milling_position)
+
+            sample_position.lamella_coordinates = self.piescope_gui_main_window.milling_position
+        else:
+            sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
 
         # save microscope state
         sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
@@ -1690,8 +1704,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
 
         TEST_VALIDATE_DETECTION = False
-        TEST_SAMPLE_POSITIONS = True
+        TEST_SAMPLE_POSITIONS = False
         TEST_SAVE_PATH = False
+        TEST_PIESCOPE = True
 
         if TEST_VALIDATE_DETECTION:
 
@@ -1714,6 +1729,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if self.samples:
                 self.current_sample_position = self.samples[0]
                 self.update_image_settings()
+
+        if TEST_PIESCOPE:
+            import piescope_gui.main
+            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
+            self.piescope_gui_main_window.show()
+
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None

@@ -9,6 +9,7 @@ system:
   pretilt_angle: 27 # degrees (flat to electron tilt)
   stage_tilt_flat_to_ion: 52 # degrees
   stage_tilt_landing: 13 # degrees
+  piescope_enabled: True
 initial_position:
   sample_grid: # need to check the coordinate systems
     x: -3.2375e-3
