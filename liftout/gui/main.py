@@ -448,6 +448,42 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
 
+    def get_initial_lamella_position_piescope(self, sample_no):
+        """Select the initial sample positions for liftout"""
+        sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
+
+        print("MILLING POSITION: ", self.piescope_gui_main_window.milling_position)
+
+        sample_position.lamella_coordinates = self.piescope_gui_main_window.milling_position
+
+        # save microscope state
+        sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
+                                                                                    stage=self.current_stage,
+                                                                                    eucentric=True)
+        sample_position.save_data()
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
+            label=f"ref_lamella_low_res"
+        )
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
+
+        self.update_image_settings(
+            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
+            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
+            hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
+            save=True,
+            save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
+            label="ref_lamella_high_res"
+        )
+        acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
+
+        return sample_position
+
     def select_initial_lamella_positions(self, sample_no):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
@@ -1734,7 +1770,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             import piescope_gui.main
             self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
             self.piescope_gui_main_window.show()
-
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
