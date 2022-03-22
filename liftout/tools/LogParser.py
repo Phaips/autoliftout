@@ -133,7 +133,7 @@ def parse_log_file(log_dir):
     return statistics
 
 # TODO: move to utils
-def generate_report_data(statistics: dict, log_dir):
+def generate_report_data(statistics: dict, log_dir, show=False):
 
     print("Generating Run Statistics and Plots")
 
@@ -230,3 +230,245 @@ def generate_report_data(statistics: dict, log_dir):
     }
 
     return report_statistics
+
+
+def generate_exemplar_images(log_dir, statistics: dict) -> dict:
+    from autoscript_sdb_microscope_client.structures import AdornedImage
+    import matplotlib.pyplot as plt
+
+    from PIL import Image
+    exemplar_filenames = ["ref_lamella_low_res_eb", "ref_trench_high_res_ib", "jcut_highres_ib",
+                            "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
+                            "thin_lamella_stage_2_ib", "polish_lamella_final_ib"]
+
+    # save png versions of exemplar images for report
+    exemplar_image_dict = {}
+
+    for sp_id in statistics["stage"]:
+        exemplar_image_dict[sp_id] = []
+
+        for img_basename in exemplar_filenames:
+            
+            fname = os.path.join(log_dir, sp_id, f"{img_basename}.tif")
+            if os.path.exists(fname):
+                fname_png = os.path.join(log_dir, sp_id, f"{img_basename}.png")
+
+                # save png version
+                adorned_img = AdornedImage.load(fname)
+                img = Image.fromarray(adorned_img.data)
+                img.save(fname_png)
+
+                # add to dictionary        
+                exemplar_image_dict[sp_id].append(fname_png)
+    
+    return exemplar_image_dict
+
+
+
+
+def generate_report(log_dir, statistics: dict, exemplar_image_dict: dict) -> str: 
+    report_dir = os.path.join(log_dir, "report")
+    page_title_text='AutoLiftout Report'
+    title_text = f"AutoLiftout Report"
+    text = f"AutoLiftout report for run: {log_dir}"
+    gamma_text = "Gamma Correction Statistics"
+    ml_stats_text = "Machine Learning Statistics"
+    stage_duration_text = "Stage Duration Statistics"
+    clicks_text = "User Clicks"
+    crosscorrelation_text = "CrossCorrelation Statistics"
+
+    # stage duration images
+    duration_image_dict = {}
+    for sp_id in statistics["stage"]:
+        duration_image_dict[sp_id] = os.path.join(report_dir, f"{sp_id}_duration.png")
+
+
+
+    stage_duration_html = f"""
+    <div id="stage_duration_section">
+        <h2> Sample Position Data </h2>
+    """
+    for sp_id in statistics["stage"]:
+
+        # only add full batches?
+        if len(exemplar_image_dict[sp_id]) ==8:
+
+            sp_id_html = f"""<h2>Sample ID ({sp_id})</h2>
+                <div id="stage_duration_{sp_id}">
+                    <img src='{duration_image_dict[sp_id]}' width="700">
+                    </div>
+                <div class="gallery" id="img_{sp_id}">
+                    <img src='{exemplar_image_dict[sp_id][0]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][1]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][2]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][3]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][4]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][5]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][6]}' width="150">
+                    <img src='{exemplar_image_dict[sp_id][7]}' width="150">
+                </div> """
+
+            stage_duration_html+= sp_id_html
+
+    stage_duration_html+= f"</div>"
+
+
+    # metadata
+    import json
+
+    with open(os.path.join(log_dir, "metadata.json")) as f:
+        metadata = json.load(f)
+
+    metadata_html = f"""<h2 style="text-align:left">Metadata </h2> <p > {metadata} </>"""
+
+    from liftout import tools
+
+    # generate report html
+    html = f"""
+            <html>
+                <head>
+                    <title>{page_title_text}</title>
+                    <link rel="stylesheet" href='{os.path.join(os.path.dirname(tools.__file__), "style.css")}'>
+
+                </head>
+                <body>
+                    <h1 style=>{title_text}</h1>
+                    <p style="text-align:center">{text}</p>
+                    
+                    <div id="stats">
+                        
+                        <h2>{clicks_text}</h2>
+                        <div id="click">
+                            <img src='{os.path.join(report_dir, "clicks.png")}' width="700">
+                        </div>
+                        
+                        <h2>{gamma_text}</h2>
+                        <div id="gamma">
+                            <img src='{os.path.join(report_dir, "gamma_statistics.png")}' width="700">
+                            <img src='{os.path.join(report_dir, "gamma_beams.png")}' width="700">
+                        </div>
+            
+                        <h2>{ml_stats_text}</h2>
+                        <div id="ml">
+                            <img src='{os.path.join(report_dir, "ml_statistics.png")}' width="700">
+                            <img src='{os.path.join(report_dir, "ml_accuracy.png")}' width="700">
+                        </div>
+
+                        <h2>{crosscorrelation_text}</h2>
+                        <div id="ml">
+                            <img src='{os.path.join(report_dir, "cc_accuracy.png")}' width="700">
+                        </div>
+                        
+                        {stage_duration_html}
+
+                        {metadata_html}
+                        
+                    </div>
+                                    
+                </body>
+            </html>
+            """
+    # 3. Write the html string as an HTML file
+    with open(os.path.join(log_dir, "html_report.html"), "w") as f:
+        f.write(html)
+
+    print("HTML Report Generated")
+
+
+
+def generate_html_report(log_dir):
+    """Generate a HTML report summarising the run"""
+
+    statistics = parse_log_file(log_dir)
+
+    report_statistics = generate_report_data(statistics, log_dir, show=False)
+
+    exemplar_image_dict = generate_exemplar_images(log_dir, statistics) 
+
+    generate_report(log_dir=log_dir, statistics=statistics, exemplar_image_dict=exemplar_image_dict)
+
+
+
+import pandas as pd
+def calculate_aggregate_statistics(log_directories):
+    """_summary_
+
+    Args:
+        log_directories (_type_): _description_
+
+    Returns:
+        dict: dictionary containing the aggregated run statistics dataframes
+    """
+
+    statistics_agg = {"click": None, "ml": None, "stage": None}
+    df_click = None
+    df_ml_full = None
+    df_stage_full = None
+
+
+
+
+    for log_dir in log_directories:
+        
+        logfile = os.path.join(log_dir, "logfile.log")
+        exp_name = os.path.basename(log_dir)
+        ts = exp_name.split("_")[-1]
+        print("Experiment Name: ", exp_name)
+
+        statistics = parse_log_file(log_dir)
+
+        # clicks
+        tmp_df_click = pd.DataFrame([statistics["click"]])
+        tmp_df_click["exp_name"] = exp_name
+        
+        if df_click is None:
+            df_click = tmp_df_click
+        else:
+            df_click = df_click.append(tmp_df_click)
+        
+        
+        # ml
+        df = pd.DataFrame(statistics["ml"])
+        df = df.rename(index={0: "true", 1: "total"})
+        df_ml = df.T
+        df_ml["false"] = df_ml["total"] - df_ml["true"]
+        df_ml["percentage"] = df_ml["true"] / df_ml["total"] * 100
+        df_ml["exp_name"] = exp_name
+        
+        
+        if df_ml_full is None:
+            df_ml_full = df_ml
+        else:
+            df_ml_full = df_ml_full.append(df_ml)
+        
+        # stage duration history
+        for sp_id in statistics["stage"]:
+            print(sp_id)
+            stage_dict = statistics["stage"][sp_id]
+            stage_duration_dict = dict.fromkeys(list(stage_dict.keys()))
+            for stage in stage_dict.keys():
+                if stage == "Finished":
+                    break
+                if stage_dict[stage][1] and stage_dict[stage][1]:
+
+                    stage_duration = stage_dict[stage][1] - stage_dict[stage][0]
+                    stage_duration_dict[stage] = stage_duration.total_seconds() / 60
+            df_stage = pd.DataFrame([stage_duration_dict])      
+    
+
+            ts = exp_name.split("_")[-1]
+
+            df_stage["exp_name"] = exp_name
+            df_stage["sp_id"] = sp_id
+            df_stage["timestamp"] = ts
+            if df_stage_full is None:
+                df_stage_full = df_stage
+            else:
+                df_stage_full = df_stage_full.append(df_stage)
+            
+
+    statistics_agg["click"] = df_click
+    statistics_agg["ml"] = df_ml_full
+    statistics_agg["stage"] = df_stage_full
+
+    return statistics_agg

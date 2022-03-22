@@ -53,3 +53,10 @@ img {
     display:grid;
     grid-template-columns: 1fr 1fr 1fr;
    }
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(1, 5vw);
+    grid-gap: 5px;
+}
