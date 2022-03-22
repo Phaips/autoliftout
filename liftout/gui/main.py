@@ -643,6 +643,34 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"AutoLiftout Workflow started for {len(self.samples)} sample positions.")
 
+        # high throughput workflow
+        HIGH_THROUGHPUT= False
+        if HIGH_THROUGHPUT:
+            for sp in self.samples:
+                self.current_sample_position = sp
+
+                while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.MillJCut.value:
+
+                    next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
+                    # msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) is {sp.microscope_state.last_completed_stage.name}. " \
+                    #     f"\nWould you like to continue from {next_stage.name}?\n"
+                    # self.update_popup_settings(message=msg, crosshairs=False)
+                    # self.ask_user()
+
+                    # if self.response:
+
+                    # reset to the previous state
+                    self.start_of_stage_update(next_stage=next_stage)
+
+                    # run the next workflow stage
+                    self.autoliftout_stages[next_stage]()
+
+                    # advance workflow
+                    self.end_of_stage_update(eucentric=True)
+                    # else:
+                    #     break # go to the next sample
+
+        # standard workflow
         for sp in self.samples:
             self.current_sample_position = sp
 
@@ -655,7 +683,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.ask_user()
 
                 if self.response:
-
+                    
+                    # reset to the previous state
                     self.start_of_stage_update(next_stage=next_stage)
 
                     # run the next workflow stage
@@ -2260,29 +2289,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             gridLayout.addWidget(label_sample, row_id, 0)
 
             # display sample position
-            # TOD0: replace this with a plot showing the position?
-            def testColourMap(x, y):
-                # ref: https://stackoverflow.com/questions/30646152/python-matplotlib-pyqt-plot-to-qpixmap
-                import matplotlib.pyplot as plt
-                from matplotlib.backends.backend_qt5agg import \
-                    FigureCanvasQTAgg as _FigureCanvas
-
-                fig = plt.Figure()
-                canvas = _FigureCanvas(fig)
-                ax = fig.add_subplot(111)
-                # gradient = np.linspace(0, 1, 256)
-                # gradient = np.vstack((gradient, gradient))
-                # ax.imshow(gradient, aspect=10, cmap="magma")
-                ax.scatter(x=x, y=y, c="blue")
-                ax.set_axis_off()
-                canvas.draw()
-                size = canvas.size()
-                width, height = size.width(), size.height()
-                im = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32RGB32).scaled(150, 150)
-                return QPixmap(im)
-
             label_pos = QLabel()
-            # label_pos.setPixmap(testColourMap(sp.lamella_coordinates.x, sp.landing_coordinates.y))
             pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
             if sp.landing_coordinates.x is not None:
 
