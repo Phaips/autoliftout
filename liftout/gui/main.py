@@ -652,12 +652,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.MillJCut.value:
 
                     next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
-                    # msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) is {sp.microscope_state.last_completed_stage.name}. " \
-                    #     f"\nWould you like to continue from {next_stage.name}?\n"
-                    # self.update_popup_settings(message=msg, crosshairs=False)
-                    # self.ask_user()
-
-                    # if self.response:
 
                     # reset to the previous state
                     self.start_of_stage_update(next_stage=next_stage)
@@ -667,8 +661,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
                     # advance workflow
                     self.end_of_stage_update(eucentric=True)
-                    # else:
-                    #     break # go to the next sample
+
 
         # standard workflow
         for sp in self.samples:
