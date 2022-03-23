@@ -96,6 +96,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.overlay_image = None
         self.downscaled_image = None
 
+        self.setStyleSheet("""QPushButton {
+        border: 1px solid lightgray;
+        border-radius: 5px;
+        }""")
+
         self.filter_strength = 3
         self.button_height = 50
         self.button_width = 100
@@ -289,17 +294,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
         self.update_display(beam_type=BeamType.ION, image_type='new')
+        
+        if self.settings["system"]["piescope_enabled"]:
+            # TODO: another button, for adding more samples with PIESCOPE
+            self.select_sample_positions_piescope(initialisation=True)
+        else:
+            # select the positions
+            self.select_sample_positions()
 
-        # select the positions
-        self.select_sample_positions()
+            # enable autoliftout workflow
+            self.pushButton_autoliftout.setEnabled(True)
+            self.pushButton_thinning.setEnabled(True)
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
-        # enable autoliftout workflow
-        self.pushButton_autoliftout.setEnabled(True)
-        self.pushButton_thinning.setEnabled(True)
-        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-
-        logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
-        logging.info(f"INIT | {self.current_stage.name} | FINISHED")
+            logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
+            logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
     def get_current_sample_positions(self):
                 # check if samples already has been loaded, and then append from there
@@ -321,12 +330,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def select_sample_positions_piescope(self, initialisation=False):
         import piescope_gui.main
 
-        print("Hello PIEScope Selection")
-        # print("Milling Coordinates: ", self.piescope_gui_main_window.milling_position)
-
         if initialisation:
-            self.current_stage = AutoLiftoutStage.Setup
-            logging.info(f"INIT | {self.current_stage.name} | STARTED")
             # get the current sample positions..
             select_another_sample_position = self.get_current_sample_positions()
 
@@ -335,32 +339,42 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             if self.piescope_gui_main_window is None:
                 self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
-                self.piescope_gui_main_window.window_close.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
+                self.piescope_gui_main_window.window_close.connect(lambda: self.finish_select_sample_positions_piescope())
+        
+        if self.piescope_gui_main_window:
+            # continue selecting points
+            self.piescope_gui_main_window.milling_position = None
             self.piescope_gui_main_window.show() 
-        else:
-            
-            try:
-                self.piescope_gui_main_window.milling_window.hide()
-                self.piescope_gui_main_window.hide()
-                time.sleep(1)
-            except:
-                logging.error("Unable to close the PIEScope windows?")
+        
+    def finish_select_sample_positions_piescope(self):
 
-            if self.piescope_gui_main_window.milling_position is not None:
-                # get the lamella milling position from piescope...
-                # TODO: check if this is None, and handle.
-                sample_position = self.get_initial_lamella_position_piescope()
-                self.samples.append(sample_position)
-                self.sample_no += 1
+        try:
+            self.piescope_gui_main_window.milling_window.hide()
+            self.piescope_gui_main_window.hide()
+            time.sleep(1)
+        except:
+            logging.error("Unable to close the PIEScope windows?")
 
-            self.update_popup_settings(message=f'Do you want to select landing positions?\n'
-                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
-            self.ask_user()
-            select_another_sample_position = self.response
-            self.update_scroll_ui()
+        if self.piescope_gui_main_window.milling_position is not None:
+            # get the lamella milling position from piescope...
+            # TODO: check if this is None, and handle.
+            sample_position = self.get_initial_lamella_position_piescope()
+            self.samples.append(sample_position)
+            self.sample_no += 1
 
-            if select_another_sample_position:
-                self.select_landing_positions()
+        self.update_popup_settings(message=f'Do you want to select landing positions?\n'
+                                            f'{len(self.samples)} positions selected so far.', crosshairs=False)
+        self.ask_user()
+        select_another_sample_position = self.response
+        self.update_scroll_ui()
+
+        # enable adding more samples with piescope
+        if self.samples:
+            self.pushButton_add_sample_position.setVisible(True)
+            self.pushButton_add_sample_position.setEnabled(True)
+
+        if select_another_sample_position:
+            self.select_landing_positions()
 
 
     def select_sample_positions(self):
@@ -409,7 +423,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         logging.info(f"Selected {len(self.samples)} initial sample and landing positions.")
 
-        if self.samples:
+        if self.samples and self.settings["system"]["piescope_enabled"]:
             self.pushButton_autoliftout.setEnabled(True)
             self.pushButton_thinning.setEnabled(True)
 
@@ -1799,6 +1813,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
 
+        if self.settings["system"]["piescope_enabled"]:
+            self.pushButton_add_sample_position.setVisible(False)
+            self.pushButton_add_sample_position.clicked.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
+
         logging.info("gui: setup connections finished")
 
     def testing_function(self):
@@ -1831,7 +1849,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_image_settings()
 
         if TEST_PIESCOPE:
-            self.select_sample_positions_piescope(initialisation=True)
+            self.select_sample_positions_piescope(initialisation=False)
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
