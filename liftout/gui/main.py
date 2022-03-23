@@ -1,5 +1,6 @@
 import datetime
 import logging
+from mimetypes import init
 import sys
 import time
 import traceback
@@ -189,6 +190,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 24px")
         self.update_scroll_ui()
 
+        # initialise piescope
+        if self.settings["system"]["piescope_enabled"]:
+            self.piescope_gui_main_window = None
+
         # self.setWindowModality(QtCore.Qt.ApplicationModal)
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
@@ -296,33 +301,89 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
-    def select_sample_positions(self):
-
-        # check if samples already has been loaded, and then append from there
+    def get_current_sample_positions(self):
+                # check if samples already has been loaded, and then append from there
         self.current_sample_position = None # reset the current sample
         if self.samples:
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
             self.ask_user()
-            sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
+            self.sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
             select_another_sample_position = self.response
         else:
             # select the initial positions to mill lamella
             select_another_sample_position = True
             self.samples = []
-            sample_no = 0
+            self.sample_no = 0
+        
+        return select_another_sample_position
+
+    def select_sample_positions_piescope(self, initialisation=False):
+        import piescope_gui.main
+
+        print("Hello PIEScope Selection")
+        # print("Milling Coordinates: ", self.piescope_gui_main_window.milling_position)
+
+        if initialisation:
+            self.current_stage = AutoLiftoutStage.Setup
+            logging.info(f"INIT | {self.current_stage.name} | STARTED")
+            # get the current sample positions..
+            select_another_sample_position = self.get_current_sample_positions()
+
+            if select_another_sample_position is False:
+                return
+
+            if self.piescope_gui_main_window is None:
+                self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
+                self.piescope_gui_main_window.window_close.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
+            self.piescope_gui_main_window.show() 
+        else:
+            
+            try:
+                self.piescope_gui_main_window.milling_window.hide()
+                self.piescope_gui_main_window.hide()
+                time.sleep(1)
+            except:
+                logging.error("Unable to close the PIEScope windows?")
+
+            if self.piescope_gui_main_window.milling_position is not None:
+                # get the lamella milling position from piescope...
+                # TODO: check if this is None, and handle.
+                sample_position = self.get_initial_lamella_position_piescope()
+                self.samples.append(sample_position)
+                self.sample_no += 1
+
+            self.update_popup_settings(message=f'Do you want to select landing positions?\n'
+                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
+            self.ask_user()
+            select_another_sample_position = self.response
+            self.update_scroll_ui()
+
+            if select_another_sample_position:
+                self.select_landing_positions()
+
+
+    def select_sample_positions(self):
+
+        # TODO: Test
+        select_another_sample_position = self.get_current_sample_positions()
 
         # allow the user to select additional lamella positions
         while select_another_sample_position:
-            sample_position = self.select_initial_lamella_positions(sample_no=sample_no)
+            sample_position = self.select_initial_lamella_positions(sample_no=self.sample_no)
             self.samples.append(sample_position)
-            sample_no += 1
+            self.sample_no += 1
 
             self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', crosshairs=False)
             self.ask_user()
             select_another_sample_position = self.response
             self.update_scroll_ui()
+
+        # select landing positions and finish setup
+        self.select_landing_positions()
+
+    def select_landing_positions(self):
 
         ####################################
         # # move to landing grid
@@ -347,6 +408,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # reset microscope coordinate system
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
         logging.info(f"Selected {len(self.samples)} initial sample and landing positions.")
+
+        if self.samples:
+            self.pushButton_autoliftout.setEnabled(True)
+            self.pushButton_thinning.setEnabled(True)
+
+            logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
+            logging.info(f"INIT | {self.current_stage.name} | FINISHED")
+
 
     def load_experiment_button_pressed(self, btn):
 
@@ -448,14 +517,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
         logging.info(f"Reload Experiment Finished")
 
-    def get_initial_lamella_position_piescope(self, sample_no):
+    def get_initial_lamella_position_piescope(self):
         """Select the initial sample positions for liftout"""
-        sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
+        sample_position = SamplePosition(data_path=self.save_path, sample_no=self.sample_no)
 
         print("MILLING POSITION: ", self.piescope_gui_main_window.milling_position)
 
-        sample_position.lamella_coordinates = self.piescope_gui_main_window.milling_position
+        movement.safe_absolute_stage_movement(self.microscope, self.piescope_gui_main_window.milling_position)
 
+        # save lamella coordinates
+        sample_position.lamella_coordinates = StagePosition(x=float(self.piescope_gui_main_window.milling_position.x),     
+                                                            y=float(self.piescope_gui_main_window.milling_position.y),
+                                                            z=float(self.piescope_gui_main_window.milling_position.z),
+                                                            r= float(self.piescope_gui_main_window.milling_position.r),
+                                                            t = float(self.piescope_gui_main_window.milling_position.t), 
+                                                            coordinate_system=str(self.piescope_gui_main_window.milling_position.coordinate_system)
+        )
         # save microscope state
         sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
                                                                                     stage=self.current_stage,
@@ -494,21 +571,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ensure_eucentricity()
             movement.move_to_trenching_angle(self.microscope, settings=self.settings)
             self.INITIAL_SELECTION_EUCENTRICITY = True
-
-        # select lamella position
-        if self.settings["system"]["piescope_enabled"]:
-            # TODO: PIESCOPE
-            logging.info("USING PIESCOPE TO SELECT POINTS")
-
-            import piescope_gui.main
-            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
-            self.piescope_gui_main_window.show()
-
-            print(self.piescope_gui_main_window.milling_position)
-
-            sample_position.lamella_coordinates = self.piescope_gui_main_window.milling_position
-        else:
-            sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
+  
+        sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
 
         # save microscope state
         sample_position.microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
@@ -1767,9 +1831,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_image_settings()
 
         if TEST_PIESCOPE:
-            import piescope_gui.main
-            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
-            self.piescope_gui_main_window.show()
+            self.select_sample_positions_piescope(initialisation=True)
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
@@ -2316,29 +2378,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             gridLayout.addWidget(label_sample, row_id, 0)
 
             # display sample position
-            # TOD0: replace this with a plot showing the position?
-            def testColourMap(x, y):
-                # ref: https://stackoverflow.com/questions/30646152/python-matplotlib-pyqt-plot-to-qpixmap
-                import matplotlib.pyplot as plt
-                from matplotlib.backends.backend_qt5agg import \
-                    FigureCanvasQTAgg as _FigureCanvas
-
-                fig = plt.Figure()
-                canvas = _FigureCanvas(fig)
-                ax = fig.add_subplot(111)
-                # gradient = np.linspace(0, 1, 256)
-                # gradient = np.vstack((gradient, gradient))
-                # ax.imshow(gradient, aspect=10, cmap="magma")
-                ax.scatter(x=x, y=y, c="blue")
-                ax.set_axis_off()
-                canvas.draw()
-                size = canvas.size()
-                width, height = size.width(), size.height()
-                im = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32RGB32).scaled(150, 150)
-                return QPixmap(im)
-
             label_pos = QLabel()
-            # label_pos.setPixmap(testColourMap(sp.lamella_coordinates.x, sp.landing_coordinates.y))
             pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
             if sp.landing_coordinates.x is not None:
 
