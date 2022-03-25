@@ -207,7 +207,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             "link_and_focus",
             "stage_coordinate_system",
             "check_beam_shift_is_zero",
-            "ion_beam_working_distance"   # 16.5mm
+            "ion_beam_working_distance",   # 16.5mm
             "check_if_needle_is_inserted"
 
         ]
