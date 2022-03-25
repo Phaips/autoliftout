@@ -294,7 +294,7 @@ def mill_lamella_trenches(microscope: SdbMicroscopeClient, settings: dict):
 
     """
 
-    protocol_stages = get_milling_protocol_stages(settings=settings, stage_name="new_lamella")
+    protocol_stages = get_milling_protocol_stages(settings=settings, stage_name="lamella")
 
     for stage_number, stage_settings in enumerate(protocol_stages):
         # setup milling (change current etc)
@@ -322,132 +322,6 @@ def mill_lamella_trenches(microscope: SdbMicroscopeClient, settings: dict):
     logging.info("ion beam milling complete.")
 
     return
-
-#
-# def mill_trenches(microscope, settings):
-#     """Mill the trenches for thinning the lamella.
-#     Parameters
-#     ----------
-#     microscope : Autoscript microscope object.
-#     settings :  Dictionary of user input argument settings.
-#     confirm : bool, optional
-#         Whether to ask the user to confirm before milling.
-#     """
-#     protocol_stages = protocol_stage_settings(settings)
-#     for stage_number, stage_settings in enumerate(protocol_stages):
-#         logging.info(
-#             "milling: protocol stage {} of {}".format(
-#                 stage_number + 1, len(protocol_stages)
-#             )
-#         )
-#         mill_single_stage(microscope, settings, stage_settings, stage_number)
-#
-#     # Restore ion beam imaging current (20 pico-Amps)
-#     logging.info(f"mill trenches complete, returning to imaging current")
-#     microscope.beams.ion_beam.beam_current.value = settings["imaging"][
-#         "imaging_current"
-#     ]
-
-#
-# def mill_single_stage(microscope, settings, stage_settings, stage_number):
-#     """Run ion beam milling for a single milling stage in the protocol.
-#     Parameters
-#     ----------
-#     microscope : Autoscript microscope object.
-#     settings :  Dictionary of user input argument settings.
-#     stage_settings : Dictionary of settings for a single protocol milling stage
-#     stage_number : int. Current milling protocol stage number.
-#     """
-#     # logging.info(f'Milling trenches, protocol stage {stage_number+1}')
-#     lamella_region_milling(microscope, settings, stage_settings, region="upper")
-#     lamella_region_milling(microscope, settings, stage_settings, region="lower")
-
-#
-# def _upper_milling_coords(microscope, stage_settings):
-#     """Create cleaning cross section milling pattern above lamella position."""
-#     microscope.imaging.set_active_view(2)  # the ion beam view
-#     lamella_center_x = 0
-#     lamella_center_y = 0
-#     milling_depth = stage_settings["milling_depth"]
-#     center_y = (
-#         lamella_center_y
-#         + (0.5 * stage_settings["lamella_height"])
-#         + (
-#             stage_settings["total_cut_height"]
-#             * stage_settings["percentage_from_lamella_surface"]
-#         )
-#         + (
-#             0.5
-#             * stage_settings["total_cut_height"]
-#             * stage_settings["percentage_roi_height"]
-#         )
-#     )
-#     height = float(
-#         stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
-#     )
-#     milling_roi = microscope.patterning.create_cleaning_cross_section(
-#         lamella_center_x,
-#         center_y,
-#         stage_settings["lamella_width"],
-#         height,
-#         milling_depth,
-#     )
-#     milling_roi.scan_direction = "TopToBottom"
-#     return milling_roi
-#
-#
-# def _lower_milling_coords(microscope, stage_settings):
-#     """Create cleaning cross section milling pattern below lamella position."""
-#     microscope.imaging.set_active_view(2)  # the ion beam view
-#     lamella_center_x = 0
-#     lamella_center_y = 0
-#     milling_depth = stage_settings["milling_depth"]
-#     center_y = (
-#         lamella_center_y
-#         - (0.5 * stage_settings["lamella_height"])
-#         - (
-#             stage_settings["total_cut_height"]
-#             * stage_settings["percentage_from_lamella_surface"]
-#         )
-#         - (
-#             0.5
-#             * stage_settings["total_cut_height"]
-#             * stage_settings["percentage_roi_height"]
-#         )
-#     )
-#     height = float(
-#         stage_settings["total_cut_height"] * stage_settings["percentage_roi_height"]
-#     )
-#     milling_roi = microscope.patterning.create_cleaning_cross_section(
-#         lamella_center_x,
-#         center_y,
-#         stage_settings["lamella_width"],
-#         height,
-#         milling_depth,
-#     )
-#     milling_roi.scan_direction = "BottomToTop"
-#     return milling_roi
-#
-#
-# def lamella_region_milling(microscope, settings, stage_settings, region):
-#     # Setup and realign to fiducial marker
-#     setup_milling(microscope, settings, stage_settings)
-#     # Create and mill patterns
-#     if region == "lower":
-#         _lower_milling_coords(microscope, stage_settings)
-#     elif region == "upper":
-#         _upper_milling_coords(microscope, stage_settings)
-#     logging.info(f"milling: milling {region} lamella pattern...")
-#     microscope.imaging.set_active_view(2)  # the ion beam view
-#     microscope.beams.ion_beam.horizontal_field_width.value = stage_settings[
-#         "hfw"
-#     ]
-#     try:
-#         microscope.patterning.run()
-#     except ApplicationServerException:
-#         logging.error("ApplicationServerException: could not mill!")
-#     microscope.patterning.clear_patterns()
-#     return microscope
 
 
 def setup_milling(microscope, settings, stage_settings):
@@ -521,27 +395,6 @@ def setup_ion_milling(
     logging.info(f"milling: application file:  {application_file}")
     logging.info(f"milling: patterning mode: {patterning_mode}")
     logging.info(f"milling: ion horizontal field width: {ion_beam_field_of_view}")
-
-
-def protocol_stage_settings(settings):
-    """ "Load settings for each milling stage, overwriting default values.
-
-    Parameters
-    ----------
-    settings :  Dictionary of user input argument settings.
-
-    Returns
-    -------
-    protocol_stages
-        List containing a dictionary of settings for each protocol stage.
-    """
-    protocol_stages = []
-    for stage_settings in settings["lamella"]["protocol_stages"]:
-        tmp_settings = settings["lamella"].copy()
-        tmp_settings.update(stage_settings)
-        protocol_stages.append(tmp_settings)
-    return protocol_stages
-
 
 def jcut_milling_patterns(microscope, settings):
     """Create J-cut milling pattern in the center of the ion beam field of view.

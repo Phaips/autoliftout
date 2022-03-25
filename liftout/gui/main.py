@@ -218,8 +218,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         calibration.reset_beam_shifts(microscope=self.microscope)
 
-
-
         # ion beam currents
         # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9, 6.2e-9
 
@@ -534,8 +532,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         sample_position.save_data()
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
             save=True,
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
@@ -544,8 +540,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
             save=True,
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
@@ -575,8 +569,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         sample_position.save_data()
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
             save=True,
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
@@ -585,8 +577,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
             save=True,
             save_path=os.path.join(self.save_path, str(sample_position.sample_id)),
@@ -608,8 +598,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         current_sample_position.landing_selected = True
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['landing_post_ref_img_hfw_lowres'],
             save=True,
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
@@ -618,8 +606,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['landing_post_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['landing_post_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['landing_post_ref_img_hfw_highres'],
             save=True,
             save_path=os.path.join(self.save_path, str(current_sample_position.sample_id)),
@@ -896,7 +882,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # MILL_TRENCHES
-        protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="new_lamella")
+        protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
         trench_patterns = milling.mill_trench_patterns(microscope=self.microscope, settings=protocol_stages[1])  # only show final trenches...
 
         # TODO: support moving the trench patterns?
@@ -916,8 +902,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reference images of milled trenches
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_lowres'],
             save=True,
             label=f"ref_trench_low_res"
@@ -925,8 +909,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings['reference_images']['trench_area_ref_img_resolution'],
-            dwell_time=self.settings['reference_images']['trench_area_ref_img_dwell_time'],
             hfw=self.settings['reference_images']['trench_area_ref_img_hfw_highres'],
             save=True,
             label=f"ref_trench_high_res"
@@ -1123,8 +1105,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ### REFERENCE IMAGES
         # low res
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["needle_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
             save=True,
             label=f"needle_liftout_start_position_lowres"
@@ -1132,8 +1112,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
         # high res
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["needle_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["needle_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
             save=True,
             label=f"needle_liftout_start_position_highres"
@@ -1179,7 +1157,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         ### Z-MOVE FINAL (ION)
-        self.image_settings['hfw'] = self.settings['reference_images']['needle_with_lamella_shifted_img_highres']
+        self.image_settings['hfw'] = self.settings['reference_images']['needle_ref_img_hfw_lowres']
         self.image_settings["label"] = f"needle_liftout_post_z_half_movement_highres"
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
 
@@ -1326,8 +1304,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         #### Y-MOVE (ELECTRON)
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"],
             beam_type=BeamType.ELECTRON,
             save=True,
@@ -1346,8 +1322,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         #### Z-MOVE (ION)
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["liftout_ref_img_hfw_lowres"],
             beam_type=BeamType.ION,
             save=True,
@@ -1365,8 +1339,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         #### X-HALF-MOVE (ELECTRON)
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             beam_type=BeamType.ELECTRON,
             save=True,
@@ -1385,8 +1357,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         #### X-MOVE
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
@@ -1400,8 +1370,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # final reference images
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
@@ -1436,8 +1404,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # final reference images
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             save=True,
             label=f"landing_lamella_final_weld_highres"
@@ -1450,8 +1416,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###################################### CUT_OFF_NEEDLE ######################################
 
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["cut"]["hfw"],
             beam_type=BeamType.ION,
             save=True,
@@ -1494,8 +1458,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reference images
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             beam_type=BeamType.ION,
             save=True,
@@ -1504,8 +1466,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             beam_type=BeamType.ION,
             save=True,
@@ -1534,8 +1494,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reference images
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
             save=True,
             label=f"landing_lamella_final_lowres"
@@ -1544,8 +1502,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         self.update_image_settings(
-            resolution=self.settings["reference_images"]["landing_post_ref_img_resolution"],
-            dwell_time=self.settings["reference_images"]["landing_post_ref_img_dwell_time"],
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
             save=True,
             label=f"landing_lamella_final_highres"

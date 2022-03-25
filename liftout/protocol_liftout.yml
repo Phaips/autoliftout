@@ -15,9 +15,6 @@ initial_position:
     x: -3.2375e-3
     y: 3.9354e-3
     z: 30.95e-3
-#    x: -3.2375e-3
-#    y: 3.9354e-3
-#    z: 31.379e-3
     coordinate_system: "Raw"
   landing_grid:
     # x is +6 mm from sample grid center
@@ -43,24 +40,12 @@ gamma:
   scale_factor: 0.01
   threshold: 46 # px
 reference_images:
-  landing_post_ref_img_resolution: "1536x1024"
-  landing_post_ref_img_dwell_time: 1e-6
   landing_post_ref_img_hfw_lowres: 400e-6
   landing_post_ref_img_hfw_highres: 150e-6
-  trench_area_ref_img_resolution: "1536x1024"
-  trench_area_ref_img_dwell_time: 1e-6
   trench_area_ref_img_hfw_lowres: 400e-6
   trench_area_ref_img_hfw_highres: 80e-6
-  needle_ref_img_resolution: "1536x1024"
-  needle_ref_img_dwell_time: 1e-6
   needle_ref_img_hfw_lowres: 150e-6
   needle_ref_img_hfw_highres: 100e-6
-  needle_with_lamella_ref_img_resolution: "3072x2048"
-  needle_with_lamella_ref_img_hfw_highres: 150e-6
-  needle_with_lamella_ref_img_dwell_time_electron: 1e-6
-  needle_with_lamella_ref_img_dwell_time_ion: 0.5e-6
-  needle_with_lamella_shifted_img_lowres: 250e-6
-  needle_with_lamella_shifted_img_highres: 150e-6
   landing_lamella_ref_img_hfw_lowres: 150e-6
   landing_lamella_ref_img_hfw_highres: 80e-6
   grid_ref_img_hfw_lowres: 2750e-6
@@ -82,38 +67,21 @@ calibration:
   eucentric_height_tolerance: 0.5e-3
   drift_correction_hfw_highres: 80e-6
   stage_height_limit: 3.7e-3 # relative coordinates
-lamella:
-  lamella_width: 12e-6 # in meters
-  lamella_height: 10e-6 # in meters
-  total_cut_height: 10e-6 # in meters
-  milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
-  milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
-  hfw: 150e-6
-  protocol_stages: # stages will be milled in the order they appear here
-    # rough_cut
-    - percentage_roi_height: 0.3 # fractional percentage of total_cut height
-      percentage_from_lamella_surface: 0.7 # fractional percentage
-      milling_current: 2.4e-9 # in meters
-    # regular_cut
-    - percentage_roi_height: 0.8 # fractional percentage of total_cut height
-      percentage_from_lamella_surface: 0.0 # fractional percentage
-      milling_current: 2.4e-9 # in Amps
-      milling_depth: 5e-6 # in meters
 new_lamella:
   lamella_width: 12e-6 # in meters
   lamella_height: 10e-6 # in meters
   total_cut_height: 10e-6 # in meters
   milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
-  milling_current: 2.4e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  milling_current: 0.89e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   hfw: 150e-6
   size_ratio: 2.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
-    - milling_current: 2.4e-9
+    - milling_current: 0.89e-9
       offset: 2e-6
       trench_height: 2e-6
     # regular cut
-    - milling_current: 2.4e-9
+    - milling_current: 0.89e-9
       offset: 0e-6
       trench_height: 5e-6
 needle:
