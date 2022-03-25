@@ -1,37 +1,37 @@
 import datetime
 import logging
+import os
 import sys
 import time
 import traceback
-import os
 
-
+import liftout
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import liftout
 from liftout import utils
-from liftout.detection import utils as detection_utils
 from liftout.detection import detection
+from liftout.detection import utils as detection_utils
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
+from liftout.gui.DraggablePatch import DraggablePatch
 from liftout.gui.qtdesigner_files import main as gui_main
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as _FigureCanvas
 from matplotlib.backends.backend_qt5agg import \
     NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox, QInputDialog, QLineEdit, QGroupBox, QGridLayout, QLabel
-from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import (QGridLayout, QGroupBox, QInputDialog, QLabel,
+                             QLineEdit, QMessageBox)
 
-from liftout.gui.DraggablePatch import DraggablePatch
 matplotlib.use('Agg')
 
 import scipy.ndimage as ndi
-from autoscript_sdb_microscope_client.structures import *
-from autoscript_sdb_microscope_client.enumerations import *
-from liftout.fibsem.sampleposition import SamplePosition, AutoLiftoutStage
+from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
+from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings, AdornedImage
+from liftout.fibsem.sampleposition import AutoLiftoutStage, SamplePosition
 
 # Required to not break imports
 BeamType = acquire.BeamType
@@ -80,6 +80,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setStyleSheet("""QPushButton {
         border: 1px solid lightgray;
         border-radius: 5px;
+        }
+        
+        QLabel { 
+            border: 1px solid lightgray;
+            border-radius: 10px
         }""")
 
         self.filter_strength = 3
@@ -131,6 +136,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
+        # initialise piescope
+        self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled"])
+        if self.PIESCOPE_ENABLED:
+            self.piescope_gui_main_window = None
+
         self.current_stage = AutoLiftoutStage.Initialisation
 
         # setup status information
@@ -172,14 +182,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         }
 
         # Set up scroll area for display
-        # ui setup part 2
-        self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 24px")
+        self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
         self.update_scroll_ui()
-
-        # initialise piescope
-        self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled"])
-        if self.PIESCOPE_ENABLED:
-            self.piescope_gui_main_window = None
             
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 

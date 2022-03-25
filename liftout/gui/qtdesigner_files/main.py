@@ -249,7 +249,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.pushButton_load_sample_data.setText(_translate("MainWindow", "Load Sample Data"))
-        self.pushButton_initialise.setText(_translate("MainWindow", "Select Sample Positions"))
+        self.pushButton_initialise.setText(_translate("MainWindow", "Setup AutoLiftout"))
         self.pushButton_autoliftout.setText(_translate("MainWindow", "Run AutoLiftout"))
         self.pushButton_thinning.setText(_translate("MainWindow", "Run Thinning"))
         self.pushButton_test_popup.setText(_translate("MainWindow", "Test Mode"))
