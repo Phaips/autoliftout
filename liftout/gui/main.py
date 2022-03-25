@@ -771,6 +771,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"AutoLiftout Workflow started for {len(self.samples)} sample positions.")
 
+        # high throughput workflow
+        HIGH_THROUGHPUT= False
+        if HIGH_THROUGHPUT:
+            for sp in self.samples:
+                self.current_sample_position = sp
+
+                while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.MillJCut.value:
+
+                    next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
+
+                    # reset to the previous state
+                    self.start_of_stage_update(next_stage=next_stage)
+
+                    # run the next workflow stage
+                    self.autoliftout_stages[next_stage]()
+
+                    # advance workflow
+                    self.end_of_stage_update(eucentric=True)
+
+
+        # standard workflow
         for sp in self.samples:
             self.current_sample_position = sp
 
@@ -783,7 +804,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.ask_user()
 
                 if self.response:
-
+                    
+                    # reset to the previous state
                     self.start_of_stage_update(next_stage=next_stage)
 
                     # run the next workflow stage
