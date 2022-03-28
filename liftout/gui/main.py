@@ -719,6 +719,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.warning('electron image not centered')
             return
 
+        # TODO: change this to y_corrected_stage_movement
         self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
         delta_z = -np.cos(self.stage.current_position.t) * real_y
@@ -915,8 +916,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
 
-        # Mill Trenches is Finished Here...
-        # self.end_of_stage_update(eucentric=True)
+        # Mill Trenches is Finished
 
     def mill_lamella_jcut(self):
 
@@ -985,9 +985,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
         label = self.image_settings['label']
-        # if self.image_settings["hfw"] > 200e-6:
-        #     self.image_settings["hfw"] = 150e-6
-        for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION): # TODO this probably only needs to happen once, not three times...
+
+        for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
             self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=beamType)
 

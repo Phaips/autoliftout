@@ -84,10 +84,10 @@ new_lamella:
     - milling_current: 0.89e-9
       offset: 0e-6
       trench_height: 5e-6
-needle:
-  horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
-  dwell_time: 1e-6
-  resolution: "1536x1024"
+# needle:
+#   horizontal_field_width: 150e-6 # ion beam horizontal field of view (meters)
+#   dwell_time: 1e-6
+#   resolution: "1536x1024"
 machine_learning:
   weights: boost_n05_model.pt
 jcut:
