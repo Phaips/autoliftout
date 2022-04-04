@@ -239,6 +239,38 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #             if "current" in v2:
         #                 print("CURRENT: ", k, k2, v2)
 
+        print("OPTICAL MODE: ", self.microscope.beams.electron_beam.optical_mode.value)
+        print("OPTICAL MODE AVAILABLE: ", str(self.microscope.beams.electron_beam.optical_mode.available_values))
+
+
+        print("CHAMBER STATE: ", str(self.microscope.vacuum.chamber_state))
+        print("CHAMBER PRESSURE: ", self.microscope.state.chamber_pressure.value)
+
+        # print("SCANNING FILTER:", self.microscope.imaging.scanning_filter.type)
+
+        self.microscope.imaging.set_active_view(1)
+        print("EBEAM")
+        print("DETECTOR TYPE: ", str(self.microscope.detector.type.value))
+        print("DETECTOR TYPES: ", str(self.microscope.detector.type.available_values))
+        print("DETECTOR TYPE: ", str(self.microscope.detector.mode.value))
+        print("DETECTOR TYPES: ", str(self.microscope.detector.mode.available_values))
+
+        
+        self.microscope.imaging.set_active_view(2)
+        print("I-BEAM")
+        print("DETECTOR TYPE: ", str(self.microscope.detector.type.value))
+        print("DETECTOR TYPES: ", str(self.microscope.detector.type.available_values))
+        print("DETECTOR TYPE: ", str(self.microscope.detector.mode.value))
+        print("DETECTOR TYPES: ", str(self.microscope.detector.mode.available_values))
+
+
+
+        print("E Working Distance: ", self.microscope.beams.electron_beam.working_distance.value)
+        print("E OPTICAL MODE: ", str(self.microscope.beams.electron_beam.optical_mode.value))
+        print("E OPTICAL MODES: ", str(self.microscope.beams.electron_beam.optical_mode.available_values))
+        print("I Working Distance: ", self.microscope.beams.ion_beam.working_distance.value)
+
+
         # validate stage calibration (homed, linked)
         def validate_stage_calibration(microscope):
 
@@ -262,7 +294,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             return 
         
-
 
 
         # check if beams are on
@@ -323,6 +354,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         # validate working distances / eucentricty?
+
+
 
 
         # ion beam currents

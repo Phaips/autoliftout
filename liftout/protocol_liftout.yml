@@ -5,7 +5,7 @@ system:
   #application_file_rectangle: "Si_Alex"
   application_file_cleaning_cross_section: "autolamella"
   plasma_gas: "Argon" # proper case, e.g. Argon
-  high_voltage: 30000 # volts
+  high_voltage: 20000 # volts
   stage_rotation_flat_to_electron: 50 # degrees
   stage_rotation_flat_to_ion: 230 # degrees
   pretilt_angle: 27 # degrees (flat to electron tilt)
