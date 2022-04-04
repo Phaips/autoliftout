@@ -211,12 +211,119 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             "check_if_needle_is_inserted"
 
         ]
-        import random
-        for check in validation_checks:
-            if random.random() > 0.5:
-                validation_errors.append(check)
+        # import random
+        # for check in validation_checks:
+        #     if random.random() > 0.5:
+        #         validation_errors.append(check)
 
-        calibration.reset_beam_shifts(microscope=self.microscope)
+        # TODO:
+        # validate beam currents
+
+        # validate hfw
+
+        # validate scanning rotation
+
+        # validate needle calibration
+
+        # validate needle not inserted
+
+        # for k, v in self.settings.items():
+        #     print("-"*20)
+        #     print(k)
+            
+        #     if isinstance(v, dict):
+        #         for k2, v2 in v.items(): 
+        #             # print(k2, v2)
+        #             if "hfw" in v2:
+        #                 print("HFW: ", k, k2, v2)
+        #             if "current" in v2:
+        #                 print("CURRENT: ", k, k2, v2)
+
+        # validate stage calibration (homed, linked)
+        def validate_stage_calibration(microscope):
+
+            if not microscope.specimen.stage.is_homed:
+                logging.warning("STAGE IS NOT HOMED")
+            
+            if not microscope.specimen.stage.is_linked:
+                logging.warning("STAGE IS NOT LINKED")
+
+            logging.info("FINISHED STAGE CALIBRATION CHECK")
+
+            return 
+
+
+
+
+        def validate_needle_calibration(microscope):
+        
+            if str(microscope.specimen.manipulator.state) == "Retracted":
+                logging.info("NEEDLE IS RETRACTED")
+
+            return 
+        
+
+
+
+        # check if beams are on
+        def validate_beams(microscope, settings: dict):
+            
+            high_voltage = float(settings["system"]["high_voltage"])
+            plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
+
+            if not microscope.beams.electron_beam.is_on:
+                logging.warning("Electron Beam is not on, switching on now...")
+                microscope.beams.electron_beam.turn_on()
+                assert microscope.beams.electron_beam.is_on, "Unable to turn on Electron Beam."
+                logging.info("Electron Beam turned on.")
+
+            if not microscope.beams.ion_beam.is_on:
+                logging.warning("Ion Beam is not on, switching on now...")
+                microscope.beams.ion_beam.turn_on()
+                assert microscope.beams.ion_beam.is_on, "Unable to turn on Ion Beam."
+                logging.info("Ion Beam turned on.")
+
+            # TODO: check beam blanks?        
+
+            # validate high voltage
+            high_voltage_limits = str(self.microscope.beams.ion_beam.high_voltage.limits)
+            logging.info(f"Ion Beam High Voltage Limits are: {high_voltage_limits}")
+
+            if microscope.beams.ion_beam.high_voltage.value != high_voltage:
+                logging.info(f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)")
+
+                if bool(microscope.beams.ion_beam.high_voltage.is_controllable):
+                    logging.info(f"Changing Ion Beam High Voltage to {high_voltage}V.")
+                    microscope.beams.ion_beam.high_voltage.value = high_voltage
+                    assert microscope.beams.ion_beam.high_voltage.value == high_voltage, "Unable to change Ion Beam High Voltage"
+                    logging.info(f"Ion Beam High Voltage Changed")
+
+
+            # validate plasma gas
+            if plasma_gas not in microscope.beams.ion_beam.source.plasma_gas.available_values:
+                logging.warning("{plasma_gas} is not available as a plasma gas.")
+
+            if microscope.beams.ion_beam.source.plasma_gas.value != plasma_gas:
+                logging.warning(f"Plasma Gas is should be {plasma_gas} (Currently {microscope.beams.ion_beam.source.plasma_gas.value})")
+
+            
+
+            # reset beam shift
+            calibration.reset_beam_shifts(microscope=microscope)
+
+        # validate stage calibration (homed, linked)
+        validate_stage_calibration(microscope=self.microscope)
+
+
+        # validate needle calibration (needle calibration, retracted)
+        validate_needle_calibration(microscope=self.microscope)
+
+        # validate beam settings and calibration
+        validate_beams(microscope=self.microscope, settings=self.settings)        
+
+
+        # validate working distances / eucentricty?
+
 
         # ion beam currents
         # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9, 6.2e-9
