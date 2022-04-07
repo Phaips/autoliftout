@@ -1,6 +1,6 @@
 import os
 from liftout.fibsem.movement import *
-from autoscript_sdb_microscope_client.structures import GrabFrameSettings
+from autoscript_sdb_microscope_client.structures import GrabFrameSettings, Point
 import scipy.ndimage as ndi
 from scipy import fftpack, misc
 from PIL import Image, ImageDraw
@@ -9,6 +9,8 @@ from liftout.detection import detection
 from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStage
 from liftout.model import models
 from autoscript_sdb_microscope_client.enumerations import *
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
+
 
 BeamType = acquire.BeamType
 
@@ -482,25 +484,26 @@ def set_microscope_state(microscope, microscope_state: MicroscopeState):
     return
 
 
-def reset_beam_shifts(microscope):
+def reset_beam_shifts(microscope: SdbMicroscopeClient):
+    """Set the beam shift to zero for the electron and ion beams
 
-    # validate zero beamshift
-    eb_beam_shift_x, eb_beam_shift_y = microscope.beams.electron_beam.beam_shift.value
-    ib_beam_shift_x, ib_beam_shift_y = microscope.beams.ion_beam.beam_shift.value
+    Args:
+        microscope (SdbMicroscopeClient): Autoscript microscope object
+    """
 
-    # logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
-    # microscope.beams.electron_beam.beam_shift.value -= (eb_beam_shift_x, eb_beam_shift_y) #TODO: re-enable...maybe
+    # reset zero beamshift
+    logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
+    microscope.beams.electron_beam.beam_shift.value = Point(0, 0)
     logging.info(f"reseting ibeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
-    microscope.beams.ion_beam.beam_shift.value -= (ib_beam_shift_x, ib_beam_shift_y)
+    microscope.beams.ion_beam.beam_shift.value = Point(0, 0) 
     logging.info(f"reset beam shifts to zero complete")
 
 
 def check_working_distance_is_within_tolerance(eb_image, ib_image, settings):
     eb_eucentric_height = settings["calibration"]["eucentric_height_eb"]
     eb_eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+    # TODO: use np.isclose instead
     return abs(eb_image.metadata.optics.working_distance - eb_eucentric_height) <= eb_eucentric_tolerance
-
-
 
 def validate_stage_calibration(microscope):
 
