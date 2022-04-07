@@ -2559,7 +2559,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # display sample no
             label_sample = QLabel()
-            label_sample.setText(f"""Sample {i:02d} ({str(sp.sample_id)[-6:]}) \n\nStage: {sp.microscope_state.last_completed_stage.name}""")
+            label_sample.setText(f"""Sample {i:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
             label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
             label_sample.setMaximumHeight(150)
             gridLayout.addWidget(label_sample, row_id, 0)

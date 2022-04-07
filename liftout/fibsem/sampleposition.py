@@ -7,6 +7,7 @@ import datetime
 import time
 from dataclasses import dataclass
 import uuid
+import petname
 
 try:
     from autoscript_sdb_microscope_client.structures import *
@@ -62,6 +63,8 @@ class SamplePosition:
         self.created_timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         self.sample_no = sample_no
         self.landing_selected: bool = False
+
+        self.petname = petname.generate(2)
 
         self.sample_id = uuid.uuid4()
         self.microscope_state: MicroscopeState = MicroscopeState()
@@ -138,6 +141,7 @@ class SamplePosition:
             "updated": datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S'),
             "sample_no": self.sample_no,
             "sample_id": str(self.sample_id),
+            "petname": self.petname,
             "landing_selected": self.landing_selected,
             "lamella_coordinates": lamella_coordinates_dict,
             "landing_coordinates": landing_coordinates_dict,
@@ -165,7 +169,11 @@ class SamplePosition:
         self.updated_timestamp = sample_dict["updated"]
         self.sample_id = sample_dict["sample_id"]
         self.landing_selected = sample_dict["landing_selected"]
-
+        try:
+            self.petname = sample_dict["petname"]
+        except:
+            pass
+        
         # load stage positions from yaml
         self.lamella_coordinates = StagePosition(
             x=sample_dict["lamella_coordinates"]["x"],

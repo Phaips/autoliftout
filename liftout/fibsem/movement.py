@@ -440,7 +440,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
-    # TODO: replace with auto_focus_and_link if performance of focus is poor
+    # NOTE: replace with auto_focus_and_link if performance of focus is poor
     # # Restore original settings
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
 
