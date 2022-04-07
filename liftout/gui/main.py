@@ -1176,8 +1176,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # TODO: make moves consistent from moving to stationary
             # yz-correction
-            x_move = movement.x_corrected_stage_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
-            yz_move = movement.y_corrected_stage_movement(distance_y_m, stage_tilt=self.stage.current_position.t, beam_type=beamType)
+            x_move = movement.x_corrected_stage_movement(-distance_x_m, stage_tilt=self.stage.current_position.t, settings=self.settings)
+            yz_move = movement.y_corrected_stage_movement(distance_y_m, stage_tilt=self.stage.current_position.t, settings=self.settings, beam_type=beamType)
             self.stage.relative_move(x_move)
             self.stage.relative_move(yz_move)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
@@ -2381,11 +2381,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                             x, y = movement.pixel_to_realspace_coordinate(
                                 [self.xclick, self.yclick], image)
 
-                            x_move = movement.x_corrected_stage_movement(x,
-                                                                         stage_tilt=self.stage.current_position.t)
+                            x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
                             yz_move = movement.y_corrected_stage_movement(
                                 y,
                                 stage_tilt=self.stage.current_position.t,
+                                settings=self.settings,
                                 beam_type=beam_type)
                             self.stage.relative_move(x_move)
                             self.stage.relative_move(yz_move)

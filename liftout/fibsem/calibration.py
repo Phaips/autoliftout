@@ -138,10 +138,19 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
         logging.warning("calibration: cancelling automatic cross correlation.")
         return False
     else:
+        
+        tmp_settings = { # TODO: MAGIC NUMBERS REMOVE when doing refactor
+            "system": {
+                "pretilt_angle": 27, # degrees
+                "stage_tilt_flat_to_ion": 52 # degrees
+            }
 
+        }
         x_move = x_corrected_stage_movement(-dx_ei_meters)
         yz_move = y_corrected_stage_movement(
-            dy_ei_meters, stage.current_position.t, beam_type=beam_type
+            dy_ei_meters, stage.current_position.t, 
+            settings=tmp_settings, 
+            beam_type=beam_type
         )  # check electron/ion movement
         stage.relative_move(x_move)
         stage.relative_move(yz_move)

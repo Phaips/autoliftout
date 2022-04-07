@@ -4,7 +4,7 @@ from autoscript_sdb_microscope_client.structures import StagePosition, MoveSetti
 from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem, CoordinateSystem
 import time
 
-pretilt = 27  # TODO: add to protocol
+pretilt_angle = 27  # TODO: add to protocol
 
 
 def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
@@ -462,7 +462,7 @@ def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
     return StagePosition(x=expected_x, y=0, z=0)
 
 
-def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTRON):
+def y_corrected_stage_movement(expected_y, stage_tilt, settings:dict, beam_type=BeamType.ELECTRON):
     """Stage movement in Y, corrected for tilt of sample surface plane.
     ----------
     expected_y : in meters
@@ -474,14 +474,15 @@ def y_corrected_stage_movement(expected_y, stage_tilt, beam_type=BeamType.ELECTR
     StagePosition
         Stage position to pass to relative movement function.
     """
-    # TODO: add settings, need to read pretilt, flat_to_ion magic number
     from autoscript_sdb_microscope_client.structures import StagePosition
 
-    assert pretilt == 27  # 27
+    pretilt_angle = settings["system"]["pretilt_angle"]
+    stage_tilt_flat_to_ion = settings["system"]["stage_tilt_flat_to_ion"]
+
     if beam_type == BeamType.ELECTRON:
-        tilt_adjustment = np.deg2rad(-pretilt)
+        tilt_adjustment = np.deg2rad(-pretilt_angle)
     elif beam_type == BeamType.ION:
-        tilt_adjustment = np.deg2rad(52 - pretilt)  # MAGIC_NUMBER
+        tilt_adjustment = np.deg2rad(stage_tilt_flat_to_ion - pretilt_angle)
     tilt_radians = stage_tilt + tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
