@@ -499,3 +499,134 @@ def check_working_distance_is_within_tolerance(eb_image, ib_image, settings):
     eb_eucentric_height = settings["calibration"]["eucentric_height_eb"]
     eb_eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
     return abs(eb_image.metadata.optics.working_distance - eb_eucentric_height) <= eb_eucentric_tolerance
+
+
+
+def validate_stage_calibration(microscope):
+
+    if not microscope.specimen.stage.is_homed:
+        logging.warning("Stage is not homed.")
+    
+    if not microscope.specimen.stage.is_linked:
+        logging.warning("Stage is not linked.")
+
+    logging.info("Stage calibration validation complete.")
+
+    return 
+
+def validate_needle_calibration(microscope):
+        
+    if str(microscope.specimen.manipulator.state) == "Retracted":
+        logging.info("Needle is retracted")
+    else:
+        logging.warning("Needle is inserted. Please retract before starting.")
+        # TODO: retract automatically?
+
+    # TODO: calibrate needle?
+
+    return 
+
+def validate_beams_calibration(microscope, settings: dict):
+    """Validate Beam Settings"""
+
+    high_voltage = float(settings["system"]["high_voltage"])
+    plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
+
+    # TODO: check beam blanks?        
+    # TODO: check electron voltage?
+
+    logging.info("Validating Electron Beam")
+    if not microscope.beams.electron_beam.is_on:
+        logging.warning("Electron Beam is not on, switching on now...")
+        microscope.beams.electron_beam.turn_on()
+        assert microscope.beams.electron_beam.is_on, "Unable to turn on Electron Beam."
+        logging.warning("Electron Beam turned on.")
+
+    microscope.imaging.set_active_view(1)
+    if str(microscope.detector.type.value) != "ETD":
+        logging.warning(f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
+        if "ETD" in microscope.detector.type.available_values:
+            microscope.detector.type.value = "ETD"
+            logging.warning(f"Changed Electron detector type to {str(microscope.detector.type.value)}")
+    
+    if str(microscope.detector.mode.value) != "SecondaryElectrons":
+        logging.warning(f"Electron detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
+        if "SecondaryElectrons" in microscope.detector.mode.available_values:
+            microscope.detector.mode.value = "SecondaryElectrons"
+            logging.warning(f"Changed Electron detector mode to {str(microscope.detector.mode.value)}")
+
+    # working distances
+    logging.info(f"EB Working Distance: {microscope.beams.electron_beam.working_distance.value:.4f}m")
+    if not np.isclose(microscope.beams.electron_beam.working_distance.value, 
+                    settings["calibration"]["eucentric_height_eb"], 
+                    atol=settings["calibration"]["eucentric_height_tolerance"]): 
+        logging.warning(f"Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m \
+        (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)")
+
+    logging.info(f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}")
+    logging.info(f"E OPTICAL MODES:  {str(microscope.beams.electron_beam.optical_mode.available_values)}")
+
+    # Validate Ion Beam
+    logging.info("Validating Ion Beam")
+
+    if not microscope.beams.ion_beam.is_on:
+        logging.warning("Ion Beam is not on, switching on now...")
+        microscope.beams.ion_beam.turn_on()
+        assert microscope.beams.ion_beam.is_on, "Unable to turn on Ion Beam."
+        logging.warning("Ion Beam turned on.")
+
+    microscope.imaging.set_active_view(2)
+    if str(microscope.detector.type.value) != "ETD":
+        logging.warning(f"Ion detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
+        if "ETD" in microscope.detector.type.available_values:
+            microscope.detector.type.value = "ETD"
+            logging.warning(f"Changed Ion detector type to {str(microscope.detector.type.value)}")
+    
+    if str(microscope.detector.mode.value) != "SecondaryElectrons":
+        logging.warning(f"Ion detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
+        if "SecondaryElectrons" in microscope.detector.mode.available_values:
+            microscope.detector.mode.value = "SecondaryElectrons"
+            logging.warning(f"Changed Ion detector mode to {str(microscope.detector.mode.value)}")
+
+    # working distance
+    logging.info(f"IB Working Distance: {microscope.beams.ion_beam.working_distance.value:.4f}m")
+    if not np.isclose(microscope.beams.ion_beam.working_distance.value, 
+        settings["calibration"]["eucentric_height_ib"], 
+        atol=settings["calibration"]["eucentric_height_tolerance"]): 
+        logging.warning(f"Ion Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_ib']}m \
+        (Currently is {microscope.beams.ion_beam.working_distance.value:.4f}m)")
+    
+    # validate high voltage
+    high_voltage_limits = str(microscope.beams.ion_beam.high_voltage.limits)
+    logging.info(f"Ion Beam High Voltage Limits are: {high_voltage_limits}")
+
+    if microscope.beams.ion_beam.high_voltage.value != high_voltage:
+        logging.warning(f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)")
+
+        if bool(microscope.beams.ion_beam.high_voltage.is_controllable):
+            logging.warning(f"Changing Ion Beam High Voltage to {high_voltage}V.")
+            microscope.beams.ion_beam.high_voltage.value = high_voltage
+            assert microscope.beams.ion_beam.high_voltage.value == high_voltage, "Unable to change Ion Beam High Voltage"
+            logging.warning(f"Ion Beam High Voltage Changed")
+
+    # validate plasma gas
+    if plasma_gas not in microscope.beams.ion_beam.source.plasma_gas.available_values:
+        logging.warning("{plasma_gas} is not available as a plasma gas.")
+
+    if microscope.beams.ion_beam.source.plasma_gas.value != plasma_gas:
+        logging.warning(f"Plasma Gas is should be {plasma_gas} (Currently {microscope.beams.ion_beam.source.plasma_gas.value})")
+
+    # reset beam shifts
+    reset_beam_shifts(microscope=microscope)
+
+
+def validate_chamber(microscope):
+    """Validate the state of the chamber"""
+
+    logging.info(f"Validating Vacuum Chamber State: {str(microscope.vacuum.chamber_state)}")
+    if not str(microscope.vacuum.chamber_state) == "Pumped":
+        logging.warning(f"Chamber vacuum state should be Pumped (Currently is {str(microscope.vacuum.chamber_state)})")
+
+    logging.info(f"Validating Vacuum Chamber Pressure: {microscope.state.chamber_pressure.value:.6f} mbar")
+    if microscope.state.chamber_pressure.value >= 1e-3:
+        logging.warning(f"Chamber pressure is too high, please pump the system (Currently {microscope.state.chamber_pressure.value:.6f} mbar)")

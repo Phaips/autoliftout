@@ -200,19 +200,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.scroll_area.update()
 
     def pre_run_validation(self):
-        logging.info(f"PRE_RUN_VALIDATION")
+        logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
         # TODO:
-        # validate beam currents
-
         # validate hfw
-
         # validate scanning rotation
-
-        # validate needle calibration
-
-        # validate needle not inserted
-
 
         # TODO: validate protocol settings
         # for k, v in self.settings.items():
@@ -227,145 +219,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #             if "current" in v2:
         #                 print("CURRENT: ", k, k2, v2)
 
-        # chamber pressure
-        logging.info(f"CHAMBER STATE: {str(self.microscope.vacuum.chamber_state)}")
-        logging.info(f"CHAMBER PRESSURE: {self.microscope.state.chamber_pressure.value}")
+        # validate chamber state
+        calibration.validate_chamber(microscope=self.microscope)
 
         # validate stage calibration (homed, linked)
-        def validate_stage_calibration(microscope):
-
-            if not microscope.specimen.stage.is_homed:
-                logging.warning("Stage is not homed.")
-            
-            if not microscope.specimen.stage.is_linked:
-                logging.warning("Stage is not linked.")
-
-            logging.info("Stage calibration validation complete.")
-
-            return 
-
-
-        def validate_needle_calibration(microscope):
-        
-            if str(microscope.specimen.manipulator.state) == "Retracted":
-                logging.info("Needle is retracted")
-            else:
-                logging.warning("Needle is inserted. Please retract before starting.")
-                # TODO: retract automatically?
-
-            # TODO: calibrate needle?
-
-            return 
-        
-        # check if beams are on
-        def validate_beams(microscope, settings: dict):
-            
-            high_voltage = float(settings["system"]["high_voltage"])
-            plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
-
-            # TODO: check beam blanks?        
-            # TODO: check electron voltage?
-
-
-
-            logging.info("Validating Electron Beam")
-            if not microscope.beams.electron_beam.is_on:
-                logging.warning("Electron Beam is not on, switching on now...")
-                microscope.beams.electron_beam.turn_on()
-                assert microscope.beams.electron_beam.is_on, "Unable to turn on Electron Beam."
-                logging.warning("Electron Beam turned on.")
-
-            microscope.imaging.set_active_view(1)
-            if str(microscope.detector.type.value) != "ETD":
-                logging.warning(f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
-                if "ETD" in microscope.detector.type.available_values:
-                    microscope.detector.type.value = "ETD"
-                    logging.warning(f"Changed Electron detector type to {str(microscope.detector.type.value)}")
-            
-            if str(microscope.detector.mode.value) != "SecondaryElectrons":
-                logging.warning(f"Electron detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
-                if "SecondaryElectrons" in microscope.detector.mode.available_values:
-                    microscope.detector.mode.value = "SecondaryElectrons"
-                    logging.warning(f"Changed Electron detector mode to {str(microscope.detector.mode.value)}")
-
-            # working distances
-            logging.info(f"EB Working Distance: {microscope.beams.electron_beam.working_distance.value}m")
-            if not np.isclose(microscope.beams.electron_beam.working_distance.value, 
-                            self.settings["calibration"]["eucentric_height_eb"], 
-                            atol=self.settings["calibration"]["eucentric_height_tolerance"]): 
-                logging.warning(f"Electron Beam is not close to eucentric height. It should be {self.settings['calibration']['eucentric_height_eb']}m \
-                (Currently is {microscope.beams.electron_beam.working_distance.value}m)")
-
-            logging.info(f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}")
-            logging.info(f"E OPTICAL MODES:  {str(microscope.beams.electron_beam.optical_mode.available_values)}")
-
-            # Validate Ion Beam
-            logging.info("Validating Ion Beam")
-
-            if not microscope.beams.ion_beam.is_on:
-                logging.warning("Ion Beam is not on, switching on now...")
-                microscope.beams.ion_beam.turn_on()
-                assert microscope.beams.ion_beam.is_on, "Unable to turn on Ion Beam."
-                logging.warning("Ion Beam turned on.")
-
-            microscope.imaging.set_active_view(2)
-            if str(microscope.detector.type.value) != "ETD":
-                logging.warning(f"Ion detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
-                if "ETD" in microscope.detector.type.available_values:
-                    microscope.detector.type.value = "ETD"
-                    logging.warning(f"Changed Ion detector type to {str(microscope.detector.type.value)}")
-            
-            if str(microscope.detector.mode.value) != "SecondaryElectrons":
-                logging.warning(f"Ion detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
-                if "SecondaryElectrons" in microscope.detector.mode.available_values:
-                    microscope.detector.mode.value = "SecondaryElectrons"
-                    logging.warning(f"Changed Ion detector mode to {str(microscope.detector.mode.value)}")
-
-            # working distance
-            logging.info(f"IB Working Distance: {microscope.beams.ion_beam.working_distance.value}m")
-            if not np.isclose(microscope.beams.ion_beam.working_distance.value, 
-                self.settings["calibration"]["eucentric_height_ib"], 
-                atol=self.settings["calibration"]["eucentric_height_tolerance"]): 
-                logging.warning(f"Ion Beam is not close to eucentric height. It should be {self.settings['calibration']['eucentric_height_ib']}m \
-                (Currently is {microscope.beams.ion_beam.working_distance.value}m)")
-            
-            # validate high voltage
-            high_voltage_limits = str(self.microscope.beams.ion_beam.high_voltage.limits)
-            logging.info(f"Ion Beam High Voltage Limits are: {high_voltage_limits}")
-
-            if microscope.beams.ion_beam.high_voltage.value != high_voltage:
-                logging.warning(f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)")
-
-                if bool(microscope.beams.ion_beam.high_voltage.is_controllable):
-                    logging.warning(f"Changing Ion Beam High Voltage to {high_voltage}V.")
-                    microscope.beams.ion_beam.high_voltage.value = high_voltage
-                    assert microscope.beams.ion_beam.high_voltage.value == high_voltage, "Unable to change Ion Beam High Voltage"
-                    logging.warning(f"Ion Beam High Voltage Changed")
-
-            # validate plasma gas
-            if plasma_gas not in microscope.beams.ion_beam.source.plasma_gas.available_values:
-                logging.warning("{plasma_gas} is not available as a plasma gas.")
-
-            if microscope.beams.ion_beam.source.plasma_gas.value != plasma_gas:
-                logging.warning(f"Plasma Gas is should be {plasma_gas} (Currently {microscope.beams.ion_beam.source.plasma_gas.value})")
-
-            
-            # reset beam shift
-            calibration.reset_beam_shifts(microscope=microscope)
-
-        # validate stage calibration (homed, linked)
-        validate_stage_calibration(microscope=self.microscope)
-
+        calibration.validate_stage_calibration(microscope=self.microscope)
 
         # validate needle calibration (needle calibration, retracted)
-        validate_needle_calibration(microscope=self.microscope)
+        calibration.validate_needle_calibration(microscope=self.microscope)
 
         # validate beam settings and calibration
-        validate_beams(microscope=self.microscope, settings=self.settings)        
-
-
-
-
+        calibration.validate_beams_calibration(microscope=self.microscope, settings=self.settings)        
 
         # reminders
         reminder_str = """Please check that the following steps have been completed:
@@ -382,7 +246,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
-
         # Loop backwards through the log, until we find the start of validation
         with open(self.log_path) as f:
             lines = f.read().splitlines()
@@ -393,9 +256,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 if "WARNING" in line:
                     logging.info(line)
                     validation_warnings.append(line)
-
             logging.info(f"{len(validation_warnings)} warnings were identified during intial setup.")
-            # TODO: show this to the user...
 
         if validation_warnings:
             warning_str = f"The following {len(validation_warnings)} warnings were identified during initialisation."
@@ -408,6 +269,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             msg.setText(warning_str)
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
+
+        logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
 
     def setup_autoliftout(self):
 
