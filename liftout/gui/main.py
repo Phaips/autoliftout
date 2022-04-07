@@ -137,6 +137,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
+        # use high throughput
+        self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
+
         # initialise piescope
         self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled"])
         if self.PIESCOPE_ENABLED:
@@ -199,24 +202,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def pre_run_validation(self):
         logging.info(f"PRE_RUN_VALIDATION")
 
-        # TODO populate the validation checks
-        validation_errors = []
-        validation_checks = [
-            "axes_homed",
-            "beam_calibration",
-            "needle_calibration",
-            "link_and_focus",
-            "stage_coordinate_system",
-            "check_beam_shift_is_zero",
-            "ion_beam_working_distance",   # 16.5mm
-            "check_if_needle_is_inserted"
-
-        ]
-        # import random
-        # for check in validation_checks:
-        #     if random.random() > 0.5:
-        #         validation_errors.append(check)
-
         # TODO:
         # validate beam currents
 
@@ -242,30 +227,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #             if "current" in v2:
         #                 print("CURRENT: ", k, k2, v2)
 
-        logging.info(f"OPTICAL MODE: {self.microscope.beams.electron_beam.optical_mode.value}")
-        logging.info(f"OPTICAL MODE AVAILABLE: {str(self.microscope.beams.electron_beam.optical_mode.available_values)}")
-
+        # chamber pressure
         logging.info(f"CHAMBER STATE: {str(self.microscope.vacuum.chamber_state)}")
         logging.info(f"CHAMBER PRESSURE: {self.microscope.state.chamber_pressure.value}")
-
-        self.microscope.imaging.set_active_view(1)
-        logging.info(f"EBEAM")
-        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.type.value)}") # ETD, SecondaryElectrons
-        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.type.available_values)}")
-        logging.info(f"DETECTOR MODE: {str(self.microscope.detector.mode.value)}")
-        logging.info(f"DETECTOR MODESS: {str(self.microscope.detector.mode.available_values)}")
-        logging.info(f"E Working Distance: {self.microscope.beams.electron_beam.working_distance.value}")
-        logging.info(f"E OPTICAL MODE: {str(self.microscope.beams.electron_beam.optical_mode.value)}")
-        logging.info(f"E OPTICAL MODES:  {str(self.microscope.beams.electron_beam.optical_mode.available_values)}")
-
-        self.microscope.imaging.set_active_view(2)
-        logging.info(f"I-BEAM")
-        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.type.value)}") # ETD, SecondaryElectrons
-        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.type.available_values)}")
-        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.mode.value)}")
-        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.mode.available_values)}")
-        logging.info(f"I Working Distance: {self.microscope.beams.ion_beam.working_distance.value}")
-
 
         # validate stage calibration (homed, linked)
         def validate_stage_calibration(microscope):
@@ -299,34 +263,84 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             high_voltage = float(settings["system"]["high_voltage"])
             plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
 
+            # TODO: check beam blanks?        
+            # TODO: check electron voltage?
+
+
+
+            logging.info("Validating Electron Beam")
             if not microscope.beams.electron_beam.is_on:
                 logging.warning("Electron Beam is not on, switching on now...")
                 microscope.beams.electron_beam.turn_on()
                 assert microscope.beams.electron_beam.is_on, "Unable to turn on Electron Beam."
-                logging.info("Electron Beam turned on.")
+                logging.warning("Electron Beam turned on.")
+
+            microscope.imaging.set_active_view(1)
+            if str(microscope.detector.type.value) != "ETD":
+                logging.warning(f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
+                if "ETD" in microscope.detector.type.available_values:
+                    microscope.detector.type.value = "ETD"
+                    logging.warning(f"Changed Electron detector type to {str(microscope.detector.type.value)}")
+            
+            if str(microscope.detector.mode.value) != "SecondaryElectrons":
+                logging.warning(f"Electron detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
+                if "SecondaryElectrons" in microscope.detector.mode.available_values:
+                    microscope.detector.mode.value = "SecondaryElectrons"
+                    logging.warning(f"Changed Electron detector mode to {str(microscope.detector.mode.value)}")
+
+            # working distances
+            logging.info(f"EB Working Distance: {microscope.beams.electron_beam.working_distance.value}m")
+            if not np.isclose(microscope.beams.electron_beam.working_distance.value, 
+                            self.settings["calibration"]["eucentric_height_eb"], 
+                            atol=self.settings["calibration"]["eucentric_height_tolerance"]): 
+                logging.warning(f"Electron Beam is not close to eucentric height. It should be {self.settings['calibration']['eucentric_height_eb']}m \
+                (Currently is {microscope.beams.electron_beam.working_distance.value}m)")
+
+            logging.info(f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}")
+            logging.info(f"E OPTICAL MODES:  {str(microscope.beams.electron_beam.optical_mode.available_values)}")
+
+            # Validate Ion Beam
+            logging.info("Validating Ion Beam")
 
             if not microscope.beams.ion_beam.is_on:
                 logging.warning("Ion Beam is not on, switching on now...")
                 microscope.beams.ion_beam.turn_on()
                 assert microscope.beams.ion_beam.is_on, "Unable to turn on Ion Beam."
-                logging.info("Ion Beam turned on.")
+                logging.warning("Ion Beam turned on.")
 
-            # TODO: check beam blanks?        
-            # TODO: check electron voltage?
+            microscope.imaging.set_active_view(2)
+            if str(microscope.detector.type.value) != "ETD":
+                logging.warning(f"Ion detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})")
+                if "ETD" in microscope.detector.type.available_values:
+                    microscope.detector.type.value = "ETD"
+                    logging.warning(f"Changed Ion detector type to {str(microscope.detector.type.value)}")
+            
+            if str(microscope.detector.mode.value) != "SecondaryElectrons":
+                logging.warning(f"Ion detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}")
+                if "SecondaryElectrons" in microscope.detector.mode.available_values:
+                    microscope.detector.mode.value = "SecondaryElectrons"
+                    logging.warning(f"Changed Ion detector mode to {str(microscope.detector.mode.value)}")
 
+            # working distance
+            logging.info(f"IB Working Distance: {microscope.beams.ion_beam.working_distance.value}m")
+            if not np.isclose(microscope.beams.ion_beam.working_distance.value, 
+                self.settings["calibration"]["eucentric_height_ib"], 
+                atol=self.settings["calibration"]["eucentric_height_tolerance"]): 
+                logging.warning(f"Ion Beam is not close to eucentric height. It should be {self.settings['calibration']['eucentric_height_ib']}m \
+                (Currently is {microscope.beams.ion_beam.working_distance.value}m)")
+            
             # validate high voltage
             high_voltage_limits = str(self.microscope.beams.ion_beam.high_voltage.limits)
             logging.info(f"Ion Beam High Voltage Limits are: {high_voltage_limits}")
 
             if microscope.beams.ion_beam.high_voltage.value != high_voltage:
-                logging.info(f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)")
+                logging.warning(f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)")
 
                 if bool(microscope.beams.ion_beam.high_voltage.is_controllable):
-                    logging.info(f"Changing Ion Beam High Voltage to {high_voltage}V.")
+                    logging.warning(f"Changing Ion Beam High Voltage to {high_voltage}V.")
                     microscope.beams.ion_beam.high_voltage.value = high_voltage
                     assert microscope.beams.ion_beam.high_voltage.value == high_voltage, "Unable to change Ion Beam High Voltage"
-                    logging.info(f"Ion Beam High Voltage Changed")
-
+                    logging.warning(f"Ion Beam High Voltage Changed")
 
             # validate plasma gas
             if plasma_gas not in microscope.beams.ion_beam.source.plasma_gas.available_values:
@@ -349,7 +363,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # validate beam settings and calibration
         validate_beams(microscope=self.microscope, settings=self.settings)        
 
-        # validate working distances / eucentricty?
+
+
+
+
+        # reminders
+        reminder_str = """Please check that the following steps have been completed:
+        \n - Sample is inserted
+        \n - Confirm Operating Temperature
+        \n - Needle Calibration
+        \n - Ion Column Calibration
+        \n - Crossover Calibration
+        \n - Plasma Gas Valve Open
+        """
+        msg = QMessageBox()
+        msg.setWindowTitle("AutoLiftout Initialisation Confirmation")
+        msg.setText(reminder_str)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
+
 
         # Loop backwards through the log, until we find the start of validation
         with open(self.log_path) as f:
@@ -365,12 +397,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.info(f"{len(validation_warnings)} warnings were identified during intial setup.")
             # TODO: show this to the user...
 
-        # ion beam currents
-        # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9, 6.2e-9
-
         if validation_warnings:
-            logging.warning(f"validation_errors={validation_warnings}")
-        logging.info(f"Finished pre run validation: {len(validation_warnings)} issues identified.")
+            warning_str = f"The following {len(validation_warnings)} warnings were identified during initialisation."
+
+            for warning in validation_warnings[::-1]:
+                warning_str += f"\n{warning.split('—')[-1]}"
+
+            msg = QMessageBox()
+            msg.setWindowTitle("AutoLiftout Initialisation Warnings")
+            msg.setText(warning_str)
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
 
     def setup_autoliftout(self):
 
@@ -886,23 +923,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"AutoLiftout Workflow started for {len(self.samples)} sample positions.")
 
         # high throughput workflow
-        HIGH_THROUGHPUT= False
-        if HIGH_THROUGHPUT:
-            for sp in self.samples:
-                self.current_sample_position = sp
+        if self.HIGH_THROUGHPUT:
+            for terminal_stage in [AutoLiftoutStage.MillTrench, AutoLiftoutStage.MillJCut]:
+                for sp in self.samples:
+                    self.current_sample_position = sp
 
-                while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.MillJCut.value:
+                    while sp.microscope_state.last_completed_stage.value < terminal_stage.value:
 
-                    next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
+                        next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
 
-                    # reset to the previous state
-                    self.start_of_stage_update(next_stage=next_stage)
+                        # reset to the previous state
+                        self.start_of_stage_update(next_stage=next_stage)
 
-                    # run the next workflow stage
-                    self.autoliftout_stages[next_stage]()
+                        # run the next workflow stage
+                        self.autoliftout_stages[next_stage]()
 
-                    # advance workflow
-                    self.end_of_stage_update(eucentric=True)
+                        # advance workflow
+                        self.end_of_stage_update(eucentric=True)
 
 
         # standard workflow
@@ -2494,6 +2531,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for j, title in enumerate(headers):
             label_header = QLabel()
             label_header.setText(title)
+            label_header.setMaximumHeight(80)
             label_header.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 18px;")
             label_header.setAlignment(Qt.AlignCenter)
             gridLayout.addWidget(label_header, 0, j)
@@ -2505,6 +2543,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             for img_basename in exemplar_filenames:
                 fname = os.path.join(sp.data_path, str(sp.sample_id), f"{img_basename}.tif")
                 imageLabel = QLabel()
+                imageLabel.setMaximumHeight(150)
 
                 if os.path.exists(fname):
                     adorned_img = sp.load_reference_image(img_basename)
@@ -2522,7 +2561,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label_sample = QLabel()
             label_sample.setText(f"""Sample {i:02d} ({str(sp.sample_id)[-6:]}) \n\nStage: {sp.microscope_state.last_completed_stage.name}""")
             label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
-
+            label_sample.setMaximumHeight(150)
             gridLayout.addWidget(label_sample, row_id, 0)
 
             # display sample position
@@ -2534,23 +2573,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 
             label_pos.setText(pos_text)
             label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
+            label_pos.setMaximumHeight(150)
 
             gridLayout.addWidget(label_pos, row_id, 1)
 
             # display exemplar images
-            gridLayout.addWidget(sample_images[i][0], row_id, 2)
-            gridLayout.addWidget(sample_images[i][1], row_id, 3)
-            gridLayout.addWidget(sample_images[i][2], row_id, 4)
-            gridLayout.addWidget(sample_images[i][3], row_id, 5)
-            gridLayout.addWidget(sample_images[i][4], row_id, 6)
-            gridLayout.addWidget(sample_images[i][5], row_id, 7)
-            gridLayout.addWidget(sample_images[i][6], row_id, 8)
-            gridLayout.addWidget(sample_images[i][7], row_id, 9)
+            gridLayout.addWidget(sample_images[i][0], row_id, 2, Qt.AlignmentFlag.AlignCenter) #TODO: fix missing visual boxes
+            gridLayout.addWidget(sample_images[i][1], row_id, 3, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][2], row_id, 4, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][3], row_id, 5, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][4], row_id, 6, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][5], row_id, 7, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][6], row_id, 8, Qt.AlignmentFlag.AlignCenter)
+            gridLayout.addWidget(sample_images[i][7], row_id, 9, Qt.AlignmentFlag.AlignCenter)
 
-            # checkbox = QtWidgets.QCheckBox()
-            # self.failure_checkboxes.append(checkbox)
-            # gridLayout.addWidget(checkbox, row_id, 10)
 
+        gridLayout.setRowStretch(9, 1) # grid spacing
         self.horizontalGroupBox.setLayout(gridLayout)
         ###################
 

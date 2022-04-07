@@ -369,7 +369,7 @@ def flat_to_beam(
     logging.info(f"movement: moving flat to {beam_type.name}")
 
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
-    if abs(np.rad2deg(rotation - stage.current_position.r)) > 90:
+    if abs(np.rad2deg(rotation - stage.current_position.r)) > 90: # TODO: this does a double move
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
         logging.info(f"movement: tilting to flat for large rotation.")
     logging.info(f"movement: rotating stage to {rotation:.4f}")
