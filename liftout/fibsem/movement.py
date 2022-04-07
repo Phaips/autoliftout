@@ -4,9 +4,6 @@ from autoscript_sdb_microscope_client.structures import StagePosition, MoveSetti
 from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem, CoordinateSystem
 import time
 
-pretilt_angle = 27  # TODO: add to protocol
-
-
 def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     """Move the sample stage in ion or electron beam view and take new image
 
@@ -489,40 +486,3 @@ def y_corrected_stage_movement(expected_y, stage_tilt, settings:dict, beam_type=
     logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
     logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")
     return StagePosition(x=0, y=y_move, z=z_move)
-
-
-def z_corrected_stage_movement(expected_z, stage_tilt):
-    """Stage movement in Z, corrected for tilt of sample surface plane.
-    Parameters
-    ----------
-    expected_z : in meters
-    stage_tilt : in radians
-    Returns
-    -------
-    StagePosition
-        Stage position to pass to relative movement function.
-    """
-    y_move = -np.sin(stage_tilt) * expected_z
-    z_move = +np.cos(stage_tilt) * expected_z
-    return StagePosition(x=0, y=y_move, z=z_move)
-
-
-def linked_within_z_tolerance(microscope, expected_z=3.9e-3, tolerance=1e-6):
-    """Check if the sample stage is linked and at the expected z-height.
-    Parameters
-    ----------
-    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
-        The AutoScript microscope object instance.
-    expected_z : float, optional
-        Correct height for linked stage in z, in meters, by default 4e-3
-    tolerance : float, optional
-        Must be within this absolute tolerance of expected stage z height,
-        in meters, by default 1e-4
-    """
-    # Check the microscope stage is at the correct height
-    z_stage_height = microscope.specimen.stage.current_position.z
-    if np.isclose(z_stage_height, expected_z, atol=tolerance):
-        return True
-    else:
-        return False
-
