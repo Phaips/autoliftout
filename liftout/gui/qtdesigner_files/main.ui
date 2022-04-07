@@ -613,8 +613,32 @@
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionLoad_Experiment"/>
+    <addaction name="actionLoad_Configuration"/>
+    <addaction name="actionMark_Sample_Position_Failed"/>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLoad_Experiment">
+   <property name="text">
+    <string>Load Experiment</string>
+   </property>
+  </action>
+  <action name="actionLoad_Configuration">
+   <property name="text">
+    <string>Load Configuration</string>
+   </property>
+  </action>
+  <action name="actionMark_Sample_Position_Failed">
+   <property name="text">
+    <string>Mark Sample Position Failed</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

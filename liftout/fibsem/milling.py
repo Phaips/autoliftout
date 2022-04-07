@@ -385,6 +385,7 @@ def setup_ion_milling(
     ion_beam_field_of_view : float, optional
         Width of ion beam field of view in meters, by default 59.2e-6
     """
+    # TODO: remove Si_Alex, and replace with autolamella after testing milling
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.set_default_beam_type(2)  # ion beam default
     microscope.patterning.set_default_application_file(application_file)

@@ -51,6 +51,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         super(GUIMainWindow, self).__init__()
 
         self.UI_LOADED = False
+        # self.failure_checkboxes = []
 
         # load experiment
         self.setup_experiment()
@@ -196,7 +197,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.scroll_area.update()
 
     def pre_run_validation(self):
-        logging.info(f"Running pre run validation")
+        logging.info(f"PRE_RUN_VALIDATION")
 
         # TODO populate the validation checks
         validation_errors = []
@@ -227,6 +228,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # validate needle not inserted
 
+
+        # TODO: validate protocol settings
         # for k, v in self.settings.items():
         #     print("-"*20)
         #     print(k)
@@ -239,63 +242,57 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #             if "current" in v2:
         #                 print("CURRENT: ", k, k2, v2)
 
-        print("OPTICAL MODE: ", self.microscope.beams.electron_beam.optical_mode.value)
-        print("OPTICAL MODE AVAILABLE: ", str(self.microscope.beams.electron_beam.optical_mode.available_values))
+        logging.info(f"OPTICAL MODE: {self.microscope.beams.electron_beam.optical_mode.value}")
+        logging.info(f"OPTICAL MODE AVAILABLE: {str(self.microscope.beams.electron_beam.optical_mode.available_values)}")
 
-
-        print("CHAMBER STATE: ", str(self.microscope.vacuum.chamber_state))
-        print("CHAMBER PRESSURE: ", self.microscope.state.chamber_pressure.value)
-
-        # print("SCANNING FILTER:", self.microscope.imaging.scanning_filter.type)
+        logging.info(f"CHAMBER STATE: {str(self.microscope.vacuum.chamber_state)}")
+        logging.info(f"CHAMBER PRESSURE: {self.microscope.state.chamber_pressure.value}")
 
         self.microscope.imaging.set_active_view(1)
-        print("EBEAM")
-        print("DETECTOR TYPE: ", str(self.microscope.detector.type.value))
-        print("DETECTOR TYPES: ", str(self.microscope.detector.type.available_values))
-        print("DETECTOR TYPE: ", str(self.microscope.detector.mode.value))
-        print("DETECTOR TYPES: ", str(self.microscope.detector.mode.available_values))
+        logging.info(f"EBEAM")
+        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.type.value)}") # ETD, SecondaryElectrons
+        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.type.available_values)}")
+        logging.info(f"DETECTOR MODE: {str(self.microscope.detector.mode.value)}")
+        logging.info(f"DETECTOR MODESS: {str(self.microscope.detector.mode.available_values)}")
+        logging.info(f"E Working Distance: {self.microscope.beams.electron_beam.working_distance.value}")
+        logging.info(f"E OPTICAL MODE: {str(self.microscope.beams.electron_beam.optical_mode.value)}")
+        logging.info(f"E OPTICAL MODES:  {str(self.microscope.beams.electron_beam.optical_mode.available_values)}")
 
-        
         self.microscope.imaging.set_active_view(2)
-        print("I-BEAM")
-        print("DETECTOR TYPE: ", str(self.microscope.detector.type.value))
-        print("DETECTOR TYPES: ", str(self.microscope.detector.type.available_values))
-        print("DETECTOR TYPE: ", str(self.microscope.detector.mode.value))
-        print("DETECTOR TYPES: ", str(self.microscope.detector.mode.available_values))
-
-
-
-        print("E Working Distance: ", self.microscope.beams.electron_beam.working_distance.value)
-        print("E OPTICAL MODE: ", str(self.microscope.beams.electron_beam.optical_mode.value))
-        print("E OPTICAL MODES: ", str(self.microscope.beams.electron_beam.optical_mode.available_values))
-        print("I Working Distance: ", self.microscope.beams.ion_beam.working_distance.value)
+        logging.info(f"I-BEAM")
+        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.type.value)}") # ETD, SecondaryElectrons
+        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.type.available_values)}")
+        logging.info(f"DETECTOR TYPE: {str(self.microscope.detector.mode.value)}")
+        logging.info(f"DETECTOR TYPES: {str(self.microscope.detector.mode.available_values)}")
+        logging.info(f"I Working Distance: {self.microscope.beams.ion_beam.working_distance.value}")
 
 
         # validate stage calibration (homed, linked)
         def validate_stage_calibration(microscope):
 
             if not microscope.specimen.stage.is_homed:
-                logging.warning("STAGE IS NOT HOMED")
+                logging.warning("Stage is not homed.")
             
             if not microscope.specimen.stage.is_linked:
-                logging.warning("STAGE IS NOT LINKED")
+                logging.warning("Stage is not linked.")
 
-            logging.info("FINISHED STAGE CALIBRATION CHECK")
+            logging.info("Stage calibration validation complete.")
 
             return 
-
-
 
 
         def validate_needle_calibration(microscope):
         
             if str(microscope.specimen.manipulator.state) == "Retracted":
-                logging.info("NEEDLE IS RETRACTED")
+                logging.info("Needle is retracted")
+            else:
+                logging.warning("Needle is inserted. Please retract before starting.")
+                # TODO: retract automatically?
+
+            # TODO: calibrate needle?
 
             return 
         
-
-
         # check if beams are on
         def validate_beams(microscope, settings: dict):
             
@@ -315,6 +312,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 logging.info("Ion Beam turned on.")
 
             # TODO: check beam blanks?        
+            # TODO: check electron voltage?
 
             # validate high voltage
             high_voltage_limits = str(self.microscope.beams.ion_beam.high_voltage.limits)
@@ -338,7 +336,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 logging.warning(f"Plasma Gas is should be {plasma_gas} (Currently {microscope.beams.ion_beam.source.plasma_gas.value})")
 
             
-
             # reset beam shift
             calibration.reset_beam_shifts(microscope=microscope)
 
@@ -352,18 +349,28 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # validate beam settings and calibration
         validate_beams(microscope=self.microscope, settings=self.settings)        
 
-
         # validate working distances / eucentricty?
 
+        # Loop backwards through the log, until we find the start of validation
+        with open(self.log_path) as f:
+            lines = f.read().splitlines()
+            validation_warnings = []
+            for line in lines[::-1]:
+                if "PRE_RUN_VALIDATION" in line:
+                    break
+                if "WARNING" in line:
+                    logging.info(line)
+                    validation_warnings.append(line)
 
-
+            logging.info(f"{len(validation_warnings)} warnings were identified during intial setup.")
+            # TODO: show this to the user...
 
         # ion beam currents
         # 20e-12, 0.2e-9, 0.89e-9, 2.4e-9, 6.2e-9
 
-        if validation_errors:
-            logging.warning(f"validation_errors={validation_errors}")
-        logging.info(f"Finished pre run validation: {len(validation_errors)} issues identified.")
+        if validation_warnings:
+            logging.warning(f"validation_errors={validation_warnings}")
+        logging.info(f"Finished pre run validation: {len(validation_warnings)} issues identified.")
 
     def setup_autoliftout(self):
 
@@ -1897,15 +1904,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_connections(self):
         logging.info("gui: setup connections started")
-        # Protocol and information table connections
+        # connect buttons
         self.pushButton_initialise.clicked.connect(lambda: self.setup_autoliftout())
         self.pushButton_autoliftout.clicked.connect(lambda: self.run_autoliftout_workflow())
         self.pushButton_thinning.clicked.connect(lambda: self.run_thinning_workflow())
         self.pushButton_autoliftout.setEnabled(False)  # disable unless sample positions are loaded.
         self.pushButton_thinning.setEnabled(False)  # disable unless sample positions are loaded
 
-        # FIBSEM methods
+        # load data
+        self.pushButton_load_sample_data.setVisible(False)
+        self.pushButton_load_sample_data.setEnabled(False)
         self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())
+
+        self.actionLoad_Experiment.triggered.connect(lambda: self.setup_experiment())
+        self.actionLoad_Configuration.triggered.connect(lambda: logging.info("Load Configuration Function")) # TODO: function
+
+        self.actionMark_Sample_Position_Failed.triggered.connect(lambda: self.mark_sample_position_failed())
 
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
@@ -1915,6 +1929,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.pushButton_add_sample_position.clicked.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
 
         logging.info("gui: setup connections finished")
+
+
+    def mark_sample_position_failed(self):
+        """Mark the indicated sample position as failed."""
+        
+        if self.samples:
+            # TODO: add petname to sample positions
+            sample_no_str = [str(j) for j in range(len(self.samples))]
+            idx, okPressed = QInputDialog.getItem(self, "Select a Sample Position","Sample No:",  sample_no_str, 0, False)
+
+            if okPressed:
+                # mark sample as failure
+                logging.info(f"Marking sample {idx} as Failure")
+                sp = self.samples[int(idx)]
+                sp.microscope_state.last_completed_stage = AutoLiftoutStage.Failure
+                sp.save_data()              
+
+                # update UI
+                self.update_scroll_ui()
 
     def testing_function(self):
 
@@ -2514,6 +2547,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             gridLayout.addWidget(sample_images[i][6], row_id, 8)
             gridLayout.addWidget(sample_images[i][7], row_id, 9)
 
+            # checkbox = QtWidgets.QCheckBox()
+            # self.failure_checkboxes.append(checkbox)
+            # gridLayout.addWidget(checkbox, row_id, 10)
+
         self.horizontalGroupBox.setLayout(gridLayout)
         ###################
 
@@ -2549,7 +2586,7 @@ def launch_gui(offline=False):
     app = QtWidgets.QApplication([])
     qt_app = GUIMainWindow(offline=offline)
     app.aboutToQuit.connect(qt_app.disconnect)  # cleanup & teardown
-    qt_app.show()
+    qt_app.showMaximized()
     sys.exit(app.exec_())
 
 
