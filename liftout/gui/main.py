@@ -51,7 +51,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         super(GUIMainWindow, self).__init__()
 
         self.UI_LOADED = False
-        # self.failure_checkboxes = []
 
         # load experiment
         self.setup_experiment()
@@ -200,8 +199,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.scroll_area.update()
 
     def pre_run_validation(self):
+        """Run validation checks to confirm microscope state before run."""
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
-
 
         # validate user configuration
         utils.validate_settings(microscope=self.microscope, config=self.settings)
@@ -394,7 +393,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def select_sample_positions(self):
 
-        # TODO: Test
         select_another_sample_position = self.get_current_sample_positions()
 
         # allow the user to select additional lamella positions
