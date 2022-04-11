@@ -115,6 +115,35 @@ def _validate_dwell_time(microscope, dwell_times):
                     "{}".format(dwell_limits)
                 )
 
+def _validate_electron_beam_currents(microscope, electron_beam_currents):
+    """Check that the user supplied electron beam current values are valid.
+
+    Parameters
+    ----------
+    microscope : Connected Autoscrpt microscope instance.
+    electron_beam_currents : list
+        List of electron beam currents, eg: [ 3e-10, 1e-09]
+
+    Raises
+    ------
+    ValueError
+        Beam current not within limits of available electron beam currents.
+    """
+    available_electron_beam_currents = (
+        microscope.beams.electron_beam.beam_current.limits
+        )
+    for beam_current in electron_beam_currents:
+        
+        if not available_electron_beam_currents.is_in(beam_current):
+            raise ValueError(
+                "{} not found ".format(beam_current)
+                + "in range of available electron beam currents!\n"
+                "Please choose one from within the range: \n"
+                "{}".format(available_electron_beam_currents)
+            )
+
+
+    # print(available_electron_beam_currents.)
 
 def _validate_ion_beam_currents(microscope, ion_beam_currents):
     """Check that the user supplied ion beam current values are valid.
@@ -133,8 +162,9 @@ def _validate_ion_beam_currents(microscope, ion_beam_currents):
     available_ion_beam_currents = (
         microscope.beams.ion_beam.beam_current.available_values
     )
+    # TODO: decide how strict we want to be on the available currents (e.g. exact or within range)
     for beam_current in ion_beam_currents:
-        if beam_current not in available_ion_beam_currents:
+        if beam_current <= min(available_ion_beam_currents) or beam_current >= max(available_ion_beam_currents):
             raise ValueError(
                 "{} not found ".format(beam_current)
                 + "in list of available ion beam currents!\n"
@@ -182,7 +212,7 @@ def _validate_horizontal_field_width(microscope, horizontal_field_widths):
         else:
             if hfw is np.nan:
                 raise ValueError(
-                    "{} dwell time ".format(hfw) + "is not a number!\n"
+                    "{} horizontal field width ".format(hfw) + "is not a number!\n"
                     "Please choose a value between the limits: \n"
                     "{}".format(hfw_limits)
                 )
@@ -268,3 +298,61 @@ def _validate_stage_coordinate_system(microscope):
     """
     from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
+
+
+def _validate_model_weights_file(filename):
+    import os
+    from liftout.model import models
+    weights_path = os.path.join(os.path.dirname(models.__file__), filename)
+    if not os.path.exists(weights_path):
+        raise ValueError(
+            f"Unable to find model weights file {weights_path} specified."
+        )
+
+
+def _validate_configuration_values(microscope, dictionary):
+    """Recursively traverse dictionary and validate all parameters.
+
+    Parameters
+    ----------
+    dictionary : dict
+        Any arbitrarily structured python dictionary.
+
+    Raises
+    -------
+    ValueError
+        The parameter is not within the available range for the microscope.
+    """
+
+    for key, item in dictionary.items():
+        if isinstance(item, dict):
+            _validate_configuration_values(microscope, item)
+        elif isinstance(item, list):
+            dictionary[key] = [_validate_configuration_values(microscope, i) for i in item]
+        else:
+            if isinstance(item, float):
+                if "hfw" in key:
+                    if "max" in key or "grid" in key:
+                        continue  # skip checks on these keys
+                    _validate_horizontal_field_width(microscope=microscope, 
+                        horizontal_field_widths=[item])
+
+                if "milling_current" in key:
+                    _validate_ion_beam_currents(microscope, [item])
+
+                if "imaging_current" in key:
+                    _validate_electron_beam_currents(microscope, [item])
+
+                if "resolution" in key:
+                    _validate_scanning_resolutions(microscope, [item])
+
+                if "dwell_time" in key:
+                    _validate_dwell_time(microscope, [item])
+
+            if isinstance(item, str):
+                if "application_file" in key:
+                    _validate_application_files(microscope, [item])
+                if "weights" in key:
+                    _validate_model_weights_file(item)
+                    
+    return dictionary

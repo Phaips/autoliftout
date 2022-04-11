@@ -202,22 +202,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def pre_run_validation(self):
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
-        # TODO:
-        # validate hfw
-        # validate scanning rotation
 
-        # TODO: validate protocol settings
-        # for k, v in self.settings.items():
-        #     print("-"*20)
-        #     print(k)
-            
-        #     if isinstance(v, dict):
-        #         for k2, v2 in v.items(): 
-        #             # print(k2, v2)
-        #             if "hfw" in v2:
-        #                 print("HFW: ", k, k2, v2)
-        #             if "current" in v2:
-        #                 print("CURRENT: ", k, k2, v2)
+        # validate user configuration
+        utils.validate_settings(microscope=self.microscope, config=self.settings)
 
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
@@ -239,6 +226,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         \n - Ion Column Calibration
         \n - Crossover Calibration
         \n - Plasma Gas Valve Open
+        \n - Initial Grid and Landing Positions
         """
         msg = QMessageBox()
         msg.setWindowTitle("AutoLiftout Initialisation Confirmation")

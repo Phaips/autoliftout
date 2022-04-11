@@ -73,6 +73,11 @@ def _format_dictionary(dictionary):
     return dictionary
 
 
+def validate_settings(microscope, config):
+    from liftout import user_input
+    user_input._validate_configuration_values(microscope=microscope,dictionary=config)
+    user_input._validate_scanning_rotation(microscope=microscope)
+
 def make_logging_directory(prefix='run'):
     directory = os.path.join(os.path.dirname(liftout.__file__), "log")
     os.makedirs(directory, exist_ok=True)
