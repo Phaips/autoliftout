@@ -1001,7 +1001,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.response:
 
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
+                                           patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
 
         ##
 
@@ -1100,7 +1100,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user(image=self.image_FIB)
         if self.response:
             milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["jcut"]['jcut_milling_depth'])
+                                           patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
 
         self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1474,7 +1474,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name}: calculating needle cut-off pattern")
 
         # cut off needle tip
-        cut_off_pattern = milling.cut_off_needle(self.microscope, cut_coord=cut_coord)
+        cut_off_pattern = milling.cut_off_needle(self.microscope, self.settings, centre_x=distance_x_m, centre_y=distance_y_m)
         self.update_display(beam_type=BeamType.ION, image_type='last')
 
         self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,

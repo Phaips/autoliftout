@@ -1,19 +1,27 @@
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from matplotlib.patches import Rectangle
-from matplotlib.figure import Figure
-from autoscript_sdb_microscope_client.structures import AdornedImage
-import matplotlib.pyplot as plt
-from dataclasses import dataclass
+from enum import Enum
 import sys
-from liftout.gui.qtdesigner_files import milling
+from dataclasses import dataclass
+import logging
 
-from PyQt5 import QtWidgets
+
+import matplotlib.pyplot as plt
 import numpy as np
+from autoscript_sdb_microscope_client.structures import AdornedImage
+from liftout import fibsem, utils
+from liftout.fibsem import acquire, milling, movement
+from liftout.fibsem import utils as fibsem_utils
+from liftout.fibsem.acquire import BeamType
+from liftout.gui.qtdesigner_files import milling as milling_gui
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
-
+MICRON_TO_METRE = 1e-6
+METRE_TO_MICRON = 1e6
 
 
 @dataclass
@@ -26,19 +34,13 @@ def create_crosshair(image: np.ndarray or AdornedImage, x=None, y=None):
     if type(image) == AdornedImage:
         image = image.data
 
-    if x is None:
-        midx = int(image.shape[1] / 2)
-    else:
-        midx = x
-    if y is None:
-        midy = int(image.shape[0] / 2)
-    else:
-        midy = y
+    midx = int(image.shape[1] / 2) if x is None else x
+    midy = int(image.shape[0] / 2) if y is None else y
 
     cross_width = int(
-        0.1 / 100 * image.shape[1]
+        0.05 / 100 * image.shape[1]
     )
-    cross_length = int(10 / 100 * image.shape[1]
+    cross_length = int(5 / 100 * image.shape[1]
                        )
 
     rect_horizontal = plt.Rectangle(
@@ -58,97 +60,269 @@ def create_crosshair(image: np.ndarray or AdornedImage, x=None, y=None):
     )
 
 
-class GUIMillingWindow(milling.Ui_MainWindow, QtWidgets.QMainWindow):
-    def __init__(self):
+class MillingPattern(Enum):
+    Trench = 1
+    JCut = 2
+    Sever = 3
+    Weld = 4
+    Cut = 5
+    Sharpen = 6
+    Thin = 7
+    Polish = 8
+    Flatten = 9
+
+
+class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
+    def __init__(self, microscope, settings: dict, image_settings: dict, milling_pattern_type: MillingPattern):
         super(GUIMillingWindow, self).__init__()
         self.setupUi(self)
 
-        # select pattern
-        self.patterns = ["Pattern One", "Pattern Two", "Pattern Three", "Pattern Four"]
-        self.comboBox_select_pattern.addItems(self.patterns)
-
-        # test image
-        self.image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
+        self.settings = settings 
+        self.microscope = microscope
+        self.image_settings = image_settings
+        self.milling_settings = None
+        self.milling_pattern_type = milling_pattern_type
+        self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
         global image
+        self.image = self.adorned_image.data
         image = self.image
 
+        # pattern drawing
         self.wp = _WidgetPlot(self)
         self.label_image.setLayout(QtWidgets.QVBoxLayout())
         self.label_image.layout().addWidget(self.wp)
 
-        self.upper_rectangle = Rectangle((0, 0), 0.2, 0.2, color='yellow', fill=None, alpha=1)
-        self.lower_rectangle = Rectangle((0, 0), 0.2, 0.2, color='yellow', fill=None, alpha=1)
-        self.wp.canvas.ax11.add_patch(self.upper_rectangle)
-        self.wp.canvas.ax11.add_patch(self.lower_rectangle)
-
         self.wp.canvas.mpl_connect('button_press_event', self.on_click)
 
+        self.parameter_labels = [self.label_01, self.label_02, self.label_03,
+                                 self.label_04, self.label_05, self.label_06,
+                                 self.label_07, self.label_08, self.label_09]
 
-        # create sliders for each pattern param?
-        # width
-        # height
-        # rotation
+        self.parameter_values = [self.doubleSpinBox_01,
+                                 self.doubleSpinBox_02,
+                                 self.doubleSpinBox_03,
+                                 self.doubleSpinBox_04,
+                                 self.doubleSpinBox_05,
+                                 self.doubleSpinBox_06,
+                                 self.doubleSpinBox_07,
+                                 self.doubleSpinBox_08,
+                                 self.doubleSpinBox_09
+                                 ]
 
+        # setup ui
+        for label, spinBox in zip(self.parameter_labels, self.parameter_values):
+            label.setVisible(False)
+            spinBox.setVisible(False)
+
+        self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle"]
+        self.non_scaled_params = ["size_ratio", "rotation", "tip_angle", "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
+
+
+        # setup milling
+        milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"]) 
+        # TODO: take into account hfw, and application file better for each different pattern? need to take the img at the same hfw?
+
+        # setup
+        self.setup_milling_patterns()
         self.setup_connections()
 
+
+        # initial pattern
+        self.center_x, self.center_y = 0, 0
+        self.xclick, self.yclick = None, None
+        self.update_display()
 
     def setup_connections(self):
 
         self.pushButton_runMilling.clicked.connect(self.run_milling)
-        self.comboBox_select_pattern.currentIndexChanged.connect(self.change_pattern)
+        for param_spinBox in self.parameter_values:
+            param_spinBox.valueChanged.connect(self.update_milling_settings)
 
-        self.doubleSpinBox_height.valueChanged.connect(self.update_milling_pattern)
-        self.doubleSpinBox_width.valueChanged.connect(self.update_milling_pattern)
-        self.doubleSpinBox_rotation.valueChanged.connect(self.update_milling_pattern)
-        self.doubleSpinBox_depth.valueChanged.connect(self.update_milling_pattern)
-        self.doubleSpinBox_direction.valueChanged.connect(self.update_milling_pattern)
+    def update_milling_settings(self):
 
-    def update_milling_pattern(self):
+        for i, param_spinBox in enumerate(self.parameter_values):
 
-        idx = self.comboBox_select_pattern.currentIndex()
-        current_pattern = self.patterns[idx]
+            if param_spinBox == self.sender():
+                param = self.parameter_labels[i].text()
+                param_value = param_spinBox.value()
+                if param not in self.non_scaled_params:
+                    param_value = param_value * MICRON_TO_METRE
+                self.milling_settings[param] = param_value
 
-        print("UPDATING: ", current_pattern)
-        # TODO: get senderr?
-
-
-    def change_pattern(self):
-
-        opt = self.comboBox_select_pattern.currentIndex()
-        text = self.comboBox_select_pattern.currentText()
-        print(f"Changed to {self.patterns[opt]}")
-
-        # update pattern values in double spin box too
+                self.update_display()
 
     def run_milling(self):
 
         print("Run Milling Button Pressed")
 
         # TODO: run milling func
+        # TODO: START_HERE_
+        # TODO: test out if the milling works for each pattern..
+        print(self.milling_settings)
+        print(self.settings["imaging"])
+
+        # run_milling
+        # milling.run_milling(microscope=self.microscope, settings=self.settings)
 
     def on_click(self, event):
-        print("ON CLICK")
 
         if event.button == 1 and event.inaxes is not None:
             self.xclick = event.xdata
             self.yclick = event.ydata
-            print(self.xclick, self.yclick)
-            # self.center_x, self.center_y = fibsem.pixel_to_realspace_coordinate((self.xclick, self.yclick), self.adorned_image)
-            crosshair = create_crosshair(self.image, x=self.xclick, y=self.yclick)
-            self.wp.canvas.ax11.patches = []
-            for patch in crosshair.__dataclass_fields__:
-                self.wp.canvas.ax11.add_patch(getattr(crosshair, patch))
-                getattr(crosshair, patch).set_visible(True)
-            self.wp.canvas.draw()
+            self.center_x, self.center_y = movement.pixel_to_realspace_coordinate(
+                (self.xclick, self.yclick), self.adorned_image)
+
+            self.update_display()
+
+    def update_display(self):
+        """Update the millig window display. Redraw the crosshair, and milling patterns"""
+        crosshair = create_crosshair(self.image, x=self.xclick, y=self.yclick)
+        self.wp.canvas.ax11.patches = []
+        for patch in crosshair.__dataclass_fields__:
+            self.wp.canvas.ax11.add_patch(getattr(crosshair, patch))
+            getattr(crosshair, patch).set_visible(True)
+
+        self.draw_milling_patterns()
+
+        for rect in self.pattern_rectangles:
+            self.wp.canvas.ax11.add_patch(rect)
+        self.wp.canvas.draw()
+
+    def setup_milling_patterns(self):
+
+        if self.milling_pattern_type == MillingPattern.Trench:
+            protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
+
+            # TODO: deal with the initial trench milling somehow?
+            del protocol_stages[1]["protocol_stages"]
+            self.milling_settings = protocol_stages[1]
+
+        if self.milling_pattern_type == MillingPattern.JCut:
+            self.milling_settings = self.settings["jcut"]
+
+        if self.milling_pattern_type == MillingPattern.Sever:
+            self.milling_settings = self.settings["jcut"]
+
+        if self.milling_pattern_type == MillingPattern.Weld:
+            self.milling_settings = self.settings["weld"]
+
+        if self.milling_pattern_type == MillingPattern.Cut:
+            self.milling_settings = self.settings["cut"]
+
+        if self.milling_pattern_type == MillingPattern.Sharpen:
+            self.milling_settings = self.settings["sharpen"]
+
+        if self.milling_pattern_type == MillingPattern.Thin:
+            protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella")
+
+            del protocol_stages[0]["protocol_stages"]
+            self.milling_settings = protocol_stages[0] 
+
+        if self.milling_pattern_type == MillingPattern.Polish:
+            protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella")
+
+            del protocol_stages[2]["protocol_stages"]
+            self.milling_settings = protocol_stages[2] 
+
+        if self.milling_pattern_type == MillingPattern.Flatten:
+            self.milling_settings = self.settings["flatten_landing"]
+
+        # update ui elements
+        # TODO: add more ui elements (15+), or change how this part works to support more
+        i = 0
+        for key, value in self.milling_settings.items():
+            if key not in self.non_changeable_params:
+                if key not in self.non_scaled_params:
+                    value = float(value) * METRE_TO_MICRON
+                self.parameter_labels[i].setText(key)
+                self.parameter_values[i].setValue(value)
+                self.parameter_labels[i].setVisible(True)
+                self.parameter_values[i].setVisible(True)
+                i+=1
+            else:
+                self.parameter_labels[i].setVisible(False)
+                self.parameter_values[i].setVisible(False)
+
+    def update_milling_patterns(self):
+
+        if self.milling_pattern_type == MillingPattern.Trench:
+
+            self.patterns = milling.mill_trench_patterns(microscope=self.microscope,
+                                                         settings=self.milling_settings,
+                                                         centre_x=self.center_x, centre_y=self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.JCut:
+
+            self.patterns = milling.jcut_milling_patterns(microscope=self.microscope,
+                                                          settings=self.settings, centre_x=self.center_x, centre_y=self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.Sever:
+
+            self.patterns = milling.jcut_severing_pattern(microscope=self.microscope,
+                                                          settings=self.settings, centre_x=self.center_x, centre_y=self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.Weld:
+
+            self.patterns = milling.weld_to_landing_post(microscope=self.microscope, settings=self.settings,
+                                                         centre_x=self.center_x, centre_y=self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.Cut:
+
+            self.patterns = milling.cut_off_needle(microscope=self.microscope, settings=self.settings,
+                                                   centre_x=self.center_x, centre_y=self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.Sharpen:
+
+            cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings,
+                                                                                       x_0=self.center_x, y_0=self.center_y)
+
+            self.patterns = milling.create_sharpen_needle_patterns(
+                self.microscope, cut_coord_bottom, cut_coord_top)
+
+            # TODO: sharpen fails when change params except tip/needle angle...
+
+        if self.milling_pattern_type == MillingPattern.Thin:
+            print("THINNING") # TODO:
+            # TODO: need to handle multiple stages some how...
+            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, centre_x = self.center_x, centre_y = self.center_y)
+
+        if self.milling_pattern_type == MillingPattern.Polish:
+            print("POLISHING") # TODO:
+
+            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, centre_x = self.center_x, centre_y = self.center_y)
+            
+
+        if self.milling_pattern_type == MillingPattern.Flatten:
+            self.patterns = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings,
+                                                            centre_x=self.center_x, centre_y=self.center_y)
+        # convert patterns is list
+        if not isinstance(self.patterns, list):
+            self.patterns = [self.patterns]
+
 
     def draw_milling_patterns(self):
-        
-        lower_pattern, upper_pattern = mill_trench_patterns(self.parent().microscope, self.center_x, self.center_y, self.settings)
+
+        self.microscope.imaging.set_active_view(2)  # the ion beam view
+        self.microscope.patterning.clear_patterns()
+
+        # TODO: add label for which milling pattern it is...
+        try:
+            self.update_milling_patterns()
+        except Exception as e:
+            logging.error(f"Error during milling pattern update: {e}")
+
+        # create a rectangle for each pattern
+        self.pattern_rectangles = []
+        for pattern in self.patterns:
+            rectangle = Rectangle((0, 0), 0.2, 0.2, color='yellow', fill=None, alpha=1)
+            rectangle.set_visible(False)
+            rectangle.set_hatch('//////')
+            self.pattern_rectangles.append(rectangle)
 
         def draw_rectangle_pattern(adorned_image, rectangle, pattern):
             image_width = adorned_image.width
             image_height = adorned_image.height
-            pixel_size =  adorned_image.metadata.binary_result.pixel_size.x
+            pixel_size = adorned_image.metadata.binary_result.pixel_size.x
 
             width = pattern.width / pixel_size
             height = pattern.height / pixel_size
@@ -158,17 +332,16 @@ class GUIMillingWindow(milling.Ui_MainWindow, QtWidgets.QMainWindow):
             rectangle.set_height(height)
             rectangle.set_xy((rectangle_left, rectangle_bottom))
             rectangle.set_visible(True)
+            # TODO: support rotation for rectangles
 
         try:
-            draw_rectangle_pattern(adorned_image=self.adorned_image, rectangle=self.upper_rectangle, pattern=upper_pattern)
-            draw_rectangle_pattern(adorned_image=self.adorned_image, rectangle=self.lower_rectangle, pattern=lower_pattern)
+            for pattern, rectangle in zip(self.patterns, self.pattern_rectangles):
+
+                draw_rectangle_pattern(adorned_image=self.adorned_image,
+                                       rectangle=rectangle, pattern=pattern)
         except:
             # NOTE: these exceptions happen when the pattern is too far outside of the FOV
-            print("Pattern outside FOV") #TODO
-        self.wp.canvas.draw()
-
-
-
+            print("Pattern outside FOV")  # TODO
 
 class _WidgetPlot(QWidget):
     def __init__(self, *args, **kwargs):
@@ -236,8 +409,20 @@ class _PlotCanvas(FigureCanvasQTAgg):
 
 def main():
 
+    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
+    microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
+    image_settings = {
+            "resolution": settings["imaging"]["resolution"],
+            "dwell_time": settings["imaging"]["dwell_time"],
+            "hfw": settings["imaging"]["horizontal_field_width"],
+            "autocontrast": True,
+            "beam_type": BeamType.ION,
+            "gamma": settings["gamma"],
+            "save": False,
+            "label": "test",
+        }
     app = QtWidgets.QApplication([])
-    qt_app = GUIMillingWindow()
+    qt_app = GUIMillingWindow(microscope, settings, image_settings, MillingPattern.Polish)
     qt_app.show()
     sys.exit(app.exec_())
 

@@ -36,6 +36,7 @@ imaging:
   autocontrast: True
   max_eb_hfw: 2700.0e-6
   max_ib_hfw: 900.0e-6
+  milling_current: 0.89e-9
 gamma:
   correction: True
   min_gamma: 0.15
@@ -71,72 +72,66 @@ calibration:
   drift_correction_hfw_highres: 80e-6
   stage_height_limit: 3.7e-3 # relative coordinates
 lamella:
-  lamella_width: 12e-6 # in meters
-  lamella_height: 10e-6 # in meters
-  total_cut_height: 10e-6 # in meters
-  milling_depth: 5e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  lamella_width: 12.0e-6 # in meters
+  lamella_height: 10.0e-6 # in meters
+  milling_depth: 5.0e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 0.89e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
-  hfw: 150e-6
+  stress_relief_offset: 10.0e-6
   size_ratio: 2.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
     - milling_current: 0.89e-9
-      offset: 2e-6
-      trench_height: 2e-6
+      offset: 2.0e-6
+      trench_height: 2.0e-6
     # regular cut
     - milling_current: 0.89e-9
-      offset: 0e-6
-      trench_height: 5e-6
+      offset: 0.0e-6
+      trench_height: 5.0e-6
 machine_learning:
   weights: boost_n05_model.pt
 jcut:
-  jcut_milling_current: 0.74e-9 # in Amps
+  milling_current: 0.74e-9 # in Amps
   jcut_angle: 6  # in degrees (relative from trench)
-  jcut_length: 12e-6 # in meters
-  jcut_lamella_depth: 5e-6 # in meters
-  jcut_trench_thickness: 1e-6 # in meters
-  jcut_milling_depth: 5e-6 # in meters
+  length: 12e-6 # in meters
+  height: 5e-6 # in meters
+  trench_thickness: 1e-6 # in meters
+  milling_depth: 5e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
-  mill_lhs_jcut_pattern: true # true or false
-  mill_rhs_jcut_pattern: true # true or false
-  mill_top_jcut_pattern: true # true or false
 weld:
-  width: 3e-6
-  height: 10e-6
-  depth: 15e-9
+  width: 3.e-6
+  height: 10.e-6
+  depth: 15.e-9
   rotation: 0
 sharpen:
   height: 2.5e-6
-  width:  20e-6
-  depth: 8e-6
+  width:  20.e-6
+  depth: 8.e-6
   bias: 0.25e-6
-  hfw: 150e-6
+  hfw: 150.e-6
   tip_angle: 10
   needle_angle: 40
-  sharpen_milling_current: 6.2e-9 # in Amps
+  milling_current: 6.2e-9 # in Amps
 cut:
-  width: 8e-6
+  width: 8.e-6
   height: 0.5e-6
-  depth: 20e-6
+  depth: 20.e-6
   rotation: 0
-  hfw: 100e-6
-  gap: 2e-6
-  hgap: 4e-6
+  hfw: 100.e-6
+  gap: 2.e-6
+  hgap: 4.e-6
 flatten_landing:
-  center_x: 0
-  center_y: 0
-  width: 2e-6
-  height: 25e-6
-  depth: 10e-6
+  width: 2.e-6
+  height: 25.e-6
+  depth: 10.e-6
 thin_lamella: # Lamella parameters
   rotation_angle: 50 # deg (raw)
   tilt_angle: 0 # deg
   lamella_width:  3.5e-6 # In meters. Width of lamella.
   lamella_height: 0.45e-6 # In meters. Thickness of lamella.
-  total_cut_height: 5e-6 # In meters. Combined milling region above & below.
+  total_cut_height: 5.e-6 # In meters. Combined milling region above & below.
   milling_depth: 0.1e-6 # In meters. Default milling depth.
   milling_current: 0.89e-9 # In Amperes. Default milling current.
-  hfw: 30e-6
+  hfw: 30.e-6
   # Protocol stages are milled in the order they appear here.
   # Stages may override the default parameters above Eg: current, depth, etc.
   protocol_stages:
