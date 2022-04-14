@@ -78,12 +78,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.downscaled_image = None
 
         self.setStyleSheet("""QPushButton {
-        border: 1px solid lightgray;
+        border: 1px solid #e3e3e3;
         border-radius: 5px;
         }
         
         QLabel { 
-            border: 1px solid lightgray;
+            border: 1px solid #e3e3e3;
             border-radius: 10px
         }""")
 
@@ -1840,7 +1840,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_VALIDATE_DETECTION = False
         TEST_SAMPLE_POSITIONS = False
         TEST_SAVE_PATH = False
-        TEST_PIESCOPE = True
+        TEST_PIESCOPE = False
+        TEST_MILLING_WINDOW = True
 
         if TEST_VALIDATE_DETECTION:
 
@@ -1865,7 +1866,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_image_settings()
 
         if TEST_PIESCOPE:
-            self.select_sample_positions_piescope(initialisation=False)
+            # self.select_sample_positions_piescope(initialisation=False)
+            import piescope_gui.main
+            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
+            # self.piescope_gui_main_window.window_close.connect(lambda: self.finish_select_sample_positions_piescope())
+    
+            if self.piescope_gui_main_window:
+                # continue selecting points
+                self.piescope_gui_main_window.milling_position = None
+                self.piescope_gui_main_window.show() 
+                # TODO: refactor piescope parts to use modality rather than current implementation...
+        
+        if TEST_MILLING_WINDOW:
+            from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
+            qt_app = GUIMillingWindow(microscope=self.microscope, 
+                                        settings=self.settings, 
+                                        image_settings=self.image_settings, 
+                                        milling_pattern_type=MillingPattern.Trench, 
+                                        parent=self,)
+            qt_app.show()
+
+            print("hello world")
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
