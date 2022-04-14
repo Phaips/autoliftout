@@ -15,6 +15,7 @@ from liftout.detection import utils as detection_utils
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.gui.DraggablePatch import DraggablePatch
+from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
 from liftout.gui.qtdesigner_files import main as gui_main
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as _FigureCanvas
@@ -136,6 +137,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
+        self.milling_window = GUIMillingWindow(microscope=self.microscope, 
+                                    settings=self.settings, 
+                                    image_settings=self.image_settings, 
+                                    milling_pattern_type=MillingPattern.Trench, 
+                                    parent=self,)
+        self.milling_window.close() # TODO: get a better way of doing this hide
+
         # use high throughput
         self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
 
@@ -202,9 +210,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Run validation checks to confirm microscope state before run."""
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
-        # validate user configuration
-        utils.validate_settings(microscope=self.microscope, config=self.settings)
-
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
 
@@ -216,6 +221,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # validate beam settings and calibration
         calibration.validate_beams_calibration(microscope=self.microscope, settings=self.settings)        
+
+        # validate user configuration
+        utils.validate_settings(microscope=self.microscope, config=self.settings)
 
         # reminders
         reminder_str = """Please check that the following steps have been completed:
@@ -916,17 +924,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # MILL_TRENCHES
-        protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
-        trench_patterns = milling.mill_trench_patterns(microscope=self.microscope, settings=protocol_stages[1])  # only show final trenches...
+        self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
 
-        # TODO: support moving the trench patterns?
-        self.update_display(beam_type=BeamType.ION, image_type='last')
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                   crosshairs=False, milling_patterns=trench_patterns)
-        self.ask_user(image=self.image_FIB)
-        if self.response:
+        # protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
+        # trench_patterns = milling.mill_trench_patterns(microscope=self.microscope, settings=protocol_stages[1])  # only show final trenches...
 
-            milling.mill_lamella_trenches(microscope=self.microscope, settings=self.settings)
+        # # TODO: support moving the trench patterns?
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+        #                            crosshairs=False, milling_patterns=trench_patterns)
+        # self.ask_user(image=self.image_FIB)
+        # if self.response:
+
+        #     milling.mill_lamella_trenches(microscope=self.microscope, settings=self.settings)
 
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
@@ -948,8 +958,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"ref_trench_high_res"
         )
         acquire.take_reference_images(self.microscope, image_settings=self.image_settings)
-
-        # Mill Trenches is Finished
 
     def mill_lamella_jcut(self):
 
@@ -990,21 +998,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
+        self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
 
-        jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
+        # jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
 
-        self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
-        self.update_display(beam_type=BeamType.ION, image_type='new')
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                            crosshairs=False, milling_patterns=jcut_patterns)
-        self.ask_user(image=self.image_FIB)
-        if self.response:
+        # self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
+        # self.update_display(beam_type=BeamType.ION, image_type='new')
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+        #                     crosshairs=False, milling_patterns=jcut_patterns)
+        # self.ask_user(image=self.image_FIB)
+        # if self.response:
 
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
+        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+        #                                    patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
 
         ##
-
         # take reference images of the jcut
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_lowres"],
                                    save=True, label=f"jcut_lowres")
@@ -1092,15 +1100,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(save=True, hfw=self.settings["platinum"]["weld"]["hfw"], label=f"needle_landed_Pt_sputter")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings)
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        # jcut sever pattern
+        self.milling_window.update_milling_pattern_type(MillingPattern.Sever)
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
-                                   milling_patterns=jcut_severing_pattern)
-        self.ask_user(image=self.image_FIB)
-        if self.response:
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
+
+        # jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings)
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
+
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
+        #                            milling_patterns=jcut_severing_pattern)
+        # self.ask_user(image=self.image_FIB)
+        # if self.response:
+        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+        #                                    patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
 
         self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
@@ -1419,17 +1431,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ############################## WELD TO LANDING POST #############################################
 
-        weld_pattern = milling.weld_to_landing_post(self.microscope, self.settings)
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        self.milling_window.update_milling_pattern_type(MillingPattern.Weld)
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
-                                   filter_strength=self.filter_strength, crosshairs=False, milling_patterns=weld_pattern)
-        self.ask_user(image=self.image_FIB)
+        # weld_pattern = milling.weld_to_landing_post(self.microscope, self.settings)
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
 
-        if self.response:
-            logging.info(f"{self.current_stage.name}: welding to post started.")
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=self.settings["weld"]["depth"])
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
+        #                            filter_strength=self.filter_strength, crosshairs=False, milling_patterns=weld_pattern)
+        # self.ask_user(image=self.image_FIB)
+
+        # if self.response:
+        #     logging.info(f"{self.current_stage.name}: welding to post started.")
+        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+        #                                    patterns=self.patterns, depth=self.settings["weld"]["depth"])
 
 
         #################################################################################################
@@ -1455,36 +1469,39 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
+        
+        # cut off needle
+        self.milling_window.update_milling_pattern_type(MillingPattern.Cut, x=distance_x_m, y=distance_y_m)
 
-        height = self.settings["cut"]["height"]
-        width = self.settings["cut"]["width"]
-        depth = self.settings["cut"]["depth"]
-        rotation = self.settings["cut"]["rotation"]
-        hfw = self.settings["cut"]["hfw"]
-        vertical_gap = self.settings["cut"]["gap"]
-        horizontal_gap = self.settings["cut"]["hgap"]
+        # height = self.settings["cut"]["height"]
+        # width = self.settings["cut"]["width"]
+        # depth = self.settings["cut"]["depth"]
+        # rotation = self.settings["cut"]["rotation"]
+        # hfw = self.settings["cut"]["hfw"]
+        # vertical_gap = self.settings["cut"]["gap"]
+        # horizontal_gap = self.settings["cut"]["hgap"]
 
-        cut_coord = {"center_x": -distance_x_m - horizontal_gap,
-                     "center_y": distance_y_m - vertical_gap,
-                     "width": width,
-                     "height": height,
-                     "depth": depth,
-                     "rotation": rotation, "hfw": hfw}
+        # cut_coord = {"center_x": -distance_x_m - horizontal_gap,
+        #              "center_y": distance_y_m - vertical_gap,
+        #              "width": width,
+        #              "height": height,
+        #              "depth": depth,
+        #              "rotation": rotation, "hfw": hfw}
 
-        logging.info(f"{self.current_stage.name}: calculating needle cut-off pattern")
+        # logging.info(f"{self.current_stage.name}: calculating needle cut-off pattern")
 
-        # cut off needle tip
-        cut_off_pattern = milling.cut_off_needle(self.microscope, self.settings, centre_x=distance_x_m, centre_y=distance_y_m)
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        # # cut off needle tip
+        # cut_off_pattern = milling.cut_off_needle(self.microscope, self.settings, centre_x=distance_x_m, centre_y=distance_y_m)
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
-                                   milling_patterns=cut_off_pattern)
-        self.ask_user(image=self.image_FIB)
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
+        #                            milling_patterns=cut_off_pattern)
+        # self.ask_user(image=self.image_FIB)
 
-        if self.response:
-            logging.info(f"{self.current_stage.name}: needle cut-off started")
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=cut_coord["depth"])
+        # if self.response:
+        #     logging.info(f"{self.current_stage.name}: needle cut-off started")
+        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+        #                                    patterns=self.patterns, depth=cut_coord["depth"])
 
         #################################################################################################
 
@@ -1585,24 +1602,26 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
 
         # create sharpening patterns
-        cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings,
-                                                                                   x_0=distance_x_m, y_0=distance_y_m)
-        logging.info(f"{self.current_stage.name}: calculate needle sharpen pattern")
+        self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen, x=distance_x_m, y=distance_y_m)
 
-        sharpen_patterns = milling.create_sharpen_needle_patterns(
-            self.microscope, cut_coord_bottom, cut_coord_top
-        )
+        # cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings,
+        #                                                                            x_0=distance_x_m, y_0=distance_y_m)
+        # logging.info(f"{self.current_stage.name}: calculate needle sharpen pattern")
 
-        # confirm and run milling
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        # sharpen_patterns = milling.create_sharpen_needle_patterns(
+        #     self.microscope, cut_coord_bottom, cut_coord_top
+        # )
 
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                   crosshairs=False, milling_patterns=sharpen_patterns)
-        self.ask_user(image=self.image_FIB)
-        if self.response:
-            logging.info(f"{self.current_stage.name}: needle sharpening milling started")
-            milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-                                           patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
+        # # confirm and run milling
+        # self.update_display(beam_type=BeamType.ION, image_type='last')
+
+        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
+        #                            crosshairs=False, milling_patterns=sharpen_patterns)
+        # self.ask_user(image=self.image_FIB)
+        # if self.response:
+        #     logging.info(f"{self.current_stage.name}: needle sharpening milling started")
+        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
+        #                                    patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
 
         #################################################################################################
 
@@ -1866,27 +1885,31 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_image_settings()
 
         if TEST_PIESCOPE:
-            # self.select_sample_positions_piescope(initialisation=False)
-            import piescope_gui.main
-            self.piescope_gui_main_window = piescope_gui.main.GUIMainWindow(parent_gui=self)
-            # self.piescope_gui_main_window.window_close.connect(lambda: self.finish_select_sample_positions_piescope())
-    
-            if self.piescope_gui_main_window:
-                # continue selecting points
-                self.piescope_gui_main_window.milling_position = None
-                self.piescope_gui_main_window.show() 
-                # TODO: refactor piescope parts to use modality rather than current implementation...
+            self.select_sample_positions_piescope(initialisation=False)
+
         
         if TEST_MILLING_WINDOW:
-            from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
-            qt_app = GUIMillingWindow(microscope=self.microscope, 
-                                        settings=self.settings, 
-                                        image_settings=self.image_settings, 
-                                        milling_pattern_type=MillingPattern.Trench, 
-                                        parent=self,)
-            qt_app.show()
 
-            print("hello world")
+            self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
+        
+            print("hello jcut")
+            
+            self.milling_window.update_milling_pattern_type(MillingPattern.Weld)
+            
+            print("hello weld")
+            
+            self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen)
+            
+            print("hello sharpen")
+
+            self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
+                
+            print("hello trench")
+
+            self.milling_window.update_milling_pattern_type(MillingPattern.Thin)
+                
+            print("hello thin")
+
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
