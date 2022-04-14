@@ -19,43 +19,11 @@ from matplotlib.patches import Rectangle
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
+from liftout.gui.utils import _PlotCanvas, _WidgetPlot, create_crosshair
+
 MICRON_TO_METRE = 1e-6
 METRE_TO_MICRON = 1e6
 
-@dataclass
-class Crosshair:
-    rectangle_horizontal: plt.Rectangle
-    rectangle_vertical: plt.Rectangle
-
-
-def create_crosshair(image: np.ndarray or AdornedImage, x=None, y=None):
-    if type(image) == AdornedImage:
-        image = image.data
-
-    midx = int(image.shape[1] / 2) if x is None else x
-    midy = int(image.shape[0] / 2) if y is None else y
-
-    cross_width = int(
-        0.05 / 100 * image.shape[1]
-    )
-    cross_length = int(5 / 100 * image.shape[1]
-                       )
-
-    rect_horizontal = plt.Rectangle(
-        (midx - cross_length / 2, midy - cross_width / 2), cross_length, cross_width
-    )
-    rect_vertical = plt.Rectangle(
-        (midx - cross_width, midy - cross_length / 2), cross_width * 2, cross_length
-    )
-
-    # set colours
-    colour = "xkcd:yellow"
-    rect_horizontal.set_color(colour)
-    rect_vertical.set_color(colour)
-
-    return Crosshair(
-        rectangle_horizontal=rect_horizontal, rectangle_vertical=rect_vertical
-    )
 
 
 class MillingPattern(Enum):
@@ -87,15 +55,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.milling_pattern_type = milling_pattern_type
         
         self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION)
-        global image
+        # global image
         self.image = self.adorned_image.data
         image = self.image
-
 
         self.USER_UPDATE = True
 
         # pattern drawing
-        self.wp = _WidgetPlot(self)
+        self.wp = _WidgetPlot(self, display_image=image)
         self.label_image.setLayout(QtWidgets.QVBoxLayout())
         self.label_image.layout().addWidget(self.wp)
 
@@ -420,69 +387,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def closeEvent(self, event):
         logging.info("Closing Milling Window")
         event.accept()
-        
-class _WidgetPlot(QWidget):
-    def __init__(self, *args, **kwargs):
-        QWidget.__init__(self, *args, **kwargs)
-        self.setLayout(QVBoxLayout())
-        self.canvas = _PlotCanvas(self)
-        self.layout().addWidget(self.canvas)
-
-
-class _PlotCanvas(FigureCanvasQTAgg):
-    def __init__(self, parent=None):
-        self.fig = Figure()
-        FigureCanvasQTAgg.__init__(self, self.fig)
-
-        self.setParent(parent)
-        FigureCanvasQTAgg.setSizePolicy(
-            self, QSizePolicy.Expanding, QSizePolicy.Expanding)
-        FigureCanvasQTAgg.updateGeometry(self)
-        self.plot()
-        self.createConn()
-
-        self.figureActive = False
-        self.axesActive = None
-        self.cursorGUI = "arrow"
-        self.cursorChanged = False
-
-    def plot(self):
-        gs0 = self.fig.add_gridspec(1, 1)
-
-        self.ax11 = self.fig.add_subplot(
-            gs0[0], xticks=[], yticks=[], title="")
-        self.ax11.imshow(image, cmap="gray")
-
-    def updateCanvas(self, event=None):
-        ax11_xlim = self.ax11.get_xlim()
-        ax11_xvis = ax11_xlim[1] - ax11_xlim[0]
-
-        while len(self.ax11.patches) > 0:
-            [p.remove() for p in self.ax11.patches]
-        while len(self.ax11.texts) > 0:
-            [t.remove() for t in self.ax11.texts]
-
-        ax11_units = ax11_xvis * 0.003
-        self.fig.canvas.draw()
-
-    def createConn(self):
-        self.fig.canvas.mpl_connect("figure_enter_event", self.activeFigure)
-        self.fig.canvas.mpl_connect("figure_leave_event", self.leftFigure)
-        self.fig.canvas.mpl_connect("button_press_event", self.mouseClicked)
-        self.ax11.callbacks.connect("xlim_changed", self.updateCanvas)
-
-    def activeFigure(self, event):
-        self.figureActive = True
-
-    def leftFigure(self, event):
-        self.figureActive = False
-        if self.cursorGUI != "arrow":
-            self.cursorGUI = "arrow"
-            self.cursorChanged = True
-
-    def mouseClicked(self, event):
-        x = event.xdata
-        y = event.ydata
 
 
 def main():
