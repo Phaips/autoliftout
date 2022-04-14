@@ -132,9 +132,10 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         x2, y2, = self.detection_data[self.det_types[1]]["image_coordinate"]
 
         import matplotlib.pyplot as plt
-        # line =   plt.Rectangle(        (midx - cross_width, midy - cross_length / 2), cross_width * 2, cross_length
-    # ) # TODO: START_HERE
+        import matplotlib.patches as mpatches
+        line =  mpatches.Arrow(x1, y1, x2-x1, y2-y1, color="white")
 
+        self.wp.canvas.ax11.add_patch(line)
         print(x1, y1)
         print(x2, y2)
     
