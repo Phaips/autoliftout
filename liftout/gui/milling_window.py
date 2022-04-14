@@ -1,9 +1,8 @@
 
-from enum import Enum
+import logging
 import sys
 from dataclasses import dataclass
-import logging
-
+from enum import Enum
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,12 +16,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 MICRON_TO_METRE = 1e-6
 METRE_TO_MICRON = 1e6
-
 
 @dataclass
 class Crosshair:
@@ -72,12 +69,24 @@ class MillingPattern(Enum):
     Flatten = 9
 
 
+# TODO:
+# need to handle multiple stages some how...
+# add stages to drop down, so that milling with multiple stages can be changed independently.
+# then when run_milling, it just loops through the stages, and runs milling, without having to switch current etc.
+# only req for: trench, thin
+
+# TODO:
+# - test whether we can open this window from main window without issue?
+# - might need to conver to widget, and then embed in main window instead, otherwise it will be very annoying to recode.
+# https://stackoverflow.com/questions/49585205/how-to-embed-a-window-in-a-main-window-in-pyqt5
+
+
 class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, microscope, settings: dict, image_settings: dict, milling_pattern_type: MillingPattern):
         super(GUIMillingWindow, self).__init__()
         self.setupUi(self)
 
-        self.settings = settings 
+        self.settings = settings
         self.microscope = microscope
         self.image_settings = image_settings
         self.milling_settings = None
@@ -96,7 +105,8 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.parameter_labels = [self.label_01, self.label_02, self.label_03,
                                  self.label_04, self.label_05, self.label_06,
-                                 self.label_07, self.label_08, self.label_09]
+                                 self.label_07, self.label_08, self.label_09,
+                                 self.label_10, self.label_11, self.label_12]
 
         self.parameter_values = [self.doubleSpinBox_01,
                                  self.doubleSpinBox_02,
@@ -106,8 +116,13 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
                                  self.doubleSpinBox_06,
                                  self.doubleSpinBox_07,
                                  self.doubleSpinBox_08,
-                                 self.doubleSpinBox_09
+                                 self.doubleSpinBox_09,
+                                 self.doubleSpinBox_10,
+                                 self.doubleSpinBox_11,
+                                 self.doubleSpinBox_12
                                  ]
+
+
 
         # setup ui
         for label, spinBox in zip(self.parameter_labels, self.parameter_values):
@@ -115,17 +130,20 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
             spinBox.setVisible(False)
 
         self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle"]
-        self.non_scaled_params = ["size_ratio", "rotation", "tip_angle", "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
-
+        self.non_scaled_params = ["size_ratio", "rotation", "tip_angle",
+                                  "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
         # setup milling
-        milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"]) 
+        milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"])
         # TODO: take into account hfw, and application file better for each different pattern? need to take the img at the same hfw?
+
+
+        self.milling_stages = {}
+        print(f"Milling Pattern Stage: {self.milling_pattern_type.name}_1") # TODO: add name for each stage...
 
         # setup
         self.setup_milling_patterns()
         self.setup_connections()
-
 
         # initial pattern
         self.center_x, self.center_y = 0, 0
@@ -137,6 +155,26 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_runMilling.clicked.connect(self.run_milling)
         for param_spinBox in self.parameter_values:
             param_spinBox.valueChanged.connect(self.update_milling_settings)
+
+        
+        self.comboBox_pattern_stage.addItems(self.milling_stages.keys())
+        self.comboBox_pattern_stage.currentTextChanged.connect(self.update_stage_settings)
+
+    def update_stage_settings(self):
+
+        key = self.comboBox_pattern_stage.currentText()
+        print("Stage: ", key)
+        print("Milling Settings: ", self.milling_stages[key])
+
+        # TODO: need to keep track of changes when changing stages...
+        self.milling_settings = self.milling_stages[key]
+
+
+        self.update_parameter_elements()
+        self.update_display()
+
+
+
 
     def update_milling_settings(self):
 
@@ -150,19 +188,6 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.milling_settings[param] = param_value
 
                 self.update_display()
-
-    def run_milling(self):
-
-        print("Run Milling Button Pressed")
-
-        # TODO: run milling func
-        # TODO: START_HERE_
-        # TODO: test out if the milling works for each pattern..
-        print(self.milling_settings)
-        print(self.settings["imaging"])
-
-        # run_milling
-        # milling.run_milling(microscope=self.microscope, settings=self.settings)
 
     def on_click(self, event):
 
@@ -192,10 +217,11 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.milling_pattern_type == MillingPattern.Trench:
             protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
-
-            # TODO: deal with the initial trench milling somehow?
-            del protocol_stages[1]["protocol_stages"]
-            self.milling_settings = protocol_stages[1]
+            
+            # generic
+            for i, stage_settings in enumerate(protocol_stages, 1):
+                del stage_settings["protocol_stages"]
+                self.milling_stages[f"{self.milling_pattern_type.name}_{i}"] = stage_settings
 
         if self.milling_pattern_type == MillingPattern.JCut:
             self.milling_settings = self.settings["jcut"]
@@ -213,22 +239,31 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
             self.milling_settings = self.settings["sharpen"]
 
         if self.milling_pattern_type == MillingPattern.Thin:
-            protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella")
+            protocol_stages = milling.get_milling_protocol_stages(
+                settings=self.settings, stage_name="thin_lamella")
 
             del protocol_stages[0]["protocol_stages"]
-            self.milling_settings = protocol_stages[0] 
+            self.milling_settings = protocol_stages[0]
 
         if self.milling_pattern_type == MillingPattern.Polish:
-            protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella")
+            protocol_stages = milling.get_milling_protocol_stages(
+                settings=self.settings, stage_name="thin_lamella")
 
             del protocol_stages[2]["protocol_stages"]
-            self.milling_settings = protocol_stages[2] 
+            self.milling_settings = protocol_stages[2]
 
         if self.milling_pattern_type == MillingPattern.Flatten:
             self.milling_settings = self.settings["flatten_landing"]
 
+
+        # current_stage = self.comboBox_pattern_stage.currentText()
+        first_stage = list(self.milling_stages.keys())[0]
+        self.milling_settings = self.milling_stages[first_stage]
+
+        self.update_parameter_elements()
+
+    def update_parameter_elements(self):
         # update ui elements
-        # TODO: add more ui elements (15+), or change how this part works to support more
         i = 0
         for key, value in self.milling_settings.items():
             if key not in self.non_changeable_params:
@@ -238,7 +273,7 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.parameter_values[i].setValue(value)
                 self.parameter_labels[i].setVisible(True)
                 self.parameter_values[i].setVisible(True)
-                i+=1
+                i += 1
             else:
                 self.parameter_labels[i].setVisible(False)
                 self.parameter_values[i].setVisible(False)
@@ -279,18 +314,13 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
             self.patterns = milling.create_sharpen_needle_patterns(
                 self.microscope, cut_coord_bottom, cut_coord_top)
 
-            # TODO: sharpen fails when change params except tip/needle angle...
-
         if self.milling_pattern_type == MillingPattern.Thin:
-            print("THINNING") # TODO:
-            # TODO: need to handle multiple stages some how...
-            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, centre_x = self.center_x, centre_y = self.center_y)
+            self.patterns = milling.mill_thin_patterns(
+                self.microscope, self.milling_settings, centre_x=self.center_x, centre_y=self.center_y)
 
         if self.milling_pattern_type == MillingPattern.Polish:
-            print("POLISHING") # TODO:
-
-            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, centre_x = self.center_x, centre_y = self.center_y)
-            
+            self.patterns = milling.mill_thin_patterns(
+                self.microscope, self.milling_settings, centre_x=self.center_x, centre_y=self.center_y)
 
         if self.milling_pattern_type == MillingPattern.Flatten:
             self.patterns = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings,
@@ -298,7 +328,6 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
         # convert patterns is list
         if not isinstance(self.patterns, list):
             self.patterns = [self.patterns]
-
 
     def draw_milling_patterns(self):
 
@@ -342,6 +371,32 @@ class GUIMillingWindow(milling_gui.Ui_MainWindow, QtWidgets.QMainWindow):
         except:
             # NOTE: these exceptions happen when the pattern is too far outside of the FOV
             print("Pattern outside FOV")  # TODO
+
+    def run_milling(self):
+
+        print("Run Milling Button Pressed")
+
+        # START_HERE_
+        # TODO: test out if the milling works for each pattern..
+
+        # TODO: make sure this doesnt change current multiple times, etc
+        print(f"Running milling for {len(self.milling_stages)} Stages")
+
+        for stage_name, milling_settings in self.milling_stages.items():
+            
+            print(f"Stage {stage_name}: {milling_settings}")
+
+            self.milling_settings = milling_settings 
+            self.update_milling_patterns()
+            self.update_display()
+
+            print("-"*50)
+            # run_milling
+            milling.run_milling(microscope=self.microscope, settings=self.settings)
+
+        milling.finish_milling(microscope=self.microscope, settings=self.settings)
+
+        # TODO: finish? close window and return?
 
 class _WidgetPlot(QWidget):
     def __init__(self, *args, **kwargs):
@@ -412,17 +467,17 @@ def main():
     settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
     image_settings = {
-            "resolution": settings["imaging"]["resolution"],
-            "dwell_time": settings["imaging"]["dwell_time"],
-            "hfw": settings["imaging"]["horizontal_field_width"],
-            "autocontrast": True,
-            "beam_type": BeamType.ION,
-            "gamma": settings["gamma"],
-            "save": False,
-            "label": "test",
-        }
+        "resolution": settings["imaging"]["resolution"],
+        "dwell_time": settings["imaging"]["dwell_time"],
+        "hfw": settings["imaging"]["horizontal_field_width"],
+        "autocontrast": True,
+        "beam_type": BeamType.ION,
+        "gamma": settings["gamma"],
+        "save": False,
+        "label": "test",
+    }
     app = QtWidgets.QApplication([])
-    qt_app = GUIMillingWindow(microscope, settings, image_settings, MillingPattern.Polish)
+    qt_app = GUIMillingWindow(microscope, settings, image_settings, MillingPattern.Trench)
     qt_app.show()
     sys.exit(app.exec_())
 

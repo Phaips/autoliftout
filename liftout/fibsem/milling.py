@@ -65,17 +65,19 @@ def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current
     """Run ion beam milling at specified current, and then restore imaging current"""
     logging.info("milling: running ion beam milling now...")
 
-
     # change to milling current
     microscope.imaging.set_active_view(2)  # the ion beam view
     if milling_current is None:
         milling_current = settings["imaging"]["milling_current"]
-    microscope.beams.ion_beam.beam_current.value = milling_current
+    if microscope.beams.ion_beam.beam_current.value != milling_current:     
+        microscope.beams.ion_beam.beam_current.value = milling_current
     
     # run milling (synchronously)
     microscope.patterning.run()
     microscope.patterning.clear_patterns()
 
+
+def finish_milling(microscope, settings):
     # restore imaging current
     logging.info("returning to the ion beam imaging current now.")
     if settings["imaging"]["imaging_current"]:
