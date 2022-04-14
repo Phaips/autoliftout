@@ -86,7 +86,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.image_settings = image_settings
         self.milling_pattern_type = milling_pattern_type
         
-        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION) # TODO: maybe just use last?
+        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         global image
         self.image = self.adorned_image.data
         image = self.image
@@ -138,13 +138,12 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.milling_settings = None
         self.milling_stages = {}
-        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION) # TODO: maybe just use last?
+        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION)
         global image
         self.image = self.adorned_image.data
         image = self.image
 
         # setup
-        # TODO: take into account hfw, and application file better for each different pattern? need to take the img at the same hfw?
         milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"])
         self.setup_milling_patterns()
         self.setup_connections()
@@ -172,8 +171,12 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             milling_pattern (MillingPattern): desired milling pattern
         """
 
-        # TODO: might want to update image_settings too?
+        # update milling pattern
         self.milling_pattern_type = milling_pattern
+
+        # update to latest imaging settings
+        if self.parent():
+            self.image_settings = self.parent().image_settings
         
         self.setup_milling_window(x, y)
         self.show()
@@ -382,16 +385,15 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             rectangle.set_height(height)
             rectangle.set_xy((rectangle_left, rectangle_bottom))
             rectangle.set_visible(True)
-            # TODO: support rotation for rectangles
 
         try:
             for pattern, rectangle in zip(self.patterns, self.pattern_rectangles):
 
                 draw_rectangle_pattern(adorned_image=self.adorned_image,
                                        rectangle=rectangle, pattern=pattern)
-        except:
+        except Exception as e:
             # NOTE: these exceptions happen when the pattern is too far outside of the FOV
-            logging.error("Pattern outside FOV")  # TODO
+            logging.error(f"Pattern outside FOV: {e}") 
 
     def run_milling(self):
         """Run ion beam milling for the selected milling pattern"""
@@ -416,7 +418,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.close() 
 
     def closeEvent(self, event):
-        logging.info("Closing Milling Window") # TODO: determine the response for liftout
+        logging.info("Closing Milling Window")
         event.accept()
         
 class _WidgetPlot(QWidget):
@@ -503,6 +505,7 @@ def main():
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.JCut)
     qt_app.show()
+    qt_app.update_milling_pattern_type(MillingPattern.Trench)
     sys.exit(app.exec_())
 
 

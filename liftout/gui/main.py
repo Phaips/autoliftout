@@ -1889,26 +1889,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         
         if TEST_MILLING_WINDOW:
-
-            self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
-        
+            self.milling_window.update_milling_pattern_type(MillingPattern.JCut)        
             print("hello jcut")
-            
-            self.milling_window.update_milling_pattern_type(MillingPattern.Weld)
-            
-            print("hello weld")
-            
-            self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen)
-            
-            print("hello sharpen")
 
-            self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
-                
-            print("hello trench")
-
-            self.milling_window.update_milling_pattern_type(MillingPattern.Thin)
-                
-            print("hello thin")
 
 
     def ask_user(self, image=None, second_image=None):
