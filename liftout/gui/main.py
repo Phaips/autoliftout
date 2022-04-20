@@ -990,19 +990,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # now we are at the angle for jcut, perform jcut
         self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
 
-        # jcut_patterns = milling.mill_jcut(self.microscope, self.settings)
-
-        # self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
-        # self.update_display(beam_type=BeamType.ION, image_type='new')
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-        #                     crosshairs=False, milling_patterns=jcut_patterns)
-        # self.ask_user(image=self.image_FIB)
-        # if self.response:
-
-        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-        #                                    patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
-
-        ##
         # take reference images of the jcut
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_lowres"],
                                    save=True, label=f"jcut_lowres")
@@ -1096,16 +1083,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # jcut sever pattern
         self.milling_window.update_milling_pattern_type(MillingPattern.Sever)
 
-
-        # jcut_severing_pattern = milling.jcut_severing_pattern(self.microscope, self.settings)
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
-
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
-        #                            milling_patterns=jcut_severing_pattern)
-        # self.ask_user(image=self.image_FIB)
-        # if self.response:
-        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-        #                                    patterns=self.patterns, depth=self.settings["jcut"]['milling_depth'])
 
         self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
