@@ -52,29 +52,29 @@ class Detector:
 
         # detect feature shift
         if shift_type == "needle_tip_to_lamella_centre":
-            feature_1_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
-            feature_2_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
+            feature_2_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+            feature_1_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
 
-            feature_1_type = "lamella_centre"
-            feature_2_type = "needle_tip"
+            feature_2_type = "lamella_centre"
+            feature_1_type = "needle_tip"
 
-            feature_1_color = "red"
-            feature_2_color = "green"
+            feature_2_color = "red"
+            feature_1_color = "green"
 
         if shift_type == "lamella_centre_to_image_centre":
-            feature_1_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
+            feature_2_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+            feature_1_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
 
-            feature_1_type = "lamella_centre"
-            feature_2_type = "image_centre"
+            feature_2_type = "lamella_centre"
+            feature_1_type = "image_centre"
 
-            feature_1_color = "red"
-            feature_2_color = "white"
+            feature_2_color = "red"
+            feature_1_color = "white"
 
         if shift_type == "lamella_edge_to_landing_post":
             # need to resize image
             img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
-            landing_px = (img_landing.size[1] // 2, img_landing.size[0] // 2)
+            landing_px = (img_landing.size[0] // 2, img_landing.size[1] // 2)
 
             feature_1_px, lamella_mask = detect_lamella_edge(img, mask)  # lamella_centre
             feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post # TODO: initial landing point?
@@ -87,7 +87,7 @@ class Detector:
 
         if shift_type == "needle_tip_to_image_centre":
             feature_1_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
+            feature_2_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
 
             feature_1_type = "needle_tip"
             feature_2_type = "image_centre"
@@ -95,29 +95,6 @@ class Detector:
             feature_1_color = "green"
             feature_2_color = "white"
 
-        if shift_type == "thin_lamella_top_to_centre":
-            # top_thin_px
-            feature_1_px, left_mask = detect_thin_region(img, mask, top=True)
-            # img centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
-
-            feature_1_type = "top_thin"
-            feature_2_type = "image_centre"
-
-            feature_1_color = "blue"
-            feature_2_color = "white"
-
-        if shift_type == "thin_lamella_bottom_to_centre":
-            # bottom_thin_px
-            feature_1_px, left_mask = detect_thin_region(img, mask, top=False)
-            # img centre
-            feature_2_px = (mask.shape[0] // 2, mask.shape[1] // 2)  # midpoint
-
-            feature_1_type = "bottom_thin"
-            feature_2_type = "image_centre"
-
-            feature_1_color = "blue"
-            feature_2_color = "white"
 
         return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
 
@@ -412,6 +389,7 @@ def detect_closest_edge(img, landing_px):
     # TODO: vectorise this like
     # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
 
+    landing_edge_px = (0, 0)
     for px in edge_px:
 
         # distance between edges and landing point

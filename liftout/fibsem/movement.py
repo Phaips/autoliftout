@@ -445,7 +445,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
 
 
-def x_corrected_stage_movement(expected_x, stage_tilt=None, beam_type=None):
+def x_corrected_stage_movement(expected_x, settings:dict = None, stage_tilt=None, beam_type=None):
     """Stage movement in X.
     ----------
     expected_x : in meters

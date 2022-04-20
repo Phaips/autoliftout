@@ -53,21 +53,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.settings = settings
         self.image_settings = image_settings
         self.milling_pattern_type = milling_pattern_type
-        
-        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION)
-        # global image
-        self.image = self.adorned_image.data
-        image = self.image
 
+        self.wp = None # plotting widget
         self.USER_UPDATE = True
-
-        # pattern drawing
-        self.wp = _WidgetPlot(self, display_image=image)
-        self.label_image.setLayout(QtWidgets.QVBoxLayout())
-        self.label_image.layout().addWidget(self.wp)
-
-        self.wp.canvas.mpl_connect('button_press_event', self.on_click)
-
+                
         # milling parameters
         self.parameter_labels = [self.label_01, self.label_02, self.label_03,
                                  self.label_04, self.label_05, self.label_06,
@@ -97,7 +86,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.non_scaled_params = ["size_ratio", "rotation", "tip_angle",
                                   "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
-        # self.setup_milling_window()
+
+        self.INITIALISED = False
 
 
     def setup_milling_window(self, x=0.0, y=0.0):
@@ -105,10 +95,20 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.milling_settings = None
         self.milling_stages = {}
-        self.adorned_image = acquire.last_image(self.microscope, beam_type=BeamType.ION)
-        global image
+        self.image_settings["beam_type"] = BeamType.ION
+        self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
         self.image = self.adorned_image.data
-        image = self.image
+
+        # pattern drawing
+        if self.wp is not None:
+            self.label_image.layout().removeWidget(self.wp)
+            self.wp.deleteLater()
+
+        # pattern drawing
+        self.wp = _WidgetPlot(self, display_image=self.image)
+        self.label_image.setLayout(QtWidgets.QVBoxLayout())
+        self.label_image.layout().addWidget(self.wp)
+        self.wp.canvas.mpl_connect('button_press_event', self.on_click)
 
         # setup
         milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"])
@@ -119,12 +119,25 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.center_x, self.center_y = x, y
         self.xclick, self.yclick = None, None
         self.update_display()
+        self.INITIALISED = True
 
     def setup_connections(self):
         """Setup connections for milling window"""
-        self.pushButton_runMilling.clicked.connect(self.run_milling)
+        
+        if self.INITIALISED:
+            # disconnect buttons if initialised
+            self.pushButton_runMilling.clicked.disconnect()
+            for param_spinBox in self.parameter_values:
+                param_spinBox.valueChanged.disconnect()
+            self.comboBox_pattern_stage.currentTextChanged.disconnect()
+
+
+        # reconnect buttons
+        self.pushButton_runMilling.clicked.connect(self.run_milling_button_pressed)
+
         for param_spinBox in self.parameter_values:
             param_spinBox.valueChanged.connect(self.update_milling_settings)
+
 
         self.comboBox_pattern_stage.clear()
         milling_keys_list = list(self.milling_stages.keys())
@@ -362,7 +375,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             # NOTE: these exceptions happen when the pattern is too far outside of the FOV
             logging.error(f"Pattern outside FOV: {e}") 
 
-    def run_milling(self):
+    def run_milling_button_pressed(self):
         """Run ion beam milling for the selected milling pattern"""
 
         logging.info("Run Milling Button Pressed")
@@ -386,6 +399,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
     def closeEvent(self, event):
         logging.info("Closing Milling Window")
+        self.microscope.patterning.clear_patterns()
         event.accept()
 
 
@@ -407,9 +421,9 @@ def main():
     qt_app = GUIMillingWindow(microscope=microscope, 
                                 settings=settings, 
                                 image_settings=image_settings, 
-                                milling_pattern_type=MillingPattern.JCut)
+                                milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.Trench)
+    qt_app.update_milling_pattern_type(MillingPattern.Flatten)
     sys.exit(app.exec_())
 
 

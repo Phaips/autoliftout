@@ -40,7 +40,11 @@ class _PlotCanvas(FigureCanvasQTAgg):
 
         self.ax11 = self.fig.add_subplot(
             gs0[0], xticks=[], yticks=[], title="")
-        self.ax11.imshow(self.image, cmap="gray") # TODO: un-global this
+
+        if self.image.ndim == 3:
+            self.ax11.imshow(self.image,) 
+        else:
+            self.ax11.imshow(self.image, cmap="gray")
 
     def updateCanvas(self, event=None):
         ax11_xlim = self.ax11.get_xlim()

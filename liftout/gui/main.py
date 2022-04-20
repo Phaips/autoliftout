@@ -634,7 +634,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         current_sample_position.landing_coordinates = self.user_select_feature(feature_type="landing")
 
         # mill the landing edge flat
-        self.mill_flat_landing_edge()
+        self.update_image_settings(hfw=100e-6, beam_type=BeamType.ION, save=False)
+        self.milling_window.update_milling_pattern_type(MillingPattern.Flatten)
+
 
         current_sample_position.landing_selected = True
 
@@ -926,18 +928,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # MILL_TRENCHES
         self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
 
-        # protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="lamella")
-        # trench_patterns = milling.mill_trench_patterns(microscope=self.microscope, settings=protocol_stages[1])  # only show final trenches...
-
-        # # TODO: support moving the trench patterns?
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-        #                            crosshairs=False, milling_patterns=trench_patterns)
-        # self.ask_user(image=self.image_FIB)
-        # if self.response:
-
-        #     milling.mill_lamella_trenches(microscope=self.microscope, settings=self.settings)
-
         if self.ADDITIONAL_CONFIRMATION:
             self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
             self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
@@ -1029,16 +1019,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
             self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
-            distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_centre_to_image_centre', beamType=beamType)
+            det = self.validate_detection(self.microscope, 
+                                            self.settings, 
+                                            self.image_settings, 
+                                            shift_type="lamella_centre_to_image_centre", 
+                                            beam_type=beamType)
 
-            # TODO: make moves consistent from moving to stationary
             # yz-correction
-            x_move = movement.x_corrected_stage_movement(-distance_x_m, stage_tilt=self.stage.current_position.t, settings=self.settings)
-            yz_move = movement.y_corrected_stage_movement(distance_y_m, stage_tilt=self.stage.current_position.t, settings=self.settings, beam_type=beamType)
+            x_move = movement.x_corrected_stage_movement(det.distance_metres.x, settings=self.settings, stage_tilt=self.stage.current_position.t)
+            yz_move = movement.y_corrected_stage_movement(det.distance_metres.y, stage_tilt=self.stage.current_position.t, 
+                                                        settings=self.settings, beam_type=beamType)
             self.stage.relative_move(x_move)
             self.stage.relative_move(yz_move)
-            self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-            self.update_display(beam_type=BeamType.ION, image_type="new")
+            acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.update_image_settings(
             save=True,
@@ -1139,8 +1132,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move needle to park position
         movement.retract_needle(self.microscope, park_position)
 
-
-
     def land_needle_on_milled_lamella(self):
 
 
@@ -1169,47 +1160,57 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ### XY-MOVE (ELECTRON)
         self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
         self.image_settings["label"] = f"needle_liftout_pre_movement_lowres"
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ELECTRON)
+        det = self.validate_detection(self.microscope, 
+                        self.settings, 
+                        self.image_settings, 
+                        shift_type="needle_tip_to_lamella_centre", 
+                        beam_type=BeamType.ELECTRON)
 
-        x_move = movement.x_corrected_needle_movement(-distance_x_m, stage_tilt=self.stage.current_position.t)
-        yz_move = movement.y_corrected_needle_movement(distance_y_m, stage_tilt=self.stage.current_position.t)
+        x_move = movement.x_corrected_needle_movement(det.distance_metres.x, stage_tilt=self.stage.current_position.t)
+        yz_move = movement.y_corrected_needle_movement(det.distance_metres.y, stage_tilt=self.stage.current_position.t)
         needle.relative_move(x_move)
         needle.relative_move(yz_move)
         logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
         logging.info(f"{self.current_stage.name}: needle yz-move: {yz_move}")
 
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new")
+        acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
         self.image_settings["label"] = f"needle_liftout_post_xy_movement_lowres"
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="needle_tip_to_lamella_centre", 
+                                beam_type=BeamType.ION)
 
         # calculate shift in xyz coordinates
-        z_distance = distance_y_m / np.cos(self.stage.current_position.t)
+        z_distance = det.distance_metres.y / np.cos(self.stage.current_position.t)
 
         # Calculate movement
         zy_move_half = movement.z_corrected_needle_movement(-z_distance / 2, self.stage.current_position.t)
         needle.relative_move(zy_move_half)
         logging.info(f"{self.current_stage.name}: needle z-half-move: {zy_move_half}")
 
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.update_display(beam_type=BeamType.ION, image_type='new')
+        acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
 
         ### Z-MOVE FINAL (ION)
         self.image_settings['hfw'] = self.settings['reference_images']['needle_ref_img_hfw_lowres']
         self.image_settings["label"] = f"needle_liftout_post_z_half_movement_highres"
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='needle_tip_to_lamella_centre', beamType=BeamType.ION)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="needle_tip_to_lamella_centre", 
+                                beam_type=BeamType.ION)
 
         # calculate shift in xyz coordinates
-        z_distance = distance_y_m / np.cos(self.stage.current_position.t)
+        z_distance = det.distance_metres.y / np.cos(self.stage.current_position.t)
 
         # move in x
-        x_move = movement.x_corrected_needle_movement(-distance_x_m)
+        x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
         self.needle.relative_move(x_move)
 
         # move in z
@@ -1236,87 +1237,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"needle_liftout_landed_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
-        ###
-
-    def calculate_shift_distance_metres(self, shift_type, beamType=BeamType.ELECTRON):
-        self.image_settings['beam_type'] = beamType
-        self.raw_image, self.overlay_image, self.downscaled_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = \
-            calibration.identify_shift_using_machine_learning(microscope=self.microscope, image_settings=self.image_settings, settings=self.settings, shift_type=shift_type)
-        feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
-        # scaled features
-        scaled_feature_1_px = detection_utils.scale_invariant_coordinates(feature_1_px, self.overlay_image) #(y, x)
-        scaled_feature_2_px = detection_utils.scale_invariant_coordinates(feature_2_px, self.overlay_image) # (y, x)
-        # distance
-        distance_x = scaled_feature_2_px[1] - scaled_feature_1_px[1]
-        distance_y = scaled_feature_2_px[0] - scaled_feature_1_px[0]
-        x_pixel_size = self.raw_image.metadata.binary_result.pixel_size.x
-        y_pixel_size = self.raw_image.metadata.binary_result.pixel_size.y
-        # distance in metres
-        distance_x_m = x_pixel_size * self.raw_image.width * distance_x
-        distance_y_m = y_pixel_size * self.raw_image.height * distance_y
-        logging.info(f"calculated detection distance: x = {distance_x_m:.4f}m , y = {distance_y_m:.4f}m")
-        return distance_x_m, distance_y_m
-
-    def validate_detection(self, feature_1_px=None, feature_1_type=None, feature_2_px=None, feature_2_type=None):
-        self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} and {feature_2_type} positions?', click=None, crosshairs=False)
-        self.ask_user(image=self.overlay_image)
-
-        DETECTIONS_ARE_CORRECT = self.response
-        if DETECTIONS_ARE_CORRECT:
-            logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage} | ml_detection | {feature_1_type} | {self.response}")
-            logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage} | ml_detection | {feature_2_type} | {self.response}")
-
-        # if something wasn't correctly identified
-        # if not self.response:
-        while not DETECTIONS_ARE_CORRECT:
-            utils.save_image(image=self.raw_image, save_path=self.image_settings['save_path'], label=self.image_settings['label'] + '_label')
-
-            self.update_popup_settings(message=f'Has the model correctly identified the {feature_1_type} position?', click=None, crosshairs=False)
-            self.ask_user(image=self.overlay_image)
-
-            logging.info(f"{self.current_sample_position.sample_id} | ml_detection | {feature_1_type} | {self.response}")
-
-            # if feature 1 wasn't correctly identified
-            if not self.response:
-
-                self.update_popup_settings(message=f'Please click on the correct {feature_1_type} position.'
-                                                                   f'Press Yes button when happy with the position', click='single', crosshairs=False)
-                self.ask_user(image=self.downscaled_image)
-
-                # if new feature position selected
-                if self.response:
-                    feature_1_px = (self.yclick, self.xclick)
-
-            # skip image centre 'detections'
-            if feature_2_type != "image_centre": 
-                self.update_popup_settings(message=f'Has the model correctly identified the {feature_2_type} position?', click=None, crosshairs=False)
-                self.ask_user(image=self.overlay_image)
-
-                logging.info(f"{self.current_sample_position.sample_id} | ml_detection | {feature_2_type} | {self.response}")
-
-                # if feature 2 wasn't correctly identified
-                if not self.response:
-
-                    self.update_popup_settings(message=f'Please click on the correct {feature_2_type} position.'
-                                                                    f'Press Yes button when happy with the position', click='single',
-                                                                    filter_strength=self.filter_strength, crosshairs=False)
-                    self.ask_user(image=self.downscaled_image)
-
-                    # if new feature position selected
-                    if self.response:
-                        feature_2_px = (self.yclick, self.xclick)
-
-            # show the user the manually corrected movement and confirm
-            final_detection_img = detection.draw_final_detection_image(self.downscaled_image, feature_1_px, feature_2_px)
-            self.update_popup_settings(
-                message=f'Are the {feature_1_type} and {feature_2_type} positions now correctly identified?', 
-                click=None, crosshairs=False
-            )
-            self.ask_user(image=final_detection_img)
-            DETECTIONS_ARE_CORRECT = self.response
-            #####
-
-        return feature_1_px, feature_2_px
 
     def land_lamella(self):
 
@@ -1354,15 +1274,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_needle_land_sample_lowres"
         )
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="lamella_edge_to_landing_post", 
+                                beam_type=BeamType.ELECTRON)
 
-        y_move = movement.y_corrected_needle_movement(-distance_y_m, self.stage.current_position.t)
+        y_move = movement.y_corrected_needle_movement(det.distance_metres.y, self.stage.current_position.t)
         self.needle.relative_move(y_move)
         logging.info(f"{self.current_stage.name}: y-move complete: {y_move}")
-
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new")
-
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
         #### Z-MOVE (ION)
         self.update_image_settings(
@@ -1371,16 +1292,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_needle_land_sample_lowres_after_y_move"
         )
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ION)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="lamella_edge_to_landing_post", 
+                                beam_type=BeamType.ION)
 
-        z_distance = distance_y_m / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
+        # up is down
+        z_distance = -det.distance_metres.y / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_stage.name}: z-move complete: {z_move}")
 
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new")
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
+        # TODO: change this to use ion view...
         #### X-HALF-MOVE (ELECTRON)
         self.update_image_settings(
             hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_lowres"],
@@ -1389,10 +1315,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_needle_land_sample_lowres_after_z_move"
         )
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="lamella_edge_to_landing_post", 
+                                beam_type=BeamType.ELECTRON)
 
         # half move
-        x_move = movement.x_corrected_needle_movement(distance_x_m / 2)
+        x_move = movement.x_corrected_needle_movement(det.distance_metres.x / 2)
         self.needle.relative_move(x_move)
         logging.info(f"{self.current_stage.name}: x-half-move complete: {x_move}")
 
@@ -1406,9 +1336,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"landing_needle_land_sample_lowres_after_z_move"
         )
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type='lamella_edge_to_landing_post', beamType=BeamType.ELECTRON)
 
-        x_move = movement.x_corrected_needle_movement(distance_x_m)
+        det = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="lamella_edge_to_landing_post", 
+                                beam_type=BeamType.ELECTRON)
+
+        x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
         self.needle.relative_move(x_move)
         logging.info(f"{self.current_stage.name}: x-move complete: {x_move}")
 
@@ -1432,20 +1367,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ############################## WELD TO LANDING POST #############################################
 
         self.milling_window.update_milling_pattern_type(MillingPattern.Weld)
-
-        # weld_pattern = milling.weld_to_landing_post(self.microscope, self.settings)
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
-
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?',
-        #                            filter_strength=self.filter_strength, crosshairs=False, milling_patterns=weld_pattern)
-        # self.ask_user(image=self.image_FIB)
-
-        # if self.response:
-        #     logging.info(f"{self.current_stage.name}: welding to post started.")
-        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-        #                                    patterns=self.patterns, depth=self.settings["weld"]["depth"])
-
-
         #################################################################################################
 
         # final reference images
@@ -1455,8 +1376,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_final_weld_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
 
 
         ###################################### CUT_OFF_NEEDLE ######################################
@@ -1468,40 +1387,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_pre_cut_off"
         )
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
-        
+        ret = self.validate_detection(self.microscope, 
+                                self.settings, 
+                                self.image_settings, 
+                                shift_type="needle_tip_to_image_centre", 
+                                beam_type=BeamType.ION)
+        distance_x_m, distance_y_m = ret.distance_metres.x, ret.distance_metres.y
+
         # cut off needle
         self.milling_window.update_milling_pattern_type(MillingPattern.Cut, x=distance_x_m, y=distance_y_m)
-
-        # height = self.settings["cut"]["height"]
-        # width = self.settings["cut"]["width"]
-        # depth = self.settings["cut"]["depth"]
-        # rotation = self.settings["cut"]["rotation"]
-        # hfw = self.settings["cut"]["hfw"]
-        # vertical_gap = self.settings["cut"]["gap"]
-        # horizontal_gap = self.settings["cut"]["hgap"]
-
-        # cut_coord = {"center_x": -distance_x_m - horizontal_gap,
-        #              "center_y": distance_y_m - vertical_gap,
-        #              "width": width,
-        #              "height": height,
-        #              "depth": depth,
-        #              "rotation": rotation, "hfw": hfw}
-
-        # logging.info(f"{self.current_stage.name}: calculating needle cut-off pattern")
-
-        # # cut off needle tip
-        # cut_off_pattern = milling.cut_off_needle(self.microscope, self.settings, centre_x=distance_x_m, centre_y=distance_y_m)
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
-
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength, crosshairs=False,
-        #                            milling_patterns=cut_off_pattern)
-        # self.ask_user(image=self.image_FIB)
-
-        # if self.response:
-        #     logging.info(f"{self.current_stage.name}: needle cut-off started")
-        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-        #                                    patterns=self.patterns, depth=cut_coord["depth"])
 
         #################################################################################################
 
@@ -1582,14 +1476,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"sharpen_needle_initial"
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
+        det = self.validate_detection(self.microscope, 
+                                        self.settings, 
+                                        self.image_settings, 
+                                        shift_type="needle_tip_to_image_centre", 
+                                        beam_type=BeamType.ION)    
 
-        x_move = movement.x_corrected_needle_movement(distance_x_m)
+
+        x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
         self.needle.relative_move(x_move)
-        z_distance = distance_y_m / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
+        z_distance = -det.distance_metres.y / np.sin(np.deg2rad(self.settings["system"]["stage_tilt_flat_to_ion"]))
         z_move = movement.z_corrected_needle_movement(z_distance, self.stage.current_position.t)
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_stage.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
@@ -1599,37 +1496,20 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
-        distance_x_m, distance_y_m = self.calculate_shift_distance_metres(shift_type="needle_tip_to_image_centre", beamType=BeamType.ION)
+        det = self.validate_detection(self.microscope, 
+                                        self.settings, 
+                                        self.image_settings, 
+                                        shift_type="needle_tip_to_image_centre", 
+                                        beam_type=BeamType.ION)
 
         # create sharpening patterns
-        self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen, x=distance_x_m, y=distance_y_m)
-
-        # cut_coord_bottom, cut_coord_top = milling.calculate_sharpen_needle_pattern(microscope=self.microscope, settings=self.settings,
-        #                                                                            x_0=distance_x_m, y_0=distance_y_m)
-        # logging.info(f"{self.current_stage.name}: calculate needle sharpen pattern")
-
-        # sharpen_patterns = milling.create_sharpen_needle_patterns(
-        #     self.microscope, cut_coord_bottom, cut_coord_top
-        # )
-
-        # # confirm and run milling
-        # self.update_display(beam_type=BeamType.ION, image_type='last')
-
-        # self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-        #                            crosshairs=False, milling_patterns=sharpen_patterns)
-        # self.ask_user(image=self.image_FIB)
-        # if self.response:
-        #     logging.info(f"{self.current_stage.name}: needle sharpening milling started")
-        #     milling.draw_patterns_and_mill(microscope=self.microscope, settings=self.settings,
-        #                                    patterns=self.patterns, depth=cut_coord_bottom["depth"], milling_current=6.2e-9)
+        self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen, x=det.distance_metres.x, y=det.distance_metres.y)
 
         #################################################################################################
 
         # take reference images
         self.image_settings["label"] = f"sharpen_needle_final"
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
 
         # retract needle
         movement.retract_needle(self.microscope, park_position)
@@ -1861,20 +1741,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_SAVE_PATH = False
         TEST_PIESCOPE = False
         TEST_MILLING_WINDOW = True
-
-        if TEST_VALIDATE_DETECTION:
-
-            self.raw_image = AdornedImage(data=test_image)
-            self.overlay_image = test_image
-            self.downscaled_image = test_image
-            import random
-            supported_feature_types = ["image_centre", "lamella_centre", "needle_tip", "lamella_edge", "landing_post"]
-            feature_1_px = (0, 0)
-            feature_1_type = random.choice(supported_feature_types)
-            feature_2_px = (test_image.shape[0] // 2 , test_image.shape[1] //2)
-            feature_2_type = random.choice(supported_feature_types)
-
-            feature_1_px, feature_2_px = self.validate_detection(feature_1_px=feature_1_px, feature_1_type=feature_1_type, feature_2_px=feature_2_px, feature_2_type=feature_2_type)
+        TEST_DETECTION_WINDOW = True
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()
@@ -1889,10 +1756,76 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         
         if TEST_MILLING_WINDOW:
+
+            self.update_image_settings(hfw=150e-6, beam_type=BeamType.ION)
             self.milling_window.update_milling_pattern_type(MillingPattern.JCut)        
             print("hello jcut")
 
+            self.milling_window.update_milling_pattern_type(MillingPattern.Flatten)        
+            print("hello flatten")
 
+
+        if TEST_DETECTION_WINDOW:
+            
+            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="needle_tip_to_lamella_centre")
+            print("RET: ", ret.distance_metres)
+            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="lamella_centre_to_image_centre")
+            print("RET: ", ret.distance_metres)
+            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="needle_tip_to_image_centre")
+            print("RET: ", ret.distance_metres)
+            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="lamella_edge_to_landing_post")
+            print("RET: ", ret.distance_metres)
+
+            print("hello detection")
+
+    def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):
+            
+        self.image_settings['beam_type'] = beam_type # change to correct beamtype
+
+        from liftout.gui.detection_window import DetectionType, DetectionFeature, DetectionResult, Point, GUIDetectionWindow
+        # TODO: refactor this function to have a better return type
+        ret = calibration.identify_shift_using_machine_learning(microscope, 
+                                            image_settings, 
+                                            settings, 
+                                            shift_type=shift_type) 
+
+        adorned_image, overlay_image, downscale_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = ret 
+
+        det_type_dict = {
+            "needle_tip": DetectionType.NeedleTip,
+            "lamella_centre": DetectionType.LamellaCentre,
+            "image_centre": DetectionType.ImageCentre,
+            "lamella_edge": DetectionType.LamellaEdge,
+            "landing_post": DetectionType.LandingPost,
+        }
+        
+        feature_1 = DetectionFeature(
+            detection_type=det_type_dict[feature_1_type],
+            feature_px=Point(*feature_1_px),
+        )
+
+        feature_2 = DetectionFeature(
+            detection_type=det_type_dict[feature_2_type],
+            feature_px=Point(*feature_2_px),
+        )
+
+        detection_result = DetectionResult(
+            feature_1=feature_1,
+            feature_2=feature_2,
+            adorned_image=adorned_image,
+            display_image=downscale_image,
+            distance_metres=None
+        )
+
+        detection_window = GUIDetectionWindow(microscope=self.microscope, 
+                                    settings=self.settings, 
+                                    image_settings=self.image_settings, 
+                                    detection_result=detection_result,
+                                    )
+        detection_window.show()
+        detection_window.exec_()
+
+        return detection_window.detection_result
 
     def ask_user(self, image=None, second_image=None):
         self.select_all_button = None
