@@ -65,8 +65,8 @@ class Detector:
             if det_type == DetectionType.LandingPost:
                 img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
                 landing_px = (img_landing.size[0] // 2, img_landing.size[1] // 2)
-                feature_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post # TODO: initial landing point?
-                feature_px = feature_px[::-1]
+                feature_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post 
+                # feature_px = feature_px[::-1] # TODO: validate if this needs to be done.
 
             detection_features.append(DetectionFeature(
                 detection_type=det_type,

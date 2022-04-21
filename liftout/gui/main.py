@@ -43,7 +43,7 @@ test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
 
 # conversions
-MICRON_TO_METRE = 1e6
+MICRON_TO_METRE = 1e6 # TODO: this is backwards
 METRE_TO_MICRON = 1e-6
 MAXIMUM_WORKING_DISTANCE = 6.0e-3
 
@@ -128,8 +128,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                'allow_new_image': False,
                                'click': None,
                                'filter_strength': 0,
-                               'crosshairs': True,
-                               'milling_patterns': None}
+                               'crosshairs': True
+                               }
 
         # initial image settings
         self.image_settings = {}
@@ -211,6 +211,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def pre_run_validation(self):
         """Run validation checks to confirm microscope state before run."""
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
+
+        # TODO: add validation checks for dwell time and resolution
 
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
@@ -318,8 +320,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label="centre_grid",
         )
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.update_display(beam_type=BeamType.ION, image_type='new')
+        acquire.take_reference_images(self.microscope, self.image_settings)
         
         if self.PIESCOPE_ENABLED:
             self.select_sample_positions_piescope(initialisation=True)
@@ -679,36 +680,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return self.stage.current_position
 
-    def mill_flat_landing_edge(self):
-
-        # mill the edge of the landing post flat
-        logging.info(f"Preparing to flatten landing surface.")
-        flatten_landing_pattern = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings)
-
-        self.update_image_settings(hfw=100e-6, save=False)
-        self.update_display(beam_type=BeamType.ION, image_type='new')
-        self.update_popup_settings(message='Do you want to run the ion beam milling with this pattern?', filter_strength=self.filter_strength,
-                                   crosshairs=False, milling_patterns=flatten_landing_pattern)
-        self.ask_user(image=self.image_FIB)
-        if self.response:
-            # TODO: refactor this into draw_patterns_and_mill
-            # additional args: pattern_type, scan_direction, milling_current
-            self.microscope.imaging.set_active_view(2)  # the ion beam view
-            self.microscope.patterning.clear_patterns()
-            for pattern in self.patterns:
-                tmp_pattern = self.microscope.patterning.create_cleaning_cross_section(
-                    center_x=pattern.center_x,
-                    center_y=pattern.center_y,
-                    width=pattern.width,
-                    height=pattern.height,
-                    depth=self.settings["flatten_landing"]["depth"]
-                )
-                tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
-                tmp_pattern.scan_direction = "LeftToRight"
-            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=6.2e-9)
-        else:
-            self.microscope.patterning.clear_patterns()
-
     def ask_user_to_confirm_eucentricity(self, flat_to_sem: bool):
         # # eucentricity correction
         self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
@@ -1011,7 +982,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             det = self.validate_detection(self.microscope, 
                                             self.settings, 
                                             self.image_settings, 
-                                            shift_type=(DetectionType.LamellaCentre, DetectionType.ImageCentre), 
+                                            shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre), 
                                             beam_type=beamType)
 
             # yz-correction
@@ -2031,56 +2002,56 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 ax2.add_patch(h_rect2)
                 ax2.add_patch(v_rect2)
 
-            if self.popup_settings['milling_patterns'] is not None:
-                toolbar_active = False
-                if self.select_all_button is None:
-                    self.select_all_button = QtWidgets.QCheckBox('Select all')
-                    self.popup_window.layout().addWidget(self.select_all_button)
-                self.patterns = []
-                for pattern in self.popup_settings['milling_patterns']:
-                    if type(self.popup_settings['image']) == np.ndarray:
-                        # TODO: remove this block as it is only used for testing (NEXT)
-                        image_width = self.popup_settings['image'].shape[1]
-                        image_height = self.popup_settings['image'].shape[0]
-                        pixel_size = 1e-6
-                        width = pattern[2] / pixel_size
-                        height = pattern[3] / pixel_size
+            # if self.popup_settings['milling_patterns'] is not None:
+            #     toolbar_active = False
+            #     if self.select_all_button is None:
+            #         self.select_all_button = QtWidgets.QCheckBox('Select all')
+            #         self.popup_window.layout().addWidget(self.select_all_button)
+            #     self.patterns = []
+            #     for pattern in self.popup_settings['milling_patterns']:
+            #         if type(self.popup_settings['image']) == np.ndarray:
+            #             # TODO: remove this block as it is only used for testing (NEXT)
+            #             image_width = self.popup_settings['image'].shape[1]
+            #             image_height = self.popup_settings['image'].shape[0]
+            #             pixel_size = 1e-6
+            #             width = pattern[2] / pixel_size
+            #             height = pattern[3] / pixel_size
 
-                        # Rectangle is defined from bottom left due to mpl, y+ down in image (so bottom left is top left)
-                        # Microscope (0, 0) is middle of image, y+ = up in image
-                        # Image (0, 0) is top left corner, y+ = down in image
-                        rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
-                        rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
-                        rotation = 0
-                    else:
-                        image_width = self.popup_settings['image'].width
-                        image_height = self.popup_settings['image'].height
-                        pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
+            #             # Rectangle is defined from bottom left due to mpl, y+ down in image (so bottom left is top left)
+            #             # Microscope (0, 0) is middle of image, y+ = up in image
+            #             # Image (0, 0) is top left corner, y+ = down in image
+            #             rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
+            #             rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
+            #             rotation = 0
+            #         else:
+            #             image_width = self.popup_settings['image'].width
+            #             image_height = self.popup_settings['image'].height
+            #             pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
 
-                        width = pattern.width / pixel_size
-                        height = pattern.height / pixel_size
-                        rotation = -pattern.rotation
-                        # Rectangle is defined from bottom left due to mpl
-                        # Microscope (0, 0) is middle of image, y+ = up
-                        # Image (0, 0) is top left corner, y+ = down
+            #             width = pattern.width / pixel_size
+            #             height = pattern.height / pixel_size
+            #             rotation = -pattern.rotation
+            #             # Rectangle is defined from bottom left due to mpl
+            #             # Microscope (0, 0) is middle of image, y+ = up
+            #             # Image (0, 0) is top left corner, y+ = down
 
-                        rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
-                        rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
+            #             rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
+            #             rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
 
-                    pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
-                    pattern.set_hatch('/////')
-                    pattern.angle = np.rad2deg(rotation)
-                    pattern.set_edgecolor('xkcd:pink')
-                    pattern.set_fill(False)
-                    self.ax.add_patch(pattern)
-                    pattern = DraggablePatch(pattern)
-                    pattern.pixel_size = pixel_size
-                    pattern.image_width = image_width
-                    pattern.image_height = image_height
-                    pattern.connect()
-                    pattern.update_position()
-                    self.patterns.append(pattern)
-                self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
+            #         pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
+            #         pattern.set_hatch('/////')
+            #         pattern.angle = np.rad2deg(rotation)
+            #         pattern.set_edgecolor('xkcd:pink')
+            #         pattern.set_fill(False)
+            #         self.ax.add_patch(pattern)
+            #         pattern = DraggablePatch(pattern)
+            #         pattern.pixel_size = pixel_size
+            #         pattern.image_width = image_width
+            #         pattern.image_height = image_height
+            #         pattern.connect()
+            #         pattern.update_position()
+            #         self.patterns.append(pattern)
+            #     self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
 
             if self.popup_settings['click_crosshair']:
                 for patch in self.popup_settings['click_crosshair']:
@@ -2092,19 +2063,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
             self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
 
-    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True, milling_patterns=None):
+    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True):
         self.popup_settings["message"] = message
         self.popup_settings['allow_new_image'] = allow_new_image
         self.popup_settings['click'] = click
         self.popup_settings['filter_strength'] = filter_strength
         self.popup_settings['crosshairs'] = crosshairs
-        if milling_patterns is not None:
-            if type(milling_patterns) is list:
-                self.popup_settings['milling_patterns'] = milling_patterns  # needs to be an iterable for display
-            else:
-                self.popup_settings['milling_patterns'] = [milling_patterns]  # needs to be an iterable for display
-        else:
-            self.popup_settings["milling_patterns"] = milling_patterns
+        # if milling_patterns is not None:
+        #     if type(milling_patterns) is list:
+        #         self.popup_settings['milling_patterns'] = milling_patterns  # needs to be an iterable for display
+        #     else:
+        #         self.popup_settings['milling_patterns'] = [milling_patterns]  # needs to be an iterable for display
+        # else:
+        #     self.popup_settings["milling_patterns"] = milling_patterns
 
     def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,
                               autocontrast=None, beam_type=None, gamma=None,
@@ -2213,6 +2184,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Update the GUI display with the current image"""
         if self.microscope:
             try:
+                
+                # TODO: update to use this one...
+                # # get new or last image
+                # if image_type == "new":
+                #     self.image_settings["beam_type"] = beam_type
+                #     image = acquire.new_image(self.microscope, self.image_settings)
+                # else:
+                #     image =  acquire.last_image(self.microscope, self.image_settings)
+
+                # # update display images
+                # if beam_type is BeamType.ELECTRON:
+                #     self.image_SEM =  image
+                # if beam_type is BeamType.ION:
+                #     self.image_FIB = image
+
                 if beam_type is BeamType.ELECTRON:
                     if image_type == 'new':
                         self.image_settings['beam_type'] = beam_type

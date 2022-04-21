@@ -423,7 +423,7 @@ def main():
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.Flatten)
+    qt_app.update_milling_pattern_type(MillingPattern.Trench)
     sys.exit(app.exec_())
 
 
