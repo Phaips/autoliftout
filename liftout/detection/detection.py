@@ -6,11 +6,14 @@ import numpy as np
 import PIL
 
 from PIL import Image, ImageDraw
+from scipy.fftpack import shift
 from skimage import feature
 from scipy.spatial import distance
 
 import liftout.detection.DetectionModel as DetectionModel
 from liftout.detection import utils
+from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
+from liftout.tests.mock_autoscript_sdb_microscope_client import AdornedImage 
 
 
 # TODO: convert detection types to enum
@@ -22,12 +25,8 @@ class Detector:
 
         self.detection_model = DetectionModel.DetectionModel(weights_file)
 
-        self.supported_shift_types = [
-            "needle_tip_to_lamella_centre",
-            "lamella_centre_to_image_centre",
-            "lamella_edge_to_landing_post",
-            "needle_tip_to_image_centre"
-        ]
+        self.supported_feature_types = utils.DetectionType
+
 
     def detect_features(self, img, mask, shift_type):
         """
@@ -35,84 +34,60 @@ class Detector:
         args:
             img: the input img (np.array)
             mask: the output rgb prediction mask (np.array)
-            shift_type: the type of feature detection to run (str)
+            shift_type: the type of feature detection to run (tuple)
 
         return:
-            feature_1_px: the pixel coordinates of feature one (tuple)
-            feature_1_type: the type of detection for feature one (str)
-            feature_1_color: color to plot feature one detection (str)
-            feature_2_px: the pixel coordinates of feature two (tuple)
-            feature_2_type: the type of detection for feature two (str)
-            feature_2_color: color to plot feature two detection (str)
+            detection_features [DetectionFeature, DetectionFeature]: the detected feature coordinates and types
         """
-        # TODO: convert feature attributes to dict?
 
-        if shift_type not in self.supported_shift_types:
-            raise ValueError("ERROR: shift type calculation is not supported")
+        detection_features = []
 
-        # detect feature shift
-        if shift_type == "needle_tip_to_lamella_centre":
-            feature_2_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
-            feature_1_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
+        for det_type in shift_type:
 
-            feature_2_type = "lamella_centre"
-            feature_1_type = "needle_tip"
+            if not isinstance(det_type, DetectionType):
+                raise TypeError(f"Detection Type {det_type} is not supported.")
 
-            feature_2_color = "red"
-            feature_1_color = "green"
+            if det_type == DetectionType.ImageCentre:
+                feature_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
 
-        if shift_type == "lamella_centre_to_image_centre":
-            feature_2_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
-            feature_1_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
+            if det_type == DetectionType.NeedleTip:
+                feature_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
+                feature_px = feature_px[::-1]
 
-            feature_2_type = "lamella_centre"
-            feature_1_type = "image_centre"
+            if det_type == DetectionType.LamellaCentre:
+                feature_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+                feature_px = feature_px[::-1]
+            
+            if det_type == DetectionType.LamellaEdge:
+                feature_px, lamella_mask = detect_lamella_edge(img, mask)  # lamella_centre
+                feature_px = feature_px[::-1]
 
-            feature_2_color = "red"
-            feature_1_color = "white"
+            if det_type == DetectionType.LandingPost:
+                img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
+                landing_px = (img_landing.size[0] // 2, img_landing.size[1] // 2)
+                feature_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post # TODO: initial landing point?
+                feature_px = feature_px[::-1]
 
-        if shift_type == "lamella_edge_to_landing_post":
-            # need to resize image
-            img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
-            landing_px = (img_landing.size[0] // 2, img_landing.size[1] // 2)
+            detection_features.append(DetectionFeature(
+                detection_type=det_type,
+                feature_px=Point(*feature_px)
+            ))
 
-            feature_1_px, lamella_mask = detect_lamella_edge(img, mask)  # lamella_centre
-            feature_2_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post # TODO: initial landing point?
-
-            feature_1_type = "lamella_edge"
-            feature_2_type = "landing_post"
-
-            feature_1_color = "red"
-            feature_2_color = "white"
-
-        if shift_type == "needle_tip_to_image_centre":
-            feature_1_px, needle_mask = detect_needle_tip(img, mask)  # needle_tip
-            feature_2_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
-
-            feature_1_type = "needle_tip"
-            feature_2_type = "image_centre"
-
-            feature_1_color = "green"
-            feature_2_color = "white"
+        return detection_features
 
 
-        return feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color
-
-    def locate_shift_between_features(self, adorned_img, shift_type="needle_to_lamella_centre", show=False):
+    def locate_shift_between_features(self, adorned_img, shift_type:tuple):
         """
         Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
         args:
             adorned_img: input image (AdornedImage, or np.array)
             shift_type: the type of feature detection shift to calculation
-            show: display a plot of feature detections over the input image (bool)
-            validate: enable manual validation of the feature detections (bool)
 
         return:
-            (x_distance, y_distance): the distance between the two features in the image coordinate system (as a proportion of the image) (tuple)
+            detection_result (DetectionResult): The detection result containing the feature coordinates, and images
 
         """
-        # TODO: fix display colours for this?
 
         # check image type
         if hasattr(adorned_img, 'data'):
@@ -124,17 +99,29 @@ class Detector:
         mask = self.detection_model.model_inference(img)
 
         # detect features for calculation
-        feature_1_px, feature_1_type, feature_1_color, feature_2_px, feature_2_type, feature_2_color = self.detect_features(img, mask, shift_type)
+        feature_1, feature_2 = self.detect_features(img, mask, shift_type)
 
         # display features for validation
-        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px, color_1=feature_1_color, color_2=feature_2_color)
-        img_blend = draw_overlay(img, mask_combined, show=show, title=shift_type)
+        mask_combined = PIL.Image.fromarray(mask)
+        img_blend = np.array(draw_overlay(img, mask_combined, show=False, title=shift_type))
 
         # # need to use the same scale images for both detection selections
-        img_downscale = Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+        img_downscale = np.array(Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1])))
 
-        return img_blend, img_downscale, feature_1_px, feature_1_type, feature_2_px, feature_2_type
+        # calculate movement distance
+        x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
+            feature_1.feature_px, feature_2.feature_px, adorned_img, img_downscale)
 
+        detection_result = DetectionResult(
+            feature_1=feature_1,
+            feature_2=feature_2,
+            adorned_image=adorned_img,
+            display_image=img_blend,
+            downscale_image=img_downscale,
+            distance_metres=Point(x_distance_m, y_distance_m)
+        )
+
+        return detection_result
 
 # Detection and Drawing Tools
 
@@ -195,7 +182,7 @@ def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
 
 
 def draw_two_features(
-        mask, feature_1, feature_2, color_1="red", color_2="green", line=True):
+        mask, feature_1, feature_2, color_1="red", color_2="green", line=False):
     """ Draw two detected features on the same mask, and optionally a line between
 
     args:
@@ -209,8 +196,8 @@ def draw_two_features(
         mask_combined: the detection mask with both features drawn
     """
 
-    mask = draw_feature(mask, feature_1, color_1, crosshairs=True)
-    mask = draw_feature(mask, feature_2, color_2, crosshairs=True)
+    mask = draw_feature(mask, feature_1, color_1, crosshairs=False)
+    mask = draw_feature(mask, feature_2, color_2, crosshairs=False)
 
     # draw a line between features
     if line:

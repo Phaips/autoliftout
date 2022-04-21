@@ -12,10 +12,12 @@ import numpy as np
 from liftout import utils
 from liftout.detection import detection
 from liftout.detection import utils as detection_utils
+from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.gui.DraggablePatch import DraggablePatch
 from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
+from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.qtdesigner_files import main as gui_main
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as _FigureCanvas
@@ -1009,7 +1011,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             det = self.validate_detection(self.microscope, 
                                             self.settings, 
                                             self.image_settings, 
-                                            shift_type="lamella_centre_to_image_centre", 
+                                            shift_type=(DetectionType.LamellaCentre, DetectionType.ImageCentre), 
                                             beam_type=beamType)
 
             # yz-correction
@@ -1140,7 +1142,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                         self.settings, 
                         self.image_settings, 
-                        shift_type="needle_tip_to_lamella_centre", 
+                        shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre), 
                         beam_type=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(det.distance_metres.x, stage_tilt=self.stage.current_position.t)
@@ -1159,7 +1161,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="needle_tip_to_lamella_centre", 
+                                shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre), 
                                 beam_type=BeamType.ION)
 
         # calculate shift in xyz coordinates
@@ -1180,7 +1182,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="needle_tip_to_lamella_centre", 
+                                shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre), 
                                 beam_type=BeamType.ION)
 
         # calculate shift in xyz coordinates
@@ -1254,7 +1256,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="lamella_edge_to_landing_post", 
+                                shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost), 
                                 beam_type=BeamType.ELECTRON)
 
         y_move = movement.y_corrected_needle_movement(det.distance_metres.y, self.stage.current_position.t)
@@ -1272,7 +1274,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="lamella_edge_to_landing_post", 
+                                shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost), 
                                 beam_type=BeamType.ION)
 
         # up is down
@@ -1295,7 +1297,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="lamella_edge_to_landing_post", 
+                                shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost),
                                 beam_type=BeamType.ELECTRON)
 
         # half move
@@ -1317,7 +1319,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="lamella_edge_to_landing_post", 
+                                shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost), 
                                 beam_type=BeamType.ELECTRON)
 
         x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
@@ -1364,15 +1366,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_pre_cut_off"
         )
 
-        ret = self.validate_detection(self.microscope, 
+        det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
-                                shift_type="needle_tip_to_image_centre", 
+                                shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre), 
                                 beam_type=BeamType.ION)
-        distance_x_m, distance_y_m = ret.distance_metres.x, ret.distance_metres.y
 
         # cut off needle
-        self.milling_window.update_milling_pattern_type(MillingPattern.Cut, x=distance_x_m, y=distance_y_m)
+        self.milling_window.update_milling_pattern_type(MillingPattern.Cut, x=det.distance_metres.x, y=det.distance_metres.y)
 
         #################################################################################################
 
@@ -1457,7 +1458,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                         self.settings, 
                                         self.image_settings, 
-                                        shift_type="needle_tip_to_image_centre", 
+                                        shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre), 
                                         beam_type=BeamType.ION)    
 
 
@@ -1476,7 +1477,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         det = self.validate_detection(self.microscope, 
                                         self.settings, 
                                         self.image_settings, 
-                                        shift_type="needle_tip_to_image_centre", 
+                                        shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre), 
                                         beam_type=BeamType.ION)
 
         # create sharpening patterns
@@ -1717,7 +1718,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_SAMPLE_POSITIONS = False
         TEST_SAVE_PATH = False
         TEST_PIESCOPE = False
-        TEST_MILLING_WINDOW = True
+        TEST_MILLING_WINDOW = False
         TEST_DETECTION_WINDOW = True
 
         if TEST_SAMPLE_POSITIONS:
@@ -1744,56 +1745,33 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if TEST_DETECTION_WINDOW:
             
-            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="needle_tip_to_lamella_centre")
-            print("RET: ", ret.distance_metres)
-            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="lamella_centre_to_image_centre")
-            print("RET: ", ret.distance_metres)
-            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="needle_tip_to_image_centre")
-            print("RET: ", ret.distance_metres)
-            ret = self.validate_detection(self.microscope, self.settings, self.image_settings, shift_type="lamella_edge_to_landing_post")
-            print("RET: ", ret.distance_metres)
+            from pprint import pprint
+            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
+                                        shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre))
+            pprint(det)
+            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
+                                        shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre))
+            pprint(det)
+            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
+                                        shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre))
+            pprint( det)
+            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
+                                        shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost))
+            pprint(det)
 
-            print("hello detection")
+            
 
     def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):
             
         self.image_settings['beam_type'] = beam_type # change to correct beamtype
 
-        from liftout.gui.detection_window import DetectionType, DetectionFeature, DetectionResult, Point, GUIDetectionWindow
-        # TODO: refactor this function to have a better return type
-        ret = calibration.identify_shift_using_machine_learning(microscope, 
+        # run model detection
+        detection_result = calibration.identify_shift_using_machine_learning(microscope, 
                                             image_settings, 
                                             settings, 
                                             shift_type=shift_type) 
 
-        adorned_image, overlay_image, downscale_image, feature_1_px, feature_1_type, feature_2_px, feature_2_type = ret 
-
-        det_type_dict = {
-            "needle_tip": DetectionType.NeedleTip,
-            "lamella_centre": DetectionType.LamellaCentre,
-            "image_centre": DetectionType.ImageCentre,
-            "lamella_edge": DetectionType.LamellaEdge,
-            "landing_post": DetectionType.LandingPost,
-        }
-        
-        feature_1 = DetectionFeature(
-            detection_type=det_type_dict[feature_1_type],
-            feature_px=Point(*feature_1_px),
-        )
-
-        feature_2 = DetectionFeature(
-            detection_type=det_type_dict[feature_2_type],
-            feature_px=Point(*feature_2_px),
-        )
-
-        detection_result = DetectionResult(
-            feature_1=feature_1,
-            feature_2=feature_2,
-            adorned_image=adorned_image,
-            display_image=downscale_image,
-            distance_metres=None
-        )
-
+        # user validates detection result
         detection_window = GUIDetectionWindow(microscope=self.microscope, 
                                     settings=self.settings, 
                                     image_settings=self.image_settings, 

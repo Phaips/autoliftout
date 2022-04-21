@@ -8,6 +8,79 @@ import glob
 from random import shuffle
 import shutil
 import os
+from dataclasses import dataclass
+from enum import Enum
+
+from autoscript_sdb_microscope_client.structures import AdornedImage
+from liftout.fibsem.movement import pixel_to_realspace_coordinate
+
+
+class DetectionType(Enum):
+    LamellaCentre = 1
+    NeedleTip = 2
+    LamellaEdge = 3
+    LandingPost = 4
+    ImageCentre = 5 
+
+@dataclass
+class Point:
+    x: float
+    y: float
+
+
+@dataclass
+class DetectionFeature:
+    detection_type: DetectionType
+    feature_px: Point # x, y
+
+
+@dataclass
+class DetectionResult:
+    feature_1: DetectionFeature
+    feature_2: DetectionFeature
+    adorned_image: AdornedImage
+    display_image: np.ndarray
+    distance_metres: Point = Point(0, 0)# x, y
+    downscale_image: np.ndarray = None
+    
+
+
+def convert_pixel_distance_to_metres(p1:Point, p2: Point, adorned_image: AdornedImage, display_image: np.ndarray):
+    """Convert from pixel coordinates to distance in metres """        
+    # NB: need to use this func, not pixel_to_realspace because display_iamge and adorned image are no the same size...
+    
+    # upscale the pixel coordinates to adorned image size
+    scaled_px_1 = scale_pixel_coordinates(p1, display_image, adorned_image)
+    scaled_px_2 = scale_pixel_coordinates(p2, display_image, adorned_image)
+
+    # convert pixel coordinate to realspace coordinate
+    x1_real, y1_real = pixel_to_realspace_coordinate((scaled_px_1.x, scaled_px_1.y), adorned_image)
+    x2_real, y2_real = pixel_to_realspace_coordinate((scaled_px_2.x, scaled_px_2.y), adorned_image)
+    
+    p1_real = Point(x1_real, y1_real)
+    p2_real = Point(x2_real, y2_real)
+
+    # calculate distance between points along each axis
+    x_distance_m, y_distance_m = coordinate_distance(p1_real, p2_real)
+
+    return x_distance_m, y_distance_m
+
+def scale_pixel_coordinates(px:Point, downscale_image, upscale_image=None):
+    """Scale the pixel coordinate from one image to another"""
+    if isinstance(upscale_image, AdornedImage):
+        upscale_image = upscale_image.data
+
+    x_scale, y_scale = (px.x / downscale_image.shape[1], px.y / downscale_image.shape[0])  # (x, y)
+    
+    scaled_px = Point(x_scale * upscale_image.shape[1], y_scale * upscale_image.shape[0])
+
+    return scaled_px
+
+def coordinate_distance(p1:Point, p2:Point):
+    """Calculate the distance between two points in each coordinate"""
+
+    return p2.x - p1.x, p2.y - p1.y
+
 
 def scale_invariant_coordinates(px, mask):
     """ Return the scale invariant coordinates of the features in the given mask

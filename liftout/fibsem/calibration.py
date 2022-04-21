@@ -1,17 +1,14 @@
 import os
 from liftout.fibsem.movement import *
-from autoscript_sdb_microscope_client.structures import GrabFrameSettings, Point
 import scipy.ndimage as ndi
 from scipy import fftpack, misc
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
-from liftout.detection import detection
 from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStage
 from liftout.model import models
 from autoscript_sdb_microscope_client.enumerations import *
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-
-
+from liftout.detection import detection
 BeamType = acquire.BeamType
 
 
@@ -160,8 +157,8 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
 
 
 def identify_shift_using_machine_learning(
-    microscope, image_settings, settings, shift_type
-):
+    microscope, image_settings, settings, shift_type):
+
 
     eb_image, ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]
@@ -172,24 +169,10 @@ def identify_shift_using_machine_learning(
         image = ib_image
     else:
         image = eb_image
-    (
-        image_w_overlay,
-        downscaled_image,
-        feature_1_px,
-        feature_1_type,
-        feature_2_px,
-        feature_2_type,
-    ) = detector.locate_shift_between_features(image, shift_type=shift_type, show=False)
-    return (
-        image,
-        np.array(image_w_overlay),
-        np.array(downscaled_image),
-        feature_1_px,
-        feature_1_type,
-        feature_2_px,
-        feature_2_type,
-    )
 
+    det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
+
+    return det_result
 
 def shift_from_correlation_electronBeam_and_ionBeam(
     eb_image, ib_image, lowpass=128, highpass=6, sigma=2
@@ -490,6 +473,7 @@ def reset_beam_shifts(microscope: SdbMicroscopeClient):
     Args:
         microscope (SdbMicroscopeClient): Autoscript microscope object
     """
+    from autoscript_sdb_microscope_client.structures import GrabFrameSettings, Point
 
     # reset zero beamshift
     logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
