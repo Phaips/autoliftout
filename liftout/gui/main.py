@@ -1662,12 +1662,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.debug(f"Image Settings: {self.image_settings}")
 
-    def set_response(self, response):
-        self.response = response
-        # xy is top left in image coords, bottom left in
-
-        self.setEnabled(True) # enable the main window
-
     def connect_to_microscope(self, ip_address='10.0.0.1'):
         """Connect to the FIBSEM microscope."""
         try:
@@ -1680,14 +1674,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.debug('Running cleanup/teardown')
         if self.microscope:
             self.microscope.disconnect()
-
-    def toggle_select_all(self, onoff=None):
-        for pattern in self.patterns:
-
-            if onoff is not None:
-                pattern.toggle_move_all(onoff=onoff)
-            else:
-                pattern.toggle_move_all(onoff=self.select_all_button.isChecked())
 
     def update_status(self):
 
