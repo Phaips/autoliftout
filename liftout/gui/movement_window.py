@@ -109,7 +109,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.setMaximum(self.settings["imaging"]["max_ib_hfw"] * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.setValue(self.image_settings["hfw"] * METRE_TO_MICRON)
-        # TODO: set current hfw at the start
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
     def take_image_button_pressed(self):

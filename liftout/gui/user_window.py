@@ -72,7 +72,7 @@ def main():
                                     beam_type=beam_type
                                     )
         ask_user_window.show()        
-        return ask_user_window.exec_() # TODO: self.response
+        return ask_user_window.exec_()
         
     print("RET: ", ask_user_interaction())
 
