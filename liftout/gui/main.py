@@ -76,8 +76,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setupUi(self)
         self.UI_LOADED = True # flag to check if ui has been loaded
         self.setWindowTitle('Autoliftout User Interface Main Window')
-        self.popup_window = None
-        self.popup_canvas = None
         self.raw_image = None
         self.overlay_image = None
         self.downscaled_image = None
@@ -92,24 +90,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             border-radius: 10px
         }""")
 
-        self.filter_strength = 3
-        self.button_height = 50
-        self.button_width = 100
-
-        # initialise image frames and images
-        self.image_SEM = None
-        self.image_FIB = None
-
-        # image frame interaction
-        self.xclick = None
-        self.yclick = None
-
         # initialise hardware
         self.ip_address = self.settings["system"]["ip_address"]
         self.microscope = None
 
         self.initialize_hardware(offline=offline)
-
 
         if self.microscope:
             self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
@@ -117,18 +102,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle = self.microscope.specimen.manipulator
 
         self.current_sample_position = None
-
-        # popup initialisations
-        self.popup_window = None
-        self.new_image = None
-        self.hfw_slider = None
-        self.popup_settings = {'message': 'startup',
-                               'allow_new_image': False,
-                               'click': None,
-                               'filter_strength': 0,
-                               'crosshairs': True
-                               }
-
+ 
         # initial image settings
         self.image_settings = {}
         self.USE_AUTOCONTRAST = self.settings["imaging"]["autocontrast"]
@@ -143,6 +117,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                     milling_pattern_type=MillingPattern.Trench, 
                                     parent=self,)
         self.milling_window.close() # TODO: get a better way of doing this hide
+        # TODO: change this to recreate on each call... this is too complicated
 
         # use high throughput
         self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
