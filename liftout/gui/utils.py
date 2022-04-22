@@ -111,3 +111,11 @@ def create_crosshair(image: np.ndarray or AdornedImage, x=None, y=None, colour="
     return Crosshair(
         rectangle_horizontal=rect_horizontal, rectangle_vertical=rect_vertical
     )
+
+def draw_crosshair(image, canvas):
+    # draw crosshairs
+    crosshair = create_crosshair(image)
+    canvas.ax11.patches = []
+    for patch in crosshair.__dataclass_fields__:
+        canvas.ax11.add_patch(getattr(crosshair, patch))
+        getattr(crosshair, patch).set_visible(True)

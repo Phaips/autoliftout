@@ -18,6 +18,8 @@ from liftout.fibsem import utils as fibsem_utils
 from liftout.gui.DraggablePatch import DraggablePatch
 from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
 from liftout.gui.detection_window import GUIDetectionWindow
+from liftout.gui.movement_window import GUIMMovementWindow
+from liftout.gui.user_window import GUIUserWindow
 from liftout.gui.qtdesigner_files import main as gui_main
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as _FigureCanvas
@@ -43,8 +45,8 @@ test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
 
 # conversions
-MICRON_TO_METRE = 1e6 # TODO: this is backwards
-METRE_TO_MICRON = 1e-6
+MICRON_TO_METRE = 1e-6 
+METRE_TO_MICRON = 1e6
 MAXIMUM_WORKING_DISTANCE = 6.0e-3
 
 _translate = QtCore.QCoreApplication.translate
@@ -288,8 +290,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # check if focus is good enough
         eb_image = acquire.new_image(self.microscope, self.image_settings)
         if eb_image.metadata.optics.working_distance >= MAXIMUM_WORKING_DISTANCE:
-            self.update_popup_settings(message="The working distance seems to be incorrect, please manually fix the focus.", crosshairs=False)
-            self.ask_user(image=None)
+            self.ask_user_interaction(msg="The working distance seems to be incorrect, please manually fix the focus. \nPress Yes to continue.", 
+                beam_type=BeamType.ELECTRON)
 
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
@@ -298,18 +300,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # NOTE: can't take ion beam image with such a high hfw
         acquire.new_image(self.microscope, self.image_settings)
 
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        self.update_display(beam_type=BeamType.ION, image_type='last')
-
         # Whole-grid platinum deposition
-        self.update_popup_settings(message='Do you want to sputter the whole sample grid with platinum?',
-                                   crosshairs=False,
-                                   filter_strength=self.filter_strength)
-        self.ask_user(image=self.image_SEM)
+        self.ask_user_interaction(msg="Do you want to sputter the whole sample grid with platinum?", beam_type=BeamType.ELECTRON)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition")
-            self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+            acquire.new_image(self.microscope, self.image_settings)
 
         # select initial lamella and landing points
         self.update_image_settings(
@@ -340,9 +336,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # check if samples already has been loaded, and then append from there
         self.current_sample_position = None # reset the current sample
         if self.samples:
-            self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
-                                               f'{len(self.samples)} positions selected so far.', crosshairs=False)
-            self.ask_user()
+            self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
+                                               f'{len(self.samples)} positions selected so far.')
             self.sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
             select_another_sample_position = self.response
         else:
@@ -387,9 +382,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples.append(sample_position)
             self.sample_no += 1
 
-        self.update_popup_settings(message=f'Do you want to select landing positions?\n'
-                                            f'{len(self.samples)} positions selected so far.', crosshairs=False)
-        self.ask_user()
+        self.ask_user_interaction(msg=f'Do you want to select landing positions?\n'
+                                            f'{len(self.samples)} positions selected so far.')
+        
         finished_selecting = self.response
         self.update_scroll_ui()
 
@@ -412,9 +407,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples.append(sample_position)
             self.sample_no += 1
 
-            self.update_popup_settings(message=f'Do you want to select another lamella position?\n'
-                                               f'{len(self.samples)} positions selected so far.', crosshairs=False)
-            self.ask_user()
+            self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
+                                               f'{len(self.samples)} positions selected so far.')
             select_another_sample_position = self.response
             self.update_scroll_ui()
 
@@ -427,7 +421,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # # move to landing grid
         movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
         movement.auto_link_stage(self.microscope, hfw=900e-6)
-        self.ensure_eucentricity(flat_to_sem=False)
+        self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
         ####################################
 
         # select corresponding sample landing positions
@@ -600,7 +594,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.INITIAL_SELECTION_EUCENTRICITY is False:
             movement.move_to_sample_grid(self.microscope, settings=self.settings)
             movement.auto_link_stage(self.microscope)
-            self.ensure_eucentricity()
+            # self.ensure_eucentricity()
+            self.ask_user_movement(msg_type="eucentric", flat_to_sem=True)
             movement.move_to_trenching_angle(self.microscope, settings=self.settings)
             self.INITIAL_SELECTION_EUCENTRICITY = True
   
@@ -666,89 +661,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Get the user to centre the beam on the desired feature"""
         # refresh
         self.update_image_settings(hfw=self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"], save=False)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.update_display(beam_type=BeamType.ION, image_type='new')
+        self.ask_user_movement(msg_type="centre_ib")
 
-        self.update_popup_settings(message=f'Please double click to centre the {feature_type} coordinate in the ion beam.\n'
-                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_FIB)
-
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
+        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
 
         return self.stage.current_position
-
-    def ask_user_to_confirm_eucentricity(self, flat_to_sem: bool):
-        # # eucentricity correction
-        self.update_image_settings(hfw=self.settings["imaging"]["horizontal_field_width"])
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new") # TODO: why does update_display work, but reference images dont?
-        self.update_popup_settings(message="Does the eucentricty need to be re-calibrated? Please Yes to calibrate. ",
-                                   filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False, click=None)
-        self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-        if self.response:
-            self.ensure_eucentricity(flat_to_sem=flat_to_sem)  # liftout angle is flat to SEM
-        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
-
-    def ensure_eucentricity(self, flat_to_sem=True):
-        calibration.validate_scanning_rotation(self.microscope)
-        if flat_to_sem:
-            movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
-
-        # lowres calibration
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_lowres"])  # 900e-6
-
-        # midres eucentric calibration
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_midres"])  # 400e-6
-
-        # highres calibration
-        self.user_based_eucentric_height_adjustment(hfw=self.settings["calibration"]["eucentric_hfw_highres"])  # 200e-6
-
-    def user_based_eucentric_height_adjustment(self, hfw=None):
-
-        self.update_image_settings(
-            resolution='1536x1024',
-            dwell_time=1e-6,
-            beam_type=BeamType.ELECTRON,
-            hfw=hfw,
-            save=False
-        )
-
-        self.image_SEM = acquire.new_image(self.microscope, settings=self.image_settings)
-        self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_SEM)
-
-        if self.response:
-            self.image_settings['beam_type'] = BeamType.ION
-            self.image_settings["hfw"] = float(min(self.image_settings["hfw"], self.settings["imaging"]["max_ib_hfw"]))  # clip to max hfw for ion, 900e-6
-            self.update_display(beam_type=BeamType.ION, image_type='new')
-            self.update_popup_settings(message=f'Please click the same location in the ion beam\n'
-                                                           f'Press Yes when happy with the location', click='single',
-                                       filter_strength=self.filter_strength, crosshairs=False, allow_new_image=False)
-            self.ask_user(image=self.image_FIB, second_image=self.image_SEM)
-
-        else:
-            logging.warning('electron image not centered')
-            return
-
-        # TODO: change this to y_corrected_stage_movement
-        self.image_FIB = acquire.last_image(self.microscope, beam_type=BeamType.ION)
-        real_x, real_y = movement.pixel_to_realspace_coordinate([self.xclick, self.yclick], self.image_FIB)
-        delta_z = -np.cos(self.stage.current_position.t) * real_y
-        self.stage.relative_move(StagePosition(z=delta_z))
-        logging.info(f"moving height by {delta_z:.4f}m")
-        if self.response:
-            self.update_display(beam_type=BeamType.ION, image_type='new')
-        self.image_settings['beam_type'] = BeamType.ELECTRON
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
-        self.update_popup_settings(message=f'Please double click to centre a feature in the SEM\n'
-                                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_SEM)
 
     def run_autoliftout_workflow(self):
 
@@ -783,8 +702,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
                 msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) is {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
-                self.update_popup_settings(message=msg, crosshairs=False)
-                self.ask_user()
+                self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
                 if self.response:
                     
@@ -826,7 +744,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def end_of_stage_update(self, eucentric: bool) -> None:
         """Save the current microscope state configuration to disk, and log that the stage has been completed."""
-        # TODO: this can only be called if current_sample_position exists, how to indicate
         # save state information
         microscope_state = calibration.get_current_microscope_state(microscope=self.microscope,
                                                                     stage=self.current_stage,
@@ -861,19 +778,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_lamella_area_images, mode='eb')
-        self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
 
         if ret is False:
             # cross-correlation has failed, manual correction required
-            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
-                                       click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_SEM)
+            self.ask_user_movement(msg_type="centre_eb")
             logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
 
-        self.update_popup_settings(message=f'Is the lamella currently centered in the image?\n'
-                                           f'If not, double click to center the lamella, press Yes when centered.',
-                                   click='double', filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_SEM)
+        self.ask_user_movement(msg_type="centre_eb")
 
         self.update_image_settings(
             save=True,
@@ -886,11 +797,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # Take an ion beam image at the *milling current*
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
-        self.update_display(beam_type=BeamType.ION, image_type='new')
-        self.update_popup_settings(message=f'Have you centered the lamella position in the ion beam?\n'
-                                           f'If not, double click to center the lamella position', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_FIB)
+        self.ask_user_movement(msg_type="centre_ib")
 
         # update the lamella coordinates, and save
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
@@ -902,10 +809,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
 
         if self.ADDITIONAL_CONFIRMATION:
-            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
-            self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-            self.update_display(beam_type=BeamType.ION, image_type="new")
-            self.ask_user(image=self.image_FIB)
+            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. \nPress Yes to continue.", 
+            beam_type=BeamType.ION)
 
         # reference images of milled trenches
         self.update_image_settings(
@@ -942,11 +847,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                               reference_images_low_and_high_res, mode='ib')
 
         if ret is False:
-            # cross-correlation has failed, manual correction required
-            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
-                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.image_SEM = acquire.last_image(self.microscope, beam_type=BeamType.ELECTRON)
-            self.ask_user(image=self.image_SEM)
+            self.ask_user_movement(msg_type="centre_eb")
+
+            # # cross-correlation has failed, manual correction required
             logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
 
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
@@ -1007,7 +910,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # check eucentric height
-        self.ask_user_to_confirm_eucentricity(flat_to_sem=True)  # liftout angle is flat to SEM
+        # self.ask_user_to_confirm_eucentricity(flat_to_sem=True)  
+        self.ask_user_movement(msg_type="eucentric", flat_to_sem=True) # liftout angle is flat to SEM
 
         # check focus distance is within tolerance
         movement.auto_link_stage(self.microscope)
@@ -1015,9 +919,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if not calibration.check_working_distance_is_within_tolerance(eb_image, ib_image, settings=self.settings):
             logging.warning("Autofocus has failed")
-            self.update_popup_settings(message='The AutoFocus routine has failed, please correct the focus manually.',
-                                       filter_strength=self.filter_strength, crosshairs=False)
-            self.ask_user()
+            self.ask_user_interaction(msg="The AutoFocus routine has failed, please correct the focus manually.", 
+                beam_type=BeamType.ELECTRON)
 
         # correct stage drift from mill_lamella stage
         self.correct_stage_drift_with_ML()
@@ -1061,9 +964,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         if self.ADDITIONAL_CONFIRMATION:
-            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
-            self.update_display(beam_type=BeamType.ION, image_type="last")
-            self.ask_user(image=self.image_FIB)
+            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. Press Yes to continue.", 
+            beam_type=BeamType.ION)
 
         # Raise needle 30um from trench
         logging.info(f"{self.current_stage.name}: start removing needle from trench")
@@ -1199,16 +1101,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
         # confirm eucentricity
-        self.ask_user_to_confirm_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
+        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
+        self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
+
+
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_landing_images, mode="land")
 
         if ret is False:
             # cross-correlation has failed, manual correction required
-            self.update_popup_settings(message=f'Please double click to centre the lamella in the image.',
-                         click='double', filter_strength=self.filter_strength, allow_new_image=True)
-            self.ask_user(image=self.image_FIB)
+            self.ask_user_movement(msg_type="centre_ib")
             logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
 
         logging.info(f"{self.current_stage.name}: initial landing calibration complete.")
@@ -1309,8 +1212,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_display(beam_type=BeamType.ION, image_type="last")
 
         if self.ADDITIONAL_CONFIRMATION:
-            self.update_popup_settings(message="Was the landing successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
-            self.ask_user(image=self.image_SEM)
+            self.ask_user_interaction(msg="Was the landing successful? If not, please manually fix. Press Yes to continue.", 
+            beam_type=BeamType.ION)
 
         #################################################################################################
 
@@ -1366,9 +1269,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         if self.ADDITIONAL_CONFIRMATION:
-            self.update_popup_settings(message="Was the milling successful?\nIf not, please manually fix, and then press yes.", filter_strength=self.filter_strength, crosshairs=False)
-            self.update_display(beam_type=BeamType.ION, image_type="last")
-            self.ask_user(image=self.image_FIB)
+            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. Press Yes to continue.", 
+                beam_type=BeamType.ION)
+
 
         logging.info(f"{self.current_stage.name}: removing needle from landing post")
         # move needle out of trench slowly at first
@@ -1482,14 +1385,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                               stage_position=self.current_sample_position.landing_coordinates)
 
         # ensure_eucentricity # TODO: Maybe remove, not required?
-        self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
+        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
+        self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
         # rotate_and_tilt_to_thinning_angle
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
         movement.move_to_thinning_angle(microscope=self.microscope, settings=self.settings)
 
         # ensure_eucentricity at thinning angle
-        self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
+        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
+        self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
+
 
         # lamella images
         self.update_image_settings(
@@ -1518,11 +1424,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=False
         )
-        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
-                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_FIB)
+
+        self.ask_user_movement(msg_type="centre_ib")
+
 
         # take reference images
         self.update_image_settings(
@@ -1573,11 +1477,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["reference_images"]["thinning_ref_img_hfw_highres"],
             save=False
         )
-        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        self.update_popup_settings(message=f'Please double click to centre the lamella coordinate in the ion beam.\n'
-                                           f'Press Yes when the feature is centered', click='double',
-                                   filter_strength=self.filter_strength, allow_new_image=True)
-        self.ask_user(image=self.image_FIB)
+
+        self.ask_user_movement(msg_type="centre_ib")
 
         # take reference images
         self.update_image_settings(
@@ -1690,7 +1591,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_SAVE_PATH = False
         TEST_PIESCOPE = False
         TEST_MILLING_WINDOW = False
-        TEST_DETECTION_WINDOW = True
+        TEST_DETECTION_WINDOW = False
+        TEST_MOVEMENT_WINDOW = False
+        TEST_USER_WINDOW = True
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()
@@ -1730,7 +1633,46 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                         shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost))
             pprint(det)
 
+        if TEST_MOVEMENT_WINDOW:
             
+            self.ask_user_movement(msg_type="eucentric", flat_to_sem=True)
+            self.ask_user_movement(msg_type="centre_eb", flat_to_sem=True)
+            self.ask_user_movement(msg_type="centre_ib", flat_to_sem=True)
+            self.ask_user_movement(msg_type="milling_success", flat_to_sem=False)
+            self.ask_user_movement(msg_type="working_distance", flat_to_sem=False)
+
+        if TEST_USER_WINDOW:
+
+            ret = self.ask_user_interaction(msg="Hello 1", beam_type=None)
+            print("RETURN: ", ret, self.response)
+
+
+    def ask_user_interaction(self, msg="Default Ask User Message", beam_type=None):
+        """Create user interaction window and get return response"""
+        ask_user_window = GUIUserWindow(microscope=self.microscope,
+                                    settings=self.settings,
+                                    image_settings=self.image_settings,
+                                    msg=msg,
+                                    beam_type=beam_type
+                                    )
+        ask_user_window.show()        
+        
+        self.response = bool(ask_user_window.exec_())
+        return self.response 
+
+    def ask_user_movement(self, msg_type="eucentric", flat_to_sem:bool=False):
+        
+        logging.info(f"Asking user for confirmation for {msg_type} movement")
+        if flat_to_sem:
+            movement.flat_to_beam(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON)
+
+        movement_window = GUIMMovementWindow(microscope=self.microscope,
+                            settings=self.settings,
+                            image_settings=self.image_settings,
+                            msg_type=msg_type,
+                            )
+        movement_window.show()
+        movement_window.exec_()
 
     def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):
             
@@ -1752,330 +1694,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         detection_window.exec_()
 
         return detection_window.detection_result
-
-    def ask_user(self, image=None, second_image=None):
-        self.select_all_button = None
-
-        if image is not None:
-            self.popup_settings['image'] = image
-        else:
-            self.popup_settings['image'] = None
-        if second_image is not None:
-            self.popup_settings['second_image'] = second_image
-        else:
-            self.popup_settings['second_image'] = None
-
-        if image is self.image_FIB:
-            self.popup_settings['beam_type'] = BeamType.ION
-            self.image_settings['beam_type'] = BeamType.ION
-        elif image is self.image_SEM:
-            self.popup_settings['beam_type'] = BeamType.ELECTRON
-            self.image_settings['beam_type'] = BeamType.ELECTRON
-        else:
-            self.popup_settings['beam_type'] = None
-
-        beam_type = self.image_settings['beam_type']
-
-        # turn off main window while popup window in use
-        self.setEnabled(False)
-
-        # used to avoid bug of closing and reopening test popup window (might not be an issue for regular running)
-        self.popup_settings['click_crosshair'] = None
-
-        # settings of the popup window
-        self.popup_window = QtWidgets.QDialog()
-        self.popup_window.setLayout(QtWidgets.QGridLayout())
-        self.popup_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        self.popup_window.destroyed.connect(lambda: self.setEnabled(True))
-        self.popup_window.destroyed.connect(lambda: self.popup_settings.pop('image'))
-        self.popup_window.destroyed.connect(lambda: self.popup_settings.pop('second_image'))
-        self.popup_window.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-
-        self.popup_canvas = None
-
-        if self.popup_settings['message']:
-            # set up message
-            message_frame = QtWidgets.QWidget(self.popup_window)
-            message_layout = QtWidgets.QHBoxLayout()
-            message_frame.setLayout(message_layout)
-            font = QtGui.QFont()
-            font.setPointSize(16)
-
-            message = QtWidgets.QLabel()
-            message.setText(self.popup_settings['message'])
-            message.setFont(font)
-            message.setFixedHeight(50)
-            message.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-            message.setAlignment(QtCore.Qt.AlignCenter)
-            message_frame.layout().addWidget(message)
-        else:
-            logging.warning('Popup called without a message')
-            return
-
-        # yes/no buttons
-        button_box = QtWidgets.QWidget(self.popup_window)
-        button_box.setFixedHeight(int(self.button_height*1.2))
-        button_layout = QtWidgets.QGridLayout()
-        yes = QtWidgets.QPushButton('Yes')
-        yes.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
-        yes.setFixedHeight(self.button_height)
-        yes.setFixedWidth(self.button_width)
-        yes.clicked.connect(lambda: self.set_response(True))
-        yes.clicked.connect(lambda: self.popup_window.close())
-
-        no = QtWidgets.QPushButton('No')
-        no.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed))
-        no.setFixedHeight(self.button_height)
-        no.setFixedWidth(self.button_width)
-        no.clicked.connect(lambda: self.set_response(False))
-        no.clicked.connect(lambda: self.popup_window.close())
-
-        # spacers
-        h_spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        h_spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-
-        # button layout
-        button_box.setLayout(button_layout)
-        button_box.layout().addItem(h_spacer, 0, 0, 2, 1)
-        button_box.layout().addWidget(yes, 0, 1, 2, 1)
-        button_box.layout().addWidget(no, 0, 2, 2, 1)
-        button_box.layout().addItem(h_spacer2, 0, 3, 2, 1)
-
-        # set up the rest of the window and update display
-        if second_image is not None:
-            self.popup_settings['second_image'] = second_image
-
-        if image is not None:
-            # extra check in case new_image set on ML images
-            if self.popup_settings['allow_new_image'] and beam_type:
-                self.new_image = QtWidgets.QPushButton()
-                self.new_image.setFixedHeight(self.button_height)
-                self.new_image.setFixedWidth(self.button_width)
-                self.new_image.setText('New Image')
-                message_frame.layout().addWidget(self.new_image)
-                # extra check in case hfw set on ML images
-                hfw_widget = QtWidgets.QWidget()
-                hfw_widget_layout = QtWidgets.QGridLayout()
-                hfw_widget.setLayout(hfw_widget_layout)
-
-                # slider (set as a property so it can be accessed to set hfw)
-                self.hfw_slider = QtWidgets.QSlider()
-                self.hfw_slider.setOrientation(QtCore.Qt.Horizontal)
-                self.hfw_slider.setMinimum(1)
-                if beam_type == BeamType.ELECTRON:
-                    self.hfw_slider.setMaximum(self.settings["imaging"]["max_eb_hfw"] * MICRON_TO_METRE)
-                else:
-                    self.hfw_slider.setMaximum(self.settings["imaging"]["max_ib_hfw"] * MICRON_TO_METRE)
-                self.hfw_slider.setValue(self.image_settings['hfw'] * MICRON_TO_METRE)
-
-                # spinbox (not a property as only slider value needed)
-                hfw_spinbox = QtWidgets.QSpinBox()
-                hfw_spinbox.setMinimum(1)
-                if beam_type == BeamType.ELECTRON:
-                    hfw_spinbox.setMaximum(self.settings["imaging"]["max_eb_hfw"] * MICRON_TO_METRE)
-                else:
-                    hfw_spinbox.setMaximum(self.settings["imaging"]["max_ib_hfw"] * MICRON_TO_METRE)
-                hfw_spinbox.setValue(self.image_settings['hfw'] * MICRON_TO_METRE)
-
-                self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
-                self.hfw_slider.valueChanged.connect(lambda: hfw_spinbox.setValue(self.hfw_slider.value()))
-
-                hfw_spinbox.valueChanged.connect(lambda: self.hfw_slider.setValue(hfw_spinbox.value()))
-
-                hfw_widget.layout().addWidget(self.hfw_slider)
-                hfw_widget.layout().addWidget(hfw_spinbox)
-
-                self.popup_window.layout().addWidget(hfw_widget, 7, 1, 1, 1)
-
-            self.update_popup_display()
-
-        self.popup_window.layout().addWidget(message_frame, 6, 1, 1, 1)
-        self.popup_window.layout().addWidget(button_box, 8, 1, 1, 1)
-
-        # show window
-        self.popup_window.show()
-        self.popup_window.exec_()
-
-    def update_popup_display(self):
-        toolbar_active = True
-        second_image_array = None
-
-        figure = plt.figure(1)
-        plt.axis('off')
-        # plt.tight_layout()
-        # plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.01)
-
-        # reset the canvas and toolbar if they exist
-        if self.popup_canvas:
-            self.popup_window.layout().removeWidget(self.popup_canvas)
-            self.popup_window.layout().removeWidget(self.popup_toolbar)
-            self.popup_canvas.deleteLater()
-            self.popup_toolbar.deleteLater()
-        self.popup_canvas = _FigureCanvas(figure)
-
-        if self.popup_settings['allow_new_image'] and self.popup_settings['beam_type']:
-            # reset function connection
-            self.new_image.clicked.connect(lambda: print(''))
-            self.new_image.clicked.disconnect()
-
-            # connect button to functions
-            self.new_image.clicked.connect(lambda: self.image_settings.update(
-                {'hfw': self.hfw_slider.value()*METRE_TO_MICRON}))
-            self.new_image.clicked.connect(lambda: self.popup_settings.update(
-                {'image': acquire.new_image(self.microscope, self.image_settings)}))
-            self.new_image.clicked.connect(lambda: self.update_popup_display())
-
-        if self.popup_settings['click']:
-            self.popup_canvas.mpl_connect('button_press_event', lambda event: self.on_gui_click(event))
-
-        # do second image first as it has less settings
-        if self.popup_settings['second_image'] is not None:
-            if type(self.popup_settings['second_image']) == np.ndarray:
-                second_image_array = self.popup_settings['second_image'].astype(np.uint8)
-            else:
-                second_image_array = self.popup_settings['second_image'].data.astype(np.uint8)
-
-            if self.popup_settings['filter_strength']:
-                second_image_array = ndi.median_filter(second_image_array,
-                                                size=self.popup_settings['filter_strength'])
-
-            if second_image_array.ndim != 3:
-                second_image_array = np.stack((second_image_array,) * 3, axis=-1)
-
-        if self.popup_settings['image'] is not None:
-            if type(self.popup_settings['image']) == np.ndarray:
-                image_array = self.popup_settings['image'].astype(np.uint8)
-            else:
-                image_array = self.popup_settings['image'].data.astype(np.uint8)
-
-            if self.popup_settings['filter_strength']:
-                image_array = ndi.median_filter(image_array,
-                                                size=self.popup_settings['filter_strength'])
-
-            if image_array.ndim != 3:
-                image_array = np.stack((image_array,) * 3, axis=-1)
-
-            # Cross hairs
-            xshape = image_array.shape[1]
-            yshape = image_array.shape[0]
-            midx = int(xshape / 2)
-            midy = int(yshape / 2)
-
-            cross_size = 120
-            half_cross = cross_size / 2
-            cross_thickness = 2
-            half_thickness = cross_thickness / 2
-
-            h_rect = plt.Rectangle((midx, midy - half_thickness), half_cross, cross_thickness)
-            h_rect2 = plt.Rectangle((midx - half_cross, midy - half_thickness), half_cross, cross_thickness)
-            v_rect = plt.Rectangle((midx - half_thickness, midy), cross_thickness, half_cross)
-            v_rect2 = plt.Rectangle((midx - half_thickness, midy - half_cross), cross_thickness, half_cross)
-
-            h_rect.set_color('xkcd:yellow')
-            h_rect2.set_color('xkcd:yellow')
-            v_rect.set_color('xkcd:yellow')
-            v_rect2.set_color('xkcd:yellow')
-
-            figure.clear()
-            if self.popup_settings['second_image'] is not None:
-                self.ax = figure.add_subplot(122)
-                self.ax.set_title(' ')
-                self.ax.imshow(image_array)
-                ax2 = figure.add_subplot(121)
-                ax2.imshow(second_image_array)
-                ax2.set_title('Previous Image')
-
-            else:
-                self.ax = figure.add_subplot(111)
-                self.ax.imshow(image_array)
-                self.ax.set_title(' ')
-
-            self.ax.patches = []
-            if self.popup_settings['crosshairs']:
-                self.ax.add_patch(h_rect)
-                self.ax.add_patch(v_rect)
-                self.ax.add_patch(h_rect2)
-                self.ax.add_patch(v_rect2)
-            if self.popup_settings['second_image'] is not None:
-                ax2.add_patch(h_rect)
-                ax2.add_patch(v_rect)
-                ax2.add_patch(h_rect2)
-                ax2.add_patch(v_rect2)
-
-            # if self.popup_settings['milling_patterns'] is not None:
-            #     toolbar_active = False
-            #     if self.select_all_button is None:
-            #         self.select_all_button = QtWidgets.QCheckBox('Select all')
-            #         self.popup_window.layout().addWidget(self.select_all_button)
-            #     self.patterns = []
-            #     for pattern in self.popup_settings['milling_patterns']:
-            #         if type(self.popup_settings['image']) == np.ndarray:
-            #             # TODO: remove this block as it is only used for testing (NEXT)
-            #             image_width = self.popup_settings['image'].shape[1]
-            #             image_height = self.popup_settings['image'].shape[0]
-            #             pixel_size = 1e-6
-            #             width = pattern[2] / pixel_size
-            #             height = pattern[3] / pixel_size
-
-            #             # Rectangle is defined from bottom left due to mpl, y+ down in image (so bottom left is top left)
-            #             # Microscope (0, 0) is middle of image, y+ = up in image
-            #             # Image (0, 0) is top left corner, y+ = down in image
-            #             rectangle_left = (image_width / 2) + (pattern[0] / pixel_size) - (width / 2)
-            #             rectangle_bottom = (image_height / 2) - (pattern[1] / pixel_size) - (height / 2)
-            #             rotation = 0
-            #         else:
-            #             image_width = self.popup_settings['image'].width
-            #             image_height = self.popup_settings['image'].height
-            #             pixel_size = self.popup_settings['image'].metadata.binary_result.pixel_size.x
-
-            #             width = pattern.width / pixel_size
-            #             height = pattern.height / pixel_size
-            #             rotation = -pattern.rotation
-            #             # Rectangle is defined from bottom left due to mpl
-            #             # Microscope (0, 0) is middle of image, y+ = up
-            #             # Image (0, 0) is top left corner, y+ = down
-
-            #             rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
-            #             rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
-
-            #         pattern = plt.Rectangle((rectangle_left, rectangle_bottom), width, height)
-            #         pattern.set_hatch('/////')
-            #         pattern.angle = np.rad2deg(rotation)
-            #         pattern.set_edgecolor('xkcd:pink')
-            #         pattern.set_fill(False)
-            #         self.ax.add_patch(pattern)
-            #         pattern = DraggablePatch(pattern)
-            #         pattern.pixel_size = pixel_size
-            #         pattern.image_width = image_width
-            #         pattern.image_height = image_height
-            #         pattern.connect()
-            #         pattern.update_position()
-            #         self.patterns.append(pattern)
-            #     self.select_all_button.clicked.connect(lambda: self.toggle_select_all())
-
-            if self.popup_settings['click_crosshair']:
-                for patch in self.popup_settings['click_crosshair']:
-                    self.ax.add_patch(patch)
-            self.popup_canvas.draw()
-
-            if toolbar_active:
-                self.popup_toolbar = _NavigationToolbar(self.popup_canvas, self)
-                self.popup_window.layout().addWidget(self.popup_toolbar, 1, 1, 1, 1)
-            self.popup_window.layout().addWidget(self.popup_canvas, 2, 1, 4, 1)
-
-    def update_popup_settings(self, message='default message', allow_new_image=False, click=None, filter_strength=0, crosshairs=True):
-        self.popup_settings["message"] = message
-        self.popup_settings['allow_new_image'] = allow_new_image
-        self.popup_settings['click'] = click
-        self.popup_settings['filter_strength'] = filter_strength
-        self.popup_settings['crosshairs'] = crosshairs
-        # if milling_patterns is not None:
-        #     if type(milling_patterns) is list:
-        #         self.popup_settings['milling_patterns'] = milling_patterns  # needs to be an iterable for display
-        #     else:
-        #         self.popup_settings['milling_patterns'] = [milling_patterns]  # needs to be an iterable for display
-        # else:
-        #     self.popup_settings["milling_patterns"] = milling_patterns
 
     def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,
                               autocontrast=None, beam_type=None, gamma=None,
@@ -2356,18 +1974,8 @@ def display_error_message(message, title="Error"):
 
     return error_dialog
 
-
 def main(offline=True):
-    if offline is False:
-        launch_gui(offline=offline)
-    else:
-        try:
-            launch_gui(offline=offline)
-        except Exception:
-            import pdb
-            traceback.print_exc()
-            pdb.set_trace()
-
+    launch_gui(offline=offline)
 
 def launch_gui(offline=False):
     """Launch the `autoliftout` main application window."""
