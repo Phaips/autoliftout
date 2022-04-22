@@ -118,10 +118,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.current_sample_position = None
 
-        # initial display
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        self.update_display(beam_type=BeamType.ION, image_type='last')
-
         # popup initialisations
         self.popup_window = None
         self.new_image = None
@@ -659,11 +655,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def user_select_feature(self, feature_type):
         """Get the user to centre the beam on the desired feature"""
-        # refresh
+
+        # ask user
         self.update_image_settings(hfw=self.settings["reference_images"]["landing_post_ref_img_hfw_lowres"], save=False)
         self.ask_user_movement(msg_type="centre_ib")
-
-        # self.update_display(beam_type=BeamType.ELECTRON, image_type='new')
 
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
 
@@ -900,9 +895,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f'drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
         )
-        self.image_SEM, self.image_FIB = acquire.take_reference_images(self.microscope, self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type='last')
-        self.update_display(beam_type=BeamType.ION, image_type='last')
+        acquire.take_reference_images(self.microscope, self.image_settings)
+
 
     def liftout_lamella(self):
 
@@ -910,7 +904,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_liftout_angle(self.microscope, self.settings)
 
         # check eucentric height
-        # self.ask_user_to_confirm_eucentricity(flat_to_sem=True)  
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=True) # liftout angle is flat to SEM
 
         # check focus distance is within tolerance
@@ -972,9 +965,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i in range(3):
             z_move_out_from_trench = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_trench)
-            self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-            self.update_display(beam_type=BeamType.ION, image_type="new")
-            logging.info(f"{self.current_stage.name}: removing needle from trench at {z_move_out_from_trench}")
+            self.image_settings["label"] = f"liftout_trench_{i}"
+            acquire.take_reference_images(self.microscope, self.image_settings)
+            logging.info(f"{self.current_stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1} / 3")
             time.sleep(1)
 
         # reference images after liftout complete
@@ -1004,9 +997,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"needle_liftout_start_position_highres"
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
-
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
         ###
 
         ### XY-MOVE (ELECTRON)
@@ -1101,7 +1091,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
         # confirm eucentricity
-        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False) # liftout angle is flat to SEM
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
 
@@ -1178,9 +1167,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         x_move = movement.x_corrected_needle_movement(det.distance_metres.x / 2)
         self.needle.relative_move(x_move)
         logging.info(f"{self.current_stage.name}: x-half-move complete: {x_move}")
-
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-        self.update_display(beam_type=BeamType.ION, image_type="new")
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
         #### X-MOVE
         self.update_image_settings(
@@ -1208,8 +1195,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_final_weld_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
 
         if self.ADDITIONAL_CONFIRMATION:
             self.ask_user_interaction(msg="Was the landing successful? If not, please manually fix. Press Yes to continue.", 
@@ -1278,8 +1263,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i in range(3):
             z_move_out_from_post = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_post)
-            self.update_display(beam_type=BeamType.ELECTRON, image_type="new")
-            self.update_display(beam_type=BeamType.ION, image_type="new")
+            self.image_settings["label"] = f"needle_retract_{i}"
+            acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_stage.name}: moving needle out: {z_move_out_from_post} ({i + 1} / 3")
             time.sleep(1)
 
@@ -1345,8 +1330,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.image_settings["label"] = f"sharpen_needle_centre"
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-        self.update_display(beam_type=BeamType.ELECTRON, image_type="last")
-        self.update_display(beam_type=BeamType.ION, image_type="last")
 
         det = self.validate_detection(self.microscope, 
                                         self.settings, 
@@ -1385,7 +1368,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                               stage_position=self.current_sample_position.landing_coordinates)
 
         # ensure_eucentricity # TODO: Maybe remove, not required?
-        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
         # rotate_and_tilt_to_thinning_angle
@@ -1393,7 +1375,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_to_thinning_angle(microscope=self.microscope, settings=self.settings)
 
         # ensure_eucentricity at thinning angle
-        # self.ask_user_to_confirm_eucentricity(flat_to_sem=False)
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
 
@@ -1533,9 +1514,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def initialize_hardware(self, offline=False):
         if offline is False:
             self.connect_to_microscope(ip_address=self.ip_address)
-        elif offline is True:
-            pass
-            # self.connect_to_microscope(ip_address='localhost')
 
     def setup_connections(self):
         logging.info("gui: setup connections started")
@@ -1586,9 +1564,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def testing_function(self):
 
-        TEST_VALIDATE_DETECTION = False
         TEST_SAMPLE_POSITIONS = False
-        TEST_SAVE_PATH = False
         TEST_PIESCOPE = False
         TEST_MILLING_WINDOW = False
         TEST_DETECTION_WINDOW = False
@@ -1597,11 +1573,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()
-
-        if TEST_SAVE_PATH:
-            if self.samples:
-                self.current_sample_position = self.samples[0]
-                self.update_image_settings()
 
         if TEST_PIESCOPE:
             self.select_sample_positions_piescope(initialisation=False)
@@ -1716,75 +1687,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.debug(f"Image Settings: {self.image_settings}")
 
-    def on_gui_click(self, event):
-        click = self.popup_settings['click']
-        image = self.popup_settings['image']
-        beam_type = self.image_settings['beam_type']
-
-        if self.popup_toolbar._active == 'ZOOM' or self.popup_toolbar._active == 'PAN':
-            return
-        else:
-            if event.inaxes.get_title() != 'Previous Image':
-                if event.button == 1:
-                    if event.dblclick and (click in ('double', 'all')):
-                        if image:
-                            logging.info(f"{self.current_stage} | DOUBLE CLICK")
-                            self.xclick = event.xdata
-                            self.yclick = event.ydata
-                            x, y = movement.pixel_to_realspace_coordinate(
-                                [self.xclick, self.yclick], image)
-
-                            x_move = movement.x_corrected_stage_movement(x, stage_tilt=self.stage.current_position.t)
-                            yz_move = movement.y_corrected_stage_movement(
-                                y,
-                                stage_tilt=self.stage.current_position.t,
-                                settings=self.settings,
-                                beam_type=beam_type)
-                            self.stage.relative_move(x_move)
-                            self.stage.relative_move(yz_move)
-                            self.popup_settings['image'] = acquire.new_image(
-                                microscope=self.microscope,
-                                settings=self.image_settings)
-                            if beam_type:
-                                self.update_display(beam_type=beam_type,
-                                                    image_type='last')
-                            self.update_popup_display()
-
-                    elif click in ('single', 'all'):
-                        logging.info(f"{self.current_stage} | SINGLE CLICK")
-                        self.xclick = event.xdata
-                        self.yclick = event.ydata
-
-                        cross_size = 120
-                        half_cross = cross_size / 2
-                        cross_thickness = 2
-                        half_thickness = cross_thickness / 2
-
-                        h_rect = plt.Rectangle(
-                            (event.xdata, event.ydata - half_thickness),
-                            half_cross, cross_thickness)
-                        h_rect2 = plt.Rectangle((event.xdata - half_cross,
-                                                 event.ydata - half_thickness),
-                                                half_cross,
-                                                cross_thickness)
-
-                        v_rect = plt.Rectangle(
-                            (event.xdata - half_thickness, event.ydata),
-                            cross_thickness, half_cross)
-                        v_rect2 = plt.Rectangle((
-                                                event.xdata - half_thickness,
-                                                event.ydata - half_cross),
-                                                cross_thickness,
-                                                half_cross)
-
-                        h_rect.set_color('xkcd:yellow')
-                        h_rect2.set_color('xkcd:yellow')
-                        v_rect.set_color('xkcd:yellow')
-                        v_rect2.set_color('xkcd:yellow')
-
-                        self.popup_settings['click_crosshair'] = (h_rect, h_rect2, v_rect, v_rect2)
-                        self.update_popup_display()
-
     def set_response(self, response):
         self.response = response
         # xy is top left in image coords, bottom left in
@@ -1797,42 +1699,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.microscope = fibsem_utils.initialise_fibsem(ip_address=ip_address)
         except Exception:
             display_error_message(traceback.format_exc())
-
-    def update_display(self, beam_type=BeamType.ELECTRON, image_type='last'):
-        """Update the GUI display with the current image"""
-        if self.microscope:
-            try:
-                
-                # TODO: update to use this one...
-                # # get new or last image
-                # if image_type == "new":
-                #     self.image_settings["beam_type"] = beam_type
-                #     image = acquire.new_image(self.microscope, self.image_settings)
-                # else:
-                #     image =  acquire.last_image(self.microscope, self.image_settings)
-
-                # # update display images
-                # if beam_type is BeamType.ELECTRON:
-                #     self.image_SEM =  image
-                # if beam_type is BeamType.ION:
-                #     self.image_FIB = image
-
-                if beam_type is BeamType.ELECTRON:
-                    if image_type == 'new':
-                        self.image_settings['beam_type'] = beam_type
-                        self.image_SEM = acquire.new_image(self.microscope, self.image_settings)
-                    else:
-                        self.image_SEM = acquire.last_image(self.microscope, beam_type=beam_type)
-
-                if beam_type is BeamType.ION:
-                    if image_type == 'new':
-                        self.image_settings['beam_type'] = beam_type
-                        self.image_FIB = acquire.new_image(self.microscope, self.image_settings)
-                    else:
-                        self.image_FIB = acquire.last_image(self.microscope, beam_type=beam_type)
-
-            except Exception:
-                display_error_message(traceback.format_exc())
 
     def disconnect(self):
         logging.info('Running cleanup/teardown')
