@@ -1,25 +1,20 @@
 
+
 import logging
 import sys
-from typing import Iterable
+import time
 from dataclasses import dataclass
 from enum import Enum
 
-import matplotlib.pyplot as plt
 import numpy as np
-from autoscript_sdb_microscope_client.structures import AdornedImage
 from liftout import fibsem, utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
+from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
-
-from liftout.gui.utils import _PlotCanvas, _WidgetPlot, create_crosshair
+from PyQt5 import QtCore, QtWidgets
 
 MICRON_TO_METRE = 1e-6
 METRE_TO_MICRON = 1e6
@@ -87,6 +82,16 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                                   "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
 
+        # sputtering rates
+        self.sputter_rate_dict = {
+            0.89e-9: 4.762e-1,
+            2.4e-9: 1.309,
+            6.2e-9: 2.907
+        }
+        # 0.89nA : 4.762e-1 um3/s
+        # 2.4nA : 1.309e0 um3/s
+        # 6.2nA : 2.907e0 um3/s
+
         self.INITIALISED = False
 
 
@@ -119,6 +124,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.center_x, self.center_y = x, y
         self.xclick, self.yclick = None, None
         self.update_display()
+
         self.INITIALISED = True
 
     def setup_connections(self):
@@ -262,6 +268,11 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         # set the first milling stage settings
         first_stage = list(self.milling_stages.keys())[0]
         self.milling_settings = self.milling_stages[first_stage]
+
+        if "milling_current" in self.milling_settings:
+            self.milling_current = float(self.milling_settings["milling_current"])
+        else: 
+            self.milling_current = float(self.settings["imaging"]["milling_current"]) 
         self.update_parameter_elements()
 
     def update_parameter_elements(self):
@@ -282,6 +293,20 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 self.parameter_labels[i].setVisible(False)
                 self.parameter_values[i].setVisible(False)
         
+        # update labels
+        self.label__milling_current.setText(f"Milling Current: {self.milling_current:.2e}A")
+        self.label_estimated_time.setText(f"Estimated Time: {100} seconds") # TODO: formulaa
+
+        # set progress bar
+        self.progressBar.setValue(0)
+        # self.progressBar.setStyleSheet(
+        #     """
+        #     border: 2px solid #2196F3;
+        #     border-radius: 5px;
+        #     background-color: #E0E0E0;
+        #     """
+        # )
+
         self.USER_UPDATE = True
 
     def update_milling_patterns(self):
@@ -335,6 +360,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         if not isinstance(self.patterns, list):
             self.patterns = [self.patterns]
 
+
     def draw_milling_patterns(self):
 
         self.microscope.imaging.set_active_view(2)  # the ion beam view
@@ -344,14 +370,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         except Exception as e:
             logging.error(f"Error during milling pattern update: {e}")
 
-        # create a rectangle for each pattern
-        self.pattern_rectangles = []
-        for pattern in self.patterns:
-            rectangle = Rectangle((0, 0), 0.2, 0.2, color='yellow', fill=None, alpha=1)
-            rectangle.set_visible(False)
-            rectangle.set_hatch('//////')
-            self.pattern_rectangles.append(rectangle)
-
         def draw_rectangle_pattern(adorned_image, rectangle, pattern):
             image_width = adorned_image.width
             image_height = adorned_image.height
@@ -359,16 +377,22 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
             width = pattern.width / pixel_size
             height = pattern.height / pixel_size
-            rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width/2)
-            rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height/2)
+            rotation = -pattern.rotation
+            rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
+            rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
             rectangle.set_width(width)
             rectangle.set_height(height)
             rectangle.set_xy((rectangle_left, rectangle_bottom))
             rectangle.set_visible(True)
 
+        # create a rectangle for each pattern
+        self.pattern_rectangles = []
         try:
-            for pattern, rectangle in zip(self.patterns, self.pattern_rectangles):
-
+            for pattern in self.patterns:
+                rectangle = Rectangle((0, 0), 0.2, 0.2, color='yellow', fill=None, alpha=1, angle=np.rad2deg(-pattern.rotation))
+                rectangle.set_visible(False)
+                rectangle.set_hatch('//////')
+                self.pattern_rectangles.append(rectangle)
                 draw_rectangle_pattern(adorned_image=self.adorned_image,
                                        rectangle=rectangle, pattern=pattern)
         except Exception as e:
@@ -391,6 +415,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             
             # run_milling
             milling.run_milling(microscope=self.microscope, settings=self.settings)
+
+            while self.microscope.patterning.state == "Running":
+                print("STATE: ", self.microscope.patterning.state)
+                self.progressBar.setValue(self.progressBar.value() + 1)
+                time.sleep(1)
+            
+            print("Finished: ", self.microscope.patterning.state)
+
 
         # reset to imaging mode
         milling.finish_milling(microscope=self.microscope, settings=self.settings)
@@ -417,13 +449,17 @@ def main():
         "save": False,
         "label": "test",
     }
+
+    # microscope.patterning.
+    # volume (width * height * depth) / total_volume_sputter_rate
+
     app = QtWidgets.QApplication([])
     qt_app = GUIMillingWindow(microscope=microscope, 
                                 settings=settings, 
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.Trench)
+    qt_app.update_milling_pattern_type(MillingPattern.Flatten)
     sys.exit(app.exec_())
 
 
