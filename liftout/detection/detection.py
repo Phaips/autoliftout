@@ -15,10 +15,6 @@ from liftout.detection import utils
 from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
 from liftout.tests.mock_autoscript_sdb_microscope_client import AdornedImage 
 
-
-# TODO: convert detection types to enum
-
-
 class Detector:
 
     def __init__(self, weights_file) -> None:

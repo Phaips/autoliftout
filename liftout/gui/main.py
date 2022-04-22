@@ -5,26 +5,20 @@ import sys
 import time
 import traceback
 
+from dataclasses import dataclass
+
 import liftout
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 from liftout import utils
-from liftout.detection import detection
-from liftout.detection import utils as detection_utils
 from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.gui.DraggablePatch import DraggablePatch
 from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 from liftout.gui.qtdesigner_files import main as gui_main
-from matplotlib.backends.backend_qt5agg import \
-    FigureCanvasQTAgg as _FigureCanvas
-from matplotlib.backends.backend_qt5agg import \
-    NavigationToolbar2QT as _NavigationToolbar
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
@@ -51,6 +45,28 @@ MAXIMUM_WORKING_DISTANCE = 6.0e-3
 
 _translate = QtCore.QCoreApplication.translate
 
+
+
+from pathlib import Path
+@dataclass
+class GammaSettings:
+    enabled: bool
+    min_gamma: float 
+    max_gamma: float
+    scale_factor: float
+    threshold: int # px
+@dataclass
+class ImageSettings:
+    resolution: str
+    dwell_time: float
+    hfw: float
+    autocontrast: bool
+    beam_type: BeamType
+    save: bool
+    save_path: Path
+    label: str
+    gamma: GammaSettings
+
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
@@ -76,9 +92,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setupUi(self)
         self.UI_LOADED = True # flag to check if ui has been loaded
         self.setWindowTitle('Autoliftout User Interface Main Window')
-        self.raw_image = None
-        self.overlay_image = None
-        self.downscaled_image = None
 
         self.setStyleSheet("""QPushButton {
         border: 1px solid #e3e3e3;
@@ -105,7 +118,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
  
         # initial image settings
         self.image_settings = {}
-        self.USE_AUTOCONTRAST = self.settings["imaging"]["autocontrast"]
         self.update_image_settings()
 
         if self.microscope:
@@ -1648,7 +1660,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.image_settings["resolution"] = self.settings["imaging"]["resolution"] if resolution is None else resolution
         self.image_settings["dwell_time"] = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time
         self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw
-        self.image_settings["autocontrast"] = self.USE_AUTOCONTRAST if autocontrast is None else autocontrast
+        self.image_settings["autocontrast"] = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast
         self.image_settings["beam_type"] = BeamType.ELECTRON if beam_type is None else beam_type
         self.image_settings["gamma"] = self.settings["gamma"] if gamma is None else gamma
         self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
