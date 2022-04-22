@@ -1,6 +1,9 @@
-from liftout.fibsem.movement import *
+from liftout.fibsem import movement  
 import time
 import logging
+
+from liftout.fibsem.acquire import BeamType
+
 
 
 def initialise_fibsem(ip_address="10.0.0.1"):
@@ -23,7 +26,7 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     """
 
     if whole_grid:
-        move_to_sample_grid(microscope, settings)
+        movement.move_to_sample_grid(microscope, settings)
         sputter_time = settings["platinum"]["whole_grid"]["time"]  # 20
         hfw = settings["platinum"]["whole_grid"]["hfw"]  # 30e-6
         line_pattern_length = settings["platinum"]["whole_grid"]["length"]  # 7e-6

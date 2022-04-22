@@ -47,25 +47,7 @@ _translate = QtCore.QCoreApplication.translate
 
 
 
-from pathlib import Path
-@dataclass
-class GammaSettings:
-    enabled: bool
-    min_gamma: float 
-    max_gamma: float
-    scale_factor: float
-    threshold: int # px
-@dataclass
-class ImageSettings:
-    resolution: str
-    dwell_time: float
-    hfw: float
-    autocontrast: bool
-    beam_type: BeamType
-    save: bool
-    save_path: Path
-    label: str
-    gamma: GammaSettings
+
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
@@ -1671,6 +1653,49 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
         else:
             self.image_settings["save_path"] = self.save_path if save_path is None else save_path
+
+        logging.debug(f"Image Settings: {self.image_settings}")
+    
+
+    def update_image_settings2(self, resolution=None, dwell_time=None, hfw=None,
+                              autocontrast=None, beam_type=None, gamma=None,
+                              save=None, label=None, save_path=None):
+        """Update image settings. Uses default values if not supplied
+
+        Args:
+            resolution (str, optional): _description_. Defaults to None.
+            dwell_time (float, optional): _description_. Defaults to None.
+            hfw (float, optional): _description_. Defaults to None.
+            autocontrast (bool, optional): _description_. Defaults to None.
+            beam_type (BeamType, optional): _description_. Defaults to None.
+            gamma (GammaSettings, optional): _description_. Defaults to None.
+            save (bool, optional): _description_. Defaults to None.
+            label (str, optional): _description_. Defaults to None.
+            save_path (Path, optional): _description_. Defaults to None.
+        """
+        gamma_settings = acquire.GammaSettings(
+            enabled = self.settings["gamma"]["correction"],
+            min_gamma = self.settings["gamma"]["min_gamma"],
+            max_gamma = self.settings["gamma"]["max_gamma"],
+            scale_factor= self.settings["gamma"]["scale_factor"],
+            threshold = self.settings["gamma"]["threshold"]
+        )
+
+        self.image_settings2 = acquire.ImageSettings(
+            resolution = self.settings["imaging"]["resolution"] if resolution is None else resolution,
+            dwell_time = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time,
+            hfw = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw,
+            autocontrast = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast,
+            beam_type = BeamType.ELECTRON if beam_type is None else beam_type,
+            gamma = gamma_settings if gamma is None else gamma,
+            save = bool(self.settings["imaging"]["save"]) if save is None else save,
+            save_path = self.save_path if save_path is None else save_path,
+            label = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
+        )
+
+        # change the save path to the current sample if available
+        if self.current_sample_position:
+            self.image_settings2.save_path = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
 
         logging.debug(f"Image Settings: {self.image_settings}")
 
