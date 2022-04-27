@@ -90,7 +90,7 @@ lamella:
 machine_learning:
   weights: boost_n05_model.pt
 jcut:
-  milling_current: 0.74e-9 # in Amps
+  milling_current: 0.89e-9 # in Amps
   jcut_angle: 6  # in degrees (relative from trench)
   length: 12e-6 # in meters
   height: 5e-6 # in meters

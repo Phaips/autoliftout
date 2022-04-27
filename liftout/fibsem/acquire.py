@@ -35,9 +35,9 @@ class ImageSettings:
     autocontrast: bool
     beam_type: BeamType
     save: bool
-    save_path: Path
     label: str
     gamma: GammaSettings
+    save_path: Path = None
 
 
 def autocontrast(microscope, beam_type=BeamType.ELECTRON):

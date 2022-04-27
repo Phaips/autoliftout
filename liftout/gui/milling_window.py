@@ -1,9 +1,7 @@
-
-
 import logging
+from re import S
 import sys
 import time
-from tkinter import Image
 from dataclasses import dataclass
 from enum import Enum
 
@@ -11,7 +9,7 @@ import numpy as np
 from liftout import fibsem, utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings
+from liftout.fibsem.acquire import BeamType, ImageSettings, GammaSettings
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
@@ -83,15 +81,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                                   "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
 
-        # sputtering rates
-        self.sputter_rate_dict = {
-            0.89e-9: 4.762e-1,
-            2.4e-9: 1.309,
-            6.2e-9: 2.907
-        }
-        # 0.89nA : 4.762e-1 um3/s
-        # 2.4nA : 1.309e0 um3/s
-        # 6.2nA : 2.907e0 um3/s
+
+
 
         self.INITIALISED = False
 
@@ -212,6 +203,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.wp.canvas.ax11.add_patch(rect)
         self.wp.canvas.draw()
 
+        self.update_estimated_time()
+
     def on_click(self, event):
         """Redraw the patterns and update the display on user click"""
         if event.button == 1 and event.inaxes is not None:
@@ -293,10 +286,41 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             else:
                 self.parameter_labels[i].setVisible(False)
                 self.parameter_values[i].setVisible(False)
+
+    def update_estimated_time(self):
+        # volume (width * height * depth) / total_volume_sputter_rate
+
+        # sputtering rates
+        self.sputter_rate_dict = {
+            0.89e-9: 3.920e-1,
+            2.4e-9: 1.309,
+            6.2e-9: 2.907
+        }
+        # 0.89nA : 3.920e-1 um3/s
+        # 2.4nA : 1.309e0 um3/s
+        # 6.2nA : 2.907e0 um3/s # from microscope application files
+
+        if self.milling_current in self.sputter_rate_dict:
+            total_volume_sputter_rate = self.sputter_rate_dict[self.milling_current]
+        else:
+            total_volume_sputter_rate = 3.920e-1
+
+        volume = 0
+        for pattern in self.patterns:
+            width = pattern.width * METRE_TO_MICRON
+            height = pattern.height * METRE_TO_MICRON
+            depth = pattern.depth * METRE_TO_MICRON
+            volume += width * height * depth
         
+        self.estimated_milling_time_s = volume / total_volume_sputter_rate # um3 * 1/ (um3 / s) = seconds
+
+        print("WHD: ", width, height, depth)
+        print(f"Milling Volume Sputter Rate: {total_volume_sputter_rate}")
+        print(f"Milling Estimated Time: {self.estimated_milling_time_s / 60:.2f}m")
+
         # update labels
         self.label__milling_current.setText(f"Milling Current: {self.milling_current:.2e}A")
-        self.label_estimated_time.setText(f"Estimated Time: {100} seconds") # TODO: formulaa
+        self.label_estimated_time.setText(f"Estimated Time: {self.estimated_milling_time_s / 60:.2f} minutes") # TODO: formulaa
 
         # set progress bar
         self.progressBar.setValue(0)
@@ -416,10 +440,13 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             
             # run_milling
             milling.run_milling(microscope=self.microscope, settings=self.settings)
-
-            while self.microscope.patterning.state == "Running":
-                # print("STATE: ", self.microscope.patterning.state)
-                self.progressBar.setValue(self.progressBar.value() + 1)
+            
+            elapsed_time = 0
+            while self.microscope.patterning.state == "Running":                  
+                
+                elapsed_time+=1
+                prog_val = elapsed_time / self.estimated_milling_time_s * 100
+                self.progressBar.setValue(prog_val)
                 time.sleep(1)
             
             logging.info(f"Milling finished: {self.microscope.patterning.state}")
@@ -446,13 +473,19 @@ def main():
         hfw = settings["imaging"]["horizontal_field_width"],
         autocontrast = True,
         beam_type = BeamType.ION,
-        gamma = settings["gamma"],
+        gamma = GammaSettings(
+            enabled = settings["gamma"]["correction"],
+            min_gamma = settings["gamma"]["min_gamma"],
+            max_gamma = settings["gamma"]["max_gamma"],
+            scale_factor= settings["gamma"]["scale_factor"],
+            threshold = settings["gamma"]["threshold"]
+        ),
         save = False,
         label = "test",
+        save_path=""
     )
 
-    # microscope.patterning.
-    # volume (width * height * depth) / total_volume_sputter_rate
+
 
     app = QtWidgets.QApplication([])
     qt_app = GUIMillingWindow(microscope=microscope, 
@@ -460,7 +493,7 @@ def main():
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.Flatten)
+    qt_app.update_milling_pattern_type(MillingPattern.JCut)
     sys.exit(app.exec_())
 
 
