@@ -16,9 +16,10 @@ from liftout.gui import utils as gui_utils
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
 from PyQt5 import QtCore, QtWidgets
 
+from liftout.fibsem.acquire import ImageSettings
 
 class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: dict, detection_result: DetectionResult,  parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, detection_result: DetectionResult,  parent=None):
         super(GUIDetectionWindow, self).__init__(parent=parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -159,16 +160,16 @@ def main():
 
     settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = {
-        "resolution": settings["imaging"]["resolution"],
-        "dwell_time": settings["imaging"]["dwell_time"],
-        "hfw": settings["imaging"]["horizontal_field_width"],
-        "autocontrast": True,
-        "beam_type": BeamType.ION,
-        "gamma": settings["gamma"],
-        "save": False,
-        "label": "test",
-    }
+    image_settings = ImageSettings(
+        resolution = settings["imaging"]["resolution"],
+        dwell_time = settings["imaging"]["dwell_time"],
+        hfw = settings["imaging"]["horizontal_field_width"],
+        autocontrast = True,
+        beam_type = BeamType.ION,
+        gamma = settings["gamma"],
+        save = False,
+        label = "test",
+    )
     app = QtWidgets.QApplication([])
 
     detection_result = calibration.identify_shift_using_machine_learning(microscope,

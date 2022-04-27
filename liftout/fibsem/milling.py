@@ -106,12 +106,12 @@ def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float, m
 def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin", ref_image=None):
     """Align and mill thin lamella"""
 
-    image_settings["save"] = False
-    image_settings["hfw"] = 30e-6
-    image_settings["beam_type"] = BeamType.ION
-    image_settings["gamma"]["correction"] = False
-    image_settings["save"] = True
-    image_settings["label"] = f"thin_lamella_crosscorrelation_ref"
+    image_settings.save = False
+    image_settings.hfw = 30e-6
+    image_settings.beam_type = BeamType.ION
+    image_settings.gamma.enabled = False
+    image_settings.save = True
+    image_settings.label = f"thin_lamella_crosscorrelation_ref"
 
     # initial reference image
     if ref_image is None:
@@ -140,7 +140,7 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
 
         # align using cross correlation
         img1 = ref_image
-        image_settings["label"] = f"{milling_type}_lamella_stage_{stage_number + 1}"
+        image_settings.label = f"{milling_type}_lamella_stage_{stage_number + 1}"
         img2 = acquire.new_image(microscope, settings=image_settings)
         dx, dy = calibration.shift_from_crosscorrelation_AdornedImages(
             img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
@@ -242,7 +242,7 @@ def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin",
     logging.info("ion beam milling complete.")
 
     # take final reference image
-    image_settings["label"] = f"{milling_type}_lamella_final"
+    image_settings.label = f"{milling_type}_lamella_final"
     _ = acquire.new_image(microscope, settings=image_settings)
     logging.info("Thin Lamella Finished.")
 

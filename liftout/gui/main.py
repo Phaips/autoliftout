@@ -47,25 +47,7 @@ _translate = QtCore.QCoreApplication.translate
 
 
 
-from pathlib import Path
-@dataclass
-class GammaSettings:
-    enabled: bool
-    min_gamma: float 
-    max_gamma: float
-    scale_factor: float
-    threshold: int # px
-@dataclass
-class ImageSettings:
-    resolution: str
-    dwell_time: float
-    hfw: float
-    autocontrast: bool
-    beam_type: BeamType
-    save: bool
-    save_path: Path
-    label: str
-    gamma: GammaSettings
+
 
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
@@ -117,7 +99,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample_position = None
  
         # initial image settings
-        self.image_settings = {}
         self.update_image_settings()
 
         if self.microscope:
@@ -284,7 +265,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.new_image(self.microscope, self.image_settings)
 
         # Whole-grid platinum deposition
-        self.ask_user_interaction(msg="Do you want to sputter the whole sample grid with platinum?", beam_type=BeamType.ELECTRON)
+        self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
         if self.response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition")
@@ -391,7 +372,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.sample_no += 1
 
             self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
-                                               f'{len(self.samples)} positions selected so far.')
+                                               f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ION)
             select_another_sample_position = self.response
             self.update_scroll_ui()
 
@@ -404,6 +385,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # # move to landing grid
         movement.move_to_landing_grid(self.microscope, settings=self.settings, flat_to_sem=False)
         movement.auto_link_stage(self.microscope, hfw=900e-6)
+        self.update_image_settings(hfw=900e-6)
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
         ####################################
 
@@ -860,10 +842,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def correct_stage_drift_with_ML(self):
         # correct stage drift using machine learning
-        label = self.image_settings['label']
+        label = self.image_settings.label
 
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
-            self.image_settings['label'] = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+            self.image_settings.label = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             det = self.validate_detection(self.microscope, 
                                             self.settings, 
                                             self.image_settings, 
@@ -952,13 +934,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i in range(3):
             z_move_out_from_trench = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_trench)
-            self.image_settings["label"] = f"liftout_trench_{i}"
+            self.image_settings.label = f"liftout_trench_{i}"
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1} / 3")
             time.sleep(1)
 
         # reference images after liftout complete
-        self.image_settings['label'] = f"liftout_of_trench"
+        self.image_settings.label = f"liftout_of_trench"
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move needle to park position
@@ -987,8 +969,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###
 
         ### XY-MOVE (ELECTRON)
-        self.image_settings['hfw'] = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
-        self.image_settings["label"] = f"needle_liftout_pre_movement_lowres"
+        self.image_settings.hfw = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
+        self.image_settings.label = f"needle_liftout_pre_movement_lowres"
         det = self.validate_detection(self.microscope, 
                         self.settings, 
                         self.image_settings, 
@@ -1007,7 +989,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ### Z-HALF MOVE (ION)
         # calculate shift between lamella centre and needle tip in the ion view
-        self.image_settings["label"] = f"needle_liftout_post_xy_movement_lowres"
+        self.image_settings.label = f"needle_liftout_post_xy_movement_lowres"
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
@@ -1027,8 +1009,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         ### Z-MOVE FINAL (ION)
-        self.image_settings['hfw'] = self.settings['reference_images']['needle_ref_img_hfw_lowres']
-        self.image_settings["label"] = f"needle_liftout_post_z_half_movement_highres"
+        self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_lowres']
+        self.image_settings.label = f"needle_liftout_post_z_half_movement_highres"
         det = self.validate_detection(self.microscope, 
                                 self.settings, 
                                 self.image_settings, 
@@ -1250,7 +1232,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i in range(3):
             z_move_out_from_post = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_post)
-            self.image_settings["label"] = f"needle_retract_{i}"
+            self.image_settings.label = f"needle_retract_{i}"
             acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_stage.name}: moving needle out: {z_move_out_from_post} ({i + 1} / 3")
             time.sleep(1)
@@ -1315,7 +1297,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.needle.relative_move(z_move)
         logging.info(f"{self.current_stage.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}")
 
-        self.image_settings["label"] = f"sharpen_needle_centre"
+        self.image_settings.label = f"sharpen_needle_centre"
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         det = self.validate_detection(self.microscope, 
@@ -1330,7 +1312,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         #################################################################################################
 
         # take reference images
-        self.image_settings["label"] = f"sharpen_needle_final"
+        self.image_settings.label = f"sharpen_needle_final"
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         # retract needle
@@ -1358,7 +1340,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
         # rotate_and_tilt_to_thinning_angle
-        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"]
+        self.image_settings.hfw = self.settings["imaging"]["horizontal_field_width"]
         movement.move_to_thinning_angle(microscope=self.microscope, settings=self.settings)
 
         # ensure_eucentricity at thinning angle
@@ -1634,7 +1616,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):
             
-        self.image_settings['beam_type'] = beam_type # change to correct beamtype
+        self.image_settings.beam_type = beam_type # change to correct beamtype
 
         # run model detection
         detection_result = calibration.identify_shift_using_machine_learning(microscope, 
@@ -1653,24 +1635,67 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return detection_window.detection_result
 
+    # def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,
+    #                           autocontrast=None, beam_type=None, gamma=None,
+    #                           save=None, label=None, save_path=None):
+
+    #     self.image_settings["resolution"] = self.settings["imaging"]["resolution"] if resolution is None else resolution
+    #     self.image_settings["dwell_time"] = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time
+    #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw
+    #     self.image_settings["autocontrast"] = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast
+    #     self.image_settings["beam_type"] = BeamType.ELECTRON if beam_type is None else beam_type
+    #     self.image_settings["gamma"] = self.settings["gamma"] if gamma is None else gamma
+    #     self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
+    #     self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
+
+    #     # change the save path to the current sample if available
+    #     if self.current_sample_position:
+    #         self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
+    #     else:
+    #         self.image_settings["save_path"] = self.save_path if save_path is None else save_path
+
+    #     logging.debug(f"Image Settings: {self.image_settings}")
+    
+
     def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,
                               autocontrast=None, beam_type=None, gamma=None,
                               save=None, label=None, save_path=None):
+        """Update image settings. Uses default values if not supplied
 
-        self.image_settings["resolution"] = self.settings["imaging"]["resolution"] if resolution is None else resolution
-        self.image_settings["dwell_time"] = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time
-        self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw
-        self.image_settings["autocontrast"] = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast
-        self.image_settings["beam_type"] = BeamType.ELECTRON if beam_type is None else beam_type
-        self.image_settings["gamma"] = self.settings["gamma"] if gamma is None else gamma
-        self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
-        self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
+        Args:
+            resolution (str, optional): image resolution. Defaults to None.
+            dwell_time (float, optional): image dwell time. Defaults to None.
+            hfw (float, optional): image horizontal field width. Defaults to None.
+            autocontrast (bool, optional): use autocontrast. Defaults to None.
+            beam_type (BeamType, optional): beam type to image with (Electron, Ion). Defaults to None.
+            gamma (GammaSettings, optional): gamma correction settings. Defaults to None.
+            save (bool, optional): save the image. Defaults to None.
+            label (str, optional): image filename . Defaults to None.
+            save_path (Path, optional): directory to save image. Defaults to None.
+        """
+        gamma_settings = acquire.GammaSettings(
+            enabled = self.settings["gamma"]["correction"],
+            min_gamma = self.settings["gamma"]["min_gamma"],
+            max_gamma = self.settings["gamma"]["max_gamma"],
+            scale_factor= self.settings["gamma"]["scale_factor"],
+            threshold = self.settings["gamma"]["threshold"]
+        )
+
+        self.image_settings = acquire.ImageSettings(
+            resolution = self.settings["imaging"]["resolution"] if resolution is None else resolution,
+            dwell_time = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time,
+            hfw = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw,
+            autocontrast = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast,
+            beam_type = BeamType.ELECTRON if beam_type is None else beam_type,
+            gamma = gamma_settings if gamma is None else gamma,
+            save = bool(self.settings["imaging"]["save"]) if save is None else save,
+            save_path = self.save_path if save_path is None else save_path,
+            label = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
+        )
 
         # change the save path to the current sample if available
         if self.current_sample_position:
-            self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
-        else:
-            self.image_settings["save_path"] = self.save_path if save_path is None else save_path
+            self.image_settings.save_path = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
 
         logging.debug(f"Image Settings: {self.image_settings}")
 

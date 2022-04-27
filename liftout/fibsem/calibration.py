@@ -46,8 +46,8 @@ def correct_stage_drift(
         ref_highres = ref_ib_highres
 
     stage = microscope.specimen.stage
-    image_settings["resolution"] = "1536x1024"
-    image_settings["dwell_time"] = 1e-6
+    image_settings.resolution = "1536x1024"
+    image_settings.dwell_time = 1e-6
 
     pixelsize_x_lowres = ref_lowres.metadata.binary_result.pixel_size.x
     field_width_lowres = pixelsize_x_lowres * ref_lowres.width
@@ -56,11 +56,11 @@ def correct_stage_drift(
     microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
 
-    image_settings["hfw"] = field_width_lowres
-    image_settings["save"] = True
+    image_settings.hfw = field_width_lowres
+    image_settings.save = True
 
     if mode == "land":
-        image_settings["label"] = f"{mode}_drift_correction_landing_low_res"
+        image_settings.label = f"{mode}_drift_correction_landing_low_res"
         new_eb_lowres, new_ib_lowres = take_reference_images(
             microscope, image_settings=image_settings
         )
@@ -69,9 +69,9 @@ def correct_stage_drift(
             return ret
 
         # fine alignment
-        image_settings["hfw"] = field_width_highres
-        image_settings["save"] = True
-        image_settings["label"] = f"drift_correction_landing_high_res"
+        image_settings.hfw = field_width_highres
+        image_settings.save = True
+        image_settings.label = f"drift_correction_landing_high_res"
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, image_settings=image_settings
         )
@@ -82,7 +82,7 @@ def correct_stage_drift(
     else:
         for i in range(lowres_count):
 
-            image_settings["label"] = f"{mode}_drift_correction_lamella_low_res_{i}"
+            image_settings.label = f"{mode}_drift_correction_lamella_low_res_{i}"
             new_eb_lowres, new_ib_lowres = take_reference_images(
                 microscope, image_settings=image_settings
             )
@@ -91,9 +91,9 @@ def correct_stage_drift(
                 return ret
 
         # fine alignment
-        image_settings["hfw"] = field_width_highres
-        image_settings["save"] = True
-        image_settings["label"] = f"drift_correction_lamella_high_res"
+        image_settings.hfw = field_width_highres
+        image_settings.save = True
+        image_settings.label = f"drift_correction_lamella_high_res"
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, image_settings=image_settings
         )
@@ -165,7 +165,7 @@ def identify_shift_using_machine_learning(
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
     detector = detection.Detector(weights_path)
 
-    if image_settings["beam_type"] == BeamType.ION:
+    if image_settings.beam_type == BeamType.ION:
         image = ib_image
     else:
         image = eb_image
@@ -339,81 +339,81 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
     return mask
 
 
-def auto_focus_and_link(microscope):
-    import skimage
+# def auto_focus_and_link(microscope):
+#     import skimage
 
-    from skimage.morphology import disk
-    from skimage.filters.rank import gradient
+#     from skimage.morphology import disk
+#     from skimage.filters.rank import gradient
 
-    PLOT = False
+#     PLOT = False
 
-    image_settings = {}
-    image_settings["resolution"] = "768x512"  # "1536x1024"
-    image_settings["dwell_time"] = 0.3e-6
-    image_settings["hfw"] = 50e-6
-    image_settings["autocontrast"] = True
-    image_settings["beam_type"] = BeamType.ELECTRON
-    image_settings["gamma"] = {
-        "correction": True,
-        "min_gamma": 0.15,
-        "max_gamma": 1.8,
-        "scale_factor": 0.01,
-        "threshold": 46,
-    }
-    image_settings["save"] = False
-    image_settings["label"] = ""
-    image_settings["save_path"] = None
-    print(image_settings)
+#     image_settings = {}
+#     image_settings["resolution"] = "768x512"  # "1536x1024"
+#     image_settings["dwell_time"] = 0.3e-6
+#     image_settings["hfw"] = 50e-6
+#     image_settings["autocontrast"] = True
+#     image_settings["beam_type"] = BeamType.ELECTRON
+#     image_settings["gamma"] = {
+#         "correction": True,
+#         "min_gamma": 0.15,
+#         "max_gamma": 1.8,
+#         "scale_factor": 0.01,
+#         "threshold": 46,
+#     }
+#     image_settings["save"] = False
+#     image_settings["label"] = ""
+#     image_settings["save_path"] = None
+#     print(image_settings)
 
-    microscope.beams.electron_beam.working_distance.value = 4e-3
-    current_working_distance = microscope.beams.electron_beam.working_distance.value
+#     microscope.beams.electron_beam.working_distance.value = 4e-3
+#     current_working_distance = microscope.beams.electron_beam.working_distance.value
 
-    print("Initial: ", current_working_distance)
+#     print("Initial: ", current_working_distance)
 
-    working_distances = [
-        current_working_distance - 0.5e-3,
-        current_working_distance - 0.25e-3,
-        current_working_distance,
-        current_working_distance + 0.25e-3,
-        current_working_distance + 0.5e-3
-    ]
+#     working_distances = [
+#         current_working_distance - 0.5e-3,
+#         current_working_distance - 0.25e-3,
+#         current_working_distance,
+#         current_working_distance + 0.25e-3,
+#         current_working_distance + 0.5e-3
+#     ]
 
-    # loop through working distances and calculate the sharpness (acutance)
-    # highest acutance is best focus
-    sharpeness_metric = []
-    for i, wd in enumerate(working_distances):
-        microscope.beams.electron_beam.working_distance.value = wd
-        img = acquire.new_image(microscope, image_settings)
+#     # loop through working distances and calculate the sharpness (acutance)
+#     # highest acutance is best focus
+#     sharpeness_metric = []
+#     for i, wd in enumerate(working_distances):
+#         microscope.beams.electron_beam.working_distance.value = wd
+#         img = acquire.new_image(microscope, image_settings)
 
-        print(f"Img {i}: {img.metadata.optics.working_distance:.5f}")
+#         print(f"Img {i}: {img.metadata.optics.working_distance:.5f}")
 
-        # sharpness (Acutance: https://en.wikipedia.org/wiki/Acutance
-        out = gradient(skimage.filters.median(np.copy(img.data)), disk(5))
+#         # sharpness (Acutance: https://en.wikipedia.org/wiki/Acutance
+#         out = gradient(skimage.filters.median(np.copy(img.data)), disk(5))
 
-        if PLOT:
-            import matplotlib.pyplot as plt
-            plt.subplot(1, 2, 1)
-            plt.imshow(img.data, cmap="gray")
-            plt.subplot(1, 2, 2)
-            plt.imshow(out, cmap="gray")
-            plt.show()
+#         if PLOT:
+#             import matplotlib.pyplot as plt
+#             plt.subplot(1, 2, 1)
+#             plt.imshow(img.data, cmap="gray")
+#             plt.subplot(1, 2, 2)
+#             plt.imshow(out, cmap="gray")
+#             plt.show()
 
-        sharpness = np.mean(out)
-        sharpeness_metric.append(sharpness)
+#         sharpness = np.mean(out)
+#         sharpeness_metric.append(sharpness)
 
-    # select working distance with max acutance
-    idx = np.argmax(sharpeness_metric)
+#     # select working distance with max acutance
+#     idx = np.argmax(sharpeness_metric)
 
-    print(*zip(working_distances, sharpeness_metric))
-    print(idx, working_distances[idx], sharpeness_metric[idx])
+#     print(*zip(working_distances, sharpeness_metric))
+#     print(idx, working_distances[idx], sharpeness_metric[idx])
 
-    # reset working distance
-    microscope.beams.electron_beam.working_distance.value = working_distances[idx]
+#     # reset working distance
+#     microscope.beams.electron_beam.working_distance.value = working_distances[idx]
 
-    # run fine auto focus and link
-    microscope.imaging.set_active_view(1)  # set to Ebeam
-    microscope.auto_functions.run_auto_focus()
-    microscope.specimen.stage.link()
+#     # run fine auto focus and link
+#     microscope.imaging.set_active_view(1)  # set to Ebeam
+#     microscope.auto_functions.run_auto_focus()
+#     microscope.specimen.stage.link()
 
 
 def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric: bool = False):
