@@ -5,7 +5,7 @@ import logging
 from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType
+from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.gui.qtdesigner_files import user_dialog as user_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
@@ -13,7 +13,7 @@ import scipy.ndimage as ndi
 
 
 class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: dict, 
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, 
             msg: str="Default Message", beam_type: BeamType=BeamType.ELECTRON, parent=None):
         super(GUIUserWindow, self).__init__(parent=parent)
         self.setupUi(self)
@@ -51,16 +51,16 @@ def main():
 
     settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = {
-        "resolution": settings["imaging"]["resolution"],
-        "dwell_time": settings["imaging"]["dwell_time"],
-        "hfw": settings["imaging"]["horizontal_field_width"],
-        "autocontrast": True,
-        "beam_type": BeamType.ION,
-        "gamma": settings["gamma"],
-        "save": False,
-        "label": "test",
-    }
+    image_settings = ImageSettings(
+        resolution = settings["imaging"]["resolution"],
+        dwell_time = settings["imaging"]["dwell_time"],
+        hfw = settings["imaging"]["horizontal_field_width"],
+        autocontrast = True,
+        beam_type = BeamType.ION,
+        gamma = settings["gamma"],
+        save = False,
+        label = "test",
+    )
     app = QtWidgets.QApplication([])
 
     def ask_user_interaction(msg="Hello New Ask User", beam_type=None):

@@ -3,6 +3,7 @@
 import logging
 import sys
 import time
+from tkinter import Image
 from dataclasses import dataclass
 from enum import Enum
 
@@ -10,7 +11,7 @@ import numpy as np
 from liftout import fibsem, utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType
+from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
@@ -38,7 +39,7 @@ class MillingPattern(Enum):
 # add rotation for plt rectangles in display...
 
 class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: dict, milling_pattern_type: MillingPattern, parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, milling_pattern_type: MillingPattern, parent=None):
         super(GUIMillingWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -100,7 +101,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.milling_settings = None
         self.milling_stages = {}
-        self.image_settings["beam_type"] = BeamType.ION
+        self.image_settings.beam_type = BeamType.ION
         self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
         self.image = self.adorned_image.data
 
@@ -116,7 +117,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.wp.canvas.mpl_connect('button_press_event', self.on_click)
 
         # setup
-        milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings["hfw"])
+        milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings.hfw)
         self.setup_milling_patterns()
         self.setup_connections()
 
@@ -417,11 +418,11 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             milling.run_milling(microscope=self.microscope, settings=self.settings)
 
             while self.microscope.patterning.state == "Running":
-                print("STATE: ", self.microscope.patterning.state)
+                # print("STATE: ", self.microscope.patterning.state)
                 self.progressBar.setValue(self.progressBar.value() + 1)
                 time.sleep(1)
             
-            print("Finished: ", self.microscope.patterning.state)
+            logging.info(f"Milling finished: {self.microscope.patterning.state}")
 
 
         # reset to imaging mode
@@ -439,16 +440,16 @@ def main():
 
     settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = {
-        "resolution": settings["imaging"]["resolution"],
-        "dwell_time": settings["imaging"]["dwell_time"],
-        "hfw": settings["imaging"]["horizontal_field_width"],
-        "autocontrast": True,
-        "beam_type": BeamType.ION,
-        "gamma": settings["gamma"],
-        "save": False,
-        "label": "test",
-    }
+    image_settings = ImageSettings(
+        resolution = settings["imaging"]["resolution"],
+        dwell_time = settings["imaging"]["dwell_time"],
+        hfw = settings["imaging"]["horizontal_field_width"],
+        autocontrast = True,
+        beam_type = BeamType.ION,
+        gamma = settings["gamma"],
+        save = False,
+        label = "test",
+    )
 
     # microscope.patterning.
     # volume (width * height * depth) / total_volume_sputter_rate

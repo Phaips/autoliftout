@@ -78,62 +78,7 @@ def gamma_correction(image, settings: GammaSettings) -> AdornedImage:
     image = reference
     return image
 
-
-def new_image(microscope, settings):
-    frame_settings = GrabFrameSettings(
-        resolution=settings["resolution"], dwell_time=settings["dwell_time"]
-    )
-    tmp_settings = settings
-    if settings["beam_type"] == BeamType.ELECTRON:
-        settings["hfw"] = np.clip(settings["hfw"],
-                                  microscope.beams.electron_beam.horizontal_field_width.limits.min,
-                                  microscope.beams.electron_beam.horizontal_field_width.limits.max,
-                                  )
-        microscope.beams.electron_beam.horizontal_field_width.value = settings["hfw"]
-        label = (
-            settings["label"] + "_eb"
-        )
-    else:
-        settings["hfw"] = np.clip(settings["hfw"],
-                                  microscope.beams.ion_beam.horizontal_field_width.limits.min,
-                                  microscope.beams.ion_beam.horizontal_field_width.limits.max,
-                                  )
-        microscope.beams.ion_beam.horizontal_field_width.value = settings["hfw"]
-        label = (
-            settings["label"] + "_ib"
-        )
-
-    if settings["autocontrast"]:
-        autocontrast(microscope, beam_type=settings["beam_type"])
-
-    image = acquire_image(
-        microscope=microscope,
-        settings=frame_settings,
-        beam_type=settings["beam_type"],
-    )
-
-    # apply gamma correction
-    if settings["gamma"]["correction"]:
-
-        # gamma parameters
-        gamma_settings = GammaSettings(
-            enabled=settings["gamma"]["corrections"],
-            min_gamma=settings["gamma"]["min_gamma"],
-            max_gamma=settings["gamma"]["max_gamma"],
-            scale_factor=settings["gamma"]["scale_factor"],
-            threshold=settings["gamma"]["threshold"],
-        )
-
-        image = gamma_correction(image, gamma_settings)
-
-    if settings["save"]:
-        utils.save_image(
-            image=image, save_path=settings["save_path"], label=label
-        )
-    settings = tmp_settings  # reset the settings to original # TODO: this doesnt work, need to reset
-    return image
-
-def new_image2(microscope, settings: ImageSettings):
+def new_image(microscope, settings: ImageSettings):
 
     frame_settings = GrabFrameSettings(resolution=settings.resolution, dwell_time=settings.dwell_time)
     tmp_settings = settings

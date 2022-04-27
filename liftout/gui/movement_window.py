@@ -5,7 +5,7 @@ import logging
 from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType
+from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
@@ -15,7 +15,7 @@ MICRON_TO_METRE = 1e-6
 METRE_TO_MICRON = 1e6
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: dict, msg_type: str=None, parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, msg_type: str=None, parent=None):
         super(GUIMMovementWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -108,7 +108,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.setMaximum(self.settings["imaging"]["max_ib_hfw"] * METRE_TO_MICRON)
-        self.doubleSpinBox_hfw.setValue(self.image_settings["hfw"] * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setValue(self.image_settings.hfw * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
     def take_image_button_pressed(self):
@@ -122,7 +122,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         """Update the image settings when ui elements change"""
 
         # TODO: validate these values....
-        self.image_settings["hfw"] = self.doubleSpinBox_hfw.value() * MICRON_TO_METRE
+        self.image_settings.hfw = self.doubleSpinBox_hfw.value() * MICRON_TO_METRE
 
     def continue_button_pressed(self):
         logging.info("continue button pressed")
@@ -185,16 +185,16 @@ def main():
 
     settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = {
-        "resolution": settings["imaging"]["resolution"],
-        "dwell_time": settings["imaging"]["dwell_time"],
-        "hfw": settings["imaging"]["horizontal_field_width"],
-        "autocontrast": True,
-        "beam_type": BeamType.ION,
-        "gamma": settings["gamma"],
-        "save": False,
-        "label": "test",
-    }
+    image_settings = ImageSettings(
+        resolution = settings["imaging"]["resolution"],
+        dwell_time = settings["imaging"]["dwell_time"],
+        hfw = settings["imaging"]["horizontal_field_width"],
+        autocontrast = True,
+        beam_type = BeamType.ION,
+        gamma = settings["gamma"],
+        save = False,
+        label = "test",
+    )
     app = QtWidgets.QApplication([])
     qt_app = GUIMMovementWindow(microscope=microscope,
                                 settings=settings,
