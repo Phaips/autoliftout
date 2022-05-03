@@ -14,6 +14,9 @@ from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
+import scipy.ndimage as ndi
+
 
 MICRON_TO_METRE = 1e-6
 METRE_TO_MICRON = 1e6
@@ -86,15 +89,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.INITIALISED = False
 
-
-    def setup_milling_window(self, x=0.0, y=0.0):
-        """Setup the milling window"""
-
-        self.milling_settings = None
-        self.milling_stages = {}
+    def setup_milling_image(self):
         self.image_settings.beam_type = BeamType.ION
         self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
-        self.image = self.adorned_image.data
+        self.image = ndi.median_filter(self.adorned_image.data, size=3)
 
         # pattern drawing
         if self.wp is not None:
@@ -106,6 +104,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.label_image.setLayout(QtWidgets.QVBoxLayout())
         self.label_image.layout().addWidget(self.wp)
         self.wp.canvas.mpl_connect('button_press_event', self.on_click)
+
+    def setup_milling_window(self, x=0.0, y=0.0):
+        """Setup the milling window"""
+
+        self.milling_settings = None
+        self.milling_stages = {}
+
+        self.setup_milling_image()
 
         # setup
         milling.setup_ion_milling(self.microscope, ion_beam_field_of_view=self.image_settings.hfw)
@@ -292,13 +298,19 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # sputtering rates
         self.sputter_rate_dict = {
-            0.89e-9: 3.920e-1,
-            2.4e-9: 1.309,
-            6.2e-9: 2.907
+            0.74e-9: 3.349e-1,  # 30kv
+            0.89e-9: 3.920e-1,  # 20kv
+            2.0e-9: 9.549e-1,   # 30kv
+            2.4e-9: 1.309,      # 20kv
+            6.2e-9: 2.907,      # 20kv
+            7.6e-9: 3.041       # 30kv
         }
         # 0.89nA : 3.920e-1 um3/s
         # 2.4nA : 1.309e0 um3/s
         # 6.2nA : 2.907e0 um3/s # from microscope application files
+
+        # 30kV
+        # 7.6nA: 3.041e0 um3/s
 
         if self.milling_current in self.sputter_rate_dict:
             total_volume_sputter_rate = self.sputter_rate_dict[self.milling_current]
@@ -314,9 +326,9 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         
         self.estimated_milling_time_s = volume / total_volume_sputter_rate # um3 * 1/ (um3 / s) = seconds
 
-        print("WHD: ", width, height, depth)
-        print(f"Milling Volume Sputter Rate: {total_volume_sputter_rate}")
-        print(f"Milling Estimated Time: {self.estimated_milling_time_s / 60:.2f}m")
+        logging.info(f"WHDV: {width}, {height}, {depth}, {volume}")
+        logging.info(f"Milling Volume Sputter Rate: {total_volume_sputter_rate}")
+        logging.info(f"Milling Estimated Time: {self.estimated_milling_time_s / 60:.2f}m")
 
         # update labels
         self.label__milling_current.setText(f"Milling Current: {self.milling_current:.2e}A")
@@ -439,8 +451,9 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.update_display()
             
             # run_milling
-            milling.run_milling(microscope=self.microscope, settings=self.settings)
+            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=self.milling_current)
             
+            time.sleep(5) # wait for milling to start
             elapsed_time = 0
             while self.microscope.patterning.state == "Running":                  
                 
@@ -455,7 +468,24 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         # reset to imaging mode
         milling.finish_milling(microscope=self.microscope, settings=self.settings)
 
-        self.close() 
+        # ask user if they want to rerun milling?
+        # if yes, stay open
+        # if no, close
+
+        # TODO: show image
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Milling Confirmation")
+        dlg.setText("Do you need to redo milling?")
+        dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        dlg.setIcon(QMessageBox.Question)
+        button = dlg.exec()
+
+        if button == QMessageBox.Yes:
+            logging.info("Redoing milling")
+            self.setup_milling_image()
+            self.update_display()
+        else:
+            self.close() 
 
     def closeEvent(self, event):
         logging.info("Closing Milling Window")
@@ -493,7 +523,7 @@ def main():
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.JCut)
+    qt_app.update_milling_pattern_type(MillingPattern.Trench)
     sys.exit(app.exec_())
 
 

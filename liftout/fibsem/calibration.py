@@ -519,7 +519,7 @@ def validate_needle_calibration(microscope):
 def validate_beams_calibration(microscope, settings: dict):
     """Validate Beam Settings"""
 
-    high_voltage = float(settings["system"]["high_voltage"])
+    high_voltage = float(settings["system"]["high_voltage"]) # ion
     plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
 
     # TODO: check beam blanks?
@@ -553,8 +553,8 @@ def validate_beams_calibration(microscope, settings: dict):
                       settings["calibration"]["eucentric_height_eb"],
                       atol=settings["calibration"]["eucentric_height_tolerance"]):
         logging.warning(
-            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m \
-                (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)""")
+            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m 
+            (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)""")
 
     logging.info(f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}")
     logging.info(f"E OPTICAL MODES:  {str(microscope.beams.electron_beam.optical_mode.available_values)}")

@@ -191,7 +191,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # validate beam settings and calibration
         calibration.validate_beams_calibration(microscope=self.microscope, settings=self.settings)        
-
+        
         # validate user configuration
         utils.validate_settings(microscope=self.microscope, config=self.settings)
 
@@ -301,7 +301,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_sample_position = None # reset the current sample
         if self.samples:
             self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
-                                               f'{len(self.samples)} positions selected so far.')
+                                               f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ELECTRON)
             self.sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
             select_another_sample_position = self.response
         else:
@@ -773,6 +773,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
 
         if self.ADDITIONAL_CONFIRMATION:
+            # if false, reopen milling window
+            # self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
             self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. \nPress Yes to continue.", 
             beam_type=BeamType.ION)
 
@@ -828,6 +830,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
+        self.update_image_settings(hfw=80e-6)
         self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
 
         # take reference images of the jcut
@@ -928,6 +931,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.ADDITIONAL_CONFIRMATION:
             self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. Press Yes to continue.", 
             beam_type=BeamType.ION)
+            # if false, reopen milling window
 
         # Raise needle 30um from trench
         logging.info(f"{self.current_stage.name}: start removing needle from trench")
@@ -1028,7 +1032,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # detection is based on centre of lamella, we want to land of the edge.
         # therefore subtract half the height from the movement.
         lamella_height = self.settings["lamella"]["lamella_height"]
-        gap = lamella_height / 6
+        gap = lamella_height / 10
         zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
         self.needle.relative_move(zy_move_gap)
 
@@ -1537,7 +1541,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_PIESCOPE = False
         TEST_MILLING_WINDOW = False
         TEST_DETECTION_WINDOW = False
-        TEST_MOVEMENT_WINDOW = False
+        TEST_MOVEMENT_WINDOW = True
         TEST_USER_WINDOW = True
 
         if TEST_SAMPLE_POSITIONS:
@@ -1558,6 +1562,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
         if TEST_DETECTION_WINDOW:
+            
+            self.current_sample_position = SamplePosition(self.save_path, 9999)
+            # self.current_sample_position.sample_id = "9999"
             
             from pprint import pprint
             det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
@@ -1610,6 +1617,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                             settings=self.settings,
                             image_settings=self.image_settings,
                             msg_type=msg_type,
+                            parent=self
                             )
         movement_window.show()
         movement_window.exec_()
@@ -1629,32 +1637,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                     settings=self.settings, 
                                     image_settings=self.image_settings, 
                                     detection_result=detection_result,
+                                    parent=self
                                     )
         detection_window.show()
         detection_window.exec_()
 
         return detection_window.detection_result
-
-    # def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,
-    #                           autocontrast=None, beam_type=None, gamma=None,
-    #                           save=None, label=None, save_path=None):
-
-    #     self.image_settings["resolution"] = self.settings["imaging"]["resolution"] if resolution is None else resolution
-    #     self.image_settings["dwell_time"] = self.settings["imaging"]["dwell_time"] if dwell_time is None else dwell_time
-    #     self.image_settings["hfw"] = self.settings["imaging"]["horizontal_field_width"] if hfw is None else hfw
-    #     self.image_settings["autocontrast"] = self.settings["imaging"]["autocontrast"] if autocontrast is None else autocontrast
-    #     self.image_settings["beam_type"] = BeamType.ELECTRON if beam_type is None else beam_type
-    #     self.image_settings["gamma"] = self.settings["gamma"] if gamma is None else gamma
-    #     self.image_settings["save"] = bool(self.settings["imaging"]["save"]) if save is None else save
-    #     self.image_settings["label"] = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S') if label is None else label
-
-    #     # change the save path to the current sample if available
-    #     if self.current_sample_position:
-    #         self.image_settings["save_path"] = os.path.join(self.save_path, str(self.current_sample_position.sample_id))
-    #     else:
-    #         self.image_settings["save_path"] = self.save_path if save_path is None else save_path
-
-    #     logging.debug(f"Image Settings: {self.image_settings}")
     
 
     def update_image_settings(self, resolution=None, dwell_time=None, hfw=None,

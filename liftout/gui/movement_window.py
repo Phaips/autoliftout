@@ -154,6 +154,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             # draw crosshair?
             if event.dblclick:
                 self.stage_movement(beam_type=beam_type)
+                
+                if self.parent():
+                    logging.info(f"{self.parent().current_stage} | DOUBLE CLICK")
 
     def stage_movement(self, beam_type: BeamType):
 

@@ -32,6 +32,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         # images
         self.adorned_image = self.detection_result.adorned_image
         self.image = self.detection_result.display_image
+        self._IMAGE_SAVED = False
 
         # pattern drawing
         self.wp = gui_utils._WidgetPlot(self, display_image=self.image)
@@ -110,6 +111,17 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
                 self.xclick, self.yclick)
             self.detection_data[self.current_detection_selected]["microscope_coordinate"] = Point(
                 self.center_x, self.center_y)
+
+            # logging statistics
+            if self.parent():
+                sample_id = self.parent().current_sample_position.sample_id
+                current_stage = self.parent().current_stage
+                logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {False}")
+            
+            # save image for training
+            if not self._IMAGE_SAVED:
+                utils.save_image(image=self.adorned_image, save_path=self.image_settings.save_path, label=self.image_settings.label+"_label")
+                self._IMAGE_SAVED = True
 
             self.update_display()
 
