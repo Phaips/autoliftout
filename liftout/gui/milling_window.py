@@ -138,6 +138,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # reconnect buttons
         self.pushButton_runMilling.clicked.connect(self.run_milling_button_pressed)
+        self.pushButton_exitMilling.clicked.connect(self.exit_milling_button_pressed)
 
         for param_spinBox in self.parameter_values:
             param_spinBox.valueChanged.connect(self.update_milling_settings)
@@ -435,6 +436,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         except Exception as e:
             # NOTE: these exceptions happen when the pattern is too far outside of the FOV
             logging.error(f"Pattern outside FOV: {e}") 
+    
+    def exit_milling_button_pressed(self):
+        """Exit the Milling Window"""
+        self.close()
 
     def run_milling_button_pressed(self):
         """Run ion beam milling for the selected milling pattern"""
