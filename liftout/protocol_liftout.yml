@@ -13,6 +13,7 @@ system:
   stage_tilt_landing: 13 # degrees
   piescope_enabled: False
   high_throughput: True
+  autolamella: True
 initial_position:
   sample_grid: # need to check the coordinate systems
     x: -3.2375e-3

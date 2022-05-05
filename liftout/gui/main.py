@@ -153,10 +153,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # autolamella workflow
         self.autolamella_stages = { # TODO: need to create separate mode / stages for these
             AutoLiftoutStage.Setup: self.setup_autoliftout,
-            AutoLiftoutStage.MillTrench: self.mill_lamella_trench,
-            AutoLiftoutStage.Thinning: self.thin_lamella,
-            AutoLiftoutStage.Polishing: self.polish_lamella
+            AutoLiftoutStage.MillTrench: self.mill_autolamella,
+            AutoLiftoutStage.Thinning: self.thin_autolamella,
+            AutoLiftoutStage.Polishing: self.polish_autolamella
         }
+        self.AUTOLAMELLA_ENABLED = bool(self.settings["system"]["autolamella"])
+        # TODO: 
+        # button to enable autolamella
+        # change connection / button label to autolamella
+        # dont require selecting landing points?
+
 
         # Set up scroll area for display
         self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
@@ -355,7 +361,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.pushButton_add_sample_position.setVisible(True)
             self.pushButton_add_sample_position.setEnabled(True)
 
-        if finished_selecting:
+        if finished_selecting: # TODO: handle the autolamella case
             self.select_landing_positions()
 
 
@@ -373,6 +379,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ION)
             select_another_sample_position = self.response
             self.update_scroll_ui()
+
+        if self.AUTOLAMELLA_ENABLED:
+            return 
 
         # select landing positions and finish setup
         self.select_landing_positions()
@@ -394,6 +403,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if current_sample_position.landing_selected is False:
                 self.select_landing_sample_positions(current_sample_position)
 
+        # TODO: mvoe this to a finish_setup function?
         # load all the data from disk (to load images)
         for sample_position in self.samples:
             sample_position.load_data_from_file()
@@ -630,6 +640,34 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
 
         return self.stage.current_position
+
+    def run_autolamella_workflow(self):
+        """Run the autolamella workflow"""
+
+        logging.info(f"AutoLamella Workflow started for {len(self.samples)} sample positions.")
+
+        for next_stage in [AutoLiftoutStage.MillTrench, AutoLiftoutStage.Thinning, AutoLiftoutStage.Polishing]:
+            for sp in self.samples:
+                self.current_sample_position = sp
+                
+                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) \nis {sp.microscope_state.last_completed_stage.name}. " \
+                      f"\nWould you like to continue from {next_stage.name}?\n"
+                self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
+
+                if self.response:
+                    
+                    # reset to the previous state
+                    self.start_of_stage_update(next_stage=next_stage)
+
+                    # run the next workflow stage
+                    self.autolamella_stages[next_stage]()
+
+                    # advance workflow
+                    self.end_of_stage_update(eucentric=True)
+                else:
+                    break # go to the next sample
+        
+        # TODO: maybe move polishing outside? 
 
     def run_autoliftout_workflow(self):
 
@@ -1472,6 +1510,30 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return
 
+    def mill_autolamella(self):
+        """Milling stage for autolamella"""
+
+        # TODO: tilt to correct angle
+        # 50deg rotation, 7 deg tilt
+        # TODO: reference images...
+
+        self.ask_user_movement(msg_type="eucentric")
+
+        self.open_milling_window(MillingPattern.Trench)
+
+    def thin_autolamella(self):
+        """Thinning stage for autolamella"""
+        # move to correct angle ?
+        self.ask_user_movement(msg_type="centre_ib")
+
+        self.open_milling_window(MillingPattern.Thin)
+    
+    def polish_autolamella(self):
+        """Polishing Stage for autolamella"""
+
+        self.ask_user_movement(msg_type="centre_ib")
+        self.open_milling_window(MillingPattern.Polish)
+
     def initialize_hardware(self, offline=False):
         if offline is False:
             self.connect_to_microscope(ip_address=self.ip_address)
@@ -1489,20 +1551,47 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_load_sample_data.setVisible(False)
         self.pushButton_load_sample_data.setEnabled(False)
         self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())
+        self.pushButton_add_sample_position.setVisible(False)
 
+        # configuration management
         self.actionLoad_Experiment.triggered.connect(lambda: self.setup_experiment())
         self.actionLoad_Configuration.triggered.connect(lambda: logging.info("Load Configuration Function")) # TODO: function
 
+        # mode selection
         self.actionMark_Sample_Position_Failed.triggered.connect(lambda: self.mark_sample_position_failed())
+        self.actionAutoLamella.triggered.connect(self.enable_autolamella)
+        self.actionAutoLiftout.triggered.connect(self.enable_autoliftout)
 
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
+
 
         if self.PIESCOPE_ENABLED:
             self.pushButton_add_sample_position.setVisible(False)
             self.pushButton_add_sample_position.clicked.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
 
         logging.info("gui: setup connections finished")
+
+    def enable_autolamella(self):
+        self.AUTOLAMELLA_ENABLED = True
+        self.pushButton_autoliftout.setText("Run AutoLamella")
+        self.label_title.setText("AutoLamella")
+        self.pushButton_thinning.setVisible(False)
+
+        # connect autolamella workflow
+        self.pushButton_autoliftout.disconnect()
+        self.pushButton_autoliftout.clicked.connect(lambda: self.run_autolamella_workflow())
+
+
+    def enable_autoliftout(self):
+        self.AUTOLAMELLA_ENABLED = False
+        self.pushButton_autoliftout.setText("Run AutoLiftout")
+        self.label_title.setText("AutoLiftout")
+        self.pushButton_thinning.setVisible(True)
+
+        # connect autoliftout workflow
+        self.pushButton_autoliftout.disconnect()
+        self.pushButton_autoliftout.clicked.connect(lambda: self.run_autoliftout_workflow())
 
 
     def mark_sample_position_failed(self):
@@ -1615,12 +1704,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement_window.exec_()
 
     def open_milling_window(self, milling_pattern_type: MillingPattern, x: float = 0.0 , y: float = 0.0):
-        """Open the Milling window
+        """Open the Milling Window ready for milling
 
         Args:
-            milling_pattern_type (MillingPattern): _description_
-            x (float, optional): _description_. Defaults to 0.0.
-            y (float, optional): _description_. Defaults to 0.0.
+            milling_pattern_type (MillingPattern): The type of milling pattern
+            x (float, optional): the initial pattern offset (x-direction). Defaults to 0.0.
+            y (float, optional): the initial pattenr offset (y-direction). Defaults to 0.0.
         """
         self.milling_window = GUIMillingWindow(microscope=self.microscope, 
                                 settings=self.settings, 
@@ -1628,7 +1717,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                 milling_pattern_type=milling_pattern_type,
                                 x=x, y=y, 
                                 parent=self,)
-        # self.milling_window.update_milling_pattern_type(milling_pattern_type, x=x, y=y) # TODO: update milling window so this happens in init instead?
 
 
     def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):

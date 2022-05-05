@@ -617,9 +617,17 @@
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuChange_Mode">
+     <property name="title">
+      <string>Change Mode</string>
+     </property>
+     <addaction name="actionAutoLiftout"/>
+     <addaction name="actionAutoLamella"/>
+    </widget>
     <addaction name="actionLoad_Experiment"/>
     <addaction name="actionLoad_Configuration"/>
     <addaction name="actionMark_Sample_Position_Failed"/>
+    <addaction name="menuChange_Mode"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -637,6 +645,16 @@
   <action name="actionMark_Sample_Position_Failed">
    <property name="text">
     <string>Mark Sample Position Failed</string>
+   </property>
+  </action>
+  <action name="actionAutoLiftout">
+   <property name="text">
+    <string>AutoLiftout</string>
+   </property>
+  </action>
+  <action name="actionAutoLamella">
+   <property name="text">
+    <string>AutoLamella</string>
    </property>
   </action>
  </widget>
