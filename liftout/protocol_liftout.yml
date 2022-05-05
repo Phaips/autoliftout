@@ -152,6 +152,39 @@ thin_lamella: # Lamella parameters
     milling_depth: 0.4e-6 # In meters. Overrides the default milling depth.
     milling_current: 20.e-12 # In Amperes. Overrides the default current.
 #    lamella_width: 4e-6 # In meters. Width of lamella.
+thin_lamella2:
+  rotation_angle: 50 # deg (raw)
+  # rotation_angle: 50 # deg (raw)
+  # tilt_angle: 0 # deg
+  lamella_width: 6.0e-6 # in meters
+  lamella_height: 5.e-6 # in meters
+  milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 0.2e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  offset: 1.0e-6
+  trench_height: 2.0e-6
+  hfw: 30.e-6
+  # Protocol stages are milled in the order they appear here.
+  # Stages may override the default parameters above Eg: current, depth, etc.
+  protocol_stages:
+#  # Rough cut, stage 1
+  - offset: 1.0e-6
+    trench_height: 2.5e-6 
+#  # Regular cut, stage 2
+  - offset: 0.5e-6
+    trench_height: 1.e-6
+polish_lamella:
+  hfw: 30.e-6
+  rotation_angle: 50 # deg (raw)
+  tilt_angle: 0 # deg
+  tilt_offset: 1 # deg
+  lamella_width: 3.0e-6 # in meters
+  lamella_height: 0.45e-6 # in meters
+  milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 20.e-12  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  offset: 0.0e-6
+  trench_height: 0.2e-6
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"

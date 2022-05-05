@@ -68,6 +68,8 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
             "crosshair": [],
         }
 
+        self.logged_detection_types = []
+
         self.setup_connections()
 
         self.update_display()
@@ -93,8 +95,22 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
         logging.info(f"Continue button pressed: {self.sender()}")
 
-        # TODO: do movement...
         self.close()
+    
+    def closeEvent(self, event):
+        logging.info("Closing Detection Window")
+
+
+        # log correct detection types
+        if self.parent():
+            sample_id = self.parent().current_sample_position.sample_id
+            current_stage = self.parent().current_stage
+            for det_type in self.det_types:
+                if det_type not in self.logged_detection_types:
+                    logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}")
+
+
+        event.accept()
 
     def on_click(self, event):
         """Redraw the patterns and update the display on user click"""
@@ -118,6 +134,8 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
                 current_stage = self.parent().current_stage
                 logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {False}")
             
+                self.logged_detection_types.append(self.current_detection_selected)
+
             # save image for training
             if not self._IMAGE_SAVED:
                 utils.save_image(image=self.adorned_image, save_path=self.image_settings.save_path, label=self.image_settings.label+"_label")

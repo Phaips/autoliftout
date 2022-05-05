@@ -5,14 +5,13 @@ import logging
 from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings
+from liftout.fibsem.acquire import BeamType, ImageSettings, GammaSettings
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
 import scipy.ndimage as ndi
 
-MICRON_TO_METRE = 1e-6 
-METRE_TO_MICRON = 1e6
+from liftout.fibsem.constants import MICRON_TO_METRE, METRE_TO_MICRON
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(self, microscope, settings: dict, image_settings: ImageSettings, msg_type: str=None, parent=None):
@@ -194,7 +193,13 @@ def main():
         hfw = settings["imaging"]["horizontal_field_width"],
         autocontrast = True,
         beam_type = BeamType.ION,
-        gamma = settings["gamma"],
+        gamma = GammaSettings(
+            enabled=settings["gamma"]["correction"],
+            min_gamma=settings["gamma"]["min_gamma"],
+            max_gamma=settings["gamma"]["max_gamma"],
+            scale_factor=settings["gamma"]["scale_factor"],
+            threshold=settings["gamma"]["threshold"]
+        ),
         save = False,
         label = "test",
     )

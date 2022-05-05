@@ -39,9 +39,7 @@ test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
 test_image = np.array(test_image)
 
 # conversions
-MICRON_TO_METRE = 1e-6 
-METRE_TO_MICRON = 1e6
-MAXIMUM_WORKING_DISTANCE = 6.0e-3
+MAXIMUM_WORKING_DISTANCE = 6.0e-3 # TODO: move to config
 
 _translate = QtCore.QCoreApplication.translate
 
@@ -104,14 +102,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.microscope:
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
 
-        self.milling_window = GUIMillingWindow(microscope=self.microscope, 
-                                    settings=self.settings, 
-                                    image_settings=self.image_settings, 
-                                    milling_pattern_type=MillingPattern.Trench, 
-                                    parent=self,)
-        self.milling_window.close() # TODO: get a better way of doing this hide
-        # TODO: change this to recreate on each call... this is too complicated
-
         # use high throughput
         self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
 
@@ -156,6 +146,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             AutoLiftoutStage.Liftout: self.liftout_lamella,
             AutoLiftoutStage.Landing: self.land_lamella,
             AutoLiftoutStage.Reset: self.reset_needle,
+            AutoLiftoutStage.Thinning: self.thin_lamella,
+            AutoLiftoutStage.Polishing: self.polish_lamella
+        }
+
+        # autolamella workflow
+        self.autolamella_stages = { # TODO: need to create separate mode / stages for these
+            AutoLiftoutStage.Setup: self.setup_autoliftout,
+            AutoLiftoutStage.MillTrench: self.mill_lamella_trench,
             AutoLiftoutStage.Thinning: self.thin_lamella,
             AutoLiftoutStage.Polishing: self.polish_lamella
         }
@@ -308,7 +306,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # select the initial positions to mill lamella
             select_another_sample_position = True
             self.samples = []
-            self.sample_no = 0
+            self.sample_no = 1
         
         return select_another_sample_position
 
@@ -598,7 +596,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # mill the landing edge flat
         self.update_image_settings(hfw=100e-6, beam_type=BeamType.ION, save=False)
-        self.milling_window.update_milling_pattern_type(MillingPattern.Flatten)
+        self.open_milling_window(MillingPattern.Flatten)
 
 
         current_sample_position.landing_selected = True
@@ -664,7 +662,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.Reset.value:
 
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
-                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) is {sp.microscope_state.last_completed_stage.name}. " \
+                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) \nis {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
                 self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
@@ -763,6 +761,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
         self.ask_user_movement(msg_type="centre_ib")
 
+        # if AUTOLAMELLA:
+            # tilt to whatever
+
         # update the lamella coordinates, and save
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.current_sample_position.lamella_coordinates = self.microscope.specimen.stage.current_position
@@ -770,13 +771,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
         # MILL_TRENCHES
-        self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
-
-        if self.ADDITIONAL_CONFIRMATION:
-            # if false, reopen milling window
-            # self.milling_window.update_milling_pattern_type(MillingPattern.Trench)
-            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. \nPress Yes to continue.", 
-            beam_type=BeamType.ION)
+        self.open_milling_window(MillingPattern.Trench)
 
         # reference images of milled trenches
         self.update_image_settings(
@@ -831,7 +826,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
         self.update_image_settings(hfw=80e-6)
-        self.milling_window.update_milling_pattern_type(MillingPattern.JCut)
+        self.open_milling_window(MillingPattern.JCut)
 
         # take reference images of the jcut
         self.update_image_settings(hfw=self.settings["reference_images"]["milling_ref_img_hfw_lowres"],
@@ -922,16 +917,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # jcut sever pattern
-        self.milling_window.update_milling_pattern_type(MillingPattern.Sever)
+        self.open_milling_window(MillingPattern.Sever)
 
 
         self.update_image_settings(save=True, hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"], label=f"jcut_sever")
         acquire.take_reference_images(self.microscope, self.image_settings)
-
-        if self.ADDITIONAL_CONFIRMATION:
-            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. Press Yes to continue.", 
-            beam_type=BeamType.ION)
-            # if false, reopen milling window
 
         # Raise needle 30um from trench
         logging.info(f"{self.current_stage.name}: start removing needle from trench")
@@ -1032,7 +1022,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # detection is based on centre of lamella, we want to land of the edge.
         # therefore subtract half the height from the movement.
         lamella_height = self.settings["lamella"]["lamella_height"]
-        gap = lamella_height / 10
+        gap = 0.5e-6 #lamella_height / 10
         zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
         self.needle.relative_move(zy_move_gap)
 
@@ -1177,7 +1167,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         ############################## WELD TO LANDING POST #############################################
 
-        self.milling_window.update_milling_pattern_type(MillingPattern.Weld)
+        self.open_milling_window(MillingPattern.Weld)
         #################################################################################################
 
         # final reference images
@@ -1205,7 +1195,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                 beam_type=BeamType.ION)
 
         # cut off needle
-        self.milling_window.update_milling_pattern_type(MillingPattern.Cut, x=det.distance_metres.x, y=det.distance_metres.y)
+        self.open_milling_window(MillingPattern.Cut, x=det.distance_metres.x, y=det.distance_metres.y)
 
         #################################################################################################
 
@@ -1225,10 +1215,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label=f"landing_lamella_final_cut_highres"
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
-
-        if self.ADDITIONAL_CONFIRMATION:
-            self.ask_user_interaction(msg="Was the milling successful? If not, please manually fix. Press Yes to continue.", 
-                beam_type=BeamType.ION)
 
 
         logging.info(f"{self.current_stage.name}: removing needle from landing post")
@@ -1311,7 +1297,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                         beam_type=BeamType.ION)
 
         # create sharpening patterns
-        self.milling_window.update_milling_pattern_type(MillingPattern.Sharpen, x=det.distance_metres.x, y=det.distance_metres.y)
+        self.open_milling_window(MillingPattern.Sharpen, x=det.distance_metres.x, y=det.distance_metres.y)
 
         #################################################################################################
 
@@ -1381,7 +1367,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.ask_user_movement(msg_type="centre_ib")
 
-
         # take reference images
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
@@ -1394,8 +1379,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # thin_lamella (align and mill)
         self.update_image_settings()
-        milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
-                                  image_settings=self.image_settings, milling_type="thin")
+        self.open_milling_window(MillingPattern.Thin)
+        # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
+        #                           image_settings=self.image_settings, milling_type="thin")
 
         # take reference images
         self.update_image_settings(
@@ -1446,8 +1432,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # polish (align and mill)
         self.update_image_settings()
-        milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
-                                  image_settings=self.image_settings, milling_type="polish", ref_image=ref_image)
+        self.open_milling_window(MillingPattern.Polish)
+        # TODO: test ^
+        # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
+        #                           image_settings=self.image_settings, milling_type="polish", ref_image=ref_image)
 
         # take reference images
         self.update_image_settings(
@@ -1539,10 +1527,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         TEST_SAMPLE_POSITIONS = False
         TEST_PIESCOPE = False
-        TEST_MILLING_WINDOW = False
+        TEST_MILLING_WINDOW = True
         TEST_DETECTION_WINDOW = False
-        TEST_MOVEMENT_WINDOW = True
-        TEST_USER_WINDOW = True
+        TEST_MOVEMENT_WINDOW = False
+        TEST_USER_WINDOW = False
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()
@@ -1554,11 +1542,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if TEST_MILLING_WINDOW:
 
             self.update_image_settings(hfw=150e-6, beam_type=BeamType.ION)
-            self.milling_window.update_milling_pattern_type(MillingPattern.JCut)        
+            self.open_milling_window(MillingPattern.JCut)
             print("hello jcut")
 
-            self.milling_window.update_milling_pattern_type(MillingPattern.Flatten)        
-            print("hello flatten")
+            self.open_milling_window(MillingPattern.Thin)
+            print("hello thin")
+
+            self.update_image_settings(hfw=50.e-6)
+            self.open_milling_window(MillingPattern.Polish)
+            print("hello polish")
 
 
         if TEST_DETECTION_WINDOW:
@@ -1621,6 +1613,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                             )
         movement_window.show()
         movement_window.exec_()
+
+    def open_milling_window(self, milling_pattern_type: MillingPattern, x: float = 0.0 , y: float = 0.0):
+        """Open the Milling window
+
+        Args:
+            milling_pattern_type (MillingPattern): _description_
+            x (float, optional): _description_. Defaults to 0.0.
+            y (float, optional): _description_. Defaults to 0.0.
+        """
+        self.milling_window = GUIMillingWindow(microscope=self.microscope, 
+                                settings=self.settings, 
+                                image_settings=self.image_settings, 
+                                milling_pattern_type=milling_pattern_type,
+                                x=x, y=y, 
+                                parent=self,)
+        # self.milling_window.update_milling_pattern_type(milling_pattern_type, x=x, y=y) # TODO: update milling window so this happens in init instead?
+
 
     def validate_detection(self, microscope, settings, image_settings, shift_type, beam_type: BeamType = BeamType.ELECTRON):
             
@@ -1779,7 +1788,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # display sample no
             label_sample = QLabel()
-            label_sample.setText(f"""Sample {i:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
+            label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
             label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
             label_sample.setMaximumHeight(150)
             gridLayout.addWidget(label_sample, row_id, 0)

@@ -250,6 +250,7 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
     """
     needle = microscope.specimen.manipulator
     stage = microscope.specimen.stage
+    needle.set_default_coordinate_system(ManipulatorCoordinateSystem.STAGE)
     # Needle starts from the parking position (after inserting it)
     # Move the needle back a bit in x, so the needle is not overlapping target
     x_move = x_corrected_needle_movement(x_shift)

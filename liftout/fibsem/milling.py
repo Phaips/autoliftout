@@ -1,10 +1,13 @@
 import logging
-from autoscript_core.common import ApplicationServerException
-import numpy as np
 import math
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
+import numpy as np
+from autoscript_core.common import ApplicationServerException
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         StagePosition)
 from liftout.fibsem import acquire, calibration
+
 BeamType = acquire.BeamType
 
 
@@ -61,7 +64,7 @@ def jcut_severing_pattern(microscope, settings: dict, centre_x: float = 0.0, cen
     return [jcut_severing_pattern]
 
 
-def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current=None):
+def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current=None, asynch=True):
     """Run ion beam milling at specified current, and then restore imaging current"""
     logging.info("milling: running ion beam milling now...")
 
@@ -73,8 +76,11 @@ def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current
         microscope.beams.ion_beam.beam_current.value = milling_current
     
     # run milling (asynchronously)
-    microscope.patterning.start()
-    # microscope.patterning.clear_patterns()
+    if asynch:
+        microscope.patterning.start()
+    else:
+        microscope.patterning.run()
+        microscope.patterning.clear_patterns()
 
 
 def finish_milling(microscope, settings):
@@ -101,6 +107,137 @@ def draw_patterns_and_mill(microscope, settings, patterns: list, depth: float, m
         )
         tmp_pattern.rotation = -np.deg2rad(pattern.rotation)
     run_milling(microscope=microscope, settings=settings, milling_current=milling_current)
+
+
+def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: acquire.ImageSettings, ref_image: AdornedImage):
+    """Align the images by adjusting the beam shift, instead of moving the stage 
+            (increased precision, lower range)
+
+    Args:
+        microscope (SdbMicroscopeClient): microscope client
+        image_settings (acquire.ImageSettings): settings for taking image
+        ref_image (AdornedImage): reference image to align to
+    """
+    # TODO: move to calibration
+
+    # # align using cross correlation
+    img1 = ref_image
+    img2 = acquire.new_image(microscope, settings=image_settings)
+    dx, dy = calibration.shift_from_crosscorrelation_AdornedImages(
+        img1, img2, lowpass=256, highpass=24, sigma=10, use_rect_mask=True
+    )
+
+    # adjust beamshift
+    microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
+    _ = acquire.new_image(microscope, image_settings)
+
+
+def mill_polish_lamella(microscope, settings, image_settings, patterns: list = None, ref_image=None):
+    
+    # TODO: finish this
+
+    # align (move settings outside?)
+    image_settings.resolution = "3072x2048"
+    image_settings.dwell_time = 200.e-9
+    image_settings.save = False
+    image_settings.hfw = 50e-6
+    image_settings.beam_type = BeamType.ION
+    image_settings.gamma.enabled = False
+    image_settings.save = True
+    image_settings.label = f"thin_lamella_crosscorrelation_ref"
+
+    TILT_OFFSET = settings["polish_lamella"]["tilt_offset"]
+
+    # initial reference image
+    if ref_image is None:
+        ref_image = acquire.new_image(microscope, image_settings)
+
+    image_settings.label = f"polish_lamella_stage_1"
+
+    beam_shift_alignment(microscope, image_settings, ref_image)
+
+    # generate patterns (user change?)
+    # TODO: this should come from the milling_window...
+    
+    if patterns:
+        lower_pattern, upper_pattern = patterns
+    else:
+        x_centre = -settings["lamella"]["lamella_width"] / 2
+        lower_pattern, upper_pattern = mill_trench_patterns(microscope, settings["polish_lamella"], x_centre, 0)
+     
+    # retrieve pattern values, (the objects are deleted by clear_patterns)
+    l_cx = lower_pattern.center_x
+    l_cy = lower_pattern.center_y
+    l_w = lower_pattern.width
+    l_h = lower_pattern.height
+    l_d = lower_pattern.depth
+
+    u_cx = upper_pattern.center_x
+    u_cy = upper_pattern.center_y
+    u_w = upper_pattern.width
+    u_h = upper_pattern.height
+    u_d = upper_pattern.depth
+
+    # clear patterns...
+    microscope.patterning.clear_patterns()
+    
+    # tilt up for bottom pattern
+    tilt_up = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    microscope.specimen.stage.relative_move(tilt_up)
+    
+    # align
+    image_settings.label = f"polish_lamella_tilt_down_stage_3"
+    beam_shift_alignment(microscope, image_settings, ref_image)
+
+    # mill bottom pattern
+    # draw bottom pattern
+    lower_pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x=l_cx,
+        center_y=l_cy,
+        width=l_w,
+        height=l_h,
+        depth=l_d
+    )
+    lower_pattern.scan_direction = "BottomToTop"
+
+    # run milling
+    run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
+
+
+    # reset back to starting tilt
+    tilt_back = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    microscope.specimen.stage.relative_move(tilt_back)
+
+    # tilt down for top pattern
+    tilt_down = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    microscope.specimen.stage.relative_move(tilt_down)
+    
+    image_settings.label = f"polish_lamella_tilt_up_stage_2"
+    beam_shift_alignment(microscope, image_settings, ref_image)
+
+    # mill top pattern
+    # draw top pattern
+    upper_pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x = u_cx,
+        center_y = u_cy,
+        width = u_w,
+        height = u_h,
+        depth = u_d
+    )
+    upper_pattern.scan_direction = "TopToBottom"
+    
+    # run milling
+    run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
+
+    # reset back to starting tilt
+    tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    microscope.specimen.stage.relative_move(tilt_back)
+
+    # finish milling
+    finish_milling(microscope, settings)
+
+
+
 
 
 def mill_thin_lamella(microscope, settings, image_settings, milling_type="thin", ref_image=None):

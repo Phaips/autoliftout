@@ -1,12 +1,11 @@
 import logging
-from re import S
 import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
-from liftout import fibsem, utils
+from liftout import utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, ImageSettings, GammaSettings
@@ -14,14 +13,10 @@ from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QMessageBox
+from PyQt5.QtWidgets import QMessageBox
 import scipy.ndimage as ndi
 
-
-MICRON_TO_METRE = 1e-6
-METRE_TO_MICRON = 1e6
-
-
+from liftout.fibsem.constants import MICRON_TO_METRE, METRE_TO_MICRON
 
 class MillingPattern(Enum):
     Trench = 1
@@ -37,10 +32,9 @@ class MillingPattern(Enum):
 
 # TODO:
 # separate thin and polish stages in the config...
-# add rotation for plt rectangles in display...
 
 class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, milling_pattern_type: MillingPattern, parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, milling_pattern_type: MillingPattern, x: float = 0.0, y:float = 0.0, parent=None):
         super(GUIMillingWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -79,15 +73,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             label.setVisible(False)
             spinBox.setVisible(False)
 
-        self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle"]
+        # TODO: make milling current changable separately? combobox
+        self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle", "tilt_offset"]
         self.non_scaled_params = ["size_ratio", "rotation", "tip_angle",
                                   "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
-
-
-
-
         self.INITIALISED = False
+
+        self.update_milling_pattern_type(milling_pattern_type, x=x, y=y)
 
     def setup_milling_image(self):
         self.image_settings.beam_type = BeamType.ION
@@ -194,8 +187,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 if self.USER_UPDATE:
                     self.update_display()
 
-
-
     def update_display(self):
         """Update the millig window display. Redraw the crosshair, and milling patterns"""
         crosshair = create_crosshair(self.image, x=self.xclick, y=self.yclick)
@@ -244,12 +235,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             milling_protocol_stages = self.settings["sharpen"]
 
         if self.milling_pattern_type == MillingPattern.Thin:
-            milling_protocol_stages = milling.get_milling_protocol_stages(
-                settings=self.settings, stage_name="thin_lamella")
+            # milling_protocol_stages = milling.get_milling_protocol_stages(
+            #     settings=self.settings, stage_name="thin_lamella")
+            milling_protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella2")
 
         if self.milling_pattern_type == MillingPattern.Polish:
-            milling_protocol_stages = milling.get_milling_protocol_stages(
-                settings=self.settings, stage_name="thin_lamella")
+            # milling_protocol_stages = milling.get_milling_protocol_stages(
+            #     settings=self.settings, stage_name="thin_lamella")
+            milling_protocol_stages = self.settings["polish_lamella"]
 
         if self.milling_pattern_type == MillingPattern.Flatten:
             milling_protocol_stages = self.settings["flatten_landing"]
@@ -299,6 +292,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # sputtering rates
         self.sputter_rate_dict = {
+            20e-12: 6.85e-3,    # 30kv
+            0.2e-9: 6.578e-2,   # 30kv
             0.74e-9: 3.349e-1,  # 30kv
             0.89e-9: 3.920e-1,  # 20kv
             2.0e-9: 9.549e-1,   # 30kv
@@ -384,12 +379,18 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.patterns = milling.create_sharpen_needle_patterns(self.microscope, cut_coord_bottom, cut_coord_top)
 
         if self.milling_pattern_type == MillingPattern.Thin:
-            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, 
-                                                        centre_x=self.center_x, centre_y=self.center_y)
+            self.patterns = milling.mill_trench_patterns(microscope=self.microscope,
+                                    settings=self.milling_settings,
+                                    centre_x=self.center_x, centre_y=self.center_y)
+            # self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, 
+            #                                             centre_x=self.center_x, centre_y=self.center_y)
 
         if self.milling_pattern_type == MillingPattern.Polish:
-            self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, 
-                                                        centre_x=self.center_x, centre_y=self.center_y)
+            self.patterns = milling.mill_trench_patterns(microscope=self.microscope,
+                                                settings=self.milling_settings,
+                                                centre_x=self.center_x, centre_y=self.center_y)
+            # self.patterns = milling.mill_thin_patterns(self.microscope, self.milling_settings, 
+            #                                             centre_x=self.center_x, centre_y=self.center_y)
 
         if self.milling_pattern_type == MillingPattern.Flatten:
             self.patterns = milling.flatten_landing_pattern(microscope=self.microscope, settings=self.settings,
@@ -447,37 +448,45 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         logging.info("Run Milling Button Pressed")
         logging.info(f"Running milling for {len(self.milling_stages)} Stages")
 
-        for stage_name, milling_settings in self.milling_stages.items():
-            
-            logging.info(f"Stage {stage_name}: {milling_settings}")
-
-            self.milling_settings = milling_settings 
-            self.update_milling_patterns()
-            self.update_display()
-            
-            # run_milling
-            milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=self.milling_current)
-            
-            time.sleep(5) # wait for milling to start
-            elapsed_time = 0
-            while self.microscope.patterning.state == "Running":                  
+        if self.milling_pattern_type == MillingPattern.Polish:
+            milling.mill_polish_lamella(
+                        microscope=self.microscope, 
+                        settings=self.settings, 
+                        image_settings=self.image_settings, 
+                        patterns=self.patterns, 
+                        ref_image=None)
+        else:
+            for stage_name, milling_settings in self.milling_stages.items():
                 
-                elapsed_time+=1
-                prog_val = elapsed_time / self.estimated_milling_time_s * 100
-                self.progressBar.setValue(prog_val)
-                time.sleep(1)
-            
-            logging.info(f"Milling finished: {self.microscope.patterning.state}")
+                logging.info(f"Stage {stage_name}: {milling_settings}")
+
+                self.milling_settings = milling_settings 
+                self.update_milling_patterns()
+                self.update_display()
+                
+                # run_milling
+                milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=self.milling_current)
+                
+                time.sleep(5) # wait for milling to start
+                elapsed_time = 0
+                while self.microscope.patterning.state == "Running":                  
+                    
+                    elapsed_time+=1
+                    prog_val = elapsed_time / self.estimated_milling_time_s * 100
+                    self.progressBar.setValue(prog_val)
+                    time.sleep(1)
+                
+                logging.info(f"Milling finished: {self.microscope.patterning.state}")
 
 
         # reset to imaging mode
         milling.finish_milling(microscope=self.microscope, settings=self.settings)
 
-        # ask user if they want to rerun milling?
-        # if yes, stay open
-        # if no, close
-
-        # TODO: show image
+        # refresh image
+        self.setup_milling_image()
+        self.update_display()
+        
+        # ask user if the milling succeeded
         dlg = QMessageBox(self)
         dlg.setWindowTitle("Milling Confirmation")
         dlg.setText("Do you need to redo milling?")
@@ -487,8 +496,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         if button == QMessageBox.Yes:
             logging.info("Redoing milling")
-            self.setup_milling_image()
-            self.update_display()
         else:
             self.close() 
 
@@ -520,7 +527,7 @@ def main():
         save_path=""
     )
 
-
+    image_settings.hfw = 30.e-6
 
     app = QtWidgets.QApplication([])
     qt_app = GUIMillingWindow(microscope=microscope, 
@@ -528,7 +535,7 @@ def main():
                                 image_settings=image_settings, 
                                 milling_pattern_type=MillingPattern.Trench)
     qt_app.show()
-    qt_app.update_milling_pattern_type(MillingPattern.Trench)
+    qt_app.update_milling_pattern_type(MillingPattern.Polish)
     sys.exit(app.exec_())
 
 
