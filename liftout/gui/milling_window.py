@@ -74,7 +74,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             spinBox.setVisible(False)
 
         # TODO: make milling current changable separately? combobox
-        self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle", "tilt_offset"]
+        self.non_changeable_params = ["milling_current", "hfw", "jcut_angle", "rotation_angle", "tilt_angle", "tilt_offset", 
+            "resolution", "dwell_time"]
         self.non_scaled_params = ["size_ratio", "rotation", "tip_angle",
                                   "needle_angle", "percentage_roi_height", "percentage_from_lamella_surface"]
 
@@ -237,7 +238,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         if self.milling_pattern_type == MillingPattern.Thin:
             # milling_protocol_stages = milling.get_milling_protocol_stages(
             #     settings=self.settings, stage_name="thin_lamella")
-            milling_protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella2")
+            milling_protocol_stages = milling.get_milling_protocol_stages(settings=self.settings, stage_name="thin_lamella")
 
         if self.milling_pattern_type == MillingPattern.Polish:
             # milling_protocol_stages = milling.get_milling_protocol_stages(

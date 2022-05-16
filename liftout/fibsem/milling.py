@@ -137,10 +137,9 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
     # TODO: finish this
 
     # align (move settings outside?)
-    image_settings.resolution = "3072x2048"
-    image_settings.dwell_time = 200.e-9
-    image_settings.save = False
-    image_settings.hfw = 50e-6
+    image_settings.resolution = settings["polish_lamella"]["resolution"]
+    image_settings.dwell_time = settings["polish_lamella"]["dwell_time"]
+    image_settings.hfw = settings["polish_lamella"]["hfw"]
     image_settings.beam_type = BeamType.ION
     image_settings.gamma.enabled = False
     image_settings.save = True
@@ -156,9 +155,7 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
 
     beam_shift_alignment(microscope, image_settings, ref_image)
 
-    # generate patterns (user change?)
-    # TODO: this should come from the milling_window...
-    
+    # generate patterns (user change?)    
     if patterns:
         lower_pattern, upper_pattern = patterns
     else:

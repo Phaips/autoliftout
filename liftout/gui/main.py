@@ -59,7 +59,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # load config
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
-        self.pretilt_degrees = self.settings["system"]["pretilt_angle"]
 
         # save the metadata
         utils.save_metadata(self.settings, self.save_path)
@@ -72,16 +71,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setupUi(self)
         self.UI_LOADED = True # flag to check if ui has been loaded
         self.setWindowTitle('Autoliftout User Interface Main Window')
-
-        self.setStyleSheet("""QPushButton {
-        border: 1px solid #e3e3e3;
-        border-radius: 5px;
-        }
-        
-        QLabel { 
-            border: 1px solid #e3e3e3;
-            border-radius: 10px
-        }""")
 
         # initialise hardware
         self.ip_address = self.settings["system"]["ip_address"]
@@ -110,8 +99,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.PIESCOPE_ENABLED:
             self.piescope_gui_main_window = None
 
-        self.current_stage = AutoLiftoutStage.Initialisation
-
         # setup status information
         self.status_timer = QtCore.QTimer()
         self.status_timer.timeout.connect(self.update_status)
@@ -135,7 +122,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.pushButton_thinning.setEnabled(True)
 
         # DEVELOPER ONLY
-        self.ADDITIONAL_CONFIRMATION = True
         self.INITIAL_SELECTION_EUCENTRICITY = False
 
         # autoliftout_workflow
@@ -158,11 +144,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             AutoLiftoutStage.Polishing: self.polish_autolamella
         }
         self.AUTOLAMELLA_ENABLED = bool(self.settings["system"]["autolamella"])
-        # TODO: 
-        # button to enable autolamella
-        # change connection / button label to autolamella
-        # dont require selecting landing points?
-
 
         # Set up scroll area for display
         self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
@@ -363,6 +344,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if finished_selecting: # TODO: handle the autolamella case
             self.select_landing_positions()
+            self.finish_setup()
 
 
     def select_sample_positions(self):
@@ -380,11 +362,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             select_another_sample_position = self.response
             self.update_scroll_ui()
 
-        if self.AUTOLAMELLA_ENABLED:
-            return 
+        # select landing positions 
+        if not self.AUTOLAMELLA_ENABLED:
+            self.select_landing_positions()
 
-        # select landing positions and finish setup
-        self.select_landing_positions()
+        # finish setup
+        self.finish_setup()
 
     def select_landing_positions(self):
 
@@ -403,7 +386,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if current_sample_position.landing_selected is False:
                 self.select_landing_sample_positions(current_sample_position)
 
-        # TODO: mvoe this to a finish_setup function?
+    def finish_setup(self):
+        """Finish the setup stage for autolifout/autolamella"""
         # load all the data from disk (to load images)
         for sample_position in self.samples:
             sample_position.load_data_from_file()
@@ -412,6 +396,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reset microscope coordinate system
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+        
         logging.info(f"Selected {len(self.samples)} initial sample and landing positions.")
 
         if self.samples and self.PIESCOPE_ENABLED:
@@ -420,14 +405,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
             logging.info(f"INIT | {self.current_stage.name} | FINISHED")
-
-
-    def load_experiment_button_pressed(self, btn):
-
-        if "Yes" in btn.text():
-            self.load_experiment = True
-        else:
-            self.load_experiment = False
 
     def setup_experiment(self):
 
@@ -440,12 +417,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         msg.setWindowTitle("AutoLiftout Startup")
         msg.setText("Do you want to load a previous experiment?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg.buttonClicked.connect(self.load_experiment_button_pressed)
         msg.exec_()
-
-        # cmdline
-        # user_response = input("Do you want to load a previous experiment? (y/n)")
-        # load_experiment = True if user_response.lower() == "y" else False
+        
+        self.load_experiment = True if msg.clickedButton() == msg.button(QMessageBox.Yes) else False 
 
         if self.load_experiment:
             # load_experiment
@@ -466,11 +440,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # create_new_experiment
             experiment_name, okPressed = QInputDialog.getText(self, "New AutoLiftout Experiment",
-                                                              "Enter a name for your experiment:", QLineEdit.Normal, "default_experiment")
+                                                              "Enter a name for your experiment:", 
+                                                              QLineEdit.Normal, "default_experiment")
             if not okPressed or experiment_name == "":
                 experiment_name = "default_experiment"
-
-            # experiment_name = input("Enter a name for the experiment: ")
 
             run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%H%M%S')}"
             self.save_path = utils.make_logging_directory(prefix=run_name)
@@ -567,7 +540,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.INITIAL_SELECTION_EUCENTRICITY is False:
             movement.move_to_sample_grid(self.microscope, settings=self.settings)
             movement.auto_link_stage(self.microscope)
-            # self.ensure_eucentricity()
+            
             self.ask_user_movement(msg_type="eucentric", flat_to_sem=True)
             movement.move_to_trenching_angle(self.microscope, settings=self.settings)
             self.INITIAL_SELECTION_EUCENTRICITY = True
@@ -799,9 +772,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.update_image_settings(hfw=self.settings["reference_images"]["trench_area_ref_img_hfw_highres"])
         self.ask_user_movement(msg_type="centre_ib")
 
-        # if AUTOLAMELLA:
-            # tilt to whatever
-
         # update the lamella coordinates, and save
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.RAW)
         self.current_sample_position.lamella_coordinates = self.microscope.specimen.stage.current_position
@@ -968,7 +938,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle.relative_move(z_move_out_from_trench)
             self.image_settings.label = f"liftout_trench_{i}"
             acquire.take_reference_images(self.microscope, self.image_settings)
-            logging.info(f"{self.current_stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1} / 3")
+            logging.info(f"{self.current_stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1}/3)")
             time.sleep(1)
 
         # reference images after liftout complete
@@ -1197,8 +1167,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
-        if self.ADDITIONAL_CONFIRMATION:
-            self.ask_user_interaction(msg="Was the landing successful? If not, please manually fix. Press Yes to continue.", 
+        self.ask_user_interaction(msg="Was the landing successful? If not, please manually fix. Press Yes to continue.", 
             beam_type=BeamType.ION)
 
         #################################################################################################
@@ -1262,7 +1231,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.needle.relative_move(z_move_out_from_post)
             self.image_settings.label = f"needle_retract_{i}"
             acquire.take_reference_images(self.microscope, self.image_settings)
-            logging.info(f"{self.current_stage.name}: moving needle out: {z_move_out_from_post} ({i + 1} / 3")
+            logging.info(f"{self.current_stage.name}: moving needle out: {z_move_out_from_post} ({i + 1}/3)")
             time.sleep(1)
 
         # move needle to park position
@@ -1416,7 +1385,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # thin_lamella (align and mill)
-        self.update_image_settings()
+        self.update_image_settings(hfw=self.settings["thin_lamella"]["hfw"])
         self.open_milling_window(MillingPattern.Thin)
         # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
         #                           image_settings=self.image_settings, milling_type="thin")
@@ -1437,7 +1406,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def polish_lamella(self):
 
         # restore state from thinning stage
-        ref_image = self.current_sample_position.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
+        # ref_image = self.current_sample_position.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
 
         # realign lamella to image centre
         self.update_image_settings(
@@ -1469,7 +1438,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # polish (align and mill)
-        self.update_image_settings()
+        self.update_image_settings(
+            resolution=self.settings["polish_lamella"]["resolution"],
+            dwell_time=self.settings["polish_lamella"]["dwell_time"],
+            hfw=self.settings["polish_lamella"]["hfw"]
+        )
         self.open_milling_window(MillingPattern.Polish)
         # TODO: test ^
         # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
@@ -1524,6 +1497,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def thin_autolamella(self):
         """Thinning stage for autolamella"""
         # move to correct angle ?
+
+        self.update_image_settings(
+            resolution=self.settings["thin_lamella"]["resolution"],
+            dwell_time=self.settings["thin_lamella"]["dwell_time"],
+            hfw=self.settings["thin_lamella"]["hfw"]
+        )
         self.ask_user_movement(msg_type="centre_ib")
 
         self.open_milling_window(MillingPattern.Thin)
@@ -1532,6 +1511,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Polishing Stage for autolamella"""
 
         self.ask_user_movement(msg_type="centre_ib")
+        
+        self.update_image_settings(
+            resolution=self.settings["polish_lamella"]["resolution"],
+            dwell_time=self.settings["polish_lamella"]["dwell_time"],
+            hfw=self.settings["polish_lamella"]["hfw"]
+        )
         self.open_milling_window(MillingPattern.Polish)
 
     def initialize_hardware(self, offline=False):
@@ -1576,6 +1561,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.AUTOLAMELLA_ENABLED = True
         self.pushButton_autoliftout.setText("Run AutoLamella")
         self.label_title.setText("AutoLamella")
+        self.pushButton_initialise.setText("Setup Autolamella")
         self.pushButton_thinning.setVisible(False)
 
         # connect autolamella workflow
@@ -1587,6 +1573,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.AUTOLAMELLA_ENABLED = False
         self.pushButton_autoliftout.setText("Run AutoLiftout")
         self.label_title.setText("AutoLiftout")
+        self.pushButton_initialise.setText("Setup AutoLiftout")
         self.pushButton_thinning.setVisible(True)
 
         # connect autoliftout workflow
@@ -1631,8 +1618,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if TEST_MILLING_WINDOW:
 
             self.update_image_settings(hfw=150e-6, beam_type=BeamType.ION)
-            self.open_milling_window(MillingPattern.JCut)
-            print("hello jcut")
+            # self.open_milling_window(MillingPattern.JCut)
+            # print("hello jcut")
 
             self.open_milling_window(MillingPattern.Thin)
             print("hello thin")
