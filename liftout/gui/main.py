@@ -917,6 +917,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # land needle on lamella
         self.land_needle_on_milled_lamella()
 
+
         # sputter platinum
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False)
         logging.info(f"{self.current_stage.name}: lamella to needle welding complete.")
@@ -1051,6 +1052,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
 
+        self.ask_user_interaction(msg="Has the needle landed on the lamella? \nIf not, please correct manually and then press yes.", beam_type=BeamType.ION)
+        # TODO: repeat if failed
+
     def land_lamella(self):
 
         # load positions and reference images,
@@ -1167,8 +1171,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
-        self.ask_user_interaction(msg="Was the landing successful? If not, please manually fix. Press Yes to continue.", 
+        self.ask_user_interaction(msg="Was the landing successful? \nIf not, please manually fix. Press Yes to continue.", 
             beam_type=BeamType.ION)
+            # TODO: repeat if failed
 
         #################################################################################################
 
@@ -1323,12 +1328,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def thin_lamella(self):
 
-        # TODO: i want a way to restore generalised landing eucentricity, extension
-        # save the landing eucentricty
-        # save the thinning eucentricity, and then for each thin / polish step, reset to that state,
-        # then have the user click on the lamella they want to thin.
-        # TODO: add to the sample class, the landing_eucentric_state, sample_eucentric_state, and thinning_eucentric_state
-
         # move to the initial landing coordinates
         movement.safe_absolute_stage_movement(microscope=self.microscope,
                                               stage_position=self.current_sample_position.landing_coordinates)
@@ -1385,10 +1384,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # thin_lamella (align and mill)
-        self.update_image_settings(hfw=self.settings["thin_lamella"]["hfw"])
+        self.update_image_settings(
+            resolution=self.settings["thin_lamella"]["resolution"],
+            dwell_time=self.settings["thin_lamella"]["dwell_time"],
+            hfw=self.settings["thin_lamella"]["hfw"]
+        )
         self.open_milling_window(MillingPattern.Thin)
-        # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
-        #                           image_settings=self.image_settings, milling_type="thin")
 
         # take reference images
         self.update_image_settings(
@@ -1444,9 +1445,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             hfw=self.settings["polish_lamella"]["hfw"]
         )
         self.open_milling_window(MillingPattern.Polish)
-        # TODO: test ^
-        # milling.mill_thin_lamella(microscope=self.microscope, settings=self.settings,
-        #                           image_settings=self.image_settings, milling_type="polish", ref_image=ref_image)
 
         # take reference images
         self.update_image_settings(
@@ -1486,10 +1484,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def mill_autolamella(self):
         """Milling stage for autolamella"""
 
-        # TODO: tilt to correct angle
-        # 50deg rotation, 7 deg tilt
-        # TODO: reference images...
+        # tilt and rotate to the correct position... TODO: also do this when selecting?
+        autolamella_position = StagePosition(r=np.deg2rad(50), t=np.deg2rad(7))
+        movement.safe_absolute_stage_movement(self.microscope, autolamella_position)
 
+        # TODO: reference images...
         self.ask_user_movement(msg_type="eucentric")
 
         self.open_milling_window(MillingPattern.Trench)
@@ -1586,13 +1585,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         
         if self.samples:
             # TODO: add petname to sample positions
-            sample_no_str = [str(j) for j in range(len(self.samples))]
+            sample_no_str = [str(j+1) for j in range(len(self.samples))]
             idx, okPressed = QInputDialog.getItem(self, "Select a Sample Position","Sample No:",  sample_no_str, 0, False)
 
             if okPressed:
                 # mark sample as failure
-                logging.info(f"Marking sample {idx} as Failure")
-                sp = self.samples[int(idx)]
+                logging.info(f"Marking Sample Position {idx} as Failure")
+                sp = self.samples[int(idx)-1]
                 sp.microscope_state.last_completed_stage = AutoLiftoutStage.Failure
                 sp.save_data()              
 
