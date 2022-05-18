@@ -88,10 +88,10 @@ if len(filenames) > 0:
         gamma_corrected, fig = gamma_correction(img, gam, mean, median)
 
         raw_mask = detector.detection_model.model_inference(np.asarray(img))
-        raw_blend = draw_overlay(img, raw_mask, show=False)
+        raw_blend = draw_overlay(img, raw_mask)
 
         gamma_mask = detector.detection_model.model_inference(np.asarray(gamma_corrected))
-        gamma_blend = draw_overlay(gamma_corrected, gamma_mask, show=False)
+        gamma_blend = draw_overlay(gamma_corrected, gamma_mask)
 
         cols = st.columns(5)
         cols[0].image(img, caption="raw_image")

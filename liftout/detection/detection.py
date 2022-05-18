@@ -99,7 +99,7 @@ class Detector:
 
         # display features for validation
         mask_combined = PIL.Image.fromarray(mask)
-        img_blend = np.array(draw_overlay(img, mask_combined, show=False, title=shift_type))
+        img_blend = np.array(draw_overlay(img, mask_combined))
 
         # # need to use the same scale images for both detection selections
         img_downscale = np.array(Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1])))
@@ -207,7 +207,7 @@ def draw_two_features(
     return mask
 
 
-def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
+def draw_overlay(img, mask, alpha=0.1):
     """ Draw the detection overlay onto base image
 
     args:
@@ -234,11 +234,6 @@ def draw_overlay(img, mask, alpha=0.4, show=False, title="Overlay Image"):
 
     # blend images together
     alpha_blend = PIL.Image.blend(img, mask, alpha)
-
-    if show:
-        plt.title(title)
-        plt.imshow(alpha_blend)
-        plt.show()
 
     return alpha_blend
 

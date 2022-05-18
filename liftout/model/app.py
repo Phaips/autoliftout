@@ -59,7 +59,7 @@ def main():
         feature_3_px, lamella_edge_detection = detect_lamella_edge(img, mask)
 
         mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
-        img_blend = draw_overlay(img, mask_combined, show=False)
+        img_blend = draw_overlay(img, mask_combined)
 
         # show images
         st.subheader(fname)
