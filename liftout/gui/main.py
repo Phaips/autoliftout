@@ -1010,50 +1010,51 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
+        # repeat the final movement until user confirms. 
+        self.response = False
+        while self.response is False:
 
-        ### Z-MOVE FINAL (ION)
-        self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_lowres']
-        self.image_settings.label = f"needle_liftout_post_z_half_movement_highres"
-        det = self.validate_detection(self.microscope, 
-                                self.settings, 
-                                self.image_settings, 
-                                shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre), 
-                                beam_type=BeamType.ION)
+            ### Z-MOVE FINAL (ION)
+            self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_lowres']
+            self.image_settings.label = f"needle_liftout_post_z_half_movement_highres"
+            det = self.validate_detection(self.microscope, 
+                                    self.settings, 
+                                    self.image_settings, 
+                                    shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre), 
+                                    beam_type=BeamType.ION)
 
-        # calculate shift in xyz coordinates
-        z_distance = det.distance_metres.y / np.cos(self.stage.current_position.t)
+            # calculate shift in xyz coordinates
+            z_distance = det.distance_metres.y / np.cos(self.stage.current_position.t)
 
-        # move in x
-        x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
-        self.needle.relative_move(x_move)
+            # move in x
+            x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
+            self.needle.relative_move(x_move)
 
-        # move in z
-        # detection is based on centre of lamella, we want to land of the edge.
-        # therefore subtract half the height from the movement.
-        lamella_height = self.settings["lamella"]["lamella_height"]
-        gap = 0.5e-6 #lamella_height / 10
-        zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
-        self.needle.relative_move(zy_move_gap)
+            # move in z
+            # detection is based on centre of lamella, we want to land near the edge
+            gap = 0.5e-6 #lamella_height / 10
+            zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
+            self.needle.relative_move(zy_move_gap)
 
-        logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
-        logging.info(f"{self.current_stage.name}: needle zy-move: {zy_move_gap}")
+            logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
+            logging.info(f"{self.current_stage.name}: needle zy-move: {zy_move_gap}")
 
-        self.update_image_settings(
-            hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
-            save=True,
-            label=f"needle_liftout_landed_lowres"
-        )
-        acquire.take_reference_images(self.microscope, self.image_settings)
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
+                save=True,
+                label=f"needle_liftout_landed_lowres"
+            )
+            acquire.take_reference_images(self.microscope, self.image_settings)
 
-        self.update_image_settings(
-            hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
-            save=True,
-            label=f"needle_liftout_landed_highres"
-        )
-        acquire.take_reference_images(self.microscope, self.image_settings)
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
+                save=True,
+                label=f"needle_liftout_landed_highres"
+            )
+            acquire.take_reference_images(self.microscope, self.image_settings)
 
-        self.ask_user_interaction(msg="Has the needle landed on the lamella? \nIf not, please correct manually and then press yes.", beam_type=BeamType.ION)
-        # TODO: repeat if failed
+            self.ask_user_interaction(msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement", beam_type=BeamType.ION)
+
 
     def land_lamella(self):
 
@@ -1068,7 +1069,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # confirm eucentricity
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
-
+        # after eucentricity... we should be at 4mm,
+        # so we should set wd to 4mm and link
 
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_landing_images, mode="land")
@@ -1144,36 +1146,39 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name}: x-half-move complete: {x_move}")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-        #### X-MOVE
-        self.update_image_settings(
-            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
-            beam_type=BeamType.ELECTRON,
-            save=True,
-            label=f"landing_needle_land_sample_lowres_after_z_move"
-        )
+        # repeat final movement until user confirms landing
+        self.response = False
+        while self.response is False:
+            #### X-MOVE
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
+                beam_type=BeamType.ELECTRON,
+                save=True,
+                label=f"landing_needle_land_sample_lowres_after_z_move"
+            )
 
-        det = self.validate_detection(self.microscope, 
-                                self.settings, 
-                                self.image_settings, 
-                                shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost), 
-                                beam_type=BeamType.ELECTRON)
+            det = self.validate_detection(self.microscope, 
+                                    self.settings, 
+                                    self.image_settings, 
+                                    shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost), 
+                                    beam_type=BeamType.ELECTRON)
 
-        x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
-        self.needle.relative_move(x_move)
-        logging.info(f"{self.current_stage.name}: x-move complete: {x_move}")
+            x_move = movement.x_corrected_needle_movement(det.distance_metres.x)
+            self.needle.relative_move(x_move)
+            logging.info(f"{self.current_stage.name}: x-move complete: {x_move}")
 
-        # final reference images
-        self.update_image_settings(
-            hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
-            beam_type=BeamType.ELECTRON,
-            save=True,
-            label=f"landing_lamella_final_weld_highres"
-        )
-        acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
+            # final reference images
+            self.update_image_settings(
+                hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
+                beam_type=BeamType.ELECTRON,
+                save=True,
+                label=f"landing_lamella_final_weld_highres"
+            )
+            acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
-        self.ask_user_interaction(msg="Was the landing successful? \nIf not, please manually fix. Press Yes to continue.", 
-            beam_type=BeamType.ION)
-            # TODO: repeat if failed
+            self.ask_user_interaction(msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement", 
+                        beam_type=BeamType.ION)
+
 
         #################################################################################################
 

@@ -207,7 +207,7 @@ def draw_two_features(
     return mask
 
 
-def draw_overlay(img, mask, alpha=0.1):
+def draw_overlay(img, mask, alpha=0.2):
     """ Draw the detection overlay onto base image
 
     args:

@@ -74,7 +74,7 @@ calibration:
   stage_height_limit: 3.7e-3 # relative coordinates
 lamella:
   lamella_width: 12.0e-6 # in meters
-  lamella_height: 10.0e-6 # in meters
+  lamella_height: 5.0e-6 # in meters
   milling_depth: 5.0e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 2.0e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   stress_relief_offset: 10.0e-6
@@ -150,13 +150,13 @@ thin_lamella:
     trench_height: 1.e-6
     lamella_height: 2.0e-6
 polish_lamella:
-  hfw: 30.e-6
+  hfw: 50.e-6
   resolution: "3072x2048"
   dwell_time: 200.e-9 
   rotation_angle: 50 # deg (raw)
   tilt_angle: 0 # deg
   tilt_offset: 1 # deg
-  lamella_width: 3.0e-6 # in meters
+  lamella_width: 4.0e-6 # in meters
   lamella_height: 0.45e-6 # in meters
   milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 20.e-12  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9

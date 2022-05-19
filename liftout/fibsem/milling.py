@@ -147,13 +147,12 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
 
     TILT_OFFSET = settings["polish_lamella"]["tilt_offset"]
 
+    # reset beam shift
+    calibration.reset_beam_shifts(microscope)
+
     # initial reference image
     if ref_image is None:
         ref_image = acquire.new_image(microscope, image_settings)
-
-    image_settings.label = f"polish_lamella_stage_1"
-
-    beam_shift_alignment(microscope, image_settings, ref_image)
 
     # generate patterns (user change?)    
     if patterns:
@@ -183,7 +182,7 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
     microscope.specimen.stage.relative_move(tilt_up)
     
     # align
-    image_settings.label = f"polish_lamella_tilt_down_stage_3"
+    image_settings.label = f"polish_lamella_tilt_down_stage_1"
     beam_shift_alignment(microscope, image_settings, ref_image)
 
     # mill bottom pattern
@@ -204,6 +203,13 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
     # reset back to starting tilt
     tilt_back = StagePosition(t=np.deg2rad(-TILT_OFFSET))
     microscope.specimen.stage.relative_move(tilt_back)
+
+    # reset beam shift
+    calibration.reset_beam_shifts(microscope)
+
+    # retake reference image at zero tilt
+    image_settings.label = f"thin_lamella_crosscorrelation_ref2"
+    ref_image = acquire.new_image(microscope, image_settings)
 
     # tilt down for top pattern
     tilt_down = StagePosition(t=np.deg2rad(-TILT_OFFSET))
@@ -229,6 +235,9 @@ def mill_polish_lamella(microscope, settings, image_settings, patterns: list = N
     # reset back to starting tilt
     tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
     microscope.specimen.stage.relative_move(tilt_back)
+
+    # reset beam shift
+    calibration.reset_beam_shifts(microscope)
 
     # finish milling
     finish_milling(microscope, settings)
