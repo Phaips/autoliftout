@@ -1,6 +1,6 @@
 
 from tkinter import Image
-from autoscript_sdb_microscope_client.structures import RunAutoCbSettings, GrabFrameSettings, AdornedImage
+from autoscript_sdb_microscope_client.structures import RunAutoCbSettings, GrabFrameSettings, AdornedImage, Rectangle
 from enum import Enum
 import logging
 from liftout import utils
@@ -78,9 +78,18 @@ def gamma_correction(image, settings: GammaSettings) -> AdornedImage:
     image = reference
     return image
 
-def new_image(microscope, settings: ImageSettings):
+def new_image(microscope, settings: ImageSettings, reduced_area: Rectangle = None) -> AdornedImage:
+    """Apply the image settings and take a new image
 
-    frame_settings = GrabFrameSettings(resolution=settings.resolution, dwell_time=settings.dwell_time)
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope client connection
+        settings (ImageSettings): image settings to take the image with
+        reduced_area (Rectangle, optional): image with the reduced area . Defaults to None.
+
+    Returns:
+            AdornedImage: new autoscript adorned image
+    """
+    frame_settings = GrabFrameSettings(resolution=settings.resolution, dwell_time=settings.dwell_time, reduced_area=reduced_area)
     tmp_settings = settings
     
     if settings.beam_type == BeamType.ELECTRON:
@@ -113,7 +122,6 @@ def new_image(microscope, settings: ImageSettings):
         utils.save_image(image=image, save_path=settings.save_path, label=label)
     settings = tmp_settings  # reset the settings to original # TODO: this doesnt work, need to reset
     return image
-
 
 def last_image(microscope, beam_type=BeamType.ELECTRON):
     """Get the last previously acquired ion or electron beam image.

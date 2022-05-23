@@ -126,7 +126,7 @@ flatten_landing:
   depth: 10.e-6
   milling_current: 7.6e-9
 thin_lamella:
-  hfw: 30.e-6
+  hfw: 50.e-6
   resolution: "3072x2048"
   dwell_time: 200.e-9
   rotation_angle: 50 # deg (raw)
@@ -138,7 +138,6 @@ thin_lamella:
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   offset: 1.0e-6
   trench_height: 2.0e-6
-  hfw: 30.e-6
   # Protocol stages are milled in the order they appear here.
   # Stages may override the default parameters above Eg: current, depth, etc.
   protocol_stages:
@@ -163,6 +162,17 @@ polish_lamella:
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   offset: 0.0e-6
   trench_height: 0.2e-6
+fiducial:
+  length: 10.0e-6
+  width: 0.25e-6
+  depth: 5.e-6
+  rotation: 0 # deg
+  milling_current: 7.6e-9
+reduced_area: 
+  x: 0.05
+  y: 0.25
+  dx: 0.3
+  dy: 0.55
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"
