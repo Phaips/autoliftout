@@ -131,8 +131,8 @@ thin_lamella:
   dwell_time: 200.e-9
   rotation_angle: 50 # deg (raw)
   tilt_angle: 0 # deg
-  lamella_width: 6.0e-6 # in meters
-  lamella_height: 2.0e-6 # in meters
+  lamella_width: 4.0e-6 # in meters
+  lamella_height: 1.0e-6 # in meters
   milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 0.2e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
@@ -143,11 +143,11 @@ thin_lamella:
   protocol_stages:
   # Rough cut, stage 1
   - offset: 1.0e-6
-    trench_height: 2.5e-6 
+    trench_height: 1.5e-6 
   # Regular cut, stage 2
   - offset: 0.5e-6
     trench_height: 1.e-6
-    lamella_height: 2.0e-6
+    lamella_height: 1.0e-6
 polish_lamella:
   hfw: 50.e-6
   resolution: "3072x2048"
@@ -169,6 +169,10 @@ fiducial:
   rotation: 0 # deg
   milling_current: 7.6e-9
 reduced_area: 
+  # x: 0.35
+  # y: 0.35
+  # dx: 0.25
+  # dy: 0.3
   x: 0.05
   y: 0.25
   dx: 0.3

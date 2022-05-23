@@ -158,7 +158,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     microscope.patterning.clear_patterns()
     
     # tilt up for bottom pattern
-    tilt_up = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
     microscope.specimen.stage.relative_move(tilt_up)
     
     # multi-step alignment
@@ -167,7 +167,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
         beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
     image_settings.label = f"polish_lamella_tilt_up_aligned"
-    _ = acquire.new_image(microscope, image_settings, reduced_area=reduced_area)
+    _ = acquire.new_image(microscope, image_settings)
 
 
     # mill bottom pattern
@@ -185,14 +185,14 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
 
     # reset back to starting tilt
-    tilt_back = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
     microscope.specimen.stage.relative_move(tilt_back)
 
     # reset beam shift
     calibration.reset_beam_shifts(microscope)
 
     # tilt down for top pattern
-    tilt_down = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    tilt_down = StagePosition(t=np.deg2rad(TILT_OFFSET))
     microscope.specimen.stage.relative_move(tilt_down)
     
     # multi-step alignment
@@ -201,7 +201,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
         beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
     image_settings.label = f"polish_lamella_tilt_down_aligned"
-    _ = acquire.new_image(microscope, image_settings, reduced_area=reduced_area)
+    _ = acquire.new_image(microscope, image_settings)
     
     # mill top pattern
     # draw top pattern

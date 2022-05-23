@@ -1394,7 +1394,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["thin_lamella"]["dwell_time"],
             hfw=self.settings["thin_lamella"]["hfw"]
         )
+        self.open_milling_window(MillingPattern.Fiducial)
         self.open_milling_window(MillingPattern.Thin)
+        
 
         # take reference images
         self.update_image_settings(
