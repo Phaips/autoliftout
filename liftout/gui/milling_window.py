@@ -15,6 +15,8 @@ from matplotlib.patches import Rectangle
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 import scipy.ndimage as ndi
+from autoscript_sdb_microscope_client.structures import Rectangle as RectangleArea
+
 
 from liftout.fibsem.constants import MICRON_TO_METRE, METRE_TO_MICRON
 
@@ -84,6 +86,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def setup_milling_image(self):
         self.image_settings.beam_type = BeamType.ION
         self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
+
+        # image with a reduced area for polishing.
+        if self.milling_pattern_type == MillingPattern.Polish:
+            reduced_area = RectangleArea(0.3, 0.3, 0.4, 0.4)
+        else: 
+            reduced_area = None
+
+        self.adorned_image = acquire.new_image(self.microscope, self.image_settings, reduced_area=reduced_area)    
         self.image = ndi.median_filter(self.adorned_image.data, size=3)
 
         # pattern drawing
@@ -465,7 +475,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 self.update_display()
                 
                 # run_milling
-                milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=self.milling_current)
+                milling.run_milling(microscope=self.microscope, settings=self.settings, milling_current=self.milling_current, asynch=True)
                 
                 time.sleep(5) # wait for milling to start
                 elapsed_time = 0

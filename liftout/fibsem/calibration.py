@@ -629,3 +629,26 @@ def validate_chamber(microscope):
     if microscope.state.chamber_pressure.value >= 1e-3:
         logging.warning(
             f"Chamber pressure is too high, please pump the system (Currently {microscope.state.chamber_pressure.value:.6f} mbar)")
+
+
+def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: ImageSettings, ref_image: AdornedImage, reduced_area):
+    """Align the images by adjusting the beam shift, instead of moving the stage 
+            (increased precision, lower range)
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope client
+        image_settings (acquire.ImageSettings): settings for taking image
+        ref_image (AdornedImage): reference image to align to
+        reduced_area (Rectangle): The reduced area to image with.  
+    """
+    # TODO: move to calibration
+
+    # # align using cross correlation
+    img1 = ref_image
+    img2 = acquire.new_image(microscope, settings=image_settings, reduced_area=reduced_area)
+    dx, dy = shift_from_crosscorrelation_AdornedImages(
+        img1, img2, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
+    )
+
+    # adjust beamshift
+    microscope.beams.ion_beam.beam_shift.value += (-dx, dy)

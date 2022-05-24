@@ -37,6 +37,8 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         }
         self.label_message.setText(msg_dict[msg_type])
 
+        self.label_movement_header.setText("Double click to move. \nPress Continue when complete.")
+
         # enable / disable view movement
         self.eb_movement_enabled = False
         self.ib_movement_enabled = False

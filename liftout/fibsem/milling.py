@@ -32,8 +32,7 @@ def jcut_severing_pattern(microscope, settings: dict, centre_x: float = 0.0, cen
     jcut_trench_thickness = settings["jcut"]["trench_thickness"]
     jcut_milling_depth = settings["jcut"]["milling_depth"]
     extra_bit = settings["jcut"]["extra_bit"]
-    # Setup
-    # setup_ion_milling(microscope)
+
     # Create milling pattern - right hand side of J-cut
     flat_to_ion_angle = settings["system"]["stage_tilt_flat_to_ion"]
     assert flat_to_ion_angle == 52
@@ -50,8 +49,13 @@ def jcut_severing_pattern(microscope, settings: dict, centre_x: float = 0.0, cen
     return [jcut_severing_pattern]
 
 
-def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current=None, asynch=True):
-    """Run ion beam milling at specified current, and then restore imaging current"""
+def run_milling(microscope: SdbMicroscopeClient, settings: dict, milling_current: float = None, asynch: bool = False):
+    """Run ion beam milling at specified current.
+    
+    - Change to milling current
+    - Run milling (synchronous) or Start Milling (asynchronous)
+
+    """
     logging.info("milling: running ion beam milling now...")
 
     # change to milling current
@@ -69,7 +73,13 @@ def run_milling(microscope, settings, *, imaging_current=20e-12, milling_current
         microscope.patterning.clear_patterns()
 
 
-def finish_milling(microscope, settings):
+def finish_milling(microscope: SdbMicroscopeClient, settings: dict) -> None:
+    """Finish milling by clearing the patterns and restoring the default imaging current.
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope client connection
+        settings (dict): configuration settings
+    """
     # restore imaging current
     logging.info("returning to the ion beam imaging current now.")
     if settings["imaging"]["imaging_current"]:
@@ -79,37 +89,12 @@ def finish_milling(microscope, settings):
     microscope.patterning.mode = "Serial"
     logging.info("ion beam milling complete.")
 
-
-def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: ImageSettings, ref_image: AdornedImage, reduced_area):
-    """Align the images by adjusting the beam shift, instead of moving the stage 
-            (increased precision, lower range)
-
-    Args:
-        microscope (SdbMicroscopeClient): microscope client
-        image_settings (acquire.ImageSettings): settings for taking image
-        ref_image (AdornedImage): reference image to align to
-    """
-    # TODO: move to calibration
-    from autoscript_sdb_microscope_client.structures import Rectangle
-    # # align using cross correlation
-    img1 = ref_image
-    img2 = acquire.new_image(microscope, settings=image_settings, reduced_area=reduced_area)
-    dx, dy = calibration.shift_from_crosscorrelation_AdornedImages(
-        img1, img2, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
-    )
-
-    print("SHIFT: ", dx, dy)
-
-    # adjust beamshift
-    microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
-    # image_settings.save = False
-    # _ = acquire.new_image(microscope, image_settings)
-    # image_settings.save = True
-
-
 def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, patterns: list):
+    """Polish the lamella edges to the desired thickness. Tilt by one degree between polishing steps to ensure beam mills along the correct axis.
     
-    # TODO: finish this
+    Align using crosscorrelation between after tilting.
+    """    
+
     from autoscript_sdb_microscope_client.structures import Rectangle
 
     # align (move settings outside?)
@@ -119,10 +104,9 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     image_settings.beam_type = BeamType.ION
     image_settings.gamma.enabled = False
     image_settings.save = True
-    image_settings.label = f"thin_lamella_crosscorrelation_ref"
+    image_settings.label = f"polish_lamella_crosscorrelation_ref"
 
-    # TODO: user defined reduced area
-    # x0, y0, dx, dy = settings[["reduced_area"]
+    # user defined reduced area
     reduced_area = Rectangle(
         settings["reduced_area"]["x"],
         settings["reduced_area"]["y"],
@@ -131,6 +115,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
         )
 
     TILT_OFFSET = settings["polish_lamella"]["tilt_offset"]
+    CROSSCORRELATION_STEPS = 3
 
     # reset beam shift
     calibration.reset_beam_shifts(microscope)
@@ -157,16 +142,20 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     # clear patterns...
     microscope.patterning.clear_patterns()
     
-    # tilt up for bottom pattern
-    tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
-    microscope.specimen.stage.relative_move(tilt_up)
-    
+    # # tilt up for bottom pattern
+    # tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    # microscope.specimen.stage.relative_move(tilt_up)
+
+    # absolute moves...    
+    tilt_negative = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    microscope.specimen.stage.absolute_move(tilt_negative)
+
     # multi-step alignment
-    for i in range(3):
-        image_settings.label = f"polish_lamella_tilt_up_stage_{i+1}"
-        beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+    for i in range(CROSSCORRELATION_STEPS):
+        image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_stage_{i+1}"
+        calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
-    image_settings.label = f"polish_lamella_tilt_up_aligned"
+    image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
     _ = acquire.new_image(microscope, image_settings)
 
 
@@ -185,22 +174,22 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
 
     # reset back to starting tilt
-    tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    microscope.specimen.stage.relative_move(tilt_back)
+    # tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    # microscope.specimen.stage.relative_move(tilt_back)
 
     # reset beam shift
     calibration.reset_beam_shifts(microscope)
 
     # tilt down for top pattern
-    tilt_down = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    microscope.specimen.stage.relative_move(tilt_down)
+    tilt_positive = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    microscope.specimen.stage.absolute_move(tilt_positive)
     
     # multi-step alignment
-    for i in range(3):
-        image_settings.label = f"polish_lamella_tilt_down_stage_{i+1}"
-        beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+    for i in range(CROSSCORRELATION_STEPS):
+        image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_stage_{i+1}"
+        calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
-    image_settings.label = f"polish_lamella_tilt_down_aligned"
+    image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
     _ = acquire.new_image(microscope, image_settings)
     
     # mill top pattern
@@ -218,8 +207,8 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
 
     # reset back to starting tilt
-    tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    microscope.specimen.stage.relative_move(tilt_back)
+    tilt_zero = StagePosition(t=np.deg2rad(0))
+    microscope.specimen.stage.absolute_move(tilt_zero)
 
     # reset beam shift
     calibration.reset_beam_shifts(microscope)

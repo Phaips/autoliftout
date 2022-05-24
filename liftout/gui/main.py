@@ -1015,7 +1015,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         while self.response is False:
 
             ### Z-MOVE FINAL (ION)
-            self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_lowres']
+            self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_highres']
             self.image_settings.label = f"needle_liftout_post_z_half_movement_highres"
             det = self.validate_detection(self.microscope, 
                                     self.settings, 
@@ -1609,10 +1609,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         TEST_SAMPLE_POSITIONS = False
         TEST_PIESCOPE = False
-        TEST_MILLING_WINDOW = True
+        TEST_MILLING_WINDOW = False
         TEST_DETECTION_WINDOW = False
         TEST_MOVEMENT_WINDOW = False
         TEST_USER_WINDOW = False
+
+        TEST_RESET_NEEDLE = True
+        if TEST_RESET_NEEDLE:
+            self.reset_needle()
 
         if TEST_SAMPLE_POSITIONS:
             self.select_sample_positions()
@@ -1832,9 +1836,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         sample_images = [[] for _ in self.samples]
 
         # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
-        exemplar_filenames = ["ref_lamella_low_res_eb", "ref_trench_high_res_ib", "jcut_highres_ib",
+        exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", "jcut_highres_ib",
                               "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
-                              "thin_lamella_stage_2_ib", "polish_lamella_final_ib"]
+                              "thin_lamella_post_superres_ib", "polish_lamella_post_superres_ib"]
 
         # headers
         headers = ["Sample No", "Position", "Reference", "Milling", "J-Cut", "Liftout", "Landing", "Reset", "Thinning", "Polishing"]

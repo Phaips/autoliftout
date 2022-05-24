@@ -100,7 +100,7 @@ jcut:
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
 weld:
   width: 3.e-6
-  height: 10.e-6
+  height: 5.e-6
   depth: 15.e-9
   rotation: 0
 sharpen:
@@ -173,10 +173,14 @@ reduced_area:
   # y: 0.35
   # dx: 0.25
   # dy: 0.3
-  x: 0.05
-  y: 0.25
-  dx: 0.3
-  dy: 0.55
+  # x: 0.05
+  # y: 0.25
+  # dx: 0.3
+  # dy: 0.55
+  x: 0
+  y: 0
+  dx: 1
+  dy: 1
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"
