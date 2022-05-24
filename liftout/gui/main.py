@@ -5,31 +5,28 @@ import sys
 import time
 import traceback
 
-from dataclasses import dataclass
-
 import liftout
 import matplotlib
 import numpy as np
 from liftout import utils
-from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
+from liftout.detection.utils import DetectionType
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.gui.milling_window import MillingPattern, GUIMillingWindow
 from liftout.gui.detection_window import GUIDetectionWindow
+from liftout.gui.milling_window import GUIMillingWindow, MillingPattern
 from liftout.gui.movement_window import GUIMMovementWindow
-from liftout.gui.user_window import GUIUserWindow
 from liftout.gui.qtdesigner_files import main as gui_main
+from liftout.gui.user_window import GUIUserWindow
+from liftout.gui.utils import draw_grid_layout
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import (QGridLayout, QGroupBox, QInputDialog, QLabel,
-                             QLineEdit, QMessageBox)
+from PyQt5.QtWidgets import (QGroupBox, QInputDialog, QLineEdit, QMessageBox)
 
 matplotlib.use('Agg')
 
-import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings, AdornedImage
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         MoveSettings,
+                                                         StagePosition)
 from liftout.fibsem.sampleposition import AutoLiftoutStage, SamplePosition
 
 # Required to not break imports
@@ -42,11 +39,6 @@ test_image = np.array(test_image)
 MAXIMUM_WORKING_DISTANCE = 6.0e-3 # TODO: move to config
 
 _translate = QtCore.QCoreApplication.translate
-
-
-
-
-
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
@@ -1805,7 +1797,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_stage.setText(f"{self.current_stage.name}{mode}")
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "MillTrench": "coral", "MillJCut": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
-                         "Reset": "salmon", "Thinning": "mediumpurple", "Polishing": "cyan", "Finished": "white"}
+                         "Reset": "salmon", "Thinning": "mediumpurple", "Polishing": "cyan", "Finished": "silver"}
         self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_stage.name]}; color: white; border-radius: 5px"))
 
         # log info
@@ -1821,88 +1813,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def draw_sample_grid_ui(self):
         self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})")
 
-        ###################
-
-        gridLayout = QGridLayout()
-
-        # Only add data is sample positions are added
-        if len(self.samples) == 0:
-            label = QLabel()
-            label.setText("No Sample Positions Selected. Please press initialise to begin.")
-            gridLayout.addWidget(label)
-            self.horizontalGroupBox.setLayout(gridLayout)
-            return
-
-        sample_images = [[] for _ in self.samples]
-
-        # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
-        exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", "jcut_highres_ib",
-                              "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
-                              "thin_lamella_post_superres_ib", "polish_lamella_post_superres_ib"]
-
-        # headers
-        headers = ["Sample No", "Position", "Reference", "Milling", "J-Cut", "Liftout", "Landing", "Reset", "Thinning", "Polishing"]
-        for j, title in enumerate(headers):
-            label_header = QLabel()
-            label_header.setText(title)
-            label_header.setMaximumHeight(80)
-            label_header.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 18px;")
-            label_header.setAlignment(Qt.AlignCenter)
-            gridLayout.addWidget(label_header, 0, j)
-
-        for i, sp in enumerate(self.samples):
-
-            # load the exemplar images for each sample
-            qimage_labels = []
-            for img_basename in exemplar_filenames:
-                fname = os.path.join(sp.data_path, str(sp.sample_id), f"{img_basename}.tif")
-                imageLabel = QLabel()
-                imageLabel.setMaximumHeight(150)
-
-                if os.path.exists(fname):
-                    adorned_img = sp.load_reference_image(img_basename)
-                    image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
-                    imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
-
-                qimage_labels.append(imageLabel)
-
-            sample_images[i] = qimage_labels
-
-            # display information on grid
-            row_id = i + 1
-
-            # display sample no
-            label_sample = QLabel()
-            label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
-            label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
-            label_sample.setMaximumHeight(150)
-            gridLayout.addWidget(label_sample, row_id, 0)
-
-            # display sample position
-            label_pos = QLabel()
-            pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
-            if sp.landing_coordinates.x is not None:
-
-                pos_text += f"Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n"
-                
-            label_pos.setText(pos_text)
-            label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
-            label_pos.setMaximumHeight(150)
-
-            gridLayout.addWidget(label_pos, row_id, 1)
-
-            # display exemplar images
-            gridLayout.addWidget(sample_images[i][0], row_id, 2, Qt.AlignmentFlag.AlignCenter) #TODO: fix missing visual boxes
-            gridLayout.addWidget(sample_images[i][1], row_id, 3, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][2], row_id, 4, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][3], row_id, 5, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][4], row_id, 6, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][5], row_id, 7, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][6], row_id, 8, Qt.AlignmentFlag.AlignCenter)
-            gridLayout.addWidget(sample_images[i][7], row_id, 9, Qt.AlignmentFlag.AlignCenter)
-
-
-        gridLayout.setRowStretch(9, 1) # grid spacing
+        gridLayout = draw_grid_layout(self.samples)
         self.horizontalGroupBox.setLayout(gridLayout)
         ###################
 

@@ -1,4 +1,5 @@
 
+import os
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
@@ -6,7 +7,10 @@ import numpy as np
 from autoscript_sdb_microscope_client.structures import AdornedImage
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import (QGridLayout, QLabel, QSizePolicy, QVBoxLayout,
+                             QWidget)
 
 
 class _WidgetPlot(QWidget):
@@ -119,3 +123,87 @@ def draw_crosshair(image, canvas):
     for patch in crosshair.__dataclass_fields__:
         canvas.ax11.add_patch(getattr(crosshair, patch))
         getattr(crosshair, patch).set_visible(True)
+
+###################
+
+
+def draw_grid_layout(samples: list):
+    gridLayout = QGridLayout()
+
+    # Only add data is sample positions are added
+    if len(samples) == 0:
+        label = QLabel()
+        label.setText("No Sample Positions Selected. Please press initialise to begin.")
+        gridLayout.addWidget(label)
+        return gridLayout
+
+    sample_images = [[] for _ in samples]
+
+    # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
+    exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", "jcut_highres_ib",
+                        "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
+                        "thin_lamella_post_superres_ib", "polish_lamella_post_superres_ib"]
+
+    # headers
+    headers = ["Sample No", "Position", "Reference", "Milling", "J-Cut", "Liftout", "Landing", "Reset", "Thinning", "Polishing"]
+    for j, title in enumerate(headers):
+        label_header = QLabel()
+        label_header.setText(title)
+        label_header.setMaximumHeight(80)
+        label_header.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 18px;")
+        label_header.setAlignment(Qt.AlignCenter)
+        gridLayout.addWidget(label_header, 0, j)
+
+    for i, sp in enumerate(samples):
+
+        # load the exemplar images for each sample
+        qimage_labels = []
+        for img_basename in exemplar_filenames:
+            fname = os.path.join(sp.data_path, str(sp.sample_id), f"{img_basename}.tif")
+            imageLabel = QLabel()
+            imageLabel.setMaximumHeight(150)
+
+            if os.path.exists(fname):
+                adorned_img = sp.load_reference_image(img_basename)
+                image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
+                imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
+
+            qimage_labels.append(imageLabel)
+
+        sample_images[i] = qimage_labels
+
+        # display information on grid
+        row_id = i + 1
+
+        # display sample no
+        label_sample = QLabel()
+        label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
+        label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
+        label_sample.setMaximumHeight(150)
+        gridLayout.addWidget(label_sample, row_id, 0)
+
+        # display sample position
+        label_pos = QLabel()
+        pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
+        if sp.landing_coordinates.x is not None:
+
+            pos_text += f"Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n"
+            
+        label_pos.setText(pos_text)
+        label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
+        label_pos.setMaximumHeight(150)
+
+        gridLayout.addWidget(label_pos, row_id, 1)
+
+        # display exemplar images
+        gridLayout.addWidget(sample_images[i][0], row_id, 2, Qt.AlignmentFlag.AlignCenter) #TODO: fix missing visual boxes
+        gridLayout.addWidget(sample_images[i][1], row_id, 3, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][2], row_id, 4, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][3], row_id, 5, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][4], row_id, 6, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][5], row_id, 7, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][6], row_id, 8, Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(sample_images[i][7], row_id, 9, Qt.AlignmentFlag.AlignCenter)
+
+    gridLayout.setRowStretch(9, 1) # grid spacing
+    return gridLayout
