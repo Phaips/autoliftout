@@ -1,10 +1,12 @@
 from liftout.fibsem.acquire import *
 import numpy as np
-from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings, ManipulatorPosition
 from autoscript_sdb_microscope_client.enumerations import ManipulatorSavedPosition, ManipulatorCoordinateSystem, CoordinateSystem
 import time
 
-def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
+# TODO: remove this... unused
+def move_relative(microscope: SdbMicroscopeClient, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings: MoveSettings = None) -> StagePosition:
     """Move the sample stage in ion or electron beam view and take new image
 
     Parameters
@@ -42,7 +44,7 @@ def move_relative(microscope, x=0.0, y=0.0, z=0.0, r=0.0, t=0.0, settings=None):
     return microscope.specimen.stage.current_position
 
 
-def pixel_to_realspace_coordinate(coord, image):
+def pixel_to_realspace_coordinate(coord: list, image: AdornedImage) -> list:
     """Convert pixel image coordinate to real space coordinate.
 
     This conversion deliberately ignores the nominal pixel size in y,
@@ -78,7 +80,7 @@ def pixel_to_realspace_coordinate(coord, image):
     return realspace_coord
 
 
-def move_to_trenching_angle(microscope, settings):
+def move_to_trenching_angle(microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """Tilt the sample stage to the correct angle for milling trenches.
     Assumes trenches should be milled with the sample surface flat to ion beam.
     Parameters
@@ -100,7 +102,7 @@ def move_to_trenching_angle(microscope, settings):
     return microscope.specimen.stage.current_position
 
 
-def move_to_liftout_angle(microscope, settings):
+def move_to_liftout_angle(microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """Tilt the sample stage to the correct angle for liftout."""
     flat_to_beam(
         microscope,
@@ -111,7 +113,7 @@ def move_to_liftout_angle(microscope, settings):
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_angle(microscope, settings):
+def move_to_landing_angle(microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """Tilt the sample stage to the correct angle for the landing posts."""
 
     landing_angle = np.deg2rad(settings["system"]["stage_tilt_landing"])
@@ -124,7 +126,7 @@ def move_to_landing_angle(microscope, settings):
     logging.info(f"movement: move to landing angle ({np.rad2deg(landing_angle)} deg) complete.")
     return microscope.specimen.stage.current_position
 
-def move_to_sample_grid(microscope, settings):
+def move_to_sample_grid(microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """Move stage and zoom out to see the whole sample grid.
     Assumes sample grid is mounted on the left hand side of the holder.
     """
@@ -154,8 +156,8 @@ def move_to_sample_grid(microscope, settings):
     return microscope.specimen.stage.current_position
 
 
-def move_to_landing_grid(microscope, settings, flat_to_sem=True):
-    """Move stage and zoom out to see the whole landing post grid.
+def move_to_landing_grid(microscope: SdbMicroscopeClient, settings: dict, flat_to_sem: bool = True) -> StagePosition:
+    """Move stage to landing post grid.
     Assumes the landing grid is mounted on the right hand side of the holder.
     Parameters
     ----------
@@ -164,8 +166,6 @@ def move_to_landing_grid(microscope, settings, flat_to_sem=True):
     flat_to_sem : bool, optional
         Whether to keep the landing post grid surface flat to the SEM.
     """
-
-    # initially tilt flat for safety
 
     # move to landing grid initial position
     landing_grid_position = StagePosition(
@@ -184,14 +184,11 @@ def move_to_landing_grid(microscope, settings, flat_to_sem=True):
         move_to_landing_angle(
             microscope, settings=settings)
 
-    # Zoom out so you can see the whole landing grid
-    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
-    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
     logging.info(f"movement: move to landing grid complete.")
     return microscope.specimen.stage.current_position
 
 
-def move_sample_stage_out(microscope):
+def move_sample_stage_out(microscope: SdbMicroscopeClient) -> StagePosition:
     """Move stage completely out of the way, so it is not visible at all."""
     # Must set tilt to zero, so we don't see reflections from metal stage base
     microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
@@ -199,28 +196,26 @@ def move_sample_stage_out(microscope):
         x=-0.002507, y=0.025962792, z=0.0039559049
     )  # TODO: make these dynamically set based on initial_position
     logging.info(f"movement: move sample grid out to {sample_stage_out}")
-    microscope.specimen.stage.absolute_move(sample_stage_out)
+    microscope.specimen.stage.absolute_move(sample_stage_out) # TODO: change to safe_absolute_stage_movement
     logging.info(f"movement: move sample stage out complete.")
     return microscope.specimen.stage.current_position
 
 
-def move_needle_to_liftout_position(microscope):
+def move_needle_to_liftout_position(microscope: SdbMicroscopeClient) -> ManipulatorPosition:
     """Move the needle into position, ready for liftout."""
     park_position = insert_needle(microscope)
-
     move_needle_closer(microscope)
-
     return park_position
 
 
-def move_needle_to_landing_position(microscope):
+def move_needle_to_landing_position(microscope: SdbMicroscopeClient) -> ManipulatorPosition:
     """Move the needle into position, ready for landing."""
     park_position = insert_needle(microscope)
     move_needle_closer(microscope, x_shift=-25e-6)
     return park_position
 
 
-def insert_needle(microscope):
+def insert_needle(microscope: SdbMicroscopeClient) -> ManipulatorPosition:
     """Insert the needle and return the needle parking position.
     Returns
     -------
@@ -236,7 +231,7 @@ def insert_needle(microscope):
     return park_position
 
 
-def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
+def move_needle_closer(microscope: SdbMicroscopeClient, x_shift: float = -20e-6, z_shift: float =-160e-6) -> ManipulatorPosition:
     """Move the needle closer to the sample surface, after inserting.
     Parameters
     ----------
@@ -266,7 +261,7 @@ def move_needle_closer(microscope, *, x_shift=-20e-6, z_shift=-160e-6):
     return needle.current_position
 
 
-def x_corrected_needle_movement(expected_x, stage_tilt=None):
+def x_corrected_needle_movement(expected_x: float, stage_tilt: float = None) -> ManipulatorPosition:
     """Needle movement in X, XTGui coordinates (Electron coordinate).
     Parameters
     ----------
@@ -281,7 +276,7 @@ def x_corrected_needle_movement(expected_x, stage_tilt=None):
     return ManipulatorPosition(x=expected_x, y=0, z=0)  # no adjustment needed
 
 
-def y_corrected_needle_movement(expected_y, stage_tilt):
+def y_corrected_needle_movement(expected_y: float, stage_tilt: float) -> ManipulatorPosition:
     """Needle movement in Y, XTGui coordinates (Electron coordinate).
     Parameters
     ----------
@@ -291,14 +286,12 @@ def y_corrected_needle_movement(expected_y, stage_tilt):
     -------
     ManipulatorPosition
     """
-    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
-
     y_move = +np.cos(stage_tilt) * expected_y
     z_move = +np.sin(stage_tilt) * expected_y
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
 
 
-def z_corrected_needle_movement(expected_z, stage_tilt):
+def z_corrected_needle_movement(expected_z: float, stage_tilt: float) -> ManipulatorPosition:
     """Needle movement in Z, XTGui coordinates (Electron coordinate).
     Parameters
     ----------
@@ -308,19 +301,16 @@ def z_corrected_needle_movement(expected_z, stage_tilt):
     -------
     ManipulatorPosition
     """
-    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
-
     y_move = -np.sin(stage_tilt) * expected_z
     z_move = +np.cos(stage_tilt) * expected_z
     return ManipulatorPosition(x=0, y=y_move, z=z_move)
 
 
-def retract_needle(microscope, park_position):
+def retract_needle(microscope: SdbMicroscopeClient, park_position: ManipulatorPosition) -> ManipulatorPosition:
     """Retract the needle and multichem, preserving the correct park position.
     park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
         The parking position for the needle manipulator when inserted.
     """
-    from autoscript_sdb_microscope_client.structures import ManipulatorPosition
 
     # Retract the multichem
     logging.info(f"movement: retracting multichem")
@@ -348,9 +338,7 @@ def retract_needle(microscope, park_position):
     return retracted_position
 
 
-def flat_to_beam(
-    microscope, settings, beam_type=BeamType.ELECTRON
-):
+def flat_to_beam(microscope: SdbMicroscopeClient, settings: dict, beam_type:BeamType = BeamType.ELECTRON) -> StagePosition:
     """Make the sample surface flat to the electron or ion beam."""
 
     stage = microscope.specimen.stage
@@ -378,7 +366,7 @@ def flat_to_beam(
     return stage.current_position
 
 
-def move_to_thinning_angle(microscope, settings):
+def move_to_thinning_angle(microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """ Rotate and tilt the stage to the thinning angle, assumes from the landing position"""
     stage = microscope.specimen.stage
 
@@ -401,7 +389,7 @@ def move_to_thinning_angle(microscope, settings):
     return stage.current_position
 
 
-def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
+def safe_absolute_stage_movement(microscope: SdbMicroscopeClient, stage_position: StagePosition) -> StagePosition:
     """Move the stage to the desired position in a safe manner, using compucentric rotation.
         Supports movements in the stage_position coordinate system
     """
@@ -420,16 +408,11 @@ def safe_absolute_stage_movement(microscope, stage_position: StagePosition):
     return stage.current_position
 
 
-def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
+def auto_link_stage(microscope: SdbMicroscopeClient, hfw: float = 150e-6) -> None:
     """Automatically focus and link sample stage z-height.
-    expected_z : float, optional
-        Correct height for linked stage in z, in meters, by default 4e-3
-    tolerance : float, optional
-        Must be within this absolute tolerance of expected stage z height,
-        in meters, by default 1e-4
 
     Notes:
-        - Focusing determines the working distance (focal distance) of the
+        - Focusing determines the working distance (focal distance) of the beam
         - Relinking is required whenever there is a significant change in vertical distance, i.e. moving
           from the landing grid to the sample grid.
         - Linking determines the specimen coordinate system, as it is defined as the relative dimensions of the top of stage
@@ -446,7 +429,7 @@ def auto_link_stage(microscope, expected_z=3.9e-3, tolerance=1e-6, hfw=150e-6):
     microscope.beams.electron_beam.horizontal_field_width.value = original_hfw
 
 
-def x_corrected_stage_movement(expected_x, settings:dict = None, stage_tilt=None, beam_type=None):
+def x_corrected_stage_movement(expected_x: float, settings: dict = None, stage_tilt: float = None, beam_type: BeamType = None) -> StagePosition:
     """Stage movement in X.
     ----------
     expected_x : in meters
@@ -455,12 +438,10 @@ def x_corrected_stage_movement(expected_x, settings:dict = None, stage_tilt=None
     StagePosition
         Stage position to pass to relative movement function.
     """
-    from autoscript_sdb_microscope_client.structures import StagePosition
-
     return StagePosition(x=expected_x, y=0, z=0)
 
 
-def y_corrected_stage_movement(expected_y, stage_tilt, settings:dict, beam_type=BeamType.ELECTRON):
+def y_corrected_stage_movement(expected_y: float, stage_tilt: float, settings: dict, beam_type: BeamType = BeamType.ELECTRON) -> StagePosition:
     """Stage movement in Y, corrected for tilt of sample surface plane.
     ----------
     expected_y : in meters
@@ -472,7 +453,6 @@ def y_corrected_stage_movement(expected_y, stage_tilt, settings:dict, beam_type=
     StagePosition
         Stage position to pass to relative movement function.
     """
-    from autoscript_sdb_microscope_client.structures import StagePosition
 
     pretilt_angle = settings["system"]["pretilt_angle"]
     stage_tilt_flat_to_ion = settings["system"]["stage_tilt_flat_to_ion"]
@@ -487,3 +467,5 @@ def y_corrected_stage_movement(expected_y, stage_tilt, settings:dict, beam_type=
     logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
     logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")
     return StagePosition(x=0, y=y_move, z=z_move)
+
+# TODO: z_corrected_stage_movement...?

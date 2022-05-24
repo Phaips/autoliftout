@@ -32,9 +32,6 @@ from liftout.fibsem.sampleposition import AutoLiftoutStage, SamplePosition
 # Required to not break imports
 BeamType = acquire.BeamType
 
-test_image = np.random.randint(0, 255, size=(1024, 1536), dtype='uint16')
-test_image = np.array(test_image)
-
 # conversions
 MAXIMUM_WORKING_DISTANCE = 6.0e-3 # TODO: move to config
 
@@ -334,8 +331,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.pushButton_add_sample_position.setVisible(True)
             self.pushButton_add_sample_position.setEnabled(True)
 
-        if finished_selecting: # TODO: handle the autolamella case
-            self.select_landing_positions()
+        if finished_selecting: 
+
+            # only select landing positions for liftout 
+            if not self.AUTOLAMELLA_ENABLED:
+                self.select_landing_positions()
+            
             self.finish_setup()
 
 
@@ -362,6 +363,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.finish_setup()
 
     def select_landing_positions(self):
+        """Select landing positions for autoliftout"""
 
         ####################################
         # # move to landing grid
@@ -400,6 +402,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_experiment(self):
 
+        # TODO: this could be extracted into a function / refactored
+
         CONTINUE_SETUP_EXPERIMENT = True
         experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
         experiment_name = os.path.basename(experiment_path)
@@ -411,16 +415,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msg.exec_()
         
-        self.load_experiment = True if msg.clickedButton() == msg.button(QMessageBox.Yes) else False 
+        LOAD_EXPERIMENT = True if msg.clickedButton() == msg.button(QMessageBox.Yes) else False 
 
-        if self.load_experiment:
+        if LOAD_EXPERIMENT:
             # load_experiment
             experiment_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose Log Folder to Load",
                                                                          directory=experiment_path)
             # if the user doesnt select a folder, start a new experiment
             # nb. should we include a check for invalid folders here too?
             if experiment_path is "":
-                self.load_experiment = False
+                LOAD_EXPERIMENT = False
                 experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
             else:
                 experiment_name = os.path.basename(experiment_path)
@@ -428,7 +432,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
 
         # start from scratch
-        if self.load_experiment is False:
+        if LOAD_EXPERIMENT is False:
 
             # create_new_experiment
             experiment_name, okPressed = QInputDialog.getText(self, "New AutoLiftout Experiment",
@@ -886,6 +890,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.correct_stage_drift_with_ML()
 
         # move needle to liftout start position
+        # TODO: dont throw an error here.. handle it gracefully
         if self.stage.current_position.z < self.settings["calibration"]["stage_height_limit"]: # 3.7e-3
             # [FIX] autofocus cannot be relied upon, if this condition is met, we need to stop.
 
