@@ -1583,16 +1583,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Mark the indicated sample position as failed."""
         
         if self.samples:
-            # TODO: add petname to sample positions
-            sample_no_str = [str(j+1) for j in range(len(self.samples))]
-            idx, okPressed = QInputDialog.getItem(self, "Select a Sample Position","Sample No:",  sample_no_str, 0, False)
+
+            # show the user the sample number and petname
+            sample_str = [f"Sample {sp.sample_no} ({sp.petname})" for sp in self.samples]
+            sp_name, okPressed = QInputDialog.getItem(self, "Select a Sample Position","Sample No:",  sample_str, 0, False)
+            sp_idx = sample_str.index(sp_name)
 
             if okPressed:
                 # mark sample as failure
-                logging.info(f"Marking Sample Position {idx} as Failure")
-                sp = self.samples[int(idx)-1]
+                sp = self.samples[int(sp_idx)]
                 sp.microscope_state.last_completed_stage = AutoLiftoutStage.Failure
                 sp.save_data()              
+                logging.info(f"Marked {sp_name} as {sp.microscope_state.last_completed_stage.name}")
 
                 # update UI
                 self.update_scroll_ui()
@@ -1655,8 +1657,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.ask_user_movement(msg_type="eucentric", flat_to_sem=True)
             self.ask_user_movement(msg_type="centre_eb", flat_to_sem=True)
             self.ask_user_movement(msg_type="centre_ib", flat_to_sem=True)
-            self.ask_user_movement(msg_type="milling_success", flat_to_sem=False)
-            self.ask_user_movement(msg_type="working_distance", flat_to_sem=False)
 
         if TEST_USER_WINDOW:
 
