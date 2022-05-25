@@ -96,7 +96,7 @@ jcut:
   length: 12e-6 # in meters
   height: 5e-6 # in meters
   trench_thickness: 1e-6 # in meters
-  milling_depth: 5e-6 # in meters
+  milling_depth: 3e-6 # in meters
   extra_bit: 8e-6  # J-cut should extend out a little past the lamella
 weld:
   width: 3.e-6
@@ -177,10 +177,10 @@ reduced_area:
   # y: 0.25
   # dx: 0.3
   # dy: 0.55
-  x: 0
-  y: 0
-  dx: 1
-  dy: 1
+  x: 0.35
+  y: 0.3
+  dx: 0.35
+  dy: 0.4
 platinum:
   application_file: "cryo_Pt_dep"
   gas: "Pt cryo"

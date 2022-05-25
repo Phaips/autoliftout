@@ -156,7 +156,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
         calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
     image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
-    _ = acquire.new_image(microscope, image_settings)
+    _ = acquire.new_image(microscope, image_settings, reduced_area)
 
 
     # mill bottom pattern
@@ -190,7 +190,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
         calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
     image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
-    _ = acquire.new_image(microscope, image_settings)
+    _ = acquire.new_image(microscope, image_settings, reduced_area)
     
     # mill top pattern
     # draw top pattern

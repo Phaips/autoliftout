@@ -1,13 +1,12 @@
 
-from tkinter import Image
+
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import RunAutoCbSettings, GrabFrameSettings, AdornedImage, Rectangle
 from enum import Enum
 import logging
 from liftout import utils
 from skimage import exposure
 import numpy as np
-
-# from liftout.fibsem import calibration
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,7 +39,7 @@ class ImageSettings:
     save_path: Path = None
 
 
-def autocontrast(microscope, beam_type=BeamType.ELECTRON):
+def autocontrast(microscope:SdbMicroscopeClient, beam_type=BeamType.ELECTRON) -> None:
     """Automatically adjust the microscope image contrast."""
     microscope.imaging.set_active_view(beam_type.value)
 
@@ -49,11 +48,11 @@ def autocontrast(microscope, beam_type=BeamType.ELECTRON):
         resolution="768x512",  # low resolution, so as not to damage the sample
         number_of_frames=5,
     )
-    logging.info("acquire: automatically adjusting contrast...")
+    logging.info("automatically adjusting contrast...")
     microscope.auto_functions.run_auto_cb()
 
 
-def take_reference_images(microscope, image_settings: ImageSettings):
+def take_reference_images(microscope: SdbMicroscopeClient, image_settings: ImageSettings) -> list:
     tmp_beam_type = image_settings.beam_type
     image_settings.beam_type = BeamType.ELECTRON
     eb_image = new_image(microscope, image_settings)
@@ -63,7 +62,7 @@ def take_reference_images(microscope, image_settings: ImageSettings):
     return eb_image, ib_image
 
 
-def gamma_correction(image, settings: GammaSettings) -> AdornedImage:
+def gamma_correction(image: AdornedImage, settings: GammaSettings) -> AdornedImage:
     """Automatic gamma correction"""
     std = np.std(image.data)
     mean = np.mean(image.data)
@@ -78,7 +77,7 @@ def gamma_correction(image, settings: GammaSettings) -> AdornedImage:
     image = reference
     return image
 
-def new_image(microscope, settings: ImageSettings, reduced_area: Rectangle = None) -> AdornedImage:
+def new_image(microscope: SdbMicroscopeClient, settings: ImageSettings, reduced_area: Rectangle = None) -> AdornedImage:
     """Apply the image settings and take a new image
 
     Args:
@@ -123,7 +122,7 @@ def new_image(microscope, settings: ImageSettings, reduced_area: Rectangle = Non
     settings = tmp_settings  # reset the settings to original # TODO: this doesnt work, need to reset
     return image
 
-def last_image(microscope, beam_type=BeamType.ELECTRON):
+def last_image(microscope: SdbMicroscopeClient, beam_type=BeamType.ELECTRON) -> AdornedImage:
     """Get the last previously acquired ion or electron beam image.
 
     Parameters
@@ -144,11 +143,7 @@ def last_image(microscope, beam_type=BeamType.ELECTRON):
     return image
 
 
-def acquire_image(
-    microscope,
-    settings=None,
-    beam_type=BeamType.ELECTRON,
-):
+def acquire_image(microscope: SdbMicroscopeClient, settings: GrabFrameSettings = None, beam_type: BeamType = BeamType.ELECTRON) -> AdornedImage:
     """Take new electron or ion beam image.
     Returns
     -------
@@ -158,7 +153,7 @@ def acquire_image(
         image.metadata.binary_result.pixel_size.x = image pixel size in x
         image.metadata.binary_result.pixel_size.y = image pixel size in y
     """
-    logging.info(f"acquire: acquiring new {beam_type.name} image.")
+    logging.info(f"acquiring new {beam_type.name} image.")
     microscope.imaging.set_active_view(beam_type.value)
     if settings is not None:
         image = microscope.imaging.grab_frame(settings)

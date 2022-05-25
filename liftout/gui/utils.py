@@ -11,6 +11,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import (QGridLayout, QLabel, QSizePolicy, QVBoxLayout,
                              QWidget)
+import scipy.ndimage as ndi
 
 
 class _WidgetPlot(QWidget):
@@ -165,8 +166,13 @@ def draw_grid_layout(samples: list):
 
             if os.path.exists(fname):
                 adorned_img = sp.load_reference_image(img_basename)
-                image = QImage(adorned_img.data, adorned_img.data.shape[1], adorned_img.data.shape[0], QImage.Format_Grayscale8)
-                imageLabel.setPixmap(QPixmap.fromImage(image).scaled(125, 125))
+                
+                image = QImage(ndi.median_filter(adorned_img.data, size=3), 
+                                adorned_img.data.shape[1], 
+                                adorned_img.data.shape[0], 
+                                QImage.Format_Grayscale8)
+                imageLabel.setPixmap(QPixmap.fromImage(image).scaled(150, 150))
+                imageLabel.setStyleSheet("border-radius: 5px")
 
             qimage_labels.append(imageLabel)
 
@@ -177,7 +183,7 @@ def draw_grid_layout(samples: list):
 
         # display sample no
         label_sample = QLabel()
-        label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-6:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
+        label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-4:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
         label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
         label_sample.setMaximumHeight(150)
         gridLayout.addWidget(label_sample, row_id, 0)

@@ -313,14 +313,15 @@ def retract_needle(microscope: SdbMicroscopeClient, park_position: ManipulatorPo
     """
 
     # Retract the multichem
-    logging.info(f"movement: retracting multichem")
+    logging.info(f"retracting multichem")
     multichem = microscope.gas.get_multichem()
     multichem.retract()
+    logging.info(f"retract multichem complete")
     # Retract the needle, preserving the correct parking postiion
     needle = microscope.specimen.manipulator
     current_position = needle.current_position
     # To prevent collisions with the sample; first retract in z, then y, then x
-    logging.info(f"movement: retracting needle to {park_position}")
+    logging.info(f"retracting needle to {park_position}")
     needle.relative_move(
         ManipulatorPosition(z=park_position.z - current_position.z)
     )  # noqa: E501
@@ -331,10 +332,10 @@ def retract_needle(microscope: SdbMicroscopeClient, park_position: ManipulatorPo
         ManipulatorPosition(x=park_position.x - current_position.x)
     )  # noqa: E501
     time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
-    logging.info(f"movement: retracting needle")
+    logging.info(f"retracting needle")
     needle.retract()
     retracted_position = needle.current_position
-    logging.info(f"movement: retract needle complete")
+    logging.info(f"retract needle complete")
     return retracted_position
 
 
@@ -461,11 +462,34 @@ def y_corrected_stage_movement(expected_y: float, stage_tilt: float, settings: d
         tilt_adjustment = np.deg2rad(-pretilt_angle)
     elif beam_type == BeamType.ION:
         tilt_adjustment = np.deg2rad(stage_tilt_flat_to_ion - pretilt_angle)
-    tilt_radians = stage_tilt + tilt_adjustment
+    # tilt_radians = stage_tilt + tilt_adjustment
+    tilt_radians = tilt_adjustment
     y_move = +np.cos(tilt_radians) * expected_y
     z_move = -np.sin(tilt_radians) * expected_y
+
+    # new
+    # y_move = expected_y / np.cos(stage_tilt + tilt_adjustment)
+    # z_move = y_move * np.tan(np.deg2rad(pretilt_angle))
+
+    #   stage_rotation_flat_to_electron: 50 # degrees
+    # if np.isclose(microscope.specimen.stage.current_position.r, 
+    #               np.deg2rad(settings["system"]["stage_rotation_flat_to_electron"], 
+    #               atol=np.deg2rad(5)): 
+    #     # positve y, negative z
+    #     y_move = y_move
+    #     z_move = -z_move
+    # #   stage_rotation_flat_to_ion: 230 # degrees
+    # if np.isclose(microscope.specimen.stage.current_position.r, 
+    #               np.deg2rad(settings["system"]["stage_rotation_flat_to_ion"], 
+    #               atol=np.deg2rad(5)): 
+    #     # positive y, positive z
+    #     y_move = y_move
+    #     z_move = z_move
+    
+
     logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
     logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")
     return StagePosition(x=0, y=y_move, z=z_move)
 
 # TODO: z_corrected_stage_movement...?
+# resetting working distance after vertical movements 

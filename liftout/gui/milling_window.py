@@ -493,6 +493,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         milling.finish_milling(microscope=self.microscope, settings=self.settings)
 
         # refresh image
+        self.image_settings.save = False
         self.setup_milling_image()
         self.update_display()
         

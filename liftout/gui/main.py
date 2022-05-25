@@ -40,67 +40,76 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, offline=False):
         super(GUIMainWindow, self).__init__()
 
-        self.UI_LOADED = False
-
-        # load experiment
-        self.setup_experiment()
-
         # load config
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
 
-        # save the metadata
-        utils.save_metadata(self.settings, self.save_path)
-
         self.current_stage = AutoLiftoutStage.Initialisation
-        logging.info(f"INIT | {self.current_stage.name} | STARTED")
-        logging.info(f"GUI | {'offline' if offline else 'online'} Mode")
+
 
         self.offline = offline
         self.setupUi(self)
         self.UI_LOADED = True # flag to check if ui has been loaded
         self.setWindowTitle('Autoliftout User Interface Main Window')
 
-        # initialise hardware
-        self.ip_address = self.settings["system"]["ip_address"]
-        self.microscope = None
+        # UI style
+        def set_ui_style():
+            self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
+            self.label_stage.setStyleSheet("background-color: gray; padding: 10px; border-radius: 5px")
+            self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
+            self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
+            self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
+            self.label_stage.setText(f"{self.current_stage.name}")
 
-        self.initialize_hardware(offline=offline)
+        set_ui_style()
+        self.showMaximized()
 
-        if self.microscope:
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-            self.stage = self.microscope.specimen.stage
-            self.needle = self.microscope.specimen.manipulator
+        # load experiment
+        self.setup_experiment()
 
-        self.current_sample_position = None
- 
-        # initial image settings
-        self.update_image_settings()
+        logging.info(f"INIT | {self.current_stage.name} | STARTED")
 
-        if self.microscope:
-            self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
-
+        # set different modes
         # use high throughput
         self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
-
+        self.AUTOLAMELLA_ENABLED = bool(self.settings["system"]["autolamella"])
+        self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled" ])
+        
         # initialise piescope
-        self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled"])
         if self.PIESCOPE_ENABLED:
             self.piescope_gui_main_window = None
+
+        # setup connections
+        self.setup_connections()
+
+        # save the metadata
+        utils.save_metadata(self.settings, self.save_path)
+
+        # initialise hardware
+        self.microscope = self.initialize_hardware(ip_address=self.settings["system"]["ip_address"])
+
+        if self.microscope:
+            # TODO: add this to validation instead of init
+            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+            self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
+            # self.microscope.beams.ion_beam.scanning.resolution = self.settings["imaging"]["resolution"]
+            # self.microscope.beams.ion_beam.scanning.dwell_time = self.settings["imaging"]["dwell_time"]
+            # self.microscope.beams.electron_beam.horizontal_field_width.value = self.settings["imaging"]["hfw"]
+            # self.microscope.beams.electron_beam.scanning.resolution = self.settings["imaging"]["resolution"]
+            # self.microscope.beams.electron_beam.scanning.dwell_time = self.settings["imaging"]["dwell_time"]
+            
+            self.stage = self.microscope.specimen.stage
+            self.needle = self.microscope.specimen.manipulator
+            self.current_sample_position = None
+ 
+        # initial image settings
+        self.update_image_settings()          
 
         # setup status information
         self.status_timer = QtCore.QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(2000)
-
-        # setup status labels
-        self.label_stage.setStyleSheet("background-color: coral; padding: 10px; border-radius: 5px")
-        self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
-        self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
         self.update_status()
-
-        self.setup_connections()
 
         if self.microscope:
             self.pre_run_validation()
@@ -109,9 +118,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if self.samples:
             self.pushButton_autoliftout.setEnabled(True)
             self.pushButton_thinning.setEnabled(True)
-
-        # DEVELOPER ONLY
-        self.INITIAL_SELECTION_EUCENTRICITY = False
 
         # autoliftout_workflow
         self.autoliftout_stages = {
@@ -132,10 +138,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             AutoLiftoutStage.Thinning: self.thin_autolamella,
             AutoLiftoutStage.Polishing: self.polish_autolamella
         }
-        self.AUTOLAMELLA_ENABLED = bool(self.settings["system"]["autolamella"])
 
         # Set up scroll area for display
-        self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
         self.update_scroll_ui()
             
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
@@ -150,6 +154,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def pre_run_validation(self):
         """Run validation checks to confirm microscope state before run."""
+        
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Microscope State Validation")
+        msg.setText("Do you want to validate the microscope state?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setIcon(QMessageBox.Question)
+        button = msg.exec()
+
+        if button == QMessageBox.No:
+            logging.info(f"PRE_RUN_VALIDATION cancelled by user.")
+            return 
+        
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
         # TODO: add validation checks for dwell time and resolution
@@ -216,34 +232,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_stage = AutoLiftoutStage.Setup
         logging.info(f"INIT | {self.current_stage.name} | STARTED")
 
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
-            beam_type=BeamType.ELECTRON,
-            save=True,
-            label="grid",
-        )
-
-        # check if focus is good enough
-        eb_image = acquire.new_image(self.microscope, self.image_settings)
-        if eb_image.metadata.optics.working_distance >= MAXIMUM_WORKING_DISTANCE:
-            self.ask_user_interaction(msg="The working distance seems to be incorrect, please manually fix the focus. \nPress Yes to continue.", 
-                beam_type=BeamType.ELECTRON)
-
-        # move to the initial sample grid position
-        movement.move_to_sample_grid(self.microscope, self.settings)
-        # movement.auto_link_stage(self.microscope) # dont think we need to link
-
-        # NOTE: can't take ion beam image with such a high hfw
-        acquire.new_image(self.microscope, self.image_settings)
-
-        # Whole-grid platinum deposition
-        self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
-        if self.response:
-            fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
-            self.update_image_settings(hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"], save=True, label="grid_Pt_deposition")
-            acquire.new_image(self.microscope, self.image_settings)
+        # sputter platinum to protect grid and prevent charging...        
+        self.sputter_platinum_on_whole_sample_grid()
 
         # select initial lamella and landing points
         self.update_image_settings(
@@ -255,6 +245,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             label="centre_grid",
         )
         acquire.take_reference_images(self.microscope, self.image_settings)
+        
+        # check if focus is good enough
+        if self.microscope.beams.electron_beam.working_distance.value >= MAXIMUM_WORKING_DISTANCE:
+            self.ask_user_interaction(msg="The working distance seems to be incorrect, please manually fix the focus. \nPress Yes to continue.", 
+                beam_type=BeamType.ELECTRON)
         
         if self.PIESCOPE_ENABLED:
             self.select_sample_positions_piescope(initialisation=True)
@@ -269,6 +264,36 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
             logging.info(f"INIT | {self.current_stage.name} | FINISHED")
+
+    def sputter_platinum_on_whole_sample_grid(self):
+        """Move to the sample grid and sputter platinum over the whole grid"""
+        
+        # update image settings for platinum
+        self.update_image_settings(
+            resolution=self.settings["imaging"]["resolution"],
+            dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="grid",
+        )
+
+        # move to the initial sample grid position
+        movement.move_to_sample_grid(self.microscope, self.settings)
+        # movement.auto_link_stage(self.microscope) # dont think we need to link
+
+        # NOTE: can't take ion beam image with such a high hfw, will default down to max ion beam hfw
+        acquire.new_image(self.microscope, self.image_settings)
+
+        # Whole-grid platinum deposition
+        self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
+        if self.response:
+            fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
+            self.image_settings.label="grid_Pt_deposition"
+            acquire.new_image(self.microscope, self.image_settings)
+
+        return 
+
 
     def get_current_sample_positions(self):
         # check if samples already has been loaded, and then append from there
@@ -345,15 +370,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         select_another_sample_position = self.get_current_sample_positions()
 
         # allow the user to select additional lamella positions
+        eucentric_calibration = False
         while select_another_sample_position:
-            sample_position = self.select_initial_lamella_positions(sample_no=self.sample_no)
+            sample_position = self.select_initial_lamella_positions(sample_no=self.sample_no, eucentric_calibration=eucentric_calibration)
             self.samples.append(sample_position)
             self.sample_no += 1
+            
+            eucentric_calibration = True
 
             self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ION)
             select_another_sample_position = self.response
             self.update_scroll_ui()
+            
 
         # select landing positions 
         if not self.AUTOLAMELLA_ENABLED:
@@ -529,17 +558,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return sample_position
 
-    def select_initial_lamella_positions(self, sample_no):
+    def select_initial_lamella_positions(self, sample_no, eucentric_calibration: bool = False):
         """Select the initial sample positions for liftout"""
         sample_position = SamplePosition(data_path=self.save_path, sample_no=sample_no)
 
-        if self.INITIAL_SELECTION_EUCENTRICITY is False:
+        if eucentric_calibration is False:
             movement.move_to_sample_grid(self.microscope, settings=self.settings)
             movement.auto_link_stage(self.microscope)
             
             self.ask_user_movement(msg_type="eucentric", flat_to_sem=True)
             movement.move_to_trenching_angle(self.microscope, settings=self.settings)
-            self.INITIAL_SELECTION_EUCENTRICITY = True
+            
   
         sample_position.lamella_coordinates = self.user_select_feature(feature_type="lamella")
 
@@ -619,7 +648,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             for sp in self.samples:
                 self.current_sample_position = sp
                 
-                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) \nis {sp.microscope_state.last_completed_stage.name}. " \
+                msg = f"The last completed stage for sample position {sp.sample_no} ({sp.petname}) \nis {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
                 self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
@@ -860,7 +889,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                                         settings=self.settings, beam_type=beamType)
             self.stage.relative_move(x_move)
             self.stage.relative_move(yz_move)
-            acquire.take_reference_images(self.microscope, self.image_settings)
 
         self.update_image_settings(
             save=True,
@@ -1522,9 +1550,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         self.open_milling_window(MillingPattern.Polish)
 
-    def initialize_hardware(self, offline=False):
-        if offline is False:
-            self.connect_to_microscope(ip_address=self.ip_address)
+    def initialize_hardware(self, ip_address: str = "10.0.0.1"):
+
+        return self.connect_to_microscope(ip_address=ip_address)
 
     def setup_connections(self):
         logging.info("gui: setup connections started")
@@ -1552,7 +1580,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
-
 
         if self.PIESCOPE_ENABLED:
             self.pushButton_add_sample_position.setVisible(False)
@@ -1778,12 +1805,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.debug(f"Image Settings: {self.image_settings}")
 
-    def connect_to_microscope(self, ip_address='10.0.0.1'):
+    def connect_to_microscope(self, ip_address="10.0.0.1"):
         """Connect to the FIBSEM microscope."""
         try:
-            self.microscope = fibsem_utils.initialise_fibsem(ip_address=ip_address)
+            microscope = fibsem_utils.initialise_fibsem(ip_address=ip_address)
         except Exception:
             display_error_message(traceback.format_exc())
+            microscope = None
+
+        return microscope
 
     def disconnect(self):
         logging.info('Running cleanup/teardown')

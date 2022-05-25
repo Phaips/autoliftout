@@ -1,7 +1,9 @@
 import os
+from liftout.detection.utils import DetectionResult
 from liftout.fibsem.movement import *
 import scipy.ndimage as ndi
-from scipy import fftpack, misc
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from scipy import fftpack
 from PIL import Image, ImageDraw
 from liftout.fibsem import acquire
 from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStage
@@ -9,26 +11,27 @@ from liftout.model import models
 from autoscript_sdb_microscope_client.enumerations import *
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from liftout.detection import detection
+from liftout.fibsem.acquire import ImageSettings, GammaSettings
 BeamType = acquire.BeamType
 
 
-def validate_scanning_rotation(microscope):
-    """Ensure the scanning rotation is set to zero."""
-    rotation = microscope.beams.ion_beam.scanning.rotation.value
-    if rotation is None:
-        microscope.beams.ion_beam.scanning.rotation.value = 0
-        rotation = microscope.beams.ion_beam.scanning.rotation.value
-    if not np.isclose(rotation, 0.0):
-        raise ValueError(
-            "Ion beam scanning rotation must be 0 degrees."
-            "\nPlease change your system settings and try again."
-            "\nCurrent rotation value is {}".format(rotation)
-        )
+# def validate_scanning_rotation(microscope):
+#     """Ensure the scanning rotation is set to zero."""
+#     rotation = microscope.beams.ion_beam.scanning.rotation.value
+#     if rotation is None:
+#         microscope.beams.ion_beam.scanning.rotation.value = 0
+#         rotation = microscope.beams.ion_beam.scanning.rotation.value
+#     if not np.isclose(rotation, 0.0):
+#         raise ValueError(
+#             "Ion beam scanning rotation must be 0 degrees."
+#             "\nPlease change your system settings and try again."
+#             "\nCurrent rotation value is {}".format(rotation)
+#         )
 
 
 def correct_stage_drift(
-    microscope, image_settings, reference_images, mode="eb"
-):
+    microscope: SdbMicroscopeClient, image_settings: ImageSettings, reference_images: list, mode: str = "eb"
+) -> bool:
     # TODO: refactor the whole cross-correlation workflow (de-duplicate it)
     ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
 
@@ -103,7 +106,7 @@ def correct_stage_drift(
     return ret
 
 
-def align_using_reference_images(ref_image, new_image, stage, mode=None):
+def align_using_reference_images(ref_image: AdornedImage, new_image: AdornedImage, stage: StagePosition, mode: str = None) -> bool:
 
     # three different types of cross correlation, E-E, E-I, I-I
     if mode == "land":
@@ -157,7 +160,7 @@ def align_using_reference_images(ref_image, new_image, stage, mode=None):
 
 
 def identify_shift_using_machine_learning(
-    microscope, image_settings, settings, shift_type):
+    microscope: SdbMicroscopeClient, image_settings: ImageSettings, settings: dict, shift_type: tuple) -> DetectionResult:
 
 
     eb_image, ib_image = take_reference_images(microscope, image_settings)

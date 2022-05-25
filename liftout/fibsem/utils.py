@@ -32,7 +32,7 @@ def sputter_platinum(microscope, settings, whole_grid=False):
         line_pattern_length = settings["platinum"]["whole_grid"]["length"]  # 7e-6
         logging.info("sputtering platinum over the whole grid.")
     else:
-        sputter_time = settings["platinum"]["weld"]["time"]  # 60
+        sputter_time = settings["platinum"]["weld"]["time"]  # 20
         hfw = settings["platinum"]["weld"]["hfw"]  # 100e-6
         line_pattern_length = settings["platinum"]["weld"]["length"]  # 15e-6
         logging.info("sputtering platinum to weld.")
