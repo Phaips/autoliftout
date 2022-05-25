@@ -2,50 +2,6 @@
 import numpy as np
 
 
-def validate_user_input(microscope, settings):
-    application_files = [
-        settings["system"]["application_file_rectangle"],
-        settings["system"]["application_file_cleaning_cross_section"],
-    ]
-    _validate_application_files(microscope, application_files)
-    scanning_resolutions = [
-        settings["imaging"]["resolution"],
-        settings["fiducial"]["reduced_area_resolution"],
-    ]
-    _validate_scanning_rotation(microscope)
-    _validate_stage_coordinate_system(microscope)
-    dwell_times = [settings["imaging"]["dwell_time"]]
-    _validate_dwell_time(microscope, dwell_times)
-    _validate_scanning_resolutions(microscope, scanning_resolutions)
-
-
-def _format_dictionary(dictionary):
-    """Recursively traverse dictionary and covert all numeric values to flaot.
-
-    Parameters
-    ----------
-    dictionary : dict
-        Any arbitrarily structured python dictionary.
-
-    Returns
-    -------
-    dictionary
-        The input dictionary, with all numeric values converted to float type.
-    """
-    for key, item in dictionary.items():
-        if isinstance(item, dict):
-            _format_dictionary(item)
-        elif isinstance(item, list):
-            dictionary[key] = [_format_dictionary(i) for i in item]
-        else:
-            if item is not None:
-                try:
-                    dictionary[key] = float(dictionary[key])
-                except ValueError:
-                    pass
-    return dictionary
-
-
 def _validate_application_files(microscope, application_files):
     """Check that the user supplied application files exist on this system.
 
@@ -318,6 +274,10 @@ def _validate_configuration_values(microscope, dictionary):
     dictionary : dict
         Any arbitrarily structured python dictionary.
 
+    Returns
+    ---------
+    dictionary: dict
+        Validated Configuration Dictionary
     Raises
     -------
     ValueError
