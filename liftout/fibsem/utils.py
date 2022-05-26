@@ -3,15 +3,17 @@ import time
 import logging
 
 from liftout.fibsem.acquire import BeamType
-
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 
 def initialise_fibsem(ip_address="10.0.0.1"):
     """Initialize connection to FIBSEM microscope with Autoscript."""
-    from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
+    # TODO: get the port
+    logging.info(f"Microscope client connecting to [{ip_address}]")
     microscope = SdbMicroscopeClient()
     microscope.connect(ip_address)
+    logging.info(f"Microscope client connected to [{ip_address}]")
     return microscope
 
 

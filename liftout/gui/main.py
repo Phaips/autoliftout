@@ -37,28 +37,26 @@ MAXIMUM_WORKING_DISTANCE = 6.0e-3 # TODO: move to config
 
 _translate = QtCore.QCoreApplication.translate
 class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
-    def __init__(self, offline=False):
+    def __init__(self):
         super(GUIMainWindow, self).__init__()
+
+        # start initialisation
+        self.current_stage = AutoLiftoutStage.Initialisation
 
         # load config
         config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
         self.settings = utils.load_config(config_filename)
 
-        self.current_stage = AutoLiftoutStage.Initialisation
-
-
-        self.offline = offline
         self.setupUi(self)
-        self.UI_LOADED = True # flag to check if ui has been loaded
-        self.setWindowTitle('Autoliftout User Interface Main Window')
 
         # UI style
         def set_ui_style():
+            self.setWindowTitle('AutoLiftout')
             self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
             self.label_stage.setStyleSheet("background-color: gray; padding: 10px; border-radius: 5px")
             self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
             self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
-            self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
+            # self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
             self.label_stage.setText(f"{self.current_stage.name}")
 
         set_ui_style()
@@ -69,8 +67,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"INIT | {self.current_stage.name} | STARTED")
 
+        # initialise hardware
+        self.microscope = self.initialize_hardware(ip_address=self.settings["system"]["ip_address"])
+
         # set different modes
-        # use high throughput
         self.HIGH_THROUGHPUT= bool(self.settings["system"]["high_throughput"])
         self.AUTOLAMELLA_ENABLED = bool(self.settings["system"]["autolamella"])
         self.PIESCOPE_ENABLED = bool(self.settings["system"]["piescope_enabled" ])
@@ -81,38 +81,31 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # setup connections
         self.setup_connections()
+        
+        # initial image settings
+        self.update_image_settings() 
 
         # save the metadata
         utils.save_metadata(self.settings, self.save_path)
-
-        # initialise hardware
-        self.microscope = self.initialize_hardware(ip_address=self.settings["system"]["ip_address"])
 
         if self.microscope:
             # TODO: add this to validation instead of init
             self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
             self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
-            # self.microscope.beams.ion_beam.scanning.resolution = self.settings["imaging"]["resolution"]
-            # self.microscope.beams.ion_beam.scanning.dwell_time = self.settings["imaging"]["dwell_time"]
-            # self.microscope.beams.electron_beam.horizontal_field_width.value = self.settings["imaging"]["hfw"]
-            # self.microscope.beams.electron_beam.scanning.resolution = self.settings["imaging"]["resolution"]
-            # self.microscope.beams.electron_beam.scanning.dwell_time = self.settings["imaging"]["dwell_time"]
+            self.microscope.beams.ion_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
+            self.microscope.beams.ion_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
+            self.microscope.beams.electron_beam.horizontal_field_width.value = self.settings["imaging"]["hfw"]
+            self.microscope.beams.electron_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
+            self.microscope.beams.electron_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
             
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
             self.current_sample_position = None
- 
-        # initial image settings
-        self.update_image_settings()          
 
-        # setup status information
-        self.status_timer = QtCore.QTimer()
-        self.status_timer.timeout.connect(self.update_status)
-        self.status_timer.start(2000)
-        self.update_status()
-
-        if self.microscope:
             self.pre_run_validation()
+ 
+        # setup status information
+        self.update_status()
 
         # enable liftout if samples are loaded
         if self.samples:
@@ -145,12 +138,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
     def update_scroll_ui(self):
-
-        if self.UI_LOADED:
-            self.draw_sample_grid_ui()
-            self.scroll_area.setWidget(self.horizontalGroupBox)
-            self.horizontalGroupBox.update()
-            self.scroll_area.update()
+        """Update the central ui grid with current sample data."""
+        
+        self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})")
+        gridLayout = draw_grid_layout(self.samples)
+        self.horizontalGroupBox.setLayout(gridLayout)
+        self.scroll_area.setWidget(self.horizontalGroupBox)
+        self.horizontalGroupBox.update()
+        self.scroll_area.update()
 
     def pre_run_validation(self):
         """Run validation checks to confirm microscope state before run."""
@@ -169,6 +164,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
         # TODO: add validation checks for dwell time and resolution
+        print(f"Electron voltage: {self.microscope.beams.electron_beam.high_voltage.value:.2f}")
+        print(f"Electron current: {self.microscope.beams.electron_beam.beam_current.value:.2f}")
 
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
@@ -196,7 +193,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         \n - Initial Grid and Landing Positions
         """
         msg = QMessageBox()
-        msg.setWindowTitle("AutoLiftout Initialisation Confirmation")
+        msg.setWindowTitle("AutoLiftout Initialisation Checklist")
         msg.setText(reminder_str)
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
@@ -513,12 +510,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.experiment_name = experiment_name
         self.experiment_path = experiment_path
+        self.current_sample_position = None
 
         # update the ui
         self.update_scroll_ui()
 
         logging.info(f"{len(self.samples)} samples loaded from {experiment_path}")
-        logging.info(f"Reload Experiment Finished")
+        logging.info(f"Experiment {self.experiment_name} loaded.")
+        self.update_status()
 
     def get_initial_lamella_position_piescope(self):
         """Select the initial sample positions for liftout"""
@@ -766,6 +765,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.current_stage = next_stage
         logging.info(f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED")
+
+        self.update_status()
 
         return
 
@@ -1828,8 +1829,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if not WINDOW_ENABLED:
             self.setEnabled(True)
 
-        mode = "" if not self.offline else "\n(Offline Mode)"
-        self.label_stage.setText(f"{self.current_stage.name}{mode}")
+        self.label_stage.setText(f"{self.current_stage.name}")
         status_colors = {"Initialisation": "gray", "Setup": "gold",
                          "MillTrench": "coral", "MillJCut": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
                          "Reset": "salmon", "Thinning": "mediumpurple", "Polishing": "cyan", "Finished": "silver"}
@@ -1840,18 +1840,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             lines = f.read().splitlines()
             log_line = "\n".join(lines[-3:])  # last log msg
             log_msg = log_line.split("—")[-1].strip()
-            self.label_status.setText(log_msg)
+            self.statusBar().showMessage(log_msg)
 
         if not WINDOW_ENABLED:
             self.setEnabled(False)
-
-    def draw_sample_grid_ui(self):
-        self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})")
-
-        gridLayout = draw_grid_layout(self.samples)
-        self.horizontalGroupBox.setLayout(gridLayout)
-        ###################
-
 
 def display_error_message(message, title="Error"):
     """PyQt dialog box displaying an error message."""
@@ -1866,18 +1858,17 @@ def display_error_message(message, title="Error"):
 
     return error_dialog
 
-def main(offline=True):
-    launch_gui(offline=offline)
+def main():
+    launch_gui()
 
-def launch_gui(offline=False):
+def launch_gui():
     """Launch the `autoliftout` main application window."""
     app = QtWidgets.QApplication([])
-    qt_app = GUIMainWindow(offline=offline)
+    qt_app = GUIMainWindow()
     app.aboutToQuit.connect(qt_app.disconnect)  # cleanup & teardown
     qt_app.showMaximized()
     sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-    offline_mode = False
-    main(offline=offline_mode)
+    main()

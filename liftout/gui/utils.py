@@ -165,15 +165,21 @@ def draw_grid_layout(samples: list):
             imageLabel.setMaximumHeight(150)
 
             if os.path.exists(fname):
-                adorned_img = sp.load_reference_image(img_basename)
+                adorned_image = sp.load_reference_image(img_basename)
                 
-                image = QImage(ndi.median_filter(adorned_img.data, size=3), 
-                                adorned_img.data.shape[1], 
-                                adorned_img.data.shape[0], 
-                                QImage.Format_Grayscale8)
-                imageLabel.setPixmap(QPixmap.fromImage(image).scaled(150, 150))
-                imageLabel.setStyleSheet("border-radius: 5px")
+                def set_adorned_image_as_qlabel(adorned_image: AdornedImage, label: QLabel, shape: tuple = (150, 150)) -> QLabel:
 
+                    image = QImage(ndi.median_filter(adorned_image.data, size=3), 
+                                    adorned_image.data.shape[1], 
+                                    adorned_image.data.shape[0], 
+                                    QImage.Format_Grayscale8)
+                    label.setPixmap(QPixmap.fromImage(image).scaled(*shape))
+                    label.setStyleSheet("border-radius: 5px")
+
+                    return label
+
+                imageLabel = set_adorned_image_as_qlabel(adorned_image, imageLabel) 
+            
             qimage_labels.append(imageLabel)
 
         sample_images[i] = qimage_labels
@@ -190,10 +196,10 @@ def draw_grid_layout(samples: list):
 
         # display sample position
         label_pos = QLabel()
-        pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2f}, y:{sp.lamella_coordinates.y:.2f}, z:{sp.lamella_coordinates.z:.2f}\n"
+        pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2e}, y:{sp.lamella_coordinates.y:.2e}, z:{sp.lamella_coordinates.z:.2e}\n"
         if sp.landing_coordinates.x is not None:
 
-            pos_text += f"Land: x:{sp.landing_coordinates.x:.2f}, y:{sp.landing_coordinates.y:.2f}, z:{sp.landing_coordinates.z:.2f}\n"
+            pos_text += f"Land: x:{sp.landing_coordinates.x:.2e}, y:{sp.landing_coordinates.y:.2e}, z:{sp.landing_coordinates.z:.2e}\n"
             
         label_pos.setText(pos_text)
         label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
