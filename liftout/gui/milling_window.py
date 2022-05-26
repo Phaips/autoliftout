@@ -84,15 +84,15 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.update_milling_pattern_type(milling_pattern_type, x=x, y=y)
 
     def setup_milling_image(self):
-        self.image_settings.beam_type = BeamType.ION
-        self.adorned_image = acquire.new_image(self.microscope, self.image_settings)
 
-        # image with a reduced area for polishing.
-        if self.milling_pattern_type == MillingPattern.Polish:
+
+        # image with a reduced area for thin/polishing.
+        if self.milling_pattern_type in [MillingPattern.Thin, MillingPattern.Polish]:
             reduced_area = RectangleArea(0.3, 0.3, 0.4, 0.4)
         else: 
             reduced_area = None
 
+        self.image_settings.beam_type = BeamType.ION
         self.adorned_image = acquire.new_image(self.microscope, self.image_settings, reduced_area=reduced_area)    
         self.image = ndi.median_filter(self.adorned_image.data, size=3)
 
@@ -196,7 +196,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 if self.USER_UPDATE:
                     self.update_display()
 
-    def update_display(self):
+    def update_display(self, draw_patterns=True):
         """Update the millig window display. Redraw the crosshair, and milling patterns"""
         crosshair = create_crosshair(self.image, x=self.xclick, y=self.yclick)
         self.wp.canvas.ax11.patches = []
@@ -204,13 +204,16 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.wp.canvas.ax11.add_patch(getattr(crosshair, patch))
             getattr(crosshair, patch).set_visible(True)
 
-        self.draw_milling_patterns()
+        if draw_patterns:
+            self.draw_milling_patterns()
 
-        for rect in self.pattern_rectangles:
-            self.wp.canvas.ax11.add_patch(rect)
+            for rect in self.pattern_rectangles:
+                self.wp.canvas.ax11.add_patch(rect)
+    
+            self.update_estimated_time()
+        
         self.wp.canvas.draw()
 
-        self.update_estimated_time()
 
     def on_click(self, event):
         """Redraw the patterns and update the display on user click"""
@@ -495,7 +498,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         # refresh image
         self.image_settings.save = False
         self.setup_milling_image()
-        self.update_display()
+        self.update_display(draw_patterns=False)
         
         # ask user if the milling succeeded
         dlg = QMessageBox(self)
@@ -507,6 +510,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         if button == QMessageBox.Yes:
             logging.info("Redoing milling")
+            self.update_display()
         else:
             self.close() 
 

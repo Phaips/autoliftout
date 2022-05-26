@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (QGridLayout, QLabel, QSizePolicy, QVBoxLayout,
                              QWidget)
 import scipy.ndimage as ndi
 
+from liftout.fibsem.constants import MILLIMETRE_TO_METRE, METRE_TO_MILLIMETRE, METRE_TO_MICRON, MICRON_TO_METRE
 
 class _WidgetPlot(QWidget):
     def __init__(self, *args, display_image, **kwargs):
@@ -142,7 +143,7 @@ def draw_grid_layout(samples: list):
 
     # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
     exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", "jcut_highres_ib",
-                        "needle_liftout_landed_highres_ib", "landing_lamella_final_cut_highres_ib", "sharpen_needle_final_ib",
+                        "needle_liftout_landed_highres_ib", "landing_lamella_final_highres_ib", "sharpen_needle_final_ib",
                         "thin_lamella_post_superres_ib", "polish_lamella_post_superres_ib"]
 
     # headers
@@ -196,10 +197,9 @@ def draw_grid_layout(samples: list):
 
         # display sample position
         label_pos = QLabel()
-        pos_text = f"Pos: x:{sp.lamella_coordinates.x:.2e}, y:{sp.lamella_coordinates.y:.2e}, z:{sp.lamella_coordinates.z:.2e}\n"
+        pos_text = f"""Pos: ({sp.lamella_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {sp.lamella_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {sp.lamella_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
         if sp.landing_coordinates.x is not None:
-
-            pos_text += f"Land: x:{sp.landing_coordinates.x:.2e}, y:{sp.landing_coordinates.y:.2e}, z:{sp.landing_coordinates.z:.2e}\n"
+            pos_text += f"""Land: ({sp.landing_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {sp.landing_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {sp.landing_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
             
         label_pos.setText(pos_text)
         label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")

@@ -90,13 +90,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         if self.microscope:
             # TODO: add this to validation instead of init
-            self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-            self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
-            self.microscope.beams.ion_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
-            self.microscope.beams.ion_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
-            self.microscope.beams.electron_beam.horizontal_field_width.value = self.settings["imaging"]["hfw"]
-            self.microscope.beams.electron_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
-            self.microscope.beams.electron_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
+
             
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
@@ -166,6 +160,18 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: add validation checks for dwell time and resolution
         print(f"Electron voltage: {self.microscope.beams.electron_beam.high_voltage.value:.2f}")
         print(f"Electron current: {self.microscope.beams.electron_beam.beam_current.value:.2f}")
+
+        # set default microscope state
+        self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+        self.microscope.beams.ion_beam.beam_current.value = self.settings["imaging"]["imaging_current"]
+        self.microscope.beams.ion_beam.horizontal_field_width.value = self.settings["imaging"]["horizontal_field_width"]
+        self.microscope.beams.ion_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
+        self.microscope.beams.ion_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
+        
+        self.microscope.beams.electron_beam.horizontal_field_width.value = self.settings["imaging"]["horizontal_field_width"]
+        self.microscope.beams.electron_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
+        self.microscope.beams.electron_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
+
 
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
@@ -697,7 +703,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             while sp.microscope_state.last_completed_stage.value < AutoLiftoutStage.Reset.value:
 
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
-                msg = f"The last completed stage for sample position {sp.sample_no} ({str(sp.sample_id)[-6:]}) \nis {sp.microscope_state.last_completed_stage.name}. " \
+                msg = f"The last completed stage for sample position {sp.sample_no} ({sp.petname}) \nis {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
                 self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
@@ -772,24 +778,22 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella_trench(self):
 
-        (lamella_coordinates, landing_coordinates,
-            original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
+        # (lamella_coordinates, landing_coordinates,
+        #     original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
 
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
-                                              original_lamella_area_images, mode='eb')
+        # ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+        #                                       original_lamella_area_images, mode='eb')
 
-        if ret is False:
-            # cross-correlation has failed, manual correction required
-            self.ask_user_movement(msg_type="centre_eb")
-            logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
+        # if ret is False:
+        #     # cross-correlation has failed, manual correction required
+        #     self.ask_user_movement(msg_type="centre_eb")
+        #     logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
 
-        self.ask_user_movement(msg_type="centre_eb")
-
-        self.update_image_settings(
-            save=True,
-            label="initial_position_post_drift_correction"
-        )
-        acquire.take_reference_images(self.microscope, self.image_settings)
+        # self.update_image_settings(
+        #     save=True,
+        #     label="initial_position_post_drift_correction"
+        # )
+        # acquire.take_reference_images(self.microscope, self.image_settings)
 
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
         movement.move_to_trenching_angle(self.microscope, self.settings)
@@ -1065,21 +1069,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
             logging.info(f"{self.current_stage.name}: needle zy-move: {zy_move_gap}")
 
-            self.update_image_settings(
-                hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
-                save=True,
-                label=f"needle_liftout_landed_lowres"
-            )
-            acquire.take_reference_images(self.microscope, self.image_settings)
-
-            self.update_image_settings(
-                hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
-                save=True,
-                label=f"needle_liftout_landed_highres"
-            )
+            self.image_settings.save = False
             acquire.take_reference_images(self.microscope, self.image_settings)
 
             self.ask_user_interaction(msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement", beam_type=BeamType.ION)
+
+        # take final reference images
+        self.update_image_settings(
+            hfw=self.settings["reference_images"]["needle_ref_img_hfw_lowres"],
+            save=True,
+            label=f"needle_liftout_landed_lowres"
+        )
+        acquire.take_reference_images(self.microscope, self.image_settings)
+
+        self.update_image_settings(
+            hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
+            save=True,
+            label=f"needle_liftout_landed_highres"
+        )
+        acquire.take_reference_images(self.microscope, self.image_settings)
 
 
     def land_lamella(self):
@@ -1346,6 +1354,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # take reference images
         self.image_settings.label = f"sharpen_needle_final"
+        self.image_settings.save = True
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
         # retract needle
@@ -1420,7 +1429,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             dwell_time=self.settings["thin_lamella"]["dwell_time"],
             hfw=self.settings["thin_lamella"]["hfw"]
         )
-        self.open_milling_window(MillingPattern.Fiducial)
+        # self.open_milling_window(MillingPattern.Fiducial)
         self.open_milling_window(MillingPattern.Thin)
         
 
@@ -1824,15 +1833,15 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def update_status(self):
 
-        # need to enable the window to update status bars when popup is open)
-        WINDOW_ENABLED = self.isEnabled()
-        if not WINDOW_ENABLED:
-            self.setEnabled(True)
-
         self.label_stage.setText(f"{self.current_stage.name}")
-        status_colors = {"Initialisation": "gray", "Setup": "gold",
-                         "MillTrench": "coral", "MillJCut": "coral", "Liftout": "seagreen", "Landing": "dodgerblue",
-                         "Reset": "salmon", "Thinning": "mediumpurple", "Polishing": "cyan", "Finished": "silver"}
+        status_colors = {"Initialisation": "gray", 
+                         "Setup": "gold",
+                         "MillTrench": "coral", "MillJCut": "coral", 
+                         "Liftout": "seagreen", "Landing": "dodgerblue",
+                         "Reset": "salmon", 
+                         "Thinning": "mediumpurple", 
+                         "Polishing": "cyan", 
+                         "Finished": "silver"}
         self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_stage.name]}; color: white; border-radius: 5px"))
 
         # log info
@@ -1841,9 +1850,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             log_line = "\n".join(lines[-3:])  # last log msg
             log_msg = log_line.split("—")[-1].strip()
             self.statusBar().showMessage(log_msg)
-
-        if not WINDOW_ENABLED:
-            self.setEnabled(False)
 
 def display_error_message(message, title="Error"):
     """PyQt dialog box displaying an error message."""

@@ -147,7 +147,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     # microscope.specimen.stage.relative_move(tilt_up)
 
     # absolute moves...    
-    tilt_negative = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    tilt_negative = StagePosition(t=np.deg2rad(TILT_OFFSET))
     microscope.specimen.stage.absolute_move(tilt_negative)
 
     # multi-step alignment
@@ -181,7 +181,7 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     calibration.reset_beam_shifts(microscope)
 
     # tilt down for top pattern
-    tilt_positive = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    tilt_positive = StagePosition(t=np.deg2rad(-TILT_OFFSET))
     microscope.specimen.stage.absolute_move(tilt_positive)
     
     # multi-step alignment
@@ -456,23 +456,19 @@ def cut_off_needle(microscope, settings, centre_x: float = 0.0, centre_y: float 
         height=cut_coord["height"],
         depth=cut_coord["depth"],
         rotation_degrees=cut_coord["rotation"],
-        ion_beam_field_of_view=cut_coord["hfw"],
     )
     return [pattern]
 
 
 def _create_mill_pattern(
     microscope,
-    *,
     center_x=-10.5e-6,
     center_y=-5e-6,
     width=8e-6,
     height=2e-6,
     depth=1e-6,
     rotation_degrees=40,
-    ion_beam_field_of_view=100e-6,
 ):
-    # setup_ion_milling(microscope, ion_beam_field_of_view=ion_beam_field_of_view)
     pattern = microscope.patterning.create_rectangle(
         center_x, center_y, width, height, depth
     )

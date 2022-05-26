@@ -9,10 +9,10 @@ from dataclasses import dataclass
 import uuid
 import petname
 
-try:
-    from autoscript_sdb_microscope_client.structures import *
-except:
-    from liftout.tests.mock_autoscript_sdb_microscope_client import *
+from liftout.fibsem.acquire import BeamType
+
+
+from autoscript_sdb_microscope_client.structures import *
 
 class AutoLiftoutStage(Enum):
     Initialisation = -1
@@ -27,6 +27,15 @@ class AutoLiftoutStage(Enum):
     Finished = 8
     Failure = 99
 
+
+@dataclass
+class BeamSettings:
+    beam_type: BeamType
+    working_distance: float = None
+    beam_current: float = None
+    hfw: float = None
+    resolution: float = None
+    dwell_time: float = None
 
 @dataclass
 class MicroscopeState:
