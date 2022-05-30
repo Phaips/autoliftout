@@ -1,33 +1,20 @@
 import os
-from liftout.detection.utils import DetectionResult
-from liftout.fibsem.movement import *
+
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from scipy import fftpack
-from PIL import Image, ImageDraw
-from liftout.fibsem import acquire
-from liftout.fibsem.sampleposition import MicroscopeState, AutoLiftoutStage
-from liftout.model import models
 from autoscript_sdb_microscope_client.enumerations import *
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
 from liftout.detection import detection
-from liftout.fibsem.acquire import ImageSettings, GammaSettings
+from liftout.detection.utils import DetectionResult
+from liftout.fibsem import acquire, movement
+from liftout.fibsem.acquire import GammaSettings, ImageSettings
+from liftout.fibsem.movement import *
+from liftout.fibsem.sampleposition import AutoLiftoutStage, MicroscopeState
+from liftout.model import models
+from PIL import Image, ImageDraw
+from scipy import fftpack
+
 BeamType = acquire.BeamType
-
-
-# def validate_scanning_rotation(microscope):
-#     """Ensure the scanning rotation is set to zero."""
-#     rotation = microscope.beams.ion_beam.scanning.rotation.value
-#     if rotation is None:
-#         microscope.beams.ion_beam.scanning.rotation.value = 0
-#         rotation = microscope.beams.ion_beam.scanning.rotation.value
-#     if not np.isclose(rotation, 0.0):
-#         raise ValueError(
-#             "Ion beam scanning rotation must be 0 degrees."
-#             "\nPlease change your system settings and try again."
-#             "\nCurrent rotation value is {}".format(rotation)
-#         )
-
 
 def correct_stage_drift(
     microscope: SdbMicroscopeClient, image_settings: ImageSettings, reference_images: list, mode: str = "eb"
@@ -188,10 +175,8 @@ def shift_from_correlation_electronBeam_and_ionBeam(
 
 
 def rotate_AdornedImage(image):
-    from autoscript_sdb_microscope_client.structures import (
-        AdornedImage,
-        GrabFrameSettings,
-    )
+    from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                             GrabFrameSettings)
 
     data = np.rot90(np.rot90(np.copy(image.data)))
     reference = AdornedImage(data=data)
@@ -476,7 +461,8 @@ def reset_beam_shifts(microscope: SdbMicroscopeClient):
     Args:
         microscope (SdbMicroscopeClient): Autoscript microscope object
     """
-    from autoscript_sdb_microscope_client.structures import GrabFrameSettings, Point
+    from autoscript_sdb_microscope_client.structures import (GrabFrameSettings,
+                                                             Point)
 
     # reset zero beamshift
     logging.info(f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} ")
@@ -644,7 +630,6 @@ def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: ImageS
         ref_image (AdornedImage): reference image to align to
         reduced_area (Rectangle): The reduced area to image with.  
     """
-    # TODO: move to calibration
 
     # # align using cross correlation
     img1 = ref_image
@@ -655,3 +640,29 @@ def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: ImageS
 
     # adjust beamshift
     microscope.beams.ion_beam.beam_shift.value += (-dx, dy)
+
+
+def automatic_eucentric_correction(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, eucentric_height: float = 3.9e-3):
+    """Automatic procedure to reset to the eucentric position
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope client connection
+        settings (dict): configuration dictionary
+        image_settings (ImageSettings): imaging settings
+        eucentric_height (float, optional): manually calibrated eucentric height. Defaults to 3.9e-3.
+    """
+
+    # autofocus in eb 
+    movement.auto_link_stage(microscope)
+
+    # move stage to z=3.9
+    microscope.specimen.stage.set_default_coordinate_system()
+    
+    # turn on z-y linked movement
+    microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+
+    eucentric_position = StagePosition(z=eucentric_height)
+    movement.safe_absolute_stage_movement(microscope, eucentric_position)
+
+    # retake images to check
+    acquire.take_reference_images(microscope, image_settings)

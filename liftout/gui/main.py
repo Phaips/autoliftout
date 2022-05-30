@@ -172,7 +172,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope.beams.electron_beam.scanning.resolution.value = self.settings["imaging"]["resolution"]
         self.microscope.beams.electron_beam.scanning.dwell_time.value = self.settings["imaging"]["dwell_time"]
 
-
         # validate chamber state
         calibration.validate_chamber(microscope=self.microscope)
 
