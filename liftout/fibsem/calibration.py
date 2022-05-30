@@ -213,6 +213,10 @@ def shift_from_crosscorrelation_AdornedImages(
     y_shift = err[0] * pixelsize_y_2
     logging.info(f"X-shift =  {x_shift:.2e} meters")
     logging.info(f"Y-shift =  {y_shift:.2e} meters")
+
+    DEBUG=True
+    if DEBUG:
+        return x_shift, y_shift, xcorr
     return x_shift, y_shift  # metres
 
 
@@ -542,7 +546,7 @@ def validate_beams_calibration(microscope, settings: dict):
                       settings["calibration"]["eucentric_height_eb"],
                       atol=settings["calibration"]["eucentric_height_tolerance"]):
         logging.warning(
-            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m 
+            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m
             (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)""")
 
     logging.info(f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}")
@@ -621,14 +625,14 @@ def validate_chamber(microscope):
 
 
 def beam_shift_alignment(microscope: SdbMicroscopeClient, image_settings: ImageSettings, ref_image: AdornedImage, reduced_area):
-    """Align the images by adjusting the beam shift, instead of moving the stage 
+    """Align the images by adjusting the beam shift, instead of moving the stage
             (increased precision, lower range)
 
     Args:
         microscope (SdbMicroscopeClient): autoscript microscope client
         image_settings (acquire.ImageSettings): settings for taking image
         ref_image (AdornedImage): reference image to align to
-        reduced_area (Rectangle): The reduced area to image with.  
+        reduced_area (Rectangle): The reduced area to image with.
     """
 
     # # align using cross correlation
@@ -652,12 +656,12 @@ def automatic_eucentric_correction(microscope: SdbMicroscopeClient, settings: di
         eucentric_height (float, optional): manually calibrated eucentric height. Defaults to 3.9e-3.
     """
 
-    # autofocus in eb 
+    # autofocus in eb
     movement.auto_link_stage(microscope)
 
     # move stage to z=3.9
     microscope.specimen.stage.set_default_coordinate_system()
-    
+
     # turn on z-y linked movement
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
