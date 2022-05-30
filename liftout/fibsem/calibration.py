@@ -185,7 +185,7 @@ def rotate_AdornedImage(image):
 
 
 def shift_from_crosscorrelation_AdornedImages(
-    img1: AdornedImage, img2: AdornedImage, lowpass: int = 128, highpass: int = 6, sigma: int = 6, use_rect_mask: bool = False
+    img1: AdornedImage, img2: AdornedImage, lowpass: int = 128, highpass: int = 6, sigma: int = 6, use_rect_mask: bool = False, DEBUG=False
 ):
     pixelsize_x_1 = img1.metadata.binary_result.pixel_size.x
     pixelsize_y_1 = img1.metadata.binary_result.pixel_size.y
@@ -214,7 +214,6 @@ def shift_from_crosscorrelation_AdornedImages(
     logging.info(f"X-shift =  {x_shift:.2e} meters")
     logging.info(f"Y-shift =  {y_shift:.2e} meters")
 
-    DEBUG=True
     if DEBUG:
         return x_shift, y_shift, xcorr
     return x_shift, y_shift  # metres
