@@ -580,7 +580,15 @@
     <addaction name="actionMark_Sample_Position_Failed"/>
     <addaction name="menuChange_Mode"/>
    </widget>
+   <widget class="QMenu" name="menuUtilities">
+    <property name="title">
+     <string>Utilities</string>
+    </property>
+    <addaction name="actionSputter_Platinum"/>
+    <addaction name="actionSharpen_Needle"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuUtilities"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_Experiment">
@@ -606,6 +614,16 @@
   <action name="actionAutoLamella">
    <property name="text">
     <string>AutoLamella</string>
+   </property>
+  </action>
+  <action name="actionSputter_Platinum">
+   <property name="text">
+    <string>Sputter Platinum</string>
+   </property>
+  </action>
+  <action name="actionSharpen_Needle">
+   <property name="text">
+    <string>Sharpen Needle</string>
    </property>
   </action>
  </widget>

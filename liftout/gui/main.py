@@ -1587,6 +1587,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.actionAutoLamella.triggered.connect(self.enable_autolamella)
         self.actionAutoLiftout.triggered.connect(self.enable_autoliftout)
 
+        # utilities
+        self.actionSharpen_Needle.triggered.connect(self.reset_needle)
+        self.actionSputter_Platinum.triggered.connect(self.sputter_platinum_on_whole_sample_grid)
+
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
 

@@ -103,12 +103,14 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # log correct detection types
         if self.parent():
-            sample_id = self.parent().current_sample_position.sample_id
-            current_stage = self.parent().current_stage
-            for det_type in self.det_types:
-                if det_type not in self.logged_detection_types:
-                    logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}")
-
+            try:
+                sample_id = self.parent().current_sample_position.sample_id
+                current_stage = self.parent().current_stage
+                for det_type in self.det_types:
+                    if det_type not in self.logged_detection_types:
+                        logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}")
+            except:
+                pass
 
         event.accept()
 

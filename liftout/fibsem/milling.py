@@ -126,82 +126,82 @@ def mill_polish_lamella(microscope: SdbMicroscopeClient, settings: dict, image_s
     # generate patterns (user change?)    
     lower_pattern, upper_pattern = patterns
 
-    # retrieve pattern values, (the objects are deleted by clear_patterns)
-    l_cx = lower_pattern.center_x
-    l_cy = lower_pattern.center_y
-    l_w = lower_pattern.width
-    l_h = lower_pattern.height
-    l_d = lower_pattern.depth
+    # # retrieve pattern values, (the objects are deleted by clear_patterns)
+    # l_cx = lower_pattern.center_x
+    # l_cy = lower_pattern.center_y
+    # l_w = lower_pattern.width
+    # l_h = lower_pattern.height
+    # l_d = lower_pattern.depth
 
-    u_cx = upper_pattern.center_x
-    u_cy = upper_pattern.center_y
-    u_w = upper_pattern.width
-    u_h = upper_pattern.height
-    u_d = upper_pattern.depth
+    # u_cx = upper_pattern.center_x
+    # u_cy = upper_pattern.center_y
+    # u_w = upper_pattern.width
+    # u_h = upper_pattern.height
+    # u_d = upper_pattern.depth
 
-    # clear patterns...
-    microscope.patterning.clear_patterns()
+    # # clear patterns...
+    # microscope.patterning.clear_patterns()
     
-    # # tilt up for bottom pattern
-    # tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
-    # microscope.specimen.stage.relative_move(tilt_up)
+    # # # tilt up for bottom pattern
+    # # tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    # # microscope.specimen.stage.relative_move(tilt_up)
 
-    # absolute moves...    
-    tilt_negative = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    microscope.specimen.stage.absolute_move(tilt_negative)
+    # # absolute moves...    
+    # tilt_negative = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    # microscope.specimen.stage.absolute_move(tilt_negative)
 
-    # multi-step alignment
-    for i in range(CROSSCORRELATION_STEPS):
-        image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_stage_{i+1}"
-        calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+    # # multi-step alignment
+    # for i in range(CROSSCORRELATION_STEPS):
+    #     image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_stage_{i+1}"
+    #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
-    image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
-    _ = acquire.new_image(microscope, image_settings, reduced_area)
+    # image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
+    # _ = acquire.new_image(microscope, image_settings, reduced_area)
 
 
-    # mill bottom pattern
-    # draw bottom pattern
-    lower_pattern = microscope.patterning.create_cleaning_cross_section(
-        center_x=l_cx,
-        center_y=l_cy,
-        width=l_w,
-        height=l_h,
-        depth=l_d
-    )
-    lower_pattern.scan_direction = "BottomToTop"
+    # # mill bottom pattern
+    # # draw bottom pattern
+    # lower_pattern = microscope.patterning.create_cleaning_cross_section(
+    #     center_x=l_cx,
+    #     center_y=l_cy,
+    #     width=l_w,
+    #     height=l_h,
+    #     depth=l_d
+    # )
+    # lower_pattern.scan_direction = "BottomToTop"
 
-    # run milling
-    run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
+    # # run milling
+    # run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
 
-    # reset back to starting tilt
-    # tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    # microscope.specimen.stage.relative_move(tilt_back)
+    # # reset back to starting tilt
+    # # tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
+    # # microscope.specimen.stage.relative_move(tilt_back)
 
-    # reset beam shift
-    calibration.reset_beam_shifts(microscope)
+    # # reset beam shift
+    # calibration.reset_beam_shifts(microscope)
 
-    # tilt down for top pattern
-    tilt_positive = StagePosition(t=np.deg2rad(-TILT_OFFSET))
-    microscope.specimen.stage.absolute_move(tilt_positive)
+    # # tilt down for top pattern
+    # tilt_positive = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+    # microscope.specimen.stage.absolute_move(tilt_positive)
     
-    # multi-step alignment
-    for i in range(CROSSCORRELATION_STEPS):
-        image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_stage_{i+1}"
-        calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+    # # multi-step alignment
+    # for i in range(CROSSCORRELATION_STEPS):
+    #     image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_stage_{i+1}"
+    #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
     
-    image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
-    _ = acquire.new_image(microscope, image_settings, reduced_area)
+    # image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
+    # _ = acquire.new_image(microscope, image_settings, reduced_area)
     
-    # mill top pattern
-    # draw top pattern
-    upper_pattern = microscope.patterning.create_cleaning_cross_section(
-        center_x = u_cx,
-        center_y = u_cy,
-        width = u_w,
-        height = u_h,
-        depth = u_d
-    )
-    upper_pattern.scan_direction = "TopToBottom"
+    # # mill top pattern
+    # # draw top pattern
+    # upper_pattern = microscope.patterning.create_cleaning_cross_section(
+    #     center_x = u_cx,
+    #     center_y = u_cy,
+    #     width = u_w,
+    #     height = u_h,
+    #     depth = u_d
+    # )
+    # upper_pattern.scan_direction = "TopToBottom"
     
     # run milling
     run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
@@ -366,10 +366,7 @@ def jcut_milling_patterns(microscope: SdbMicroscopeClient, settings: dict, centr
     flat_to_ion_angle = settings["system"]["stage_tilt_flat_to_ion"]
     assert flat_to_ion_angle == 52
 
-    # Setup
-    # setup_ion_milling(microscope, ion_beam_field_of_view=jcut_hfw)
     # Create milling patterns
-
     angle_correction = np.sin(np.deg2rad(flat_to_ion_angle - jcut_angle_degrees)) #MAGIC_NUMBER
     # Top bar of J-cut
     logging.info("milling: creating top J-cut pattern")
