@@ -777,23 +777,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def mill_lamella_trench(self):
 
-        # (lamella_coordinates, landing_coordinates,
-        #     original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
-
-        # ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
-        #                                       original_lamella_area_images, mode='eb')
-
-        # if ret is False:
-        #     # cross-correlation has failed, manual correction required
-        #     self.ask_user_movement(msg_type="centre_eb")
-        #     logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
-
-        # self.update_image_settings(
-        #     save=True,
-        #     label="initial_position_post_drift_correction"
-        # )
-        # acquire.take_reference_images(self.microscope, self.image_settings)
-
         # move flat to the ion beam, stage tilt 25 (total image tilt 52)
         movement.move_to_trenching_angle(self.microscope, self.settings)
 
@@ -1105,9 +1088,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # after eucentricity... we should be at 4mm,
         # so we should set wd to 4mm and link
 
+        # TODO: dont think we need to do this if we restore the position...should be accurate enough?
         ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
                                               original_landing_images, mode="land")
-
         if ret is False:
             # cross-correlation has failed, manual correction required
             self.ask_user_movement(msg_type="centre_ib")
@@ -1218,7 +1201,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ############################## WELD TO LANDING POST #############################################
 
         self.open_milling_window(MillingPattern.Weld)
-        #################################################################################################
 
         # final reference images
         self.update_image_settings(
@@ -1228,6 +1210,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         )
         acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
+        #################################################################################################
 
         ###################################### CUT_OFF_NEEDLE ######################################
 
@@ -1410,7 +1393,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=False
         )
 
-        self.ask_user_movement(msg_type="centre_ib")
+        self.ask_user_movement(msg_type="alignment")
 
         # take reference images
         self.update_image_settings(
@@ -1467,7 +1450,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=False
         )
 
-        self.ask_user_movement(msg_type="centre_ib")
+        self.ask_user_movement(msg_type="alignment")
 
         # take reference images
         self.update_image_settings(

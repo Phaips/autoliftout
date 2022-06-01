@@ -333,8 +333,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         
         self.estimated_milling_time_s = volume / total_volume_sputter_rate # um3 * 1/ (um3 / s) = seconds
 
-        logging.info(f"WHDV: {width}, {height}, {depth}, {volume}")
-        logging.info(f"Milling Volume Sputter Rate: {total_volume_sputter_rate}")
+        logging.info(f"WHDV: {width:.2f}um, {height:.2f}um, {depth:.2f}um, {volume:.2f}um3")
+        logging.info(f"Milling Volume Sputter Rate: {total_volume_sputter_rate} um3/s")
         logging.info(f"Milling Estimated Time: {self.estimated_milling_time_s / 60:.2f}m")
 
         # update labels
@@ -458,7 +458,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def run_milling_button_pressed(self):
         """Run ion beam milling for the selected milling pattern"""
 
-        logging.info("Run Milling Button Pressed")
         logging.info(f"Running milling for {len(self.milling_stages)} Stages")
 
         if self.milling_pattern_type == MillingPattern.Polish:
@@ -467,7 +466,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                         settings=self.settings, 
                         image_settings=self.image_settings, 
                         patterns=self.patterns, 
-                        )
+                        ) # TODO: move this into the standard flow if titling is not required
         else:
             for stage_name, milling_settings in self.milling_stages.items():
                 

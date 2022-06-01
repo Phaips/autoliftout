@@ -130,8 +130,8 @@ thin_lamella:
   resolution: "3072x2048"
   dwell_time: 200.e-9
   rotation_angle: 50 # deg (raw)
-  tilt_angle: 0 # deg
-  lamella_width: 4.0e-6 # in meters
+  tilt_angle: 12 # deg
+  lamella_width: 6.0e-6 # in meters
   lamella_height: 1.0e-6 # in meters
   milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 0.2e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
@@ -153,9 +153,9 @@ polish_lamella:
   resolution: "3072x2048"
   dwell_time: 200.e-9 
   rotation_angle: 50 # deg (raw)
-  tilt_angle: 0 # deg
+  tilt_angle: 12 # deg
   tilt_offset: 1 # deg
-  lamella_width: 4.0e-6 # in meters
+  lamella_width: 6.0e-6 # in meters
   lamella_height: 0.45e-6 # in meters
   milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
   milling_current: 20.e-12  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
