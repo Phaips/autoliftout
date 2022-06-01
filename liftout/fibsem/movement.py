@@ -442,7 +442,13 @@ def x_corrected_stage_movement(expected_x: float, settings: dict = None, stage_t
     return StagePosition(x=expected_x, y=0, z=0)
 
 
-def y_corrected_stage_movement(expected_y: float, stage_tilt: float, settings: dict, beam_type: BeamType = BeamType.ELECTRON) -> StagePosition:
+# TODO: fix this function arguments properly
+def y_corrected_stage_movement(
+    microscope: SdbMicroscopeClient = None, 
+    expected_y: float = 0.0, 
+    stage_tilt: float = 0.0, 
+    settings: dict = None, 
+    beam_type: BeamType = BeamType.ELECTRON) -> StagePosition:
     """Stage movement in Y, corrected for tilt of sample surface plane.
     ----------
     expected_y : in meters
@@ -455,37 +461,49 @@ def y_corrected_stage_movement(expected_y: float, stage_tilt: float, settings: d
         Stage position to pass to relative movement function.
     """
 
-    pretilt_angle = settings["system"]["pretilt_angle"]
-    stage_tilt_flat_to_ion = settings["system"]["stage_tilt_flat_to_ion"]
+    # all angles in radians
+    pretilt_angle = np.deg2rad(settings["system"]["pretilt_angle"])
+    stage_tilt_flat_to_ion = np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"])
+
+    stage_rotation_flat_to_eb = np.deg2rad(settings["system"]["stage_rotation_flat_to_electron"]) % (2*np.pi)
+    stage_rotation_flat_to_ion = np.deg2rad(settings["system"]["stage_rotation_flat_to_ion"]) % (2*np.pi)
+    stage_rotation = microscope.specimen.stage.current_position.r % (2*np.pi)
+    stage_tilt = microscope.specimen.stage.current_position.t
+
+    # pretilt angle depends on rotation
+    if np.isclose(stage_rotation, stage_rotation_flat_to_eb, atol=np.deg2rad(5)):
+        PRETILT_SIGN = 1.0
+    if np.isclose(stage_rotation, stage_rotation_flat_to_ion, atol=np.deg2rad(5)):
+        PRETILT_SIGN = -1.0
+
+    corrected_pretilt_angle = PRETILT_SIGN * pretilt_angle
 
     if beam_type == BeamType.ELECTRON:
-        tilt_adjustment = np.deg2rad(-pretilt_angle)
+        tilt_adjustment = -corrected_pretilt_angle
+        SCALE_FACTOR = 0.78342 # patented technology
     elif beam_type == BeamType.ION:
-        tilt_adjustment = np.deg2rad(stage_tilt_flat_to_ion - pretilt_angle)
-    # tilt_radians = stage_tilt + tilt_adjustment
-    tilt_radians = tilt_adjustment
-    y_move = +np.cos(tilt_radians) * expected_y
-    z_move = -np.sin(tilt_radians) * expected_y
-
-    # new
-    # y_move = expected_y / np.cos(stage_tilt + tilt_adjustment)
-    # z_move = y_move * np.tan(np.deg2rad(pretilt_angle))
-
-    #   stage_rotation_flat_to_electron: 50 # degrees
-    # if np.isclose(microscope.specimen.stage.current_position.r, 
-    #               np.deg2rad(settings["system"]["stage_rotation_flat_to_electron"], 
-    #               atol=np.deg2rad(5)): 
-    #     # positve y, negative z
-    #     y_move = y_move
-    #     z_move = -z_move
-    # #   stage_rotation_flat_to_ion: 230 # degrees
-    # if np.isclose(microscope.specimen.stage.current_position.r, 
-    #               np.deg2rad(settings["system"]["stage_rotation_flat_to_ion"], 
-    #               atol=np.deg2rad(5)): 
-    #     # positive y, positive z
-    #     y_move = y_move
-    #     z_move = z_move
+        tilt_adjustment = -corrected_pretilt_angle - stage_tilt_flat_to_ion
+        SCALE_FACTOR = 1.0
     
+    # old
+    if microscope is None:
+        # tilt_radians = stage_tilt + tilt_adjustment
+        tilt_radians = tilt_adjustment
+        y_move = +np.cos(tilt_radians) * expected_y
+        z_move = -np.sin(tilt_radians) * expected_y
+    else:
+        # new
+        y_sample_move = (expected_y * SCALE_FACTOR) / np.cos(stage_tilt + tilt_adjustment)
+        y_move = y_sample_move * np.cos(corrected_pretilt_angle)
+        z_move = y_sample_move * np.sin(corrected_pretilt_angle)
+    
+    print(f"rotation:  {microscope.specimen.stage.current_position.r} rad")
+    print(f"stage_tilt: {np.rad2deg(stage_tilt)}deg")
+    print(f"tilt_adjustment: {np.rad2deg(tilt_adjustment)}deg")
+    print(f"expected_y: {expected_y:.3e}m")
+    print(f"y_sample_move: {y_sample_move:.3e}m")
+    print(f"y-move: {y_move:.3e}m")
+    print(f"z-move: {z_move:.3e}m")
 
     logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
     logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")

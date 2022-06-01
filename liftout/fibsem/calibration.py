@@ -54,7 +54,7 @@ def correct_stage_drift(
         new_eb_lowres, new_ib_lowres = take_reference_images(
             microscope, image_settings=image_settings
         )
-        ret = align_using_reference_images(ref_lowres, new_ib_lowres, stage, mode=mode)
+        ret = align_using_reference_images(microscope, ref_lowres, new_ib_lowres, stage, mode=mode)
         if ret is False:
             return ret
 
@@ -65,7 +65,7 @@ def correct_stage_drift(
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, image_settings=image_settings
         )
-        ret = align_using_reference_images(
+        ret = align_using_reference_images(microscope,
             ref_highres, new_ib_highres, stage, mode=mode
         )
 
@@ -76,7 +76,7 @@ def correct_stage_drift(
             new_eb_lowres, new_ib_lowres = take_reference_images(
                 microscope, image_settings=image_settings
             )
-            ret = align_using_reference_images(ref_lowres, new_eb_lowres, stage)
+            ret = align_using_reference_images(microscope, ref_lowres, new_eb_lowres, stage)
             if ret is False:
                 return ret
 
@@ -87,13 +87,13 @@ def correct_stage_drift(
         new_eb_highres, new_ib_highres = take_reference_images(
             microscope, image_settings=image_settings
         )
-        ret = align_using_reference_images(ref_highres, new_eb_highres, stage)
+        ret = align_using_reference_images(microscope, ref_highres, new_eb_highres, stage)
 
     logging.info(f"CROSSCORRELATION | {mode} | {ret}")
     return ret
 
 
-def align_using_reference_images(ref_image: AdornedImage, new_image: AdornedImage, stage: StagePosition, mode: str = None) -> bool:
+def align_using_reference_images(microscope: SdbMicroscopeClient, ref_image: AdornedImage, new_image: AdornedImage, stage: StagePosition, mode: str = None) -> bool:
 
     # three different types of cross correlation, E-E, E-I, I-I
     if mode == "land":
@@ -137,7 +137,9 @@ def align_using_reference_images(ref_image: AdornedImage, new_image: AdornedImag
         }
         x_move = x_corrected_stage_movement(-dx_ei_meters)
         yz_move = y_corrected_stage_movement(
-            dy_ei_meters, stage.current_position.t,
+            microscope=microscope,
+            expected_y=dy_ei_meters, 
+            stage_tilt=stage.current_position.t,
             settings=tmp_settings,
             beam_type=beam_type
         )  # check electron/ion movement

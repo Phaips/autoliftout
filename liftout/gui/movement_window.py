@@ -155,7 +155,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             self.label_height.setVisible(False)
             self.label_header_height.setVisible(False)
 
-
     def take_image_button_pressed(self):
         """Take a new image with the current image settings."""
 
@@ -208,7 +207,8 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         # calculate stage movement
         x_move = movement.x_corrected_stage_movement(self.center_x,
                                                      stage_tilt=stage.current_position.t)
-        yz_move = movement.y_corrected_stage_movement(self.center_y,
+        yz_move = movement.y_corrected_stage_movement(microscope=self.microscope,
+                                                      expected_y=self.center_y,
                                                       stage_tilt=stage.current_position.t,
                                                       settings=self.settings,
                                                       beam_type=beam_type)
@@ -275,7 +275,7 @@ def main():
     qt_app = GUIMMovementWindow(microscope=microscope,
                                 settings=settings,
                                 image_settings=image_settings,
-                                msg_type="alignment"
+                                msg_type="eucentric"
                                 )
     qt_app.show()
     sys.exit(app.exec_())
