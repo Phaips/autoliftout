@@ -63,8 +63,11 @@ def run_milling(microscope: SdbMicroscopeClient, settings: dict, milling_current
     if milling_current is None:
         milling_current = settings["imaging"]["milling_current"]
     if microscope.beams.ion_beam.beam_current.value != milling_current:     
+        # if milling_current not in microscope.beams.ion_beam.beam_current.available_values:
+        #   switch to closest
+
         microscope.beams.ion_beam.beam_current.value = milling_current
-    
+
     # run milling (asynchronously)
     if asynch:
         microscope.patterning.start()
@@ -260,21 +263,21 @@ def get_milling_protocol_stages(settings, stage_name):
 
     return protocol_stages
 
-def setup_milling(microscope, settings, stage_settings):
-    """Setup the ion beam system ready for milling.
-    Parameters
-    ----------
-    microscope : Autoscript microscope object.
-    settings :  Dictionary of user input argument settings.
-    stage_settings : Dictionary of settings for a single protocol milling stage
-    Returns
-    -------
-    Autoscript microscope object.
-    """
-    ccs_file = settings["system"]["application_file_cleaning_cross_section"]
-    microscope = reset_state(microscope, settings, application_file=ccs_file)
-    microscope.beams.ion_beam.beam_current.value = stage_settings["milling_current"]
-    return microscope
+# def setup_milling(microscope, settings, stage_settings):
+#     """Setup the ion beam system ready for milling.
+#     Parameters
+#     ----------
+#     microscope : Autoscript microscope object.
+#     settings :  Dictionary of user input argument settings.
+#     stage_settings : Dictionary of settings for a single protocol milling stage
+#     Returns
+#     -------
+#     Autoscript microscope object.
+#     """
+#     ccs_file = settings["system"]["application_file_cleaning_cross_section"]
+#     microscope = reset_state(microscope, settings, application_file=ccs_file)
+#     microscope.beams.ion_beam.beam_current.value = stage_settings["milling_current"]
+#     return microscope
 
 
 def reset_state(microscope, settings, application_file=None):
@@ -302,8 +305,7 @@ def reset_state(microscope, settings, application_file=None):
 
 def setup_ion_milling(
     microscope,
-    *,
-    application_file="Si_Alex",
+    application_file="autolamella",
     patterning_mode="Serial",
     ion_beam_field_of_view=100e-6,
 ):
@@ -321,7 +323,6 @@ def setup_ion_milling(
     ion_beam_field_of_view : float, optional
         Width of ion beam field of view in meters, by default 59.2e-6
     """
-    # TODO: remove Si_Alex, and replace with autolamella after testing milling
     microscope.imaging.set_active_view(2)  # the ion beam view
     microscope.patterning.set_default_beam_type(2)  # ion beam default
     microscope.patterning.set_default_application_file(application_file)
@@ -396,7 +397,7 @@ def jcut_milling_patterns(microscope: SdbMicroscopeClient, settings: dict, centr
     )  # depth
 
     # use parallel mode for jcut
-    microscope.patterning.mode = "Parallel"
+    # microscope.patterning.mode = "Parallel"
 
     return [jcut_top, jcut_lhs, jcut_rhs]
 

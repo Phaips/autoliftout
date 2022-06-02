@@ -10,9 +10,7 @@ import uuid
 import petname
 
 from liftout.fibsem.acquire import BeamType
-
-
-from autoscript_sdb_microscope_client.structures import *
+from autoscript_sdb_microscope_client.structures import StagePosition, AdornedImage
 
 class AutoLiftoutStage(Enum):
     Initialisation = -1
@@ -36,6 +34,7 @@ class BeamSettings:
     hfw: float = None
     resolution: float = None
     dwell_time: float = None
+    stigmation: float = None
 
 @dataclass
 class MicroscopeState:
@@ -77,6 +76,8 @@ class SamplePosition:
 
         self.sample_id = uuid.uuid4()
         self.microscope_state: MicroscopeState = MicroscopeState()
+
+        self.history: list[MicroscopeState] = None
 
     def setup_yaml_file(self):
         # check if yaml file already exists for this timestamp..

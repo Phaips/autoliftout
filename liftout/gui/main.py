@@ -859,11 +859,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
     def correct_stage_drift_with_ML(self):
+
+        # TODO: move into calibration, functionalise
+        # microscope, settings, image_settings
+        # stage = microscope.specimen.stage
+        
         # correct stage drift using machine learning
         label = self.image_settings.label
 
         for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
-            self.image_settings.label = label + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+            self.image_settings.label = label + utils.current_timestamp() # datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
             det = self.validate_detection(self.microscope, 
                                             self.settings, 
                                             self.image_settings, 
@@ -872,15 +877,17 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # yz-correction
             x_move = movement.x_corrected_stage_movement(det.distance_metres.x, settings=self.settings, stage_tilt=self.stage.current_position.t)
-            yz_move = movement.y_corrected_stage_movement(det.distance_metres.y, stage_tilt=self.stage.current_position.t, 
+            yz_move = movement.y_corrected_stage_movement(self.microscope, det.distance_metres.y, stage_tilt=self.stage.current_position.t, 
                                                         settings=self.settings, beam_type=beamType)
             self.stage.relative_move(x_move)
             self.stage.relative_move(yz_move)
 
         self.update_image_settings(
             save=True,
-            label=f'drift_correction_ML_final_' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
+            label=f'drift_correction_ML_final_' + utils.current_timestamp()
         )
+        # self.image_settings.save = True
+        # self.image_settings.label = f'drift_correction_ML_final_' + utils.current_timestamp()
         acquire.take_reference_images(self.microscope, self.image_settings)
 
 
@@ -912,16 +919,21 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # movement.auto_link_stage(self.microscope) # This is too unreliable to fix the miscalibration
             logging.warning(f"Calibration error detected: stage position height")
             logging.warning(f"Stage Position: {self.stage.current_position}")
-            display_error_message(message="The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
-                "The needle will contact the sample, and it is unsafe to insert the needle. "
-                "\nPlease manually recalibrate the focus and restart the program. "
-                "\n\nThe AutoLiftout GUI will now exit.",
-                title="Calibration Error"
-            )
+            # display_error_message(message="The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
+            #     "The needle will contact the sample, and it is unsafe to insert the needle. "
+            #     "\nPlease manually recalibrate the focus and restart the program. "
+            #     "\n\nThe AutoLiftout GUI will now exit.",
+            #     title="Calibration Error"
+            # )
 
-            # Aborting Liftout
-            self.disconnect()
-            exit(0)
+            self.ask_user_interaction(msg="The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
+                "The needle will contact the sample, and it is unsafe to insert the needle. "
+                "\nPlease manually refocus and link the stage, then press OK to continue. ", 
+                beam_type=BeamType.ELECTRON)
+            
+            # # Aborting Liftout
+            # self.disconnect()
+            # exit(0)
 
         park_position = movement.move_needle_to_liftout_position(self.microscope)
         logging.info(f"{self.current_stage.name}: needle inserted to park positon: {park_position}")
@@ -1074,12 +1086,12 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def land_lamella(self):
 
-        # load positions and reference images,
-        (lamella_coordinates, landing_coordinates,
-         original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
+        # # load positions and reference images,
+        # (lamella_coordinates, landing_coordinates,
+        #  original_lamella_area_images, original_landing_images) = self.current_sample_position.get_sample_data()
 
         # move to landing coordinate
-        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=landing_coordinates)
+        movement.safe_absolute_stage_movement(microscope=self.microscope, stage_position=self.current_sample_position.landing_coordinates)
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
         # confirm eucentricity
@@ -1088,13 +1100,13 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # after eucentricity... we should be at 4mm,
         # so we should set wd to 4mm and link
 
-        # TODO: dont think we need to do this if we restore the position...should be accurate enough?
-        ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
-                                              original_landing_images, mode="land")
-        if ret is False:
-            # cross-correlation has failed, manual correction required
-            self.ask_user_movement(msg_type="centre_ib")
-            logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
+        # # TODO: dont think we need to do this if we restore the position...should be accurate enough?
+        # ret = calibration.correct_stage_drift(self.microscope, self.image_settings,
+        #                                       original_landing_images, mode="land")
+        # if ret is False:
+        #     # cross-correlation has failed, manual correction required
+        #     self.ask_user_movement(msg_type="centre_ib")
+        #     logging.info(f"{self.current_stage.name}: cross-correlation manually corrected")
 
         logging.info(f"{self.current_stage.name}: initial landing calibration complete.")
 
@@ -1347,6 +1359,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
         # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
         self.stage.absolute_move(StagePosition(x=0.0, y=0.0))
+
+        # TODO: replace and test
+        # stage_position = StagePosition(x=0, y=0, t=0)
+        # movement.safe_absolute_stage_movement(self.microscope, stage_position)
 
     def thin_lamella(self):
 

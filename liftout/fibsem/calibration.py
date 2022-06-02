@@ -131,7 +131,10 @@ def align_using_reference_images(microscope: SdbMicroscopeClient, ref_image: Ado
         tmp_settings = {  # TODO: MAGIC NUMBERS REMOVE when doing refactor
             "system": {
                 "pretilt_angle": 27,  # degrees
-                "stage_tilt_flat_to_ion": 52  # degrees
+                "stage_tilt_flat_to_ion": 52,  # degrees
+                "stage_rotation_flat_to_electron": 50,
+                  "stage_rotation_flat_to_ion": 230 # degrees
+
             }
 
         }

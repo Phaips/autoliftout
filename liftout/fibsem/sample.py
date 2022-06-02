@@ -12,6 +12,7 @@ import uuid
 import petname
 
 from autoscript_sdb_microscope_client.structures import StagePosition, AdornedImage, ManipulatorPosition
+from liftout import utils
 from liftout.fibsem.sampleposition import AutoLiftoutStage, MicroscopeState, ReferenceImages
 
 
@@ -36,8 +37,8 @@ class Sample:
 
         else:
             # create new yaml file
-            sample_yaml = {
-                "created": datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S'),
+            sample_yaml = { 
+                "created": utils.current_timestamp(),
                 "data_path": data_path,
                 "sample": {},
             }
@@ -76,14 +77,21 @@ class AutoLiftoutStageState:
     end_timestamp: float
 
 
+# Sample:
+#   data_path: Path
+#   
+#   positions: [Lamella, Lamella, Lamella]
+
+
+
 # Lamella
-#   StagePosition
-#   StagePosition
-#   ReferenceImages
-#   ReferenceImages       
-#   StageState
-#       AutoLiftoutStage
-#       MicroscopeState
-#           BeamSettings
-#           BeamSettings
-#           StagePosition
+#   lamella_coordinates: StagePosition
+#   landing_coordinates: StagePosition
+#   lamella_ref_images: ReferenceImages       
+#   landing_ref_images: ReferenceImages
+#   state: AutoLiftoutStageState
+#       stage: AutoLiftoutStage
+#       microscope_state: MicroscopeState
+#           eb_settings: BeamSettings
+#           ib_settings: BeamSettings
+#           absolute_position: StagePosition

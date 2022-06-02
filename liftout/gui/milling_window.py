@@ -521,7 +521,9 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
+    # settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
+    # settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_xenon.yml")
+    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_oxygen.yml")
     microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
     image_settings = ImageSettings(
         resolution = settings["imaging"]["resolution"],
@@ -544,11 +546,11 @@ def main():
     import os
     os.makedirs(image_settings.save_path, exist_ok=True)
 
-    image_settings.hfw = settings["thin_lamella"]["hfw"]
-    image_settings.resolution = settings["thin_lamella"]["resolution"]
-    image_settings.dwell_time = settings["thin_lamella"]["dwell_time"]
+    # image_settings.hfw = settings["thin_lamella"]["hfw"]
+    # image_settings.resolution = settings["thin_lamella"]["resolution"]
+    # image_settings.dwell_time = settings["thin_lamella"]["dwell_time"]
 
-    # image_settings.hfw = 30.e-6
+    image_settings.hfw = 80.e-6
     from liftout.fibsem import calibration
     calibration.reset_beam_shifts(microscope)       
 
@@ -556,7 +558,7 @@ def main():
     qt_app = GUIMillingWindow(microscope=microscope, 
                                 settings=settings, 
                                 image_settings=image_settings, 
-                                milling_pattern_type=MillingPattern.Polish)
+                                milling_pattern_type=MillingPattern.JCut)
     qt_app.show()
     sys.exit(app.exec_())
 

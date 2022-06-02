@@ -37,7 +37,7 @@ imaging:
   autocontrast: True
   max_eb_hfw: 2700.0e-6
   max_ib_hfw: 900.0e-6
-  milling_current: 0.74e-9
+  milling_current: 0.23e-9
 gamma:
   correction: True
   min_gamma: 0.15
@@ -76,22 +76,22 @@ lamella:
   lamella_width: 12.0e-6 # in meters
   lamella_height: 5.0e-6 # in meters
   milling_depth: 10.0e-6 # default milling depth, unless otherwise specified # zebra 2.2
-  milling_current: 5.6e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  milling_current: 1.7e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   stress_relief_offset: 10.0e-6
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
-    - milling_current: 5.6e-9
+    - milling_current: 1.7e-9
       offset: 2.0e-6
       trench_height: 2.0e-6
     # regular cut
-    - milling_current: 5.6e-9
+    - milling_current: 1.7e-9
       offset: 0.0e-6
       trench_height: 5.0e-6
 machine_learning:
   weights: boost_n05_model.pt
 jcut:
-  milling_current: 0.74e-9 # in Amps
+  milling_current: 0.23e-9 # in Amps
   jcut_angle: 6  # in degrees (relative from trench)
   length: 12e-6 # in meters
   height: 5e-6 # in meters
@@ -111,7 +111,7 @@ sharpen:
   hfw: 150.e-6
   tip_angle: 10
   needle_angle: 40
-  milling_current: 7.6e-9 # in Amps
+  milling_current: 5.6e-9 # in Amps
 cut:
   width: 10.e-6
   height: 0.5e-6
@@ -124,7 +124,7 @@ flatten_landing:
   width: 2.e-6
   height: 25.e-6
   depth: 10.e-6
-  milling_current: 7.6e-9
+  milling_current: 5.6e-9
 thin_lamella:
   hfw: 50.e-6
   resolution: "3072x2048"
@@ -134,7 +134,7 @@ thin_lamella:
   lamella_width: 6.0e-6 # in meters
   lamella_height: 1.0e-6 # in meters
   milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
-  milling_current: 0.2e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  milling_current: 0.23e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   offset: 1.0e-6
   trench_height: 2.0e-6
@@ -167,7 +167,7 @@ fiducial:
   width: 0.25e-6
   depth: 5.e-6
   rotation: 0 # deg
-  milling_current: 7.6e-9
+  milling_current: 5.6e-9
 reduced_area: 
   # x: 0.35
   # y: 0.35
