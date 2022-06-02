@@ -1572,9 +1572,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_thinning.setEnabled(False)  # disable unless sample positions are loaded
 
         # load data
-        self.pushButton_load_sample_data.setVisible(False)
-        self.pushButton_load_sample_data.setEnabled(False)
-        self.pushButton_load_sample_data.clicked.connect(lambda: self.setup_experiment())
         self.pushButton_add_sample_position.setVisible(False)
 
         # configuration management
