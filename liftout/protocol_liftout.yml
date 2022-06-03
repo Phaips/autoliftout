@@ -4,7 +4,7 @@ system:
   application_file_rectangle: "autolamella"
   #application_file_rectangle: "Si_Alex"
   application_file_cleaning_cross_section: "autolamella"
-  plasma_gas: "Oxygen" # proper case, e.g. Argon, Oxygen
+  plasma_gas: "Argon" # proper case, e.g. Argon, Oxygen
   high_voltage: 30000 # volts
   stage_rotation_flat_to_electron: 50 # degrees
   stage_rotation_flat_to_ion: 230 # degrees
@@ -76,16 +76,16 @@ lamella:
   lamella_width: 12.0e-6 # in meters
   lamella_height: 5.0e-6 # in meters
   milling_depth: 10.0e-6 # default milling depth, unless otherwise specified # zebra 2.2
-  milling_current: 5.6e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  milling_current: 2.0e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
   stress_relief_offset: 10.0e-6
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
-    - milling_current: 5.6e-9
+    - milling_current: 2.0e-9
       offset: 2.0e-6
       trench_height: 2.0e-6
     # regular cut
-    - milling_current: 5.6e-9
+    - milling_current: 2.0e-9
       offset: 0.0e-6
       trench_height: 5.0e-6
 machine_learning:
@@ -101,7 +101,7 @@ jcut:
 weld:
   width: 3.e-6
   height: 5.e-6
-  depth: 15.e-9
+  depth: 2.e-9
   rotation: 0
 sharpen:
   height: 2.5e-6

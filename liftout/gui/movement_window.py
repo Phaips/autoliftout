@@ -16,7 +16,7 @@ from PyQt5 import QtCore, QtWidgets
 
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, msg_type: str = None, parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, msg_type: str = None, msg: str = None, parent=None):
         super(GUIMMovementWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -36,7 +36,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             "eucentric": "Please centre a feature in both Beam views (Double click to move). ",
             "alignment": "Please centre the lamella in the Ion Beam, and tilt so the lamella face is perpendicular to the Ion Beam."
         }
-        self.label_message.setText(msg_dict[msg_type])
+        if msg is None:
+            msg = msg_dict[msg_type]
+        self.label_message.setText(msg)
 
         # enable / disable view movement
         self.eb_movement_enabled = False
@@ -55,6 +57,12 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         if msg_type in ["eucentric"]:
             self.vertical_movement_enabled = True
+
+        # movement permissions:
+        # eucentric: eb, ib, vertical
+        # centre_eb: eb
+        # centre_ib: ib
+        # alignment: eb, ib, tilt
 
         self.setup_connections()
         self.update_displays()

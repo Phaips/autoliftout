@@ -44,22 +44,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_stage = AutoLiftoutStage.Initialisation
 
         # load config
-        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
-        self.settings = utils.load_config(config_filename)
+        self.load_configuration(initialisation=True)
 
         self.setupUi(self)
-
-        # UI style
-        def set_ui_style():
-            self.setWindowTitle('AutoLiftout')
-            self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
-            self.label_stage.setStyleSheet("background-color: gray; padding: 10px; border-radius: 5px")
-            self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
-            self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
-            # self.label_status.setStyleSheet("background-color: black;  color: white; padding:10px")
-            self.label_stage.setText(f"{self.current_stage.name}")
-
-        set_ui_style()
+        self.set_ui_style()
         self.showMaximized()
 
         # load experiment
@@ -85,12 +73,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # initial image settings
         self.update_image_settings() 
 
-        # save the metadata
-        utils.save_metadata(self.settings, self.save_path)
-
         if self.microscope:
-            # TODO: add this to validation instead of init
-
             
             self.stage = self.microscope.specimen.stage
             self.needle = self.microscope.specimen.manipulator
@@ -100,6 +83,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
  
         # setup status information
         self.update_status()
+
+        # save the metadata
+        utils.save_metadata(self.settings, self.save_path)
 
         # enable liftout if samples are loaded
         if self.samples:
@@ -131,6 +117,16 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             
         logging.info(f"INIT | {self.current_stage.name} | FINISHED")
 
+    def set_ui_style(self):
+        # UI style
+        self.setWindowTitle('AutoLiftout')
+        self.label_title.setStyleSheet("font-family: Arial; font-weight: bold; font-size: 36px; border: 0px solid lightgray")
+        self.label_stage.setStyleSheet("background-color: gray; padding: 10px; border-radius: 5px")
+        self.label_stage.setFont(QtGui.QFont("Arial", 12, weight=QtGui.QFont.Bold))
+        self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_stage.setText(f"{self.current_stage.name}")
+
+
     def update_scroll_ui(self):
         """Update the central ui grid with current sample data."""
         
@@ -158,8 +154,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
         # TODO: add validation checks for dwell time and resolution
-        print(f"Electron voltage: {self.microscope.beams.electron_beam.high_voltage.value:.2f}")
-        print(f"Electron current: {self.microscope.beams.electron_beam.beam_current.value:.2f}")
+        logging.info(f"Electron voltage: {self.microscope.beams.electron_beam.high_voltage.value:.2f}")
+        logging.info(f"Electron current: {self.microscope.beams.electron_beam.beam_current.value:.2f}")
 
         # set default microscope state
         self.microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
@@ -288,8 +284,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.new_image(self.microscope, self.image_settings)
 
         # Whole-grid platinum deposition
-        self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
-        if self.response:
+        response = self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
+        if response:
             fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
             self.image_settings.label="grid_Pt_deposition"
             acquire.new_image(self.microscope, self.image_settings)
@@ -301,10 +297,10 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # check if samples already has been loaded, and then append from there
         self.current_sample_position = None # reset the current sample
         if self.samples:
-            self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
+            select_another_sample_position = self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ELECTRON)
             self.sample_no = max([sample_position.sample_no for sample_position in self.samples]) + 1
-            select_another_sample_position = self.response
+
         else:
             # select the initial positions to mill lamella
             select_another_sample_position = True
@@ -347,10 +343,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.samples.append(sample_position)
             self.sample_no += 1
 
-        self.ask_user_interaction(msg=f'Do you want to select landing positions?\n'
+        finished_selecting = self.ask_user_interaction(msg=f'Do you want to select landing positions?\n'
                                             f'{len(self.samples)} positions selected so far.')
         
-        finished_selecting = self.response
         self.update_scroll_ui()
 
         # enable adding more samples with piescope
@@ -380,9 +375,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             
             eucentric_calibration = True
 
-            self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
+            select_another_sample_position = self.ask_user_interaction(msg=f'Do you want to select another lamella position?\n'
                                                f'{len(self.samples)} positions selected so far.', beam_type=BeamType.ION)
-            select_another_sample_position = self.response
             self.update_scroll_ui()
             
 
@@ -434,6 +428,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def setup_experiment(self):
 
         # TODO: this could be extracted into a function / refactored
+        # TODO: add a select folder option for new experiment
 
         CONTINUE_SETUP_EXPERIMENT = True
         experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
@@ -472,7 +467,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if not okPressed or experiment_name == "":
                 experiment_name = "default_experiment"
 
-            run_name = f"{experiment_name}_{datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%H%M%S')}"
+            run_name = f"{experiment_name}_{utils.current_timestamp()}"
             self.save_path = utils.make_logging_directory(prefix=run_name)
             self.log_path = utils.configure_logging(save_path=self.save_path, log_filename="logfile")
             self.samples = []
@@ -654,9 +649,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 
                 msg = f"The last completed stage for sample position {sp.sample_no} ({sp.petname}) \nis {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
-                self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
+                response = self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
-                if self.response:
+                if response:
                     
                     # reset to the previous state
                     self.start_of_stage_update(next_stage=next_stage)
@@ -704,9 +699,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 next_stage = AutoLiftoutStage(sp.microscope_state.last_completed_stage.value + 1)
                 msg = f"The last completed stage for sample position {sp.sample_no} ({sp.petname}) \nis {sp.microscope_state.last_completed_stage.name}. " \
                       f"\nWould you like to continue from {next_stage.name}?\n"
-                self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
+                response = self.ask_user_interaction(msg=msg, beam_type=BeamType.ION)
 
-                if self.response:
+                if response:
                     
                     # reset to the previous state
                     self.start_of_stage_update(next_stage=next_stage)
@@ -1035,8 +1030,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         ###
 
         # repeat the final movement until user confirms. 
-        self.response = False
-        while self.response is False:
+        response = False
+        while response is False:
 
             ### Z-MOVE FINAL (ION)
             self.image_settings.hfw = self.settings['reference_images']['needle_ref_img_hfw_highres']
@@ -1066,7 +1061,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.image_settings.save = False
             acquire.take_reference_images(self.microscope, self.image_settings)
 
-            self.ask_user_interaction(msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement", beam_type=BeamType.ION)
+            response = self.ask_user_interaction(msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement", beam_type=BeamType.ION)
 
         # take final reference images
         self.update_image_settings(
@@ -1175,8 +1170,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
 
         # repeat final movement until user confirms landing
-        self.response = False
-        while self.response is False:
+        response = False
+        while response is False:
             #### X-MOVE
             self.update_image_settings(
                 hfw=self.settings["reference_images"]["landing_lamella_ref_img_hfw_highres"],
@@ -1204,7 +1199,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             )
             acquire.take_reference_images(microscope=self.microscope, image_settings=self.image_settings)
 
-            self.ask_user_interaction(msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement", 
+            response = self.ask_user_interaction(msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement", 
                         beam_type=BeamType.ION)
 
 
@@ -1576,7 +1571,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # configuration management
         self.actionLoad_Experiment.triggered.connect(lambda: self.setup_experiment())
-        self.actionLoad_Configuration.triggered.connect(lambda: logging.info("Load Configuration Function")) # TODO: function
+        self.actionLoad_Configuration.triggered.connect(lambda: self.load_configuration(initialisation=False)) # TODO: function
 
         # mode selection
         self.actionMark_Sample_Position_Failed.triggered.connect(lambda: self.mark_sample_position_failed())
@@ -1595,6 +1590,25 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.pushButton_add_sample_position.clicked.connect(lambda: self.select_sample_positions_piescope(initialisation=False))
 
         logging.info("gui: setup connections finished")
+
+    def load_configuration(self, initialisation=False):
+
+        # load config
+        print("Loading configuration")
+    
+        if initialisation:
+            config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
+        else:
+            options = QtWidgets.QFileDialog.Options()
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
+            config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(self,"Load Configuration", os.path.dirname(liftout.__file__) ,
+                            "Yaml Files (*.yml)", options=options)
+
+            if config_filename == "":
+                raise ValueError("")
+
+        self.settings = utils.load_config(config_filename)
+        print(f"Loaded config: {config_filename}")
 
     def enable_autolamella(self):
         self.AUTOLAMELLA_ENABLED = True
@@ -1704,7 +1718,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             ret = self.ask_user_interaction(msg="Hello 1", beam_type=None)
             print("RETURN: ", ret, self.response)
 
-
+    # TODO: test functional versions of these windows
     def ask_user_interaction(self, msg="Default Ask User Message", beam_type=None):
         """Create user interaction window and get return response"""
         ask_user_window = GUIUserWindow(microscope=self.microscope,
@@ -1831,17 +1845,23 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.microscope.disconnect()
 
     def update_status(self):
+        """Update status information
+        """
+        
+        def update_stage_label(label: QtWidgets.QLabel, stage: AutoLiftoutStage):
+            
+            status_colors = {"Initialisation": "gray", 
+                            "Setup": "gold",
+                            "MillTrench": "coral", "MillJCut": "coral", 
+                            "Liftout": "seagreen", "Landing": "dodgerblue",
+                            "Reset": "salmon", 
+                            "Thinning": "mediumpurple", 
+                            "Polishing": "cyan", 
+                            "Finished": "silver"}
+            label.setText(f"{stage.name}")
+            label.setStyleSheet(str(f"background-color: {status_colors[stage.name]}; color: white; border-radius: 5px"))
 
-        self.label_stage.setText(f"{self.current_stage.name}")
-        status_colors = {"Initialisation": "gray", 
-                         "Setup": "gold",
-                         "MillTrench": "coral", "MillJCut": "coral", 
-                         "Liftout": "seagreen", "Landing": "dodgerblue",
-                         "Reset": "salmon", 
-                         "Thinning": "mediumpurple", 
-                         "Polishing": "cyan", 
-                         "Finished": "silver"}
-        self.label_stage.setStyleSheet(str(f"background-color: {status_colors[self.current_stage.name]}; color: white; border-radius: 5px"))
+        update_stage_label(self.label_stage, self.current_stage)
 
         # log info
         with open(self.log_path) as f:

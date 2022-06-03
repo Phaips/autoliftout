@@ -81,10 +81,9 @@ def validate_settings(microscope, config):
 def make_logging_directory(prefix='run'):
     directory = os.path.join(os.path.dirname(liftout.__file__), "log")
     os.makedirs(directory, exist_ok=True)
-    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
 
     save_directory = os.path.join(directory, prefix)
-    os.makedirs(os.path.join(save_directory), exist_ok=True)
+    os.makedirs(save_directory, exist_ok=True)
     return save_directory
 
 
@@ -94,7 +93,6 @@ def save_image(image, save_path, label=''):
 
 
 def current_timestamp():
-
     return datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
 
 def save_metadata(settings, path):

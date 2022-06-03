@@ -16,6 +16,7 @@ from scipy import fftpack
 
 BeamType = acquire.BeamType
 
+
 def correct_stage_drift(
     microscope: SdbMicroscopeClient, image_settings: ImageSettings, reference_images: list, mode: str = "eb"
 ) -> bool:
@@ -66,8 +67,8 @@ def correct_stage_drift(
             microscope, image_settings=image_settings
         )
         ret = align_using_reference_images(microscope,
-            ref_highres, new_ib_highres, stage, mode=mode
-        )
+                                           ref_highres, new_ib_highres, stage, mode=mode
+                                           )
 
     else:
         for i in range(lowres_count):
@@ -133,7 +134,7 @@ def align_using_reference_images(microscope: SdbMicroscopeClient, ref_image: Ado
                 "pretilt_angle": 27,  # degrees
                 "stage_tilt_flat_to_ion": 52,  # degrees
                 "stage_rotation_flat_to_electron": 50,
-                  "stage_rotation_flat_to_ion": 230 # degrees
+                "stage_rotation_flat_to_ion": 230  # degrees
 
             }
 
@@ -141,7 +142,7 @@ def align_using_reference_images(microscope: SdbMicroscopeClient, ref_image: Ado
         x_move = x_corrected_stage_movement(-dx_ei_meters)
         yz_move = y_corrected_stage_movement(
             microscope=microscope,
-            expected_y=dy_ei_meters, 
+            expected_y=dy_ei_meters,
             stage_tilt=stage.current_position.t,
             settings=tmp_settings,
             beam_type=beam_type
@@ -152,8 +153,7 @@ def align_using_reference_images(microscope: SdbMicroscopeClient, ref_image: Ado
 
 
 def identify_shift_using_machine_learning(
-    microscope: SdbMicroscopeClient, image_settings: ImageSettings, settings: dict, shift_type: tuple) -> DetectionResult:
-
+        microscope: SdbMicroscopeClient, image_settings: ImageSettings, settings: dict, shift_type: tuple) -> DetectionResult:
 
     eb_image, ib_image = take_reference_images(microscope, image_settings)
     weights_file = settings["machine_learning"]["weights"]
@@ -168,6 +168,7 @@ def identify_shift_using_machine_learning(
     det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
 
     return det_result
+
 
 def shift_from_correlation_electronBeam_and_ionBeam(
     eb_image, ib_image, lowpass=128, highpass=6, sigma=2
@@ -516,7 +517,7 @@ def validate_needle_calibration(microscope):
 def validate_beams_calibration(microscope, settings: dict):
     """Validate Beam Settings"""
 
-    high_voltage = float(settings["system"]["high_voltage"]) # ion
+    high_voltage = float(settings["system"]["high_voltage"])  # ion
     plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
 
     # TODO: check beam blanks?
@@ -674,3 +675,63 @@ def automatic_eucentric_correction(microscope: SdbMicroscopeClient, settings: di
 
     # retake images to check
     acquire.take_reference_images(microscope, image_settings)
+
+
+def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings):
+    # correct stage drift using machine learning
+
+    from liftout.detection.utils import DetectionType
+
+    stage = microscope.specimen.stage
+    label = image_settings.label
+
+    for beam_type in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
+
+        image_settings.label = label + utils.current_timestamp()
+        det = validate_detection_v2(microscope,
+                                    settings,
+                                    image_settings,
+                                    shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre),
+                                    beam_type=beam_type)
+
+        # yz-correction
+        x_move = movement.x_corrected_stage_movement(det.distance_metres.x,
+                                                     settings=settings,
+                                                     stage_tilt=stage.current_position.t)
+        yz_move = movement.y_corrected_stage_movement(microscope,
+                                                      det.distance_metres.y,
+                                                      stage_tilt=stage.current_position.t,
+                                                      settings=settings,
+                                                      beam_type=beam_type)
+        stage.relative_move(x_move)
+        stage.relative_move(yz_move)
+
+    image_settings.save = True
+    image_settings.label = f'drift_correction_ML_final_' + utils.current_timestamp()
+    acquire.take_reference_images(microscope, image_settings)
+
+
+def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings,
+                          shift_type: tuple, beam_type: BeamType = BeamType.ELECTRON, parent=None):
+
+    from liftout.gui.detection_window import GUIDetectionWindow
+
+    image_settings.beam_type = beam_type  # change to correct beamtype
+
+    # run model detection
+    detection_result = identify_shift_using_machine_learning(microscope,
+                                                             image_settings,
+                                                             settings,
+                                                             shift_type=shift_type)
+
+    # user validates detection result
+    detection_window = GUIDetectionWindow(microscope=microscope,
+                                          settings=settings,
+                                          image_settings=image_settings,
+                                          detection_result=detection_result,
+                                          parent=parent
+                                          )
+    detection_window.show()
+    detection_window.exec_()
+
+    return detection_window.detection_result
