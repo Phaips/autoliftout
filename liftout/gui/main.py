@@ -126,6 +126,9 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.label_stage.setAlignment(QtCore.Qt.AlignCenter)
         self.label_stage.setText(f"{self.current_stage.name}")
 
+        self.statusBar = QtWidgets.QStatusBar()
+        self.setStatusBar(self.statusBar)
+
 
     def update_scroll_ui(self):
         """Update the central ui grid with current sample data."""
@@ -1051,7 +1054,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # move in z
             # detection is based on centre of lamella, we want to land near the edge
-            gap = 0.5e-6 #lamella_height / 10
+            gap = 0.2e-6 #lamella_height / 10
             zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
@@ -1090,6 +1093,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.auto_link_stage(self.microscope, hfw=400e-6)
 
         # confirm eucentricity
+        self.update_image_settings()
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=False)
 
         # after eucentricity... we should be at 4mm,
@@ -1847,7 +1851,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def update_status(self):
         """Update status information
         """
-        
+
         def update_stage_label(label: QtWidgets.QLabel, stage: AutoLiftoutStage):
             
             status_colors = {"Initialisation": "gray", 
@@ -1868,7 +1872,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             lines = f.read().splitlines()
             log_line = "\n".join(lines[-3:])  # last log msg
             log_msg = log_line.split("—")[-1].strip()
-            self.statusBar().showMessage(log_msg)
+            self.statusBar.showMessage(log_msg)
+            self.statusBar.repaint()
 
 def display_error_message(message, title="Error"):
     """PyQt dialog box displaying an error message."""
