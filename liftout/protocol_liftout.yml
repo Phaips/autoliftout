@@ -81,7 +81,7 @@ lamella:
   size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
   protocol_stages: # stages will be milled in the order they appear here
     # rough cut
-    - milling_current: 28.e-9
+    - milling_current: 7.6e-9
       offset: 2.0e-6
       trench_height: 10.0e-6
     # regular cut
@@ -101,7 +101,7 @@ jcut:
 weld:
   width: 3.e-6
   height: 5.e-6
-  depth: 0.1e-6
+  depth: 0.2e-6
   rotation: 0
 sharpen:
   height: 2.5e-6
@@ -190,6 +190,6 @@ platinum:
     hfw: 30e-6
     length: 7e-6
   weld:
-    time: 80
+    time: 60
     hfw: 100e-6
     length: 15e-6

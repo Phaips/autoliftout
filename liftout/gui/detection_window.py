@@ -198,7 +198,7 @@ def main():
         hfw = settings["imaging"]["horizontal_field_width"],
         autocontrast = True,
         beam_type = BeamType.ION,
-        gamma = settings["gamma"],
+        gamma = None,
         save = False,
         label = "test",
     )
@@ -207,7 +207,7 @@ def main():
     detection_result = calibration.identify_shift_using_machine_learning(microscope,
                                                             image_settings,
                                                             settings,
-                                                            shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre))
+                                                            shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre))
 
     qt_app = GUIDetectionWindow(microscope=microscope,
                                 settings=settings,
