@@ -481,11 +481,19 @@ def reset_beam_shifts(microscope: SdbMicroscopeClient):
     logging.info(f"reset beam shifts to zero complete")
 
 
-def check_working_distance_is_within_tolerance(eb_image, ib_image, settings):
-    eb_eucentric_height = settings["calibration"]["eucentric_height_eb"]
-    eb_eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
-    # TODO: use np.isclose instead
-    return abs(eb_image.metadata.optics.working_distance - eb_eucentric_height) <= eb_eucentric_tolerance
+def check_working_distance_is_within_tolerance(microscope, settings, beam_type: BeamType = BeamType.ELECTRON):
+
+    if beam_type is BeamType.ELECTRON:
+        working_distance = microscope.beams.electron_beam.working_distance
+        eucentric_height = settings["calibration"]["eucentric_height_eb"]
+        eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+    
+    if beam_type is BeamType.ION:
+        working_distance = microscope.beams.electron_beam.working_distance
+        eucentric_height = settings["calibration"]["eucentric_height_ib"]
+        eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+
+    return np.isclose(working_distance, eucentric_height,  atol=eucentric_tolerance)
 
 
 def validate_stage_calibration(microscope):
@@ -675,6 +683,68 @@ def automatic_eucentric_correction(microscope: SdbMicroscopeClient, settings: di
 
     # retake images to check
     acquire.take_reference_images(microscope, image_settings)
+
+
+
+def automatic_eucentric_correction_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings) -> None:
+
+    # assume the feature of interest is on the image centre.
+
+    # iterative eucentric alignment
+
+    hfw = 900e-6
+    tolerance = 5.e-6
+    stage = microscope.specimen.stage
+
+    while True:
+    
+        # take low res reference image
+        image_settings.hfw = hfw
+        ref_eb, ref_ib = acquire.take_reference_images(microscope, image_settings)
+
+        # calculate cross correlation...
+        # x = horizontal, y = vertical
+
+        # align using cross correlation
+        dx, dy = shift_from_crosscorrelation_AdornedImages(
+            ref_eb, ref_ib, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
+        )
+
+        # stop if both are within tolernace
+        if dy <= tolerance:
+            break
+
+        # move z
+        stage_tilt = stage.current_position.t
+        
+        # move z??
+        # movement.y_corrected_stage_movement(microscope, dy, stage_tilt, settings, beam_type=BeamType.ION)
+
+
+        
+
+        # align eb (cross correlate) back to original ref (move eb back to centre)
+        new_eb = acquire.new_image(microscope, image_settings, reduced_area=None)
+        dx, dy = shift_from_crosscorrelation_AdornedImages(
+            ref_eb, new_eb, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
+        )
+
+        ## TODO: refactor how we do this
+        x_move = movement.x_corrected_stage_movement(dx, settings)
+        y_move = movement.y_corrected_stage_movement(microscope, dy, stage.current_position.t, settings, beam_type=BeamType.ELECTRON)
+
+        stage.relative_move(x_move) # move in x
+        stage.relative_move(y_move) # move in y and z
+
+        # repeat
+
+
+    # TODO: do we want to align in x too?
+  
+
+
+    return 
+
 
 
 def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings):

@@ -1,0 +1,36 @@
+imaging: # default imaging settings
+  horizontal_field_width: 150.e-6 # ion beam horizontal field of view (meters)
+  dwell_time: 1.e-6
+  resolution: "1536x1024"
+  imaging_current: 20.e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe # 3kV eB
+  save: False
+  autocontrast: True
+  milling_current: 2.e-9
+machine_learning:
+  weights: boost_n05_model.pt # please place in liftout/models/
+gamma: # gamma correction parameters
+  correction: True
+  min_gamma: 0.15
+  max_gamma: 1.8
+  scale_factor: 0.01
+  threshold: 46 # px
+calibration:
+  max_eb_hfw: 2700.0e-6
+  max_ib_hfw: 900.0e-6
+  eucentric_hfw_lowres: 900.e-6
+  eucentric_hfw_midres: 400.e-6
+  eucentric_hfw_highres: 200.e-6
+  eucentric_height_eb: 4.0e-3
+  eucentric_height_ib: 16.5e-3
+  eucentric_height_tolerance: 0.5e-3
+  drift_correction_hfw_highres: 80.e-6
+  stage_height_limit: 3.7e-3 # relative coordinates
+  max_working_distance_eb: 6.0e-3
+reference_images:
+  # new config
+  hfw_wide: 2750.e-6
+  hfw_low_res: 900.e-6
+  hfw_med_res: 400.e-6
+  hfw_high_res: 150.e-6
+  hfw_super_res: 80.e-6
+  hfw_ultra_res: 50.e-6

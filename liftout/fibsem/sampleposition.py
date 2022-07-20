@@ -1,4 +1,5 @@
 
+from curses.ascii import BEL
 from enum import Enum
 
 import yaml
@@ -26,26 +27,7 @@ class AutoLiftoutStage(Enum):
     Failure = 99
 
 
-@dataclass
-class BeamSettings:
-    beam_type: BeamType
-    working_distance: float = None
-    beam_current: float = None
-    hfw: float = None
-    resolution: float = None
-    dwell_time: float = None
-    stigmation: float = None
 
-@dataclass
-class MicroscopeState:
-    timestamp: float = None
-    absolute_position: StagePosition = StagePosition()
-    eb_working_distance: float = None
-    ib_working_distance: float = None
-    eb_beam_current: float = None
-    ib_beam_current: float = None
-    eucentric_calibration: bool = False  # whether eucentricity has been recently verified
-    last_completed_stage: AutoLiftoutStage = None
 
 @dataclass
 class ReferenceImages:

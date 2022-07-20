@@ -399,10 +399,10 @@ def safe_absolute_stage_movement(microscope: SdbMicroscopeClient, stage_position
     stage_settings = MoveSettings(rotate_compucentric=True)
 
     # tilt flat for large rotations to prevent collisions
-    if abs(np.rad2deg(stage_position.r - stage.current_position.r)) > 90:
+    if abs(np.rad2deg(stage_position.r - stage.current_position.r)) % 360 > 90:
         stage.absolute_move(StagePosition(t=np.deg2rad(0), coordinate_system=stage_position.coordinate_system), stage_settings)
         logging.info(f"tilting to flat for large rotation.")
-    stage.absolute_move(StagePosition(r=stage_position.r, coordinate_system=stage_position.coordinate_system), stage_settings)
+    stage.absolute_move(StagePosition(r=stage_position.r, coordinate_system=stage_position.coordinate_system), stage_settings) # TODO: remove?
     logging.info(f"safe moving to {stage_position}")
     stage.absolute_move(stage_position, stage_settings)
     logging.info(f"safe movement complete.")

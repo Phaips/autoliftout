@@ -28,6 +28,7 @@ from autoscript_sdb_microscope_client.structures import (AdornedImage,
                                                          MoveSettings,
                                                          StagePosition)
 from liftout.fibsem.sampleposition import AutoLiftoutStage, SamplePosition
+from liftout.fibsem.acquire import ImageSettings
 
 # Required to not break imports
 BeamType = acquire.BeamType
@@ -133,7 +134,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def update_scroll_ui(self):
         """Update the central ui grid with current sample data."""
         
-        self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})")
+        self.horizontalGroupBox = QGroupBox(f"Experiment: {self.experiment_name} ({self.experiment_path})") # TODO: move to title section
         gridLayout = draw_grid_layout(self.samples)
         self.horizontalGroupBox.setLayout(gridLayout)
         self.scroll_area.setWidget(self.horizontalGroupBox)
@@ -233,13 +234,27 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.current_stage = AutoLiftoutStage.Setup
         logging.info(f"INIT | {self.current_stage.name} | STARTED")
 
-        # sputter platinum to protect grid and prevent charging...        
-        self.sputter_platinum_on_whole_sample_grid()
-
-        # select initial lamella and landing points
+        # initial image settings
         self.update_image_settings(
             resolution=self.settings["imaging"]["resolution"],
             dwell_time=self.settings["imaging"]["dwell_time"],
+            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
+            beam_type=BeamType.ELECTRON,
+            save=True,
+            label="grid",
+        )
+
+        # move to the initial sample grid position
+        movement.move_to_sample_grid(self.microscope, self.settings)
+
+        # NOTE: can't take ion beam image with such a high hfw, will default down to max ion beam hfw
+        acquire.new_image(self.microscope, self.image_settings)
+
+        # sputter platinum to protect grid and prevent charging...        
+        fibsem_utils.sputter_platinum_on_whole_sample_grid_v2(self.microscope, self.settings, self.image_settings)
+
+        # select initial lamella and landing points
+        self.update_image_settings(
             hfw=self.settings["reference_images"]["grid_ref_img_hfw_highres"],
             beam_type=BeamType.ELECTRON,
             save=True,
@@ -248,10 +263,11 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         acquire.take_reference_images(self.microscope, self.image_settings)
         
         # check if focus is good enough
-        if self.microscope.beams.electron_beam.working_distance.value >= MAXIMUM_WORKING_DISTANCE:
+        if self.microscope.beams.electron_beam.working_distance.value >= self.settings["calibration"]["max_working_distance_eb"]:
             self.ask_user_interaction(msg="The working distance seems to be incorrect, please manually fix the focus. \nPress Yes to continue.", 
                 beam_type=BeamType.ELECTRON)
         
+        # select initial lamella positions
         if self.PIESCOPE_ENABLED:
             self.select_sample_positions_piescope(initialisation=True)
         else:
@@ -265,36 +281,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             logging.info(f"{len(self.samples)} samples selected and saved to {self.save_path}.")
             logging.info(f"INIT | {self.current_stage.name} | FINISHED")
-
-    def sputter_platinum_on_whole_sample_grid(self):
-        """Move to the sample grid and sputter platinum over the whole grid"""
-        
-        # update image settings for platinum
-        self.update_image_settings(
-            resolution=self.settings["imaging"]["resolution"],
-            dwell_time=self.settings["imaging"]["dwell_time"],
-            hfw=self.settings["reference_images"]["grid_ref_img_hfw_lowres"],
-            beam_type=BeamType.ELECTRON,
-            save=True,
-            label="grid",
-        )
-
-        # move to the initial sample grid position
-        movement.move_to_sample_grid(self.microscope, self.settings)
-        # movement.auto_link_stage(self.microscope) # dont think we need to link
-
-        # NOTE: can't take ion beam image with such a high hfw, will default down to max ion beam hfw
-        acquire.new_image(self.microscope, self.image_settings)
-
-        # Whole-grid platinum deposition
-        response = self.ask_user_interaction(msg="Do you want to sputter the whole \nsample grid with platinum?", beam_type=BeamType.ELECTRON)
-        if response:
-            fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=True)
-            self.image_settings.label="grid_Pt_deposition"
-            acquire.new_image(self.microscope, self.image_settings)
-
-        return 
-
 
     def get_current_sample_positions(self):
         # check if samples already has been loaded, and then append from there
@@ -363,7 +349,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.select_landing_positions()
             
             self.finish_setup()
-
 
     def select_sample_positions(self):
 
@@ -839,7 +824,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         movement.move_relative(self.microscope, t=np.deg2rad(self.settings["jcut"]["jcut_angle"]), settings=stage_settings)
         self.update_image_settings(hfw=self.settings["calibration"]["drift_correction_hfw_highres"],
                                    save=True, label=f"drift_correction_ML")
-        self.correct_stage_drift_with_ML()
+        calibration.correct_stage_drift_with_ML_v2(self.microscope, self.settings, self.image_settings)
 
         ## MILL_JCUT
         # now we are at the angle for jcut, perform jcut
@@ -855,59 +840,24 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                                    save=True, label=f"jcut_highres")
         acquire.take_reference_images(self.microscope, self.image_settings)
 
-
-    def correct_stage_drift_with_ML(self):
-
-        # TODO: move into calibration, functionalise
-        # microscope, settings, image_settings
-        # stage = microscope.specimen.stage
-        
-        # correct stage drift using machine learning
-        label = self.image_settings.label
-
-        for beamType in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
-            self.image_settings.label = label + utils.current_timestamp() # datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
-            det = self.validate_detection(self.microscope, 
-                                            self.settings, 
-                                            self.image_settings, 
-                                            shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre), 
-                                            beam_type=beamType)
-
-            # yz-correction
-            x_move = movement.x_corrected_stage_movement(det.distance_metres.x, settings=self.settings, stage_tilt=self.stage.current_position.t)
-            yz_move = movement.y_corrected_stage_movement(self.microscope, det.distance_metres.y, stage_tilt=self.stage.current_position.t, 
-                                                        settings=self.settings, beam_type=beamType)
-            self.stage.relative_move(x_move)
-            self.stage.relative_move(yz_move)
-
-        self.update_image_settings(
-            save=True,
-            label=f'drift_correction_ML_final_' + utils.current_timestamp()
-        )
-        # self.image_settings.save = True
-        # self.image_settings.label = f'drift_correction_ML_final_' + utils.current_timestamp()
-        acquire.take_reference_images(self.microscope, self.image_settings)
-
-
     def liftout_lamella(self):
 
         # get ready to do liftout by moving to liftout angle
         movement.move_to_liftout_angle(self.microscope, self.settings)
-
+        
         # check eucentric height
         self.ask_user_movement(msg_type="eucentric", flat_to_sem=True) # liftout angle is flat to SEM
 
         # check focus distance is within tolerance
-        movement.auto_link_stage(self.microscope)
-        eb_image, ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
+        movement.auto_link_stage(self.microscope) # TODO: remove?
 
-        if not calibration.check_working_distance_is_within_tolerance(eb_image, ib_image, settings=self.settings):
+        if not calibration.check_working_distance_is_within_tolerance(self.microscope, settings=self.settings, beam_type=BeamType.ELECTRON):
             logging.warning("Autofocus has failed")
             self.ask_user_interaction(msg="The AutoFocus routine has failed, please correct the focus manually.", 
                 beam_type=BeamType.ELECTRON)
 
         # correct stage drift from mill_lamella stage
-        self.correct_stage_drift_with_ML()
+        calibration.correct_stage_drift_with_ML_v2(self.microscope, self.settings, self.image_settings)
 
         # move needle to liftout start position
         if self.stage.current_position.z < self.settings["calibration"]["stage_height_limit"]: # 3.7e-3
@@ -928,7 +878,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # land needle on lamella
         self.land_needle_on_milled_lamella()
-
 
         # sputter platinum
         fibsem_utils.sputter_platinum(self.microscope, self.settings, whole_grid=False)
@@ -973,19 +922,19 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             save=True,
             label=f"needle_liftout_start_position_lowres"
         )
-        acquire.take_reference_images(self.microscope, self.image_settings)
-        # high res
-        self.update_image_settings(
-            hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
-            save=True,
-            label=f"needle_liftout_start_position_highres"
-        )
-        acquire.take_reference_images(self.microscope, self.image_settings)
+        # acquire.take_reference_images(self.microscope, self.image_settings)
+        # # high res
+        # self.update_image_settings(
+        #     hfw=self.settings["reference_images"]["needle_ref_img_hfw_highres"],
+        #     save=True,
+        #     label=f"needle_liftout_start_position_highres"
+        # )
+        # acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
         ### XY-MOVE (ELECTRON)
-        self.image_settings.hfw = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
-        self.image_settings.label = f"needle_liftout_pre_movement_lowres"
+        # self.image_settings.hfw = self.settings["reference_images"]["liftout_ref_img_hfw_lowres"]
+        # self.image_settings.label = f"needle_liftout_pre_movement_lowres"
         det = self.validate_detection(self.microscope, 
                         self.settings, 
                         self.image_settings, 
@@ -999,7 +948,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
         logging.info(f"{self.current_stage.name}: needle yz-move: {yz_move}")
 
-        acquire.take_reference_images(self.microscope, self.image_settings)
+        # acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
         ### Z-HALF MOVE (ION)
@@ -1019,7 +968,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         needle.relative_move(zy_move_half)
         logging.info(f"{self.current_stage.name}: needle z-half-move: {zy_move_half}")
 
-        acquire.take_reference_images(self.microscope, self.image_settings)
+        # acquire.take_reference_images(self.microscope, self.image_settings)
         ###
 
         # repeat the final movement until user confirms. 
@@ -1044,8 +993,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # move in z
             # detection is based on centre of lamella, we want to land near the edge
-            gap = 0.2e-6 #lamella_height / 10
-            zy_move_gap = movement.z_corrected_needle_movement(-(z_distance - gap), self.stage.current_position.t)
+            # gap = 0.2e-6 #lamella_height / 10
+            zy_move_gap = movement.z_corrected_needle_movement(-z_distance, self.stage.current_position.t)
             self.needle.relative_move(zy_move_gap)
 
             logging.info(f"{self.current_stage.name}: needle x-move: {x_move}")
@@ -1244,8 +1193,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         for i in range(3):
             z_move_out_from_post = movement.z_corrected_needle_movement(10e-6, self.stage.current_position.t)
             self.needle.relative_move(z_move_out_from_post)
-            self.image_settings.label = f"needle_retract_{i}"
-            acquire.take_reference_images(self.microscope, self.image_settings)
+            # self.image_settings.label = f"needle_retract_{i}"
+            # acquire.take_reference_images(self.microscope, self.image_settings)
             logging.info(f"{self.current_stage.name}: moving needle out: {z_move_out_from_post} ({i + 1}/3)")
             time.sleep(1)
 
@@ -1574,7 +1523,8 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         logging.info("gui: setup connections finished")
 
     def load_configuration(self, initialisation=False):
-
+       
+        # TODO: functionalise   
         # load config
         print("Loading configuration")
     
@@ -1587,7 +1537,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                             "Yaml Files (*.yml)", options=options)
 
             if config_filename == "":
-                raise ValueError("")
+                raise ValueError("No config was selected.")
 
         self.settings = utils.load_config(config_filename)
         print(f"Loaded config: {config_filename}")
@@ -1623,7 +1573,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             # show the user the sample number and petname
             sample_str = [f"Sample {sp.sample_no} ({sp.petname})" for sp in self.samples]
-            sp_name, okPressed = QInputDialog.getItem(self, "Select a Sample Position","Sample No:",  sample_str, 0, False)
+            sp_name, okPressed = QInputDialog.getItem(self, "Select a Sample Position", "Sample No:",  sample_str, 0, False)
             sp_idx = sample_str.index(sp_name)
 
             if okPressed:
@@ -1678,15 +1628,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             from pprint import pprint
             det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
                                         shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre))
-            pprint(det)
-            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
-                                        shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre))
-            pprint(det)
-            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
-                                        shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre))
-            pprint( det)
-            det = self.validate_detection(self.microscope, self.settings, self.image_settings, 
-                                        shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost))
             pprint(det)
 
         if TEST_MOVEMENT_WINDOW:

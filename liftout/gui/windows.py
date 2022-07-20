@@ -10,7 +10,7 @@ from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 
 
-def ask_user_interaction(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, msg="Default Ask User Message", beam_type=None):
+def ask_user_interaction_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, msg="Default Ask User Message", beam_type=None):
     """Create user interaction window and get return response"""
     ask_user_window = GUIUserWindow(microscope=microscope,
                                     settings=settings,
@@ -24,7 +24,7 @@ def ask_user_interaction(microscope: SdbMicroscopeClient, settings: dict, image_
     return response
 
 
-def ask_user_movement(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, msg_type="eucentric", flat_to_sem: bool = False, parent=None):
+def ask_user_movement_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, msg_type="eucentric", flat_to_sem: bool = False, parent=None):
 
     logging.info(f"Asking user for confirmation for {msg_type} movement")
     if flat_to_sem:
@@ -40,7 +40,7 @@ def ask_user_movement(microscope: SdbMicroscopeClient, settings: dict, image_set
     movement_window.exec_()
 
 
-def open_milling_window(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, milling_pattern_type: MillingPattern, x: float = 0.0, y: float = 0.0, parent=None):
+def open_milling_window_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, milling_pattern_type: MillingPattern, x: float = 0.0, y: float = 0.0, parent=None):
     """Open the Milling Window ready for milling
 
     Args:

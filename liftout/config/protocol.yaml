@@ -1,0 +1,110 @@
+lamella:
+  lamella_width: 12.0e-6 # in meters
+  lamella_height: 6.0e-6 # in meters
+  milling_depth: 15.0e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 7.6e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  protocol_stages: # stages will be milled in the order they appear here
+    # rough cut
+    - milling_current: 7.6e-9
+      offset: 2.0e-6
+      trench_height: 10.0e-6
+    # regular cut
+    - milling_current: 7.6e-9
+      offset: 0.0e-6
+      trench_height: 3.0e-6
+jcut:
+  milling_current: 2.e-9 # in Amps
+  jcut_angle: 6  # in degrees (relative from trench)
+  length: 12e-6 # in meters
+  height: 5e-6 # in meters
+  trench_thickness: 1e-6 # in meters
+  milling_depth: 3e-6 # in meters
+  extra_bit: 8e-6  # J-cut should extend out a little past the lamella
+weld:
+  width: 3.e-6
+  height: 5.e-6
+  depth: 0.2e-6
+  rotation: 0
+sharpen:
+  height: 2.5e-6
+  width:  20.e-6
+  depth: 8.e-6
+  bias: 0.25e-6
+  hfw: 150.e-6
+  tip_angle: 10
+  needle_angle: 40
+  milling_current: 7.6e-9 # in Amps
+cut:
+  width: 10.e-6
+  height: 0.5e-6
+  depth: 25.e-6
+  rotation: 0
+  hfw: 100.e-6
+  gap: 2.e-6
+  hgap: 4.e-6
+flatten_landing:
+  width: 2.e-6
+  height: 25.e-6
+  depth: 10.e-6
+  milling_current: 7.6e-9
+thin_lamella:
+  hfw: 50.e-6
+  resolution: "3072x2048"
+  dwell_time: 200.e-9
+  rotation_angle: 50 # deg (raw)
+  tilt_angle: 12 # deg
+  lamella_width: 6.0e-6 # in meters
+  lamella_height: 1.0e-6 # in meters
+  milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 0.2e-9  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  offset: 1.0e-6
+  trench_height: 2.0e-6
+  # Protocol stages are milled in the order they appear here.
+  # Stages may override the default parameters above Eg: current, depth, etc.
+  protocol_stages:
+  # Rough cut, stage 1
+  - offset: 1.0e-6
+    trench_height: 1.5e-6 
+  # Regular cut, stage 2
+  - offset: 0.5e-6
+    trench_height: 1.e-6
+    lamella_height: 1.0e-6
+polish_lamella:
+  hfw: 50.e-6
+  resolution: "3072x2048"
+  dwell_time: 200.e-9 
+  rotation_angle: 50 # deg (raw)
+  tilt_angle: 12 # deg
+  tilt_offset: 1 # deg
+  lamella_width: 6.0e-6 # in meters
+  lamella_height: 0.45e-6 # in meters
+  milling_depth: 0.4e-6 # default milling depth, unless otherwise specified # zebra 2.2
+  milling_current: 20.e-12  # default milling current, unless otherwise specified # zebra 2.4e-9 0.74e-9
+  size_ratio: 1.0 # the ratio between the upper trench and the lower trench (1 = symmetric, 2 = upper twice as large as lower )
+  offset: 0.0e-6
+  trench_height: 0.2e-6
+fiducial:
+  length: 10.0e-6
+  width: 0.25e-6
+  depth: 5.e-6
+  rotation: 0 # deg
+  milling_current: 7.6e-9
+reduced_area: 
+  x: 0
+  y: 0
+  dx: 1
+  dy: 1
+platinum:
+  application_file: "cryo_Pt_dep"
+  gas: "Pt cryo"
+  position: "cryo"
+  whole_grid:
+    time: 20
+    hfw: 30e-6
+    length: 7e-6
+  weld:
+    time: 60
+    hfw: 100e-6
+    length: 15e-6

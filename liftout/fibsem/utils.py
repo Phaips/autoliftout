@@ -2,7 +2,7 @@ from liftout.fibsem import movement
 import time
 import logging
 
-from liftout.fibsem.acquire import BeamType
+from liftout.fibsem.acquire import BeamType, ImageSettings, new_image
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 
@@ -87,3 +87,24 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     microscope.patterning.set_default_beam_type(2)  # set ion beam
     multichem.retract()
     logging.info("sputtering platinum finished.")
+
+
+
+def sputter_platinum_on_whole_sample_grid_v2(microscope: SdbMicroscopeClient = None, settings: dict = None, image_settings: ImageSettings = None) -> None:
+    """Move to the sample grid and sputter platinum over the whole grid"""
+    from liftout.gui.windows import ask_user_interaction_v2
+    
+    # Whole-grid platinum deposition
+    response = ask_user_interaction_v2(
+            microscope=microscope, 
+            settings=settings, 
+            image_settings=image_settings, 
+            msg="Do you want to sputter the whole \nsample grid with platinum?", 
+            beam_type=BeamType.ELECTRON)
+
+    if response:
+        sputter_platinum(microscope, settings, whole_grid=True)
+        image_settings.label="grid_Pt_deposition"
+        new_image(microscope, image_settings)
+
+    return  

@@ -13,6 +13,8 @@ from PyQt5.QtWidgets import (QGridLayout, QLabel, QSizePolicy, QVBoxLayout,
                              QWidget)
 import scipy.ndimage as ndi
 
+import winsound
+
 from liftout.fibsem.constants import MILLIMETRE_TO_METRE, METRE_TO_MILLIMETRE, METRE_TO_MICRON, MICRON_TO_METRE
 
 class _WidgetPlot(QWidget):
@@ -219,3 +221,32 @@ def draw_grid_layout(samples: list):
 
     gridLayout.setRowStretch(9, 1) # grid spacing
     return gridLayout
+
+
+
+def play_audio_alert() -> None:
+    winsound.Beep(1000, 500)
+
+def load_configuration_from_ui(initialisation:bool = False, parent = None) -> dict:
+    import liftout
+    from PyQt5 import QtWidgets
+    import logging
+    from liftout import utils    
+  
+    # load config
+    logging.info(f"Loading configuration from file.")
+
+    if initialisation:
+        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
+    else:
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(parent,"Load Configuration", os.path.dirname(liftout.__file__) ,
+                        "Yaml Files (*.yml)", options=options)
+
+        if config_filename == "":
+            raise ValueError("No config was selected.")
+
+    settings = utils.load_config(config_filename)
+
+    return settings
