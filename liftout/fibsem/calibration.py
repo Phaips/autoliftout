@@ -14,6 +14,8 @@ from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
 
+from liftout.gui import windows
+
 BeamType = acquire.BeamType
 
 
@@ -887,3 +889,47 @@ def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, image
     detection_window.exec_()
 
     return detection_window.detection_result
+
+
+
+def validate_stage_height_for_needle_insertion(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings) -> None -> None:
+    stage = microscope.specimen.stage
+    stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
+
+    if (stage.current_position.z < stage_height_limit):  
+
+        # Unable to insert the needle if the stage height is below this limit (3.7e-3)
+        logging.warning(f"Calibration error detected: stage position height")
+        logging.warning(f"Stage Position: {stage.current_position}")
+        
+        windows.ask_user_interaction_v2(
+            microscope,
+            settings,
+            image_settings,
+            msg="""The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
+            "The needle will contact the sample, and it is unsafe to insert the needle. "
+            "\nPlease manually refocus and link the stage, then press OK to continue. """,
+            beam_type=BeamType.ELECTRON,
+        )
+
+    return 
+
+def validate_focus(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, link: bool = True) -> None:
+
+    # check focus distance is within tolerance
+    if link:
+        movement.auto_link_stage(microscope)  # TODO: remove?
+
+    if not check_working_distance_is_within_tolerance(
+        microscope, settings=settings, beam_type=BeamType.ELECTRON
+    ):
+        logging.warning("Autofocus has failed")
+        windows.ask_user_interaction_v2(
+            microscope,
+            settings,
+            image_settings,
+            msg="The AutoFocus routine has failed, please correct the focus manually.",
+            beam_type=BeamType.ELECTRON,
+        )
+
+    return 
