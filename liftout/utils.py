@@ -133,7 +133,7 @@ def save_image(image, save_path, label=''):
 
 
 def current_timestamp():
-    return datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%I-%M%p')
+    return datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d.%I-%M-%S%p')
 
 def save_metadata(settings, path):
     fname = os.path.join(path, "metadata.json")

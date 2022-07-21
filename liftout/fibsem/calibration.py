@@ -9,7 +9,7 @@ from liftout.detection.utils import DetectionResult
 from liftout.fibsem import acquire, movement
 from liftout.fibsem.acquire import GammaSettings, ImageSettings
 from liftout.fibsem.movement import *
-from liftout.fibsem.sample import MicroscopeState, AutoLiftoutStage
+from liftout.fibsem.sample import BeamSettings, MicroscopeState, AutoLiftoutStage
 from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
@@ -412,6 +412,56 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
 #     microscope.auto_functions.run_auto_focus()
 #     microscope.specimen.stage.link()
 
+def get_raw_stage_position(microscope: SdbMicroscopeClient) -> StagePosition:
+    """Get the current stage position in raw coordinate system, and switch back to specimen"""
+    microscope.specimen.stage.set_default_coordinate_system(
+        CoordinateSystem.RAW
+    )
+    stage_position = microscope.specimen.stage.current_position
+    microscope.specimen.stage.set_default_coordinate_system(
+        CoordinateSystem.SPECIMEN
+    )
+
+    return stage_position
+
+
+
+def get_current_microscope_state_v2(microscope: SdbMicroscopeClient, stage: AutoLiftoutStage) -> MicroscopeState:
+    """Get the current microscope state v2 """
+
+    current_microscope_state = MicroscopeState(
+        timestamp = utils.current_timestamp(),
+        last_completed_stage = stage,
+        # get absolute stage coordinates (RAW)
+        absolute_position = get_raw_stage_position(microscope),
+        # electron beam settings
+        eb_settings = BeamSettings(
+            beam_type=BeamType.ELECTRON,
+            working_distance = microscope.beams.electron_beam.working_distance.value,
+            beam_current = microscope.beams.electron_beam.beam_current.value,
+            hfw = microscope.beams.electron_beam.horizontal_field_width.value, 
+            resolution=microscope.beams.electron_beam.scanning.resolution.value,
+            dwell_time=microscope.beams.electron_beam.scanning.dwell_time.value, 
+            stigmation=microscope.beams.electron_beam.stigmator.value
+        ),
+        # ion beam settings
+        ib_settings = BeamSettings(
+            beam_type=BeamType.ION,
+            working_distance = microscope.beams.ion_beam.working_distance.value,
+            beam_current = microscope.beams.ion_beam.beam_current.value,
+            hfw = microscope.beams.ion_beam.horizontal_field_width.value, 
+            resolution=microscope.beams.ion_beam.scanning.resolution.value,
+            dwell_time=microscope.beams.ion_beam.scanning.dwell_time.value, 
+            stigmation=microscope.beams.ion_beam.stigmator.value
+        )
+    )
+
+    return current_microscope_state
+
+
+
+
+
 
 def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric: bool = False):
     """Get the current microscope state """
@@ -462,6 +512,38 @@ def set_microscope_state(microscope, microscope_state: MicroscopeState):
 
     logging.info(f"microscope state restored")
     return
+
+
+def set_microscope_state_v2(microscope, microscope_state: MicroscopeState):
+    """Reset the microscope state to the provided state"""
+
+    logging.info(f"restoring microscope state to {microscope_state.last_completed_stage.name} stage.")
+    
+    # move to position
+    safe_absolute_stage_movement(microscope=microscope, stage_position=microscope_state.absolute_position)
+
+    # restore electron beam
+    logging.info(f"restoring electron beam settings...")
+    microscope.beams.electron_beam.working_distance.value = microscope_state.eb_settings.working_distance
+    microscope.beams.electron_beam.beam_current.value = microscope_state.eb_settings.beam_current
+    microscope.beams.electron_beam.horizontal_field_width.value = microscope_state.eb_settings.hfw
+    microscope.beams.electron_beam.scanning.resolution.value = microscope_state.eb_settings.resolution
+    microscope.beams.electron_beam.scanning.dwell_time.value = microscope_state.eb_settings.dwell_time
+    microscope.beams.electron_beam.stigmator.value = microscope_state.eb_settings.stigmation
+
+
+    # restore ion beam
+    logging.info(f"restoring ion beam settings...")
+    microscope.beams.ion_beam.working_distance.value = microscope_state.ib_settings.working_distance
+    microscope.beams.ion_beam.beam_current.value = microscope_state.ib_settings.beam_current
+    microscope.beams.ion_beam.horizontal_field_width.value = microscope_state.ib_settings.hfw
+    microscope.beams.ion_beam.scanning.resolution.value = microscope_state.ib_settings.resolution
+    microscope.beams.ion_beam.scanning.dwell_time.value = microscope_state.ib_settings.dwell_time
+    microscope.beams.ion_beam.stigmator.value = microscope_state.ib_settings.stigmation
+
+    logging.info(f"microscope state restored")
+    return
+
 
 
 def reset_beam_shifts(microscope: SdbMicroscopeClient):
