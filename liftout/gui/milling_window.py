@@ -277,7 +277,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         if "milling_current" in self.milling_settings:
             self.milling_current = float(self.milling_settings["milling_current"])
         else: 
-            self.milling_current = float(self.settings["imaging"]["milling_current"]) 
+            self.milling_current = float(self.settings["calibration"]["imaging"]["milling_current"]) 
         self.update_parameter_elements()
 
     def update_parameter_elements(self):

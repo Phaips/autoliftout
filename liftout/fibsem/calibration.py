@@ -9,7 +9,7 @@ from liftout.detection.utils import DetectionResult
 from liftout.fibsem import acquire, movement
 from liftout.fibsem.acquire import GammaSettings, ImageSettings
 from liftout.fibsem.movement import *
-from liftout.fibsem.sampleposition import AutoLiftoutStage, MicroscopeState
+from liftout.fibsem.sample import MicroscopeState, AutoLiftoutStage
 from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
@@ -485,13 +485,13 @@ def check_working_distance_is_within_tolerance(microscope, settings, beam_type: 
 
     if beam_type is BeamType.ELECTRON:
         working_distance = microscope.beams.electron_beam.working_distance
-        eucentric_height = settings["calibration"]["eucentric_height_eb"]
-        eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+        eucentric_height = settings["calibration"]["limits"]["eucentric_height_eb"]
+        eucentric_tolerance = settings["calibration"]["limits"]["eucentric_height_tolerance"]
     
     if beam_type is BeamType.ION:
         working_distance = microscope.beams.electron_beam.working_distance
-        eucentric_height = settings["calibration"]["eucentric_height_ib"]
-        eucentric_tolerance = settings["calibration"]["eucentric_height_tolerance"]
+        eucentric_height = settings["calibration"]["limits"]["eucentric_height_ib"]
+        eucentric_tolerance = settings["calibration"]["limits"]["eucentric_height_tolerance"]
 
     return np.isclose(working_distance, eucentric_height,  atol=eucentric_tolerance)
 
@@ -556,8 +556,8 @@ def validate_beams_calibration(microscope, settings: dict):
     # working distances
     logging.info(f"EB Working Distance: {microscope.beams.electron_beam.working_distance.value:.4f}m")
     if not np.isclose(microscope.beams.electron_beam.working_distance.value,
-                      settings["calibration"]["eucentric_height_eb"],
-                      atol=settings["calibration"]["eucentric_height_tolerance"]):
+                      settings["calibration"]["limits"]["eucentric_height_eb"],
+                      atol=settings["calibration"]["limits"]["eucentric_height_tolerance"]):
         logging.warning(
             f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m
             (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)""")
@@ -592,8 +592,8 @@ def validate_beams_calibration(microscope, settings: dict):
     # working distance
     logging.info(f"IB Working Distance: {microscope.beams.ion_beam.working_distance.value:.4f}m")
     if not np.isclose(microscope.beams.ion_beam.working_distance.value,
-                      settings["calibration"]["eucentric_height_ib"],
-                      atol=settings["calibration"]["eucentric_height_tolerance"]):
+                      settings["calibration"]["limits"]["eucentric_height_ib"],
+                      atol=settings["calibration"]["limits"]["eucentric_height_tolerance"]):
         logging.warning(f"Ion Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_ib']}m \
         (Currently is {microscope.beams.ion_beam.working_distance.value:.4f}m)")
 

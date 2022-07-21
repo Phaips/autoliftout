@@ -1,5 +1,3 @@
-
-from curses.ascii import BEL
 from enum import Enum
 
 import yaml
@@ -12,21 +10,7 @@ import petname
 
 from liftout.fibsem.acquire import BeamType
 from autoscript_sdb_microscope_client.structures import StagePosition, AdornedImage
-
-class AutoLiftoutStage(Enum):
-    Initialisation = -1
-    Setup = 0
-    MillTrench = 1
-    MillJCut = 2
-    Liftout = 3
-    Landing = 4
-    Reset = 5
-    Thinning = 6
-    Polishing = 7
-    Finished = 8
-    Failure = 99
-
-
+from liftout.fibsem.sample import MicroscopeState
 
 
 @dataclass
@@ -60,6 +44,7 @@ class SamplePosition:
         self.microscope_state: MicroscopeState = MicroscopeState()
 
         self.history: list[MicroscopeState] = None
+
 
     def setup_yaml_file(self):
         # check if yaml file already exists for this timestamp..
@@ -184,6 +169,9 @@ class SamplePosition:
             t=sample_dict["landing_coordinates"]["t"],
             coordinate_system=sample_dict["landing_coordinates"]["coordinate_system"]
         )
+
+        from liftout.fibsem.sample import AutoLiftoutStage
+
 
         # load micrscope state
         self.microscope_state = MicroscopeState(

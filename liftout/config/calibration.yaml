@@ -14,7 +14,7 @@ gamma: # gamma correction parameters
   max_gamma: 1.8
   scale_factor: 0.01
   threshold: 46 # px
-calibration:
+limits:
   max_eb_hfw: 2700.0e-6
   max_ib_hfw: 900.0e-6
   eucentric_hfw_lowres: 900.e-6

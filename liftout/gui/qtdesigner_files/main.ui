@@ -141,69 +141,6 @@
              <property name="spacing">
               <number>0</number>
              </property>
-             <item row="0" column="1">
-              <spacer name="horizontalSpacer">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeType">
-                <enum>QSizePolicy::Maximum</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item row="0" column="2">
-              <widget class="QFrame" name="frame_grid">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>10000</width>
-                 <height>1001</height>
-                </size>
-               </property>
-               <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QGridLayout" name="gridLayout_7">
-                <item row="0" column="0">
-                 <widget class="QScrollArea" name="scroll_area">
-                  <property name="widgetResizable">
-                   <bool>true</bool>
-                  </property>
-                  <widget class="QWidget" name="scrollAreaWidgetContents">
-                   <property name="geometry">
-                    <rect>
-                     <x>0</x>
-                     <y>0</y>
-                     <width>1393</width>
-                     <height>740</height>
-                    </rect>
-                   </property>
-                  </widget>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
              <item row="0" column="0">
               <widget class="QFrame" name="frame_3">
                <property name="sizePolicy">
@@ -338,6 +275,69 @@
                   <property name="text">
                    <string>Status:</string>
                   </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeType">
+                <enum>QSizePolicy::Maximum</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="0" column="2">
+              <widget class="QFrame" name="frame_grid">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>10000</width>
+                 <height>1001</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_7">
+                <item row="0" column="0">
+                 <widget class="QScrollArea" name="scroll_area">
+                  <property name="widgetResizable">
+                   <bool>true</bool>
+                  </property>
+                  <widget class="QWidget" name="scrollAreaWidgetContents">
+                   <property name="geometry">
+                    <rect>
+                     <x>0</x>
+                     <y>0</y>
+                     <width>1393</width>
+                     <height>722</height>
+                    </rect>
+                   </property>
+                  </widget>
                  </widget>
                 </item>
                </layout>
@@ -523,8 +523,15 @@
          <property name="frameShadow">
           <enum>QFrame::Raised</enum>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_experiment_name">
+            <property name="text">
+             <string>TextLabel</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
            <widget class="QLabel" name="label_title">
             <property name="text">
              <string>AutoLiftout</string>
@@ -563,7 +570,7 @@
      <addaction name="actionAutoLamella"/>
     </widget>
     <addaction name="actionLoad_Experiment"/>
-    <addaction name="actionLoad_Configuration"/>
+    <addaction name="actionLoad_Protocol"/>
     <addaction name="actionMark_Sample_Position_Failed"/>
     <addaction name="menuChange_Mode"/>
    </widget>
@@ -583,9 +590,9 @@
     <string>Load Experiment</string>
    </property>
   </action>
-  <action name="actionLoad_Configuration">
+  <action name="actionLoad_Protocol">
    <property name="text">
-    <string>Load Configuration</string>
+    <string>Load Protocol</string>
    </property>
   </action>
   <action name="actionMark_Sample_Position_Failed">

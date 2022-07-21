@@ -1,21 +1,27 @@
 
+import logging
 import os
+import winsound
 from dataclasses import dataclass
+from pathlib import Path
 
+import liftout
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client.structures import AdornedImage
+from liftout import utils
+from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
+                                      MICRON_TO_METRE, MILLIMETRE_TO_METRE)
+from liftout.fibsem.sample import Sample, create_experiment, load_sample
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import (QGridLayout, QLabel, QSizePolicy, QVBoxLayout,
-                             QWidget)
-import scipy.ndimage as ndi
+from PyQt5.QtWidgets import (QGridLayout, QLabel, QMessageBox, QSizePolicy,
+                             QVBoxLayout, QWidget)
 
-import winsound
-
-from liftout.fibsem.constants import MILLIMETRE_TO_METRE, METRE_TO_MILLIMETRE, METRE_TO_MICRON, MICRON_TO_METRE
 
 class _WidgetPlot(QWidget):
     def __init__(self, *args, display_image, **kwargs):
@@ -222,31 +228,107 @@ def draw_grid_layout(samples: list):
     gridLayout.setRowStretch(9, 1) # grid spacing
     return gridLayout
 
+def play_audio_alert(freq: int = 1000, duration: int = 500) -> None:
+    winsound.Beep(freq, duration)
 
-
-def play_audio_alert() -> None:
-    winsound.Beep(1000, 500)
-
-def load_configuration_from_ui(initialisation:bool = False, parent = None) -> dict:
-    import liftout
-    from PyQt5 import QtWidgets
-    import logging
-    from liftout import utils    
-  
+def load_configuration_from_ui(parent = None) -> dict:
+    
     # load config
     logging.info(f"Loading configuration from file.")
+    play_audio_alert()
+    
+    options = QtWidgets.QFileDialog.Options()
+    options |= QtWidgets.QFileDialog.DontUseNativeDialog
+    config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(parent,"Load Configuration", os.path.dirname(liftout.__file__) ,
+                    "Yaml Files (*.yml)", options=options)
 
-    if initialisation:
-        config_filename = os.path.join(os.path.dirname(liftout.__file__), "protocol_liftout.yml")
-    else:
-        options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog
-        config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(parent,"Load Configuration", os.path.dirname(liftout.__file__) ,
-                        "Yaml Files (*.yml)", options=options)
+    if config_filename == "":
+        raise ValueError("No protocol file was selected.")
 
-        if config_filename == "":
-            raise ValueError("No config was selected.")
-
-    settings = utils.load_config(config_filename)
+    settings = utils.load_config_v2(protocol_config=config_filename)
 
     return settings
+
+    # TODO: validate protocol
+
+
+def display_error_message(message, title="Error"):
+    """PyQt dialog box displaying an error message."""
+    logging.info("display_error_message")
+    logging.exception(message)
+
+    error_dialog = QMessageBox()
+    error_dialog.setIcon(QMessageBox.Critical)
+    error_dialog.setText(message)
+    error_dialog.setWindowTitle(title)
+    error_dialog.exec_()
+
+    return error_dialog
+
+
+def message_box_ui(title: str, text: str):
+
+    msg = QMessageBox()
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msg.exec_()
+
+    response = True if msg.clickedButton() == msg.button(QMessageBox.Yes) else False
+
+    return response
+
+def setup_experiment_sample_ui(parent):
+    """Setup the experiment sample by either creating or loading a sample"""
+    default_experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
+    default_experiment_name = "default_experiment"
+
+    response = message_box_ui(
+        title="AutoLiftout Startup",
+        text="Do you want to load a previous experiment?")
+
+    # load experiment
+    if response:
+        print(f"{response}: Loading an existing experiment.")
+        
+        sample = load_experiment_ui(parent, default_experiment_path)
+    
+    # new_experiment
+    else:
+        print(f"{response}: Starting new experiment.")
+        #  TODO: enable selecting log directory in ui
+        sample = create_experiment_ui(parent, default_experiment_name)
+        
+    return sample
+
+def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
+
+    # load_experiment
+    experiment_path = QtWidgets.QFileDialog.getExistingDirectory(
+        parent, "Choose Log Folder to Load", directory=default_experiment_path
+    )
+    # if the user doesnt select a folder, start a new experiment
+    # nb. should we include a check for invalid folders here too?
+    if experiment_path is "":
+        experiment_path = default_experiment_path
+
+    sample_fname = os.path.join(experiment_path, "sample.yaml")
+    sample = load_sample(sample_fname)
+
+    return sample
+
+def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
+    # create_new_experiment
+    experiment_name, okPressed = QtWidgets.QInputDialog.getText(
+        parent,
+        "New AutoLiftout Experiment",
+        "Enter a name for your experiment:",
+        QtWidgets.QLineEdit.Normal,
+        default_experiment_name,
+    )
+    if not okPressed or experiment_name == "":
+        experiment_name = default_experiment_name
+
+    sample = create_experiment(experiment_name=experiment_name, path=None)
+
+    return sample

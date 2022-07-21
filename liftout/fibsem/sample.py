@@ -12,36 +12,43 @@ import uuid
 import petname
 
 from liftout.fibsem.acquire import BeamType
+from liftout import utils
 
 from autoscript_sdb_microscope_client.structures import StagePosition, AdornedImage, ManipulatorPosition
-from liftout import utils
-from liftout.fibsem.sampleposition import AutoLiftoutStage, ReferenceImages
 
+class AutoLiftoutStage(Enum):
+    Initialisation = -1
+    Setup = 0
+    MillTrench = 1
+    MillJCut = 2
+    Liftout = 3
+    Landing = 4
+    Reset = 5
+    Thinning = 6
+    Polishing = 7
+    Finished = 8
+    Failure = 99
 
 class Sample:
-    def __init__(self, path: Path) -> None:
-        
-        
-        self.path: Path = path
-        # self.sample_yaml: dict = self.setup_sample_yaml_file(path)
+    def __init__(self, path: Path = None, name: str = "default") -> None:
 
+        self.name: str = name 
+        self.path: Path = utils.make_logging_directory(path=path, name=name)
+        self.log_path: Path = utils.configure_logging(path=self.path, log_filename="logfile")
+
+        self.state = None
         self.positions: dict = {}
 
     def __to_dict__(self) -> dict:
 
         state_dict = {
-            "path": self.path, 
+            "name": self.name,
+            "path": self.path,
+            "log_path": self.log_path,
             "positions": [lamella.__to_dict__() for lamella in self.positions.values()]
         }
 
         return state_dict
-
-    def __from__dict__(self, state_dict) -> None:
-        # restore class from dict / yaml
-        self.path = state_dict["path"]
-        self.positions = state_dict["positions"]
-
-        return 
 
     def save(self) -> None:
         """Save the sample data to yaml file"""
@@ -49,13 +56,48 @@ class Sample:
         with open(os.path.join(self.path, "sample.yaml"), "w") as f:
             yaml.dump(self.__to_dict__(), f, indent=4)
 
+    def __repr__(self) -> str:
+        
+        return f"""Sample: 
+        Path: {self.path}
+        State: {self.state}
+        Lamella: {len(self.positions)}
+        """
+
+def load_sample(fname: str) -> Sample:
+    """Load a sample from disk."""
+
+    # read and open existing yaml file
+    if os.path.exists(fname):
+        with open(fname, "r") as f:
+            sample_dict = yaml.safe_load(f)
+    else:
+        raise FileNotFoundError(f"No file with name {fname} found.")
+
+    # create sample
+    sample = Sample(path=sample_dict["path"], name=sample_dict["name"])
+    
+    # load lamella from dict
+    for lamella_dict in sample_dict["positions"]:
+        lamella = lamella_from_dict(path=sample.path, lamella_dict=lamella_dict)
+        sample.positions[lamella._number] = lamella
+
+    return sample
+
 class Lamella:
 
-    def __init__(self, number: int = 0) -> None:
+    def __init__(self, path: Path, number: int = 0) -> None:
         
         self._number: int = number
-        self._id = uuid.uuid4()
+        self._id = str(uuid.uuid4())
         self._petname = f"{self._number:02d}-{petname.generate(2)}"
+        
+        # filesystem
+        self.base_path = path
+        self.path = os.path.join(self.base_path, self._petname)
+        os.makedirs(self.path, exist_ok=True)
+
+        from liftout.fibsem.sampleposition import ReferenceImages
 
         self.lamella_coordinates: StagePosition = StagePosition()
         self.landing_coordinates: StagePosition = StagePosition()
@@ -78,7 +120,7 @@ class Lamella:
         Landing Coordinates: {self.landing_coordinates}, 
         Current Stage: {self.current_state.stage},
         Last Completed: {self.current_state.microscope_state.last_completed_stage}
-        History: {len(self.history)} stages completed.
+        History: {len(self.history)} stages completed ({[state.stage.name for state in self.history]}).
         """ 
 
     def __to_dict__(self):
@@ -87,6 +129,8 @@ class Lamella:
             "id": str(self._id),
             "petname": self._petname,
             "number": self._number,
+            "base_path": self.base_path,
+            "path": self.path,
             "lamella_coordinates": {
                 "x": self.lamella_coordinates.x,
                 "y": self.lamella_coordinates.y,
@@ -109,9 +153,25 @@ class Lamella:
 
         return state_dict
 
-def lamella_from_dict(lamella_dict: dict) -> Lamella:
+    def load_reference_image(self, fname) -> AdornedImage:
+        """Load a specific reference image for this lamella from disk
+        Args:
+            fname: str
+                the filename of the reference image to load
+        Returns:
+            adorned_img: AdornedImage
+                the reference image loaded as an AdornedImage
+        """
 
-    lamella = Lamella(number = lamella_dict["number"])
+        adorned_img = AdornedImage.load(
+            os.path.join(self.path, f"{fname}.tif")
+        )
+
+        return adorned_img
+
+def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
+
+    lamella = Lamella(path = path, number = lamella_dict["number"])
 
     lamella._petname = lamella_dict["petname"]
     lamella._id = lamella_dict["id"]
@@ -124,7 +184,8 @@ def lamella_from_dict(lamella_dict: dict) -> Lamella:
     lamella.current_state = autoliftout_state_from_dict(lamella_dict["current_state"])
 
     # load history
-    
+    lamella.history = [autoliftout_state_from_dict(state_dict) for state_dict in lamella_dict["history"]]
+
     return lamella
 
 @dataclass
@@ -169,7 +230,7 @@ def beam_settings_from_dict(state_dict: dict) -> None:
 class MicroscopeState:
     timestamp: float = None
     absolute_position: StagePosition = StagePosition()
-    last_completed_stage: AutoLiftoutStage = None
+    last_completed_stage: AutoLiftoutStage = AutoLiftoutStage.Setup
     eb_settings: BeamSettings = BeamSettings(beam_type=BeamType.ELECTRON)
     ib_settings: BeamSettings = BeamSettings(beam_type=BeamType.ION)
 
@@ -185,7 +246,7 @@ class MicroscopeState:
                 "t": self.absolute_position.t,
                 "coordinate_system": self.absolute_position.coordinate_system
             },
-            "last_completed_stage": str(self.last_completed_stage),
+            "last_completed_stage": str(self.last_completed_stage.name),
             "eb_settings": self.eb_settings.__to_dict__(),
             "ib_settings": self.ib_settings.__to_dict__()
         }
@@ -210,6 +271,8 @@ def microscope_state_from_dict(state_dict: dict) -> MicroscopeState:
     )
 
     return microscope_state
+
+
 
 @dataclass
 class AutoLiftoutState:
@@ -257,12 +320,11 @@ def stage_position_from_dict(state_dict: dict) -> StagePosition:
 
 
 
+
 # Sample:
 #   data_path: Path
 #   
 #   positions: [Lamella, Lamella, Lamella]
-
-
 
 # Lamella
 #   lamella_coordinates: StagePosition
@@ -275,3 +337,36 @@ def stage_position_from_dict(state_dict: dict) -> StagePosition:
 #           eb_settings: BeamSettings
 #           ib_settings: BeamSettings
 #           absolute_position: StagePosition
+
+
+######################## UTIL ########################
+
+
+
+def create_experiment(experiment_name: str, path: Path = None):
+
+    # create unique experiment name
+    exp_name = f"{experiment_name}_{utils.current_timestamp()}"
+
+    # create sample data struture
+    sample = Sample(path=path, name=exp_name)
+
+    # save sample to disk
+    sample.save()
+    
+    return sample
+
+
+def load_experiment(path: Path) -> Sample:
+
+    sample_fname = os.path.join(path, "sample.yaml")
+
+    if not os.path.exists(sample_fname):
+        raise ValueError(f"No sample file found for this path: {path}")
+
+    return load_sample(fname=sample_fname)
+
+
+def get_current_lamella(sample: Sample, no: int) -> Lamella:
+    
+    return sample.positions[no]

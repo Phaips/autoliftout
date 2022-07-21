@@ -122,7 +122,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.pushButton_take_image.clicked.connect(self.take_image_button_pressed)
 
         self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON)
-        self.doubleSpinBox_hfw.setMaximum(self.settings["imaging"]["max_ib_hfw"] * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setMaximum(self.settings["calibration"]["limits"]["max_ib_hfw"] * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.setValue(self.image_settings.hfw * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
