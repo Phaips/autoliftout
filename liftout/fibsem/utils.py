@@ -1,14 +1,12 @@
-from liftout.fibsem import movement  
-import time
 import logging
+import time
 
-from liftout.fibsem.acquire import BeamType, ImageSettings, new_image
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from liftout.fibsem import movement
+from liftout.fibsem.acquire import BeamType, ImageSettings
 
 
-
-
-def connect_to_microscope(ip_address="10.0.0.1", parent_ui = None):
+def connect_to_microscope(ip_address="10.0.0.1", parent_ui=None):
     """Connect to the FIBSEM microscope."""
     try:
         # TODO: get the port
@@ -17,15 +15,16 @@ def connect_to_microscope(ip_address="10.0.0.1", parent_ui = None):
         microscope.connect(ip_address)
         logging.info(f"Microscope client connected to [{ip_address}]")
     except Exception as e:
-        
+
         if parent_ui:
             import liftout.gui.utils as ui_utils
+
             ui_utils.display_error_message(
                 f"AutoLiftout is unavailable. Unable to connect to microscope: {e}"
             )
         else:
-            raise e      
-              
+            raise e
+
         microscope = None
 
     return microscope
@@ -103,32 +102,37 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     logging.info("sputtering platinum finished.")
 
 
-
-def sputter_platinum_on_whole_sample_grid_v2(microscope: SdbMicroscopeClient = None, settings: dict = None, image_settings: ImageSettings = None) -> None:
+def sputter_platinum_on_whole_sample_grid_v2(
+    microscope: SdbMicroscopeClient = None,
+    settings: dict = None,
+    image_settings: ImageSettings = None,
+) -> None:
     """Move to the sample grid and sputter platinum over the whole grid"""
     from liftout.gui.windows import ask_user_interaction_v2
-    
+
     # Whole-grid platinum deposition
     response = ask_user_interaction_v2(
-            microscope=microscope, 
-            msg="Do you want to sputter the whole \nsample grid with platinum?", 
-            beam_type=BeamType.ELECTRON)
+        microscope=microscope,
+        msg="Do you want to sputter the whole \nsample grid with platinum?",
+        beam_type=BeamType.ELECTRON,
+    )
 
     if response:
         sputter_platinum(microscope, settings, whole_grid=True)
 
-    return  
+    return
 
 
 def quick_setup():
-    
+
     from liftout import utils
-    from liftout.fibsem import utils as fibsem_utils
     from liftout.fibsem import acquire
+    from liftout.fibsem import utils as fibsem_utils
 
     settings = utils.load_config_v2()
-    microscope = fibsem_utils.connect_to_microscope(ip_address=settings["system"]["ip_address"])
+    microscope = fibsem_utils.connect_to_microscope(
+        ip_address=settings["system"]["ip_address"]
+    )
     image_settings = acquire.update_image_settings_v3(settings)
-
 
     return microscope, settings, image_settings

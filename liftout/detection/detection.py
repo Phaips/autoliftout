@@ -5,15 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 
-from PIL import Image, ImageDraw
-from scipy.fftpack import shift
+from PIL import Image
 from skimage import feature
 from scipy.spatial import distance
 
 import liftout.detection.DetectionModel as DetectionModel
 from liftout.detection import utils
 from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
-from liftout.tests.mock_autoscript_sdb_microscope_client import AdornedImage 
 
 class Detector:
 

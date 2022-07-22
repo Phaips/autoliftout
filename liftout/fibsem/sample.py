@@ -1,20 +1,22 @@
 
 
+import datetime
+import os
+import time
+import uuid
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-import yaml
-import os
-import datetime
-import time
-from dataclasses import dataclass
-import uuid
-import petname
 import pandas as pd
-from liftout.fibsem.acquire import BeamType
+import petname
+import yaml
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         ManipulatorPosition,
+                                                         StagePosition)
 from liftout import utils
+from liftout.fibsem.acquire import BeamType
 
-from autoscript_sdb_microscope_client.structures import StagePosition, AdornedImage, ManipulatorPosition
 
 class AutoLiftoutStage(Enum):
     Initialisation = -1
@@ -86,6 +88,19 @@ def load_sample(fname: str) -> Sample:
 
     return sample
 
+
+
+@dataclass
+class ReferenceImages:
+    low_res_eb: AdornedImage
+    high_res_eb: AdornedImage
+    low_res_ib: AdornedImage
+    high_res_ib: AdornedImage
+
+    def __iter__(self):
+
+        yield self.low_res_eb, self.high_res_eb, self.low_res_ib, self.high_res_ib
+
 class Lamella:
 
     def __init__(self, path: Path, number: int = 0) -> None:
@@ -98,8 +113,6 @@ class Lamella:
         self.base_path = path
         self.path = os.path.join(self.base_path, self._petname)
         os.makedirs(self.path, exist_ok=True)
-
-        from liftout.fibsem.sampleposition import ReferenceImages
 
         self.lamella_coordinates: StagePosition = StagePosition()
         self.landing_coordinates: StagePosition = StagePosition()

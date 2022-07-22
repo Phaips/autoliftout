@@ -10,15 +10,14 @@ from pprint import pprint
 import liftout
 import matplotlib
 import numpy as np
-from liftout import utils
-from liftout import autoliftout
+from liftout import autoliftout, utils
+from liftout.config import config
 from liftout.detection.utils import DetectionType
 from liftout.fibsem import acquire, calibration, milling, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem import validation
 from liftout.fibsem.acquire import ImageSettings
-from liftout.fibsem.sample import Lamella, Sample, AutoLiftoutStage
-from liftout.fibsem.sampleposition import SamplePosition
+from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
 from liftout.gui import utils as ui_utils
 from liftout.gui import windows
 from liftout.gui.milling_window import MillingPattern
@@ -27,17 +26,13 @@ from liftout.gui.utils import draw_grid_layout
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog, QLineEdit, QMessageBox
 
-from liftout.config import config
-
 matplotlib.use("Agg")
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import (
-    AdornedImage,
-    MoveSettings,
-    StagePosition,
-)
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         MoveSettings,
+                                                         StagePosition)
 
 # Required to not break imports
 BeamType = acquire.BeamType
@@ -189,7 +184,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def testing_function(self):
 
-        TEST_SAMPLE_POSITIONS = False
         TEST_MILLING_WINDOW = False
         TEST_DETECTION_WINDOW = False
         TEST_MOVEMENT_WINDOW = False
@@ -199,8 +193,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             windows.open_milling_window_v2(MillingPattern.JCut)
             print("hello jcut")
-
-
 
         if TEST_DETECTION_WINDOW:
 

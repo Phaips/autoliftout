@@ -13,17 +13,6 @@ from autoscript_sdb_microscope_client.structures import StagePosition, AdornedIm
 from liftout.fibsem.sample import MicroscopeState
 
 
-@dataclass
-class ReferenceImages:
-    low_res_eb: AdornedImage
-    high_res_eb: AdornedImage
-    low_res_ib: AdornedImage
-    high_res_ib: AdornedImage
-
-    def __iter__(self):
-
-        yield self.low_res_eb, self.high_res_eb, self.low_res_ib, self.high_res_ib
-
 
 class SamplePosition:
     def __init__(self, data_path, sample_no):

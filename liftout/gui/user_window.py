@@ -1,7 +1,7 @@
-
-import sys
 import logging
+import sys
 
+import scipy.ndimage as ndi
 from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
@@ -9,11 +9,17 @@ from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.gui.qtdesigner_files import user_dialog as user_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
-import scipy.ndimage as ndi
+
 
 # TODO: remove microscope from this?
 class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, msg: str="Default Message", beam_type: BeamType=BeamType.ELECTRON, parent=None):
+    def __init__(
+        self,
+        microscope,
+        msg: str = "Default Message",
+        beam_type: BeamType = BeamType.ELECTRON,
+        parent=None,
+    ):
         super(GUIUserWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -28,9 +34,11 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # show image
         if beam_type is not None:
-            self.adorned_image = acquire.last_image(self.microscope, beam_type=beam_type)
+            self.adorned_image = acquire.last_image(
+                self.microscope, beam_type=beam_type
+            )
             image = ndi.median_filter(self.adorned_image.data, size=3)
-            
+
             # image widget
             self.wp = _WidgetPlot(self, display_image=image)
             self.label_image.setLayout(QtWidgets.QVBoxLayout())
@@ -43,6 +51,7 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # Change buttons to Yes / No
 
+
 def main():
 
     microscope, settings, image_settings = fibsem_utils.quick_setup()
@@ -51,17 +60,17 @@ def main():
 
     def ask_user_interaction(msg="Hello New Ask User", beam_type=None):
         """Create user interaction window and get return response"""
-        ask_user_window = GUIUserWindow(microscope=microscope,
-                                    settings=settings,
-                                    image_settings=image_settings,
-                                    msg=msg,
-                                    beam_type=beam_type
-                                    )
-        ask_user_window.show()        
+        ask_user_window = GUIUserWindow(
+            microscope=microscope,
+            settings=settings,
+            image_settings=image_settings,
+            msg=msg,
+            beam_type=beam_type,
+        )
+        ask_user_window.show()
         return ask_user_window.exec_()
-        
-    print("RET: ", ask_user_interaction())
 
+    print("RET: ", ask_user_interaction())
 
     print("RET: ", ask_user_interaction(msg="Message 2", beam_type=BeamType.ELECTRON))
     print("RET :", ask_user_interaction(msg="Message 2", beam_type=BeamType.ION))

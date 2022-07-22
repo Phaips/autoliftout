@@ -5,20 +5,20 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+import scipy.ndimage as ndi
+from autoscript_sdb_microscope_client.structures import \
+    Rectangle as RectangleArea
 from liftout import utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings, GammaSettings
+from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
+from liftout.fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
 from matplotlib.patches import Rectangle
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
-import scipy.ndimage as ndi
-from autoscript_sdb_microscope_client.structures import Rectangle as RectangleArea
 
-
-from liftout.fibsem.constants import MICRON_TO_METRE, METRE_TO_MICRON
 
 class MillingPattern(Enum):
     Trench = 1

@@ -1,6 +1,3 @@
-
-
-
 import logging
 from pathlib import Path
 
@@ -11,23 +8,43 @@ from liftout.fibsem import calibration
 from PyQt5.QtWidgets import QMessageBox
 
 
-def validate_initial_microscope_state(microscope: SdbMicroscopeClient, settings: dict) -> None:
+def validate_initial_microscope_state(
+    microscope: SdbMicroscopeClient, settings: dict
+) -> None:
     """Set the initial microscope state to default, and validate other settings."""
 
     # TODO: add validation checks for dwell time and resolution
-    logging.info(f"Electron voltage: {microscope.beams.electron_beam.high_voltage.value:.2f}")
-    logging.info(f"Electron current: {microscope.beams.electron_beam.beam_current.value:.2f}")
+    logging.info(
+        f"Electron voltage: {microscope.beams.electron_beam.high_voltage.value:.2f}"
+    )
+    logging.info(
+        f"Electron current: {microscope.beams.electron_beam.beam_current.value:.2f}"
+    )
 
     # set default microscope state
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-    microscope.beams.ion_beam.beam_current.value = settings["imaging"]["imaging_current"]
-    microscope.beams.ion_beam.horizontal_field_width.value = settings["imaging"]["horizontal_field_width"]
-    microscope.beams.ion_beam.scanning.resolution.value = settings["imaging"]["resolution"]
-    microscope.beams.ion_beam.scanning.dwell_time.value = settings["imaging"]["dwell_time"]
-    
-    microscope.beams.electron_beam.horizontal_field_width.value = settings["imaging"]["horizontal_field_width"]
-    microscope.beams.electron_beam.scanning.resolution.value = settings["imaging"]["resolution"]
-    microscope.beams.electron_beam.scanning.dwell_time.value = settings["imaging"]["dwell_time"]
+    microscope.beams.ion_beam.beam_current.value = settings["imaging"][
+        "imaging_current"
+    ]
+    microscope.beams.ion_beam.horizontal_field_width.value = settings["imaging"][
+        "horizontal_field_width"
+    ]
+    microscope.beams.ion_beam.scanning.resolution.value = settings["imaging"][
+        "resolution"
+    ]
+    microscope.beams.ion_beam.scanning.dwell_time.value = settings["imaging"][
+        "dwell_time"
+    ]
+
+    microscope.beams.electron_beam.horizontal_field_width.value = settings["imaging"][
+        "horizontal_field_width"
+    ]
+    microscope.beams.electron_beam.scanning.resolution.value = settings["imaging"][
+        "resolution"
+    ]
+    microscope.beams.electron_beam.scanning.dwell_time.value = settings["imaging"][
+        "dwell_time"
+    ]
 
     # validate chamber state
     calibration.validate_chamber(microscope=microscope)
@@ -39,15 +56,15 @@ def validate_initial_microscope_state(microscope: SdbMicroscopeClient, settings:
     calibration.validate_needle_calibration(microscope=microscope)
 
     # validate beam settings and calibration
-    calibration.validate_beams_calibration(microscope=microscope, settings=settings)        
-    
+    calibration.validate_beams_calibration(microscope=microscope, settings=settings)
+
     # validate user configuration
     utils.validate_settings(microscope=microscope, config=settings)
 
 
-def run_validation_ui(microscope: SdbMicroscopeClient, settings:dict, log_path: Path):
+def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path: Path):
     """Run validation checks to confirm microscope state before run."""
-    
+
     msg = QMessageBox()
     msg.setWindowTitle("Microscope State Validation")
     msg.setText("Do you want to validate the microscope state?")
@@ -57,13 +74,12 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings:dict, log_path: 
 
     if button == QMessageBox.No:
         logging.info(f"PRE_RUN_VALIDATION cancelled by user.")
-        return 
-    
+        return
+
     logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
     # run validation
-    validate_initial_microscope_state(microscope, settings)
-
+    validate_initial_microscope_state(microscope, settings["calibration"])
 
     # reminders
     reminder_str = """Please check that the following steps have been completed:
@@ -91,7 +107,9 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings:dict, log_path: 
             if "WARNING" in line:
                 logging.info(line)
                 validation_warnings.append(line)
-        logging.info(f"{len(validation_warnings)} warnings were identified during intial setup.")
+        logging.info(
+            f"{len(validation_warnings)} warnings were identified during intial setup."
+        )
 
     if validation_warnings:
         warning_str = f"The following {len(validation_warnings)} warnings were identified during initialisation."

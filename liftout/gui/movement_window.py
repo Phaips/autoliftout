@@ -1,4 +1,3 @@
-
 import logging
 import sys
 
@@ -9,14 +8,23 @@ from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
-from liftout.fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE, MILLIMETRE_TO_METRE, METRE_TO_MILLIMETRE
+from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
+                                      MICRON_TO_METRE, MILLIMETRE_TO_METRE)
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
 
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, msg_type: str = None, msg: str = None, parent=None):
+    def __init__(
+        self,
+        microscope,
+        settings: dict,
+        image_settings: ImageSettings,
+        msg_type: str = None,
+        msg: str = None,
+        parent=None,
+    ):
         super(GUIMMovementWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -34,7 +42,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             "centre_ib": "Please centre the lamella in the Ion Beam (Double click to move).",
             "centre_eb": "Please centre the lamella in the Electron Beam (Double click to move). ",
             "eucentric": "Please centre a feature in both Beam views (Double click to move). ",
-            "alignment": "Please centre the lamella in the Ion Beam, and tilt so the lamella face is perpendicular to the Ion Beam."
+            "alignment": "Please centre the lamella in the Ion Beam, and tilt so the lamella face is perpendicular to the Ion Beam.",
         }
         if msg is None:
             msg = msg_dict[msg_type]
@@ -71,7 +79,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         """Update the displays for both Electron and Ion Beam views"""
 
         logging.info("updating displays for Electron and Ion beam views")
-        self.eb_image, self.ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
+        self.eb_image, self.ib_image = acquire.take_reference_images(
+            self.microscope, self.image_settings
+        )
 
         # median filter image for better display
         eb_image_smooth = ndi.median_filter(self.eb_image.data, size=3)
@@ -109,10 +119,10 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # reconnect buttons
         if self.eb_movement_enabled:
-            self.wp_eb.canvas.mpl_connect('button_press_event', self.on_click)
+            self.wp_eb.canvas.mpl_connect("button_press_event", self.on_click)
 
         if self.ib_movement_enabled:
-            self.wp_ib.canvas.mpl_connect('button_press_event', self.on_click)
+            self.wp_ib.canvas.mpl_connect("button_press_event", self.on_click)
 
     def setup_connections(self):
 
@@ -122,7 +132,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.pushButton_take_image.clicked.connect(self.take_image_button_pressed)
 
         self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON)
-        self.doubleSpinBox_hfw.setMaximum(self.settings["calibration"]["limits"]["max_ib_hfw"] * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setMaximum(
+            self.settings["calibration"]["limits"]["max_ib_hfw"] * METRE_TO_MICRON
+        )
         self.doubleSpinBox_hfw.setValue(self.image_settings.hfw * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
@@ -155,7 +167,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             self.label_height.setVisible(True)
             self.label_header_height.setVisible(True)
             self.pushButton_move_stage.clicked.connect(self.move_stage_vertical)
-            self.pushButton_move_to_eucentric.clicked.connect(self.move_to_eucentric_point)
+            self.pushButton_move_to_eucentric.clicked.connect(
+                self.move_to_eucentric_point
+            )
         else:
             self.pushButton_move_stage.setVisible(False)
             self.pushButton_move_to_eucentric.setVisible(False)
@@ -198,9 +212,12 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             self.xclick = event.xdata
             self.yclick = event.ydata
             self.center_x, self.center_y = movement.pixel_to_realspace_coordinate(
-                (self.xclick, self.yclick), adorned_image)
+                (self.xclick, self.yclick), adorned_image
+            )
 
-            logging.info(f"Clicked on {beam_type} Image at {self.center_x:.2e}, {self.center_y:.2e}")
+            logging.info(
+                f"Clicked on {beam_type} Image at {self.center_x:.2e}, {self.center_y:.2e}"
+            )
             # draw crosshair?
             if event.dblclick:
                 self.stage_movement(beam_type=beam_type)
@@ -213,13 +230,16 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         stage = self.microscope.specimen.stage
 
         # calculate stage movement
-        x_move = movement.x_corrected_stage_movement(self.center_x,
-                                                     stage_tilt=stage.current_position.t)
-        yz_move = movement.y_corrected_stage_movement(microscope=self.microscope,
-                                                      expected_y=self.center_y,
-                                                      stage_tilt=stage.current_position.t,
-                                                      settings=self.settings,
-                                                      beam_type=beam_type)
+        x_move = movement.x_corrected_stage_movement(
+            self.center_x, stage_tilt=stage.current_position.t
+        )
+        yz_move = movement.y_corrected_stage_movement(
+            microscope=self.microscope,
+            expected_y=self.center_y,
+            stage_tilt=stage.current_position.t,
+            settings=self.settings,
+            beam_type=beam_type,
+        )
         logging.info(f"x_move: {x_move}, yz_move: {yz_move}")
 
         # move stage
@@ -264,11 +284,12 @@ def main():
     microscope, settings, image_settings = fibsem_utils.quick_setup()
 
     app = QtWidgets.QApplication([])
-    qt_app = GUIMMovementWindow(microscope=microscope,
-                                settings=settings,
-                                image_settings=image_settings,
-                                msg_type="eucentric"
-                                )
+    qt_app = GUIMMovementWindow(
+        microscope=microscope,
+        settings=settings,
+        image_settings=image_settings,
+        msg_type="eucentric",
+    )
     qt_app.show()
     sys.exit(app.exec_())
 

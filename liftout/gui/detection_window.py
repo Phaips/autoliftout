@@ -5,19 +5,19 @@ import sys
 
 import matplotlib.patches as mpatches
 from liftout import utils
+from liftout.detection import detection
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      DetectionType, Point,
                                      convert_pixel_distance_to_metres)
 from liftout.fibsem import acquire, calibration, movement
-from liftout.detection import detection
-from liftout.fibsem.sample import Lamella
 from liftout.fibsem import utils as fibsem_utils
+from liftout.fibsem.acquire import ImageSettings
 from liftout.fibsem.milling import BeamType
+from liftout.fibsem.sample import Lamella
 from liftout.gui import utils as gui_utils
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
 from PyQt5 import QtCore, QtWidgets
 
-from liftout.fibsem.acquire import ImageSettings
 
 class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(self, microscope, settings: dict, image_settings: ImageSettings, 
