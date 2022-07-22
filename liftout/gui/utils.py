@@ -22,6 +22,8 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import (QGridLayout, QLabel, QMessageBox, QSizePolicy,
                              QVBoxLayout, QWidget)
 
+from liftout.fibsem.sample import Lamella
+
 
 class _WidgetPlot(QWidget):
     def __init__(self, *args, display_image, **kwargs):
@@ -137,21 +139,25 @@ def draw_crosshair(image, canvas):
 ###################
 
 
-def draw_grid_layout(samples: list):
+def draw_grid_layout(sample: Sample):
     gridLayout = QGridLayout()
+    # TODO: refactor this better
 
     # Only add data is sample positions are added
-    if len(samples) == 0:
+    if not sample.positions: 
         label = QLabel()
-        label.setText("No Sample Positions Selected. Please press initialise to begin.")
+        label.setText("No Lamella have been selected. Press Setup to start.")
         gridLayout.addWidget(label)
         return gridLayout
 
-    sample_images = [[] for _ in samples]
+    sample_images = [[] for _ in sample.positions]
 
     # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
-    exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", "jcut_highres_ib",
-                        "needle_liftout_landed_highres_ib", "landing_lamella_final_highres_ib", "sharpen_needle_final_ib",
+    exemplar_filenames = ["ref_lamella_low_res_ib", "ref_trench_high_res_ib", 
+                        "jcut_highres_ib",
+                        "needle_liftout_landed_highres_ib", 
+                        "landing_lamella_final_highres_ib", 
+                        "sharpen_needle_final_ib",
                         "thin_lamella_post_superres_ib", "polish_lamella_post_superres_ib"]
 
     # headers
@@ -164,17 +170,17 @@ def draw_grid_layout(samples: list):
         label_header.setAlignment(Qt.AlignCenter)
         gridLayout.addWidget(label_header, 0, j)
 
-    for i, sp in enumerate(samples):
+    for i, lamella in enumerate(sample.positions.values()):
 
         # load the exemplar images for each sample
         qimage_labels = []
         for img_basename in exemplar_filenames:
-            fname = os.path.join(sp.data_path, str(sp.sample_id), f"{img_basename}.tif")
+            fname = os.path.join(lamella.path, f"{img_basename}.tif")
             imageLabel = QLabel()
             imageLabel.setMaximumHeight(150)
 
             if os.path.exists(fname):
-                adorned_image = sp.load_reference_image(img_basename)
+                adorned_image = lamella.load_reference_image(img_basename)
                 
                 def set_adorned_image_as_qlabel(adorned_image: AdornedImage, label: QLabel, shape: tuple = (150, 150)) -> QLabel:
 
@@ -196,18 +202,18 @@ def draw_grid_layout(samples: list):
         # display information on grid
         row_id = i + 1
 
-        # display sample no
+        # display lamella info
         label_sample = QLabel()
-        label_sample.setText(f"""Sample {sp.sample_no:02d} \n{sp.petname} ({str(sp.sample_id)[-4:]}) \nStage: {sp.microscope_state.last_completed_stage.name}""")
+        label_sample.setText(f"""Sample {lamella._number:02d} \n{lamella._petname} \nStage: {lamella.current_state.microscope_state.last_completed_stage.name}""")
         label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
         label_sample.setMaximumHeight(150)
         gridLayout.addWidget(label_sample, row_id, 0)
 
-        # display sample position
+        # display lamella position
         label_pos = QLabel()
-        pos_text = f"""Pos: ({sp.lamella_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {sp.lamella_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {sp.lamella_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
-        if sp.landing_coordinates.x is not None:
-            pos_text += f"""Land: ({sp.landing_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {sp.landing_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {sp.landing_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
+        pos_text = f"""Pos: ({lamella.lamella_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {lamella.lamella_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {lamella.lamella_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
+        if lamella.landing_selected:
+            pos_text += f"""Land: ({lamella.landing_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {lamella.landing_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {lamella.landing_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
             
         label_pos.setText(pos_text)
         label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")
@@ -216,6 +222,7 @@ def draw_grid_layout(samples: list):
         gridLayout.addWidget(label_pos, row_id, 1)
 
         # display exemplar images
+        # ref, trench, jcut, liftout, land, reset, thin, polish
         gridLayout.addWidget(sample_images[i][0], row_id, 2, Qt.AlignmentFlag.AlignCenter) #TODO: fix missing visual boxes
         gridLayout.addWidget(sample_images[i][1], row_id, 3, Qt.AlignmentFlag.AlignCenter)
         gridLayout.addWidget(sample_images[i][2], row_id, 4, Qt.AlignmentFlag.AlignCenter)
@@ -278,8 +285,9 @@ def message_box_ui(title: str, text: str):
 
     return response
 
-def setup_experiment_sample_ui(parent):
+def setup_experiment_sample_ui(parent_ui):
     """Setup the experiment sample by either creating or loading a sample"""
+    
     default_experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
     default_experiment_name = "default_experiment"
 
@@ -291,14 +299,26 @@ def setup_experiment_sample_ui(parent):
     if response:
         print(f"{response}: Loading an existing experiment.")
         
-        sample = load_experiment_ui(parent, default_experiment_path)
+        sample = load_experiment_ui(parent_ui, default_experiment_path)
     
     # new_experiment
     else:
         print(f"{response}: Starting new experiment.")
         #  TODO: enable selecting log directory in ui
-        sample = create_experiment_ui(parent, default_experiment_name)
-        
+        sample = create_experiment_ui(parent_ui, default_experiment_name)
+    
+
+    logging.info(f"Experiment {sample.name} loaded.")
+    logging.info(f"{len(sample.positions)} lamella loaded from {sample.path}")
+    if parent_ui:
+
+        # update the ui
+        parent_ui.label_experiment_name.setText(f"Experiment: {sample.name}")
+        parent_ui.statusBar.showMessage(f"Experiment {sample.name} loaded.")
+        parent_ui.statusBar.repaint()
+        # parent_ui.update_scroll_ui()
+        # parent_ui.update_status()
+
     return sample
 
 def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
@@ -332,3 +352,23 @@ def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
     sample = create_experiment(experiment_name=experiment_name, path=None)
 
     return sample
+
+
+
+def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
+    
+    stage = lamella.current_state.stage
+    status_colors = {
+        "Initialisation": "gray",
+        "Setup": "gold",
+        "MillTrench": "coral",
+        "MillJCut": "coral",
+        "Liftout": "seagreen",
+        "Landing": "dodgerblue",
+        "Reset": "salmon",
+        "Thinning": "mediumpurple",
+        "Polishing": "cyan",
+        "Finished": "silver",
+    }
+    label.setText(f"Lamella {lamella._number:02d} \n{stage.name}")
+    label.setStyleSheet(str(f"background-color: {status_colors[stage.name]}; color: white; border-radius: 5px"))

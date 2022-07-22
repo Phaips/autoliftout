@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 import uuid
 import petname
-
+import pandas as pd
 from liftout.fibsem.acquire import BeamType
 from liftout import utils
 
@@ -29,6 +29,7 @@ class AutoLiftoutStage(Enum):
     Finished = 8
     Failure = 99
 
+# BUG: loading an experiment, recreates the experiment but one folder down...
 class Sample:
     def __init__(self, path: Path = None, name: str = "default") -> None:
 
@@ -47,6 +48,8 @@ class Sample:
             "log_path": self.log_path,
             "positions": [lamella.__to_dict__() for lamella in self.positions.values()]
         }
+        from pprint import pprint
+        pprint(state_dict)
 
         return state_dict
 
@@ -75,7 +78,9 @@ def load_sample(fname: str) -> Sample:
         raise FileNotFoundError(f"No file with name {fname} found.")
 
     # create sample
-    sample = Sample(path=sample_dict["path"], name=sample_dict["name"])
+    path = os.path.dirname(sample_dict["path"])
+    name = sample_dict["name"]
+    sample = Sample(path=path, name=name)
     
     # load lamella from dict
     for lamella_dict in sample_dict["positions"]:
@@ -276,9 +281,9 @@ def microscope_state_from_dict(state_dict: dict) -> MicroscopeState:
 
 @dataclass
 class AutoLiftoutState:
-    stage: AutoLiftoutStage = AutoLiftoutStage.Initialisation
+    stage: AutoLiftoutStage = AutoLiftoutStage.Setup
     microscope_state: MicroscopeState = MicroscopeState()
-    start_timestamp: float = None
+    start_timestamp: float = None # TODO
     end_timestamp: float = None
 
     def __to_dict__(self) -> dict:
@@ -366,7 +371,38 @@ def load_experiment(path: Path) -> Sample:
 
     return load_sample(fname=sample_fname)
 
+def sample_to_dataframe(sample: Sample) -> pd.DataFrame:
 
-def get_current_lamella(sample: Sample, no: int) -> Lamella:
-    
-    return sample.positions[no]
+    lamella_list = []
+    for lamella in sample.positions.values():
+
+        # lamella
+        lamella_dict = {
+            "number": lamella._number,
+            "petname": lamella._petname,
+            # "path": lamella.path,
+            "lamella.x": lamella.lamella_coordinates.x,
+            "lamella.y": lamella.lamella_coordinates.y,
+            "lamella.z": lamella.lamella_coordinates.z,
+            "lamella.r": lamella.lamella_coordinates.r,
+            "lamella.t": lamella.lamella_coordinates.t,
+            "lamella.coordinate_system": lamella.lamella_coordinates.coordinate_system,
+            "landing.x": lamella.landing_coordinates.x,
+            "landing.y": lamella.landing_coordinates.y,
+            "landing.z": lamella.landing_coordinates.z,
+            "landing.r": lamella.landing_coordinates.r,
+            "landing.t": lamella.landing_coordinates.t,
+            "landing.coordinate_system": lamella.landing_coordinates.coordinate_system,
+            "landing_selected": lamella.landing_selected,
+            "current_stage": lamella.current_state.stage.name,
+            "last_completed": lamella.current_state.microscope_state.last_completed_stage,
+            "last_timestamp": lamella.current_state.microscope_state.timestamp,
+            "history: ": len(lamella.history),
+            
+        }
+
+        lamella_list.append(lamella_dict)
+
+    df = pd.DataFrame.from_dict(lamella_list)
+
+    return df

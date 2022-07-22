@@ -892,7 +892,7 @@ def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, image
 
 
 
-def validate_stage_height_for_needle_insertion(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings) -> None -> None:
+def validate_stage_height_for_needle_insertion(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings) -> None:
     stage = microscope.specimen.stage
     stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
 
@@ -904,8 +904,6 @@ def validate_stage_height_for_needle_insertion(microscope: SdbMicroscopeClient, 
         
         windows.ask_user_interaction_v2(
             microscope,
-            settings,
-            image_settings,
             msg="""The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
             "The needle will contact the sample, and it is unsafe to insert the needle. "
             "\nPlease manually refocus and link the stage, then press OK to continue. """,
@@ -926,10 +924,9 @@ def validate_focus(microscope: SdbMicroscopeClient, settings: dict, image_settin
         logging.warning("Autofocus has failed")
         windows.ask_user_interaction_v2(
             microscope,
-            settings,
-            image_settings,
             msg="The AutoFocus routine has failed, please correct the focus manually.",
             beam_type=BeamType.ELECTRON,
         )
 
     return 
+

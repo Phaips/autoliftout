@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from tkinter import Image
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
@@ -25,6 +26,9 @@ def mill_lamella_trench(
     image_settings: ImageSettings,
     lamella: Lamella,
 ):
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
 
     # move to lamella position
     movement.safe_absolute_stage_movement(microscope, lamella.lamella_coordinates)
@@ -67,6 +71,9 @@ def mill_lamella_jcut(
     image_settings: ImageSettings,
     lamella: Lamella) -> Lamella:
 
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
 
     # load the reference images
     reference_images = []
@@ -137,6 +144,10 @@ def liftout_lamella(
     settings: dict,
     image_settings: ImageSettings,
     lamella: Lamella) -> Lamella:
+
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
 
     # convenience
     stage = microscope.specimen.stage
@@ -211,6 +222,10 @@ def land_needle_on_milled_lamella(
     settings: dict,
     image_settings: ImageSettings,
     lamella: Lamella) -> Lamella:
+
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
 
     # conveinence
     stage = microscope.specimen.stage
@@ -307,8 +322,6 @@ def land_needle_on_milled_lamella(
 
         response = windows.ask_user_interaction_v2(
             microscope,
-            settings,
-            image_settings,
             msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
             beam_type=BeamType.ION,
         )
@@ -333,11 +346,12 @@ def land_lamella(
     image_settings: ImageSettings,
     lamella: Lamella) -> Lamella:
 
+    # bookkeeping
+    image_settings.save_path = lamella.path
+
     # conveienence
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
-
-
 
     # move to landing coordinate
     movement.safe_absolute_stage_movement(
@@ -466,8 +480,6 @@ def land_lamella(
 
         response = windows.ask_user_interaction_v2(
             microscope,
-            settings,
-            image_settings,
             msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement",
             beam_type=BeamType.ION,
         )
@@ -556,6 +568,9 @@ def reset_needle(
     lamella: Lamella
 ) -> Lamella:
 
+    # bookkeeping
+    image_settings.save_path = lamella.path
+
     # convienence
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
@@ -643,6 +658,9 @@ def thin_lamella(
     lamella: Lamella
 ) -> Lamella:
 
+    # bookkeeping
+    image_settings.save_path = lamella.path
+
     # move to the initial landing coordinates
     movement.safe_absolute_stage_movement(
         microscope=microscope,
@@ -676,13 +694,6 @@ def thin_lamella(
     image_settings.save=True
     image_settings.label=f"thin_lamella_0_deg_tilt"
     acquire.take_reference_images(microscope, image_settings)
-
-    # # realign lamella to image centre
-    # image_settings.hfw=settings["calibration"]["reference_images"]["hfw_high_res"],
-    # image_settings.save=True,
-    # image_settings.label=f"thin_drift_correction_medres"
-    # acquire.take_reference_images(microscope, image_settings)
-
  
     image_settings.hfw=settings["calibration"]["reference_images"]["high_super_res"]
     image_settings.save=False    
@@ -720,6 +731,9 @@ def polish_lamella(
     image_settings: ImageSettings,
     lamella: Lamella
 ) -> Lamella:
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
 
     # restore state from thinning stage
     # ref_image = self.current_sample_position.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
@@ -766,33 +780,18 @@ def polish_lamella(
 
     return lamella
 
-
-
-
-
-
-
-
-
-
-# TODO: might need to pass the parent to these as well?
-
-
-def setup_autoliftout():
-    #TODO:
-    return
-
 def run_autoliftout_workflow(
     microscope: SdbMicroscopeClient, 
     settings: dict,  
     image_settings: ImageSettings,
-    sample: Sample):
+    sample: Sample, 
+    parent_ui = None) -> Sample:
 
-    HIGH_THROUGHPUT = False
+    HIGH_THROUGHPUT = settings["system"]["high_throughput"]
 
-        # autoliftout_workflow
+    # autoliftout_workflow
     autoliftout_stages = {
-        AutoLiftoutStage.Setup: setup_autoliftout,
+        AutoLiftoutStage.Setup: run_setup_autoliftout,
         AutoLiftoutStage.MillTrench: mill_lamella_trench,
         AutoLiftoutStage.MillJCut: mill_lamella_jcut,
         AutoLiftoutStage.Liftout: liftout_lamella,
@@ -802,114 +801,370 @@ def run_autoliftout_workflow(
         AutoLiftoutStage.Polishing: polish_lamella,
     }
 
-
-
-
-
     logging.info(f"AutoLiftout Workflow started for {len(sample.postions)} lamellae.")
 
     # high throughput workflow
-    # if HIGH_THROUGHPUT:
-    #     for terminal_stage in [
-    #         AutoLiftoutStage.MillTrench,
-    #         AutoLiftoutStage.MillJCut,
-    #     ]:
-    #         for sp in self.samples:
-    #             self.current_sample_position = sp
+    if HIGH_THROUGHPUT:
+        for terminal_stage in [
+            AutoLiftoutStage.MillTrench,
+            AutoLiftoutStage.MillJCut,
+        ]:
+            for lamella in sample.positions.values():
+                
+                while (lamella.current_state.microscope_state.last_completed_stage.value < terminal_stage.value):
 
-    #             while (
-    #                 sp.microscope_state.last_completed_stage.value
-    #                 < terminal_stage.value
-    #             ):
+                    next_stage = AutoLiftoutStage(lamella.current_state.microscope_state.last_completed_stage.value + 1)
 
-    #                 next_stage = AutoLiftoutStage(
-    #                     sp.microscope_state.last_completed_stage.value + 1
-    #                 )
+                    # reset to the previous state
+                    lamella = start_of_stage_update(microscope, lamella, next_stage=next_stage)
 
-    #                 # reset to the previous state
-    #                 self.start_of_stage_update(next_stage=next_stage)
+                    # run the next workflow stage
+                    lamella = autoliftout_stages[next_stage](microscope=microscope, settings=settings, image_settings=image_settings, lamella=lamella)
 
-    #                 # run the next workflow stage
-    #                 self.autoliftout_stages[next_stage]()
-
-    #                 # advance workflow
-    #                 self.end_of_stage_update(eucentric=True)
+                    # advance workflow
+                    sample = end_of_stage_update(microscope, sample, lamella)
 
     # standard workflow
-    for lamella_no, lamella in sample.positions.items():
-        # self.current_sample_position = sp
+    for lamella in sample.positions.values():
 
         while (lamella.current_state.microscope_state.last_completed_stage.value < AutoLiftoutStage.Reset.value):
 
-            next_stage = AutoLiftoutStage(
-                lamella.current_state.microscope_state.last_completed_stage.value + 1
-            )
-            msg = (
-                f"The last completed stage for lamella {(lamella._petname)})\nis {lamella.current_state.microscope_state.last_completed_stage.name}. "
-                f"\nWould you like to continue from {next_stage.name}?\n"
-            )
+            next_stage = AutoLiftoutStage(lamella.current_state.microscope_state.last_completed_stage.value + 1)
+            msg = f"""Continue Lamella {(lamella._petname)}) from {next_stage.name}?"""
             response = windows.ask_user_interaction_v2(
                 microscope,
-                settings,
-                image_settings,
                 msg=msg,
                 beam_type=BeamType.ION,
             )
 
+            # update image settings (save in correct directory)
+            image_settings.save_path = lamella.path
+
             if response:
 
                 # reset to the previous state
-                start_of_stage_update(next_stage=next_stage)
+                lamella = start_of_stage_update(microscope, lamella, next_stage=next_stage)
 
                 # run the next workflow stage
                 lamella = autoliftout_stages[next_stage](microscope=microscope, settings=settings, image_settings=image_settings, lamella=lamella)
 
                 # advance workflow
-                end_of_stage_update(eucentric=True)
+                sample = end_of_stage_update(microscope, sample, lamella)
             else:
                 break  # go to the next sample
 
+    
+    return sample
 
 
-
-
-def end_of_stage_update(self, eucentric: bool) -> None:
+def end_of_stage_update(microscope: SdbMicroscopeClient ,sample: Sample, lamella: Lamella, parent_ui = None) -> Sample:
     """Save the current microscope state configuration to disk, and log that the stage has been completed."""
+    
     # save state information
-    microscope_state = calibration.get_current_microscope_state(
-        microscope=self.microscope, stage=self.current_stage, eucentric=eucentric
+    lamella.current_state.microscope_state = calibration.get_current_microscope_state_v2(
+        microscope=microscope, stage=lamella.current_state.stage,
     )
-    self.current_sample_position.microscope_state = microscope_state
-    self.current_sample_position.save_data()
+
+    # update sample
+    sample = update_sample_lamella_data(sample, lamella)
+
+    # TODO: add history...
 
     # update ui
-    self.update_scroll_ui()
+    if parent_ui:
+        parent_ui.update_scroll_ui()
 
-    logging.info(
-        f"{self.current_sample_position.sample_id} | {self.current_stage.name} | FINISHED"
-    )
+    logging.info(f"{lamella._petname} | {lamella.current_state.stage} | FINISHED")
 
-    return
+    return sample
 
-def start_of_stage_update(self, next_stage: AutoLiftoutStage) -> None:
+def start_of_stage_update(microscope: SdbMicroscopeClient, lamella: Lamella, next_stage: AutoLiftoutStage, parent_ui = None) -> Lamella:
     """Check the last completed stage and reload the microscope state if required. Log that the stage has started. """
-    last_completed_stage = (
-        self.current_sample_position.microscope_state.last_completed_stage
-    )
+    last_completed_stage = (lamella.current_state.microscope_state.last_completed_stage)
 
     if last_completed_stage.value == next_stage.value - 1:
-        logging.info(
-            f"{self.current_sample_position.sample_id} restarting from end of stage: {last_completed_stage.name}"
-        )
-        calibration.set_microscope_state(
-            self.microscope, self.current_sample_position.microscope_state
+        
+        logging.info(f"{lamella._petname} restarting from end of stage: {last_completed_stage.name}")
+        calibration.set_microscope_state_v2(microscope, lamella.current_state.microscope_state)
+
+    lamella.current_state.microscope_state.last_completed_stage = next_stage
+    logging.info(f"{lamella._petname} | {lamella.current_state.stage} | STARTED")
+
+    # update ui
+    if parent_ui:
+        parent_ui.update_status()
+ 
+    return lamella
+
+def run_thinning_workflow(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, sample: Sample) -> Sample:
+
+    # thinning
+    for lamella in sample.positions.values():
+       
+        if (lamella.current_state.microscope_state.last_completed_stage == AutoLiftoutStage.Reset):
+            lamella = start_of_stage_update(microscope, lamella, next_stage=AutoLiftoutStage.Thinning)
+            thin_lamella(microscope, settings, image_settings, lamella)
+            sample = end_of_stage_update(microscope, sample, lamella)
+
+    # polish
+    for lamella in sample.positions.values():
+       
+        if (lamella.current_state.microscope_state.last_completed_stage == AutoLiftoutStage.Thinning):
+            lamella = start_of_stage_update(microscope, lamella, next_stage=AutoLiftoutStage.Polishing)
+            thin_lamella(microscope, settings, image_settings, lamella)
+            sample = end_of_stage_update(microscope, sample, lamella)
+
+    # finish the experiment
+    for lamella in sample.positions.values():
+        if (lamella.current_state.microscope_state.last_completed_stage == AutoLiftoutStage.Polishing):
+            lamella.current_state.microscope_state.last_completed_stage = AutoLiftoutStage.Finished
+            sample = end_of_stage_update(microscope, sample, lamella)
+
+    return sample
+
+
+
+
+def get_current_lamella_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, sample: Sample) -> bool:
+
+    if sample.positions:
+        select_another_lamella = windows.ask_user_interaction_v2(
+            microscope,
+            msg=f"Do you want to select another lamella?\n"
+            f"{len(sample.positions)} currentlly selected.",
+            beam_type=BeamType.ELECTRON,
         )
 
-    self.current_stage = next_stage
-    logging.info(
-        f"{self.current_sample_position.sample_id} | {self.current_stage.name}  | STARTED"
+    else:
+        select_another_lamella = True
+
+    return select_another_lamella
+
+def user_select_feature(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, msg: str = "Select the feature."):
+    """Get the user to centre the beam on the desired feature"""
+
+    # ask user to select feature
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_med_res"]
+    image_settings.save=False
+    windows.ask_user_movement_v2(microscope, settings, image_settings, msg_type="centre_ib")
+    
+    return calibration.get_raw_stage_position(microscope)
+
+
+def select_initial_lamella_positions_v2(
+    microscope: SdbMicroscopeClient, 
+    settings: dict, 
+    image_settings: ImageSettings, 
+    sample: Sample, 
+    eucentric_calibration: bool = False
+) -> Lamella:
+    """Select the initial sample positions for liftout"""
+
+    # create lamella
+    lamella_no = max(sample.positions.keys()) + 1
+    lamella = Lamella(sample.path, lamella_no)
+    
+    # TODO: replace with auto eucentric calibration
+    if eucentric_calibration is False:
+        movement.move_to_sample_grid(microscope, settings=settings)
+        movement.auto_link_stage(microscope)
+
+        windows.ask_user_movement_v2(
+            microscope,
+            settings,
+            image_settings,
+            msg_type="eucentric",
+            flat_to_sem=True,
+        )
+        movement.move_to_trenching_angle(microscope, settings=settings)
+
+    # save lamella coordinates
+    lamella.lamella_coordinates = user_select_feature(
+        microscope, 
+        settings, 
+        image_settings, 
+        msg="Select a lamella position."
+        
     )
 
-    self.update_status()
+    # save microscope state
+    lamella.current_state.microscope_state = calibration.get_current_microscope_state_v2(
+        microscope=microscope, stage=lamella.current_state.stage, 
+    )
+    
+    # take reference images
+    image_settings = acquire.update_image_settings_v3(
+        settings=settings, 
+        hfw=settings["calibration"]["reference_images"]["hfw_med_res"],
+        save=True,
+        save_path=lamella.path,
+        label=f"ref_lamella_low_res",
+    )
+    acquire.take_reference_images(microscope, image_settings=image_settings)
 
-    return
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.label="ref_lamella_high_res"
+    acquire.take_reference_images(microscope, image_settings=image_settings)
+
+    return lamella
+
+def select_landing_positions_v2(    
+    microscope: SdbMicroscopeClient, 
+    settings: dict, 
+    image_settings: ImageSettings, 
+    sample: Sample, ):
+    """Select landing positions for autoliftout"""
+
+    ####################################
+    # # move to landing grid
+    movement.move_to_landing_grid(microscope, settings=settings, flat_to_sem=False)
+    # movement.auto_link_stage(self.microscope, hfw=900e-6)
+
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_low_res"]
+    windows.ask_user_movement_v2(microscope, settings, image_settings, msg_type="eucentric", flat_to_sem=False )
+    ####################################
+
+    # select corresponding sample landing positions
+    for lamella in sample.positions.values():
+        
+        # check if landing position already selected? so it doesnt overwrite
+        if lamella.landing_selected is False:
+            lamella = select_landing_sample_positions(lamella)
+
+            sample = update_sample_lamella_data(sample, lamella)
+
+    return sample
+
+def update_sample_lamella_data(sample: Sample, lamella: Lamella) -> Sample:
+
+    sample.positions[lamella._number] = lamella
+    sample.save()
+    return sample
+
+
+def select_landing_sample_positions(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, lamella: Lamella) -> Lamella:
+    """Select the landing coordinates for a lamella."""
+    logging.info(f"Selecting Landing Position: {lamella._petname}")
+
+    # update image path
+    image_settings.save_path = lamella.path
+    
+    # select landing coordinates
+    lamella.landing_coordinates = user_select_feature(
+        microscope, settings, image_settings,
+        msg=f"Select the landing coordinate for {lamella._petname}."
+    )
+
+    # mill the landing edge flat
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.beam_type=BeamType.ION
+    image_settings.save=False
+    windows.open_milling_window_v2(MillingPattern.Flatten)
+
+    # take reference images
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_med_res"],
+    image_settings.save=True
+    image_settings.label="ref_landing_low_res",
+    acquire.take_reference_images(microscope, image_settings=image_settings)
+
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.label="ref_landing_high_res",
+    acquire.take_reference_images(microscope, image_settings)
+
+    lamella.landing_selected = True
+    
+    return lamella
+
+
+def select_lamella_positions_v2(microscope: SdbMicroscopeClient, settings:dict, image_settings: ImageSettings, sample: Sample, parent_ui = None):
+
+    select_another = get_current_lamella_v2(
+        microscope,
+        settings, 
+        image_settings,
+        sample
+    )
+
+    # allow the user to select additional lamella positions
+    eucentric_calibration = False
+    while select_another:
+        
+        lamella = select_initial_lamella_positions_v2(
+            microscope, 
+            settings,
+            image_settings,
+            sample,
+            eucentric_calibration 
+        )
+
+        # save lamella data
+        sample = update_sample_lamella_data(sample, lamella)
+
+        # select another?
+        select_another = get_current_lamella_v2(
+            microscope, settings, image_settings, sample
+        )
+        
+        # state variable
+        eucentric_calibration = True
+
+        # update ui
+        if parent_ui:
+            parent_ui.update_scroll_ui()
+
+    # select landing positions
+    select_landing_positions_v2(microscope,settings, image_settings,sample)
+
+    # finish setup
+    finish_setup_autoliftout(microscope, sample, parent_ui)
+
+    return sample
+
+
+def finish_setup_autoliftout(microscope: SdbMicroscopeClient, sample: Sample, parent_ui = None):
+    """Finish the setup stage for autolifout/autolamella"""
+
+    # reset microscope coordinate system
+    microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
+
+    logging.info(f"Selected {len(sample.positions)} lamella for autoliftout.")
+    logging.info(f"Path: {sample.path}")
+    logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | FINISHED")
+        
+    if parent_ui:
+        parent_ui.update_scroll_ui()
+        parent_ui.pushButton_autoliftout.setEnabled(True)
+        parent_ui.pushButton_thinning.setEnabled(True)
+
+
+def run_setup_autoliftout(microscope: SdbMicroscopeClient, settings:dict, 
+image_settings: ImageSettings, sample: Sample, parent_ui = None) -> Sample:
+
+    logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | STARTED")
+
+    # move to the initial sample grid position
+    movement.move_to_sample_grid(microscope, settings)
+
+    # initial image settings
+    image_settings.hfw=settings["calibration"]["reference_images"]["hfw_low_res"],
+    image_settings.beam_type=BeamType.ELECTRON,
+    image_settings.save=True
+    image_settings.save_path = sample.path
+    image_settings.label="grid"
+    # NOTE: can't take ion beam image with such a high hfw, will default down to max ion beam hfw
+    acquire.new_image(microscope, image_settings)
+
+    # sputter platinum to protect grid and prevent charging...
+    fibsem_utils.sputter_platinum_on_whole_sample_grid_v2(microscope, settings, image_settings)
+
+    # reference images
+    image_settings.label="grid_Pt",
+    acquire.take_reference_images(microscope, image_settings)
+
+    # check if focus is good enough
+    calibration.validate_focus(microscope, settings, image_settings, link=False)
+
+    # select the lamella and landing positions
+    sample = select_lamella_positions_v2(microscope, settings, image_settings, sample, parent_ui)
+
+    return sample

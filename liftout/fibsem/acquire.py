@@ -160,3 +160,77 @@ def acquire_image(microscope: SdbMicroscopeClient, settings: GrabFrameSettings =
     else:
         image = microscope.imaging.grab_frame()
     return image
+
+
+
+
+import datetime
+import time
+from liftout.fibsem.acquire import GammaSettings, ImageSettings, BeamType
+from liftout import utils
+from pprint import pprint
+import logging
+
+
+def update_image_settings_v3(
+    settings: dict,
+    resolution=None,
+    dwell_time=None,
+    hfw=None,
+    autocontrast=None,
+    beam_type=None,
+    gamma=None,
+    save=None,
+    label=None,
+    path=None,
+):
+    """Update image settings. Uses default values if not supplied
+
+    Args:
+        settings (dict): the default settings dictionary
+        resolution (str, optional): image resolution. Defaults to None.
+        dwell_time (float, optional): image dwell time. Defaults to None.
+        hfw (float, optional): image horizontal field width. Defaults to None.
+        autocontrast (bool, optional): use autocontrast. Defaults to None.
+        beam_type (BeamType, optional): beam type to image with (Electron, Ion). Defaults to None.
+        gamma (GammaSettings, optional): gamma correction settings. Defaults to None.
+        save (bool, optional): save the image. Defaults to None.
+        label (str, optional): image filename . Defaults to None.
+        save_path (Path, optional): directory to save image. Defaults to None.
+    """
+    gamma_settings = GammaSettings(
+        enabled=settings["calibration"]["gamma"]["correction"],
+        min_gamma=settings["calibration"]["gamma"]["min_gamma"],
+        max_gamma=settings["calibration"]["gamma"]["max_gamma"],
+        scale_factor=settings["calibration"]["gamma"]["scale_factor"],
+        threshold=settings["calibration"]["gamma"]["threshold"],
+    )
+
+    # new image_settings
+    image_settings = ImageSettings(
+        resolution=settings["calibration"]["imaging"]["resolution"]
+        if resolution is None
+        else resolution,
+        dwell_time=settings["calibration"]["imaging"]["dwell_time"]
+        if dwell_time is None
+        else dwell_time,
+        hfw=settings["calibration"]["imaging"]["horizontal_field_width"]
+        if hfw is None
+        else hfw,
+        autocontrast=settings["calibration"]["imaging"]["autocontrast"]
+        if autocontrast is None
+        else autocontrast,
+        beam_type=BeamType.ELECTRON if beam_type is None else beam_type,
+        gamma=gamma_settings if gamma is None else gamma,
+        save=bool(settings["calibration"]["imaging"]["save"])
+        if save is None else save,
+        save_path="" if path is None else path,
+        label=utils.current_timestamp()
+        if label is None
+        else label,
+    )
+
+    # TODO: the save path will be broken now...
+    logging.debug(f"Image Settings: {image_settings}")
+
+    return image_settings

@@ -11,10 +11,9 @@ from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
 import scipy.ndimage as ndi
 
-
+# TODO: remove microscope from this?
 class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, 
-            msg: str="Default Message", beam_type: BeamType=BeamType.ELECTRON, parent=None):
+    def __init__(self, microscope, msg: str="Default Message", beam_type: BeamType=BeamType.ELECTRON, parent=None):
         super(GUIUserWindow, self).__init__(parent=parent)
         self.setupUi(self)
 
@@ -22,9 +21,6 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
 
         self.microscope = microscope
-        # self.settings = settings
-        # self.image_settings = image_settings
-        # self.eb_image, self.ib_image = acquire.take_reference_images(self.microscope, self.image_settings)
 
         # show text
         self.label_message.setText(msg)

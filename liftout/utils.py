@@ -123,11 +123,11 @@ def make_logging_directory(path: Path = None, name="run"):
         path = os.path.join(os.path.dirname(liftout.__file__), "log")
     directory = os.path.join(path, name)
     os.makedirs(directory, exist_ok=True)
-
     return directory
 
 
 def save_image(image, save_path, label=''):
+    os.makedirs(save_path, exist_ok=True)
     path = os.path.join(save_path,  f"{label}.tif")
     image.save(path)
 

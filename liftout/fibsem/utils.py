@@ -6,14 +6,28 @@ from liftout.fibsem.acquire import BeamType, ImageSettings, new_image
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 
-def initialise_fibsem(ip_address="10.0.0.1"):
-    """Initialize connection to FIBSEM microscope with Autoscript."""
 
-    # TODO: get the port
-    logging.info(f"Microscope client connecting to [{ip_address}]")
-    microscope = SdbMicroscopeClient()
-    microscope.connect(ip_address)
-    logging.info(f"Microscope client connected to [{ip_address}]")
+
+def connect_to_microscope(ip_address="10.0.0.1", parent_ui = None):
+    """Connect to the FIBSEM microscope."""
+    try:
+        # TODO: get the port
+        logging.info(f"Microscope client connecting to [{ip_address}]")
+        microscope = SdbMicroscopeClient()
+        microscope.connect(ip_address)
+        logging.info(f"Microscope client connected to [{ip_address}]")
+    except Exception as e:
+        
+        if parent_ui:
+            import liftout.gui.utils as ui_utils
+            ui_utils.display_error_message(
+                f"AutoLiftout is unavailable. Unable to connect to microscope: {e}"
+            )
+        else:
+            raise e      
+              
+        microscope = None
+
     return microscope
 
 
@@ -97,14 +111,10 @@ def sputter_platinum_on_whole_sample_grid_v2(microscope: SdbMicroscopeClient = N
     # Whole-grid platinum deposition
     response = ask_user_interaction_v2(
             microscope=microscope, 
-            settings=settings, 
-            image_settings=image_settings, 
             msg="Do you want to sputter the whole \nsample grid with platinum?", 
             beam_type=BeamType.ELECTRON)
 
     if response:
         sputter_platinum(microscope, settings, whole_grid=True)
-        image_settings.label="grid_Pt_deposition"
-        new_image(microscope, image_settings)
 
     return  
