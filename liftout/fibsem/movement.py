@@ -105,19 +105,16 @@ def move_to_sample_grid(
     """
 
     sample_grid_center = StagePosition(
-        x=float(settings["initial_position"]["sample_grid"]["x"]),
-        y=float(settings["initial_position"]["sample_grid"]["y"]),
-        z=float(settings["initial_position"]["sample_grid"]["z"]),
+        x=float(settings["system"]["initial_position"]["sample_grid"]["x"]),
+        y=float(settings["system"]["initial_position"]["sample_grid"]["y"]),
+        z=float(settings["system"]["initial_position"]["sample_grid"]["z"]),
         r=np.deg2rad(float(settings["system"]["stage_rotation_flat_to_electron"])),
-        coordinate_system=settings["initial_position"]["sample_grid"][
+        coordinate_system=settings["system"]["initial_position"]["sample_grid"][
             "coordinate_system"
         ],
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
-    # microscope.specimen.stage.absolute_move(sample_grid_center)
-    safe_absolute_stage_movement(
-        microscope=microscope, stage_position=sample_grid_center
-    )
+    safe_absolute_stage_movement(microscope=microscope, stage_position=sample_grid_center)
 
     # move flat to the electron beam
     flat_to_beam(
@@ -146,11 +143,11 @@ def move_to_landing_grid(
 
     # move to landing grid initial position
     landing_grid_position = StagePosition(
-        x=float(settings["initial_position"]["landing_grid"]["x"]),
-        y=float(settings["initial_position"]["landing_grid"]["y"]),
-        z=float(settings["initial_position"]["landing_grid"]["z"]),
+        x=float(settings["system"]["initial_position"]["landing_grid"]["x"]),
+        y=float(settings["system"]["initial_position"]["landing_grid"]["y"]),
+        z=float(settings["system"]["initial_position"]["landing_grid"]["z"]),
         r=np.deg2rad(float(settings["system"]["stage_rotation_flat_to_electron"])),
-        coordinate_system=settings["initial_position"]["landing_grid"][
+        coordinate_system=settings["system"]["initial_position"]["landing_grid"][
             "coordinate_system"
         ],
     )

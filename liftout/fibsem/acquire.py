@@ -5,12 +5,10 @@ from pathlib import Path
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import (
-    AdornedImage,
-    GrabFrameSettings,
-    Rectangle,
-    RunAutoCbSettings,
-)
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         GrabFrameSettings,
+                                                         Rectangle,
+                                                         RunAutoCbSettings)
 from liftout import utils
 from skimage import exposure
 
@@ -185,14 +183,6 @@ def acquire_image(
     return image
 
 
-import datetime
-import logging
-import time
-from pprint import pprint
-
-from liftout import utils
-from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
-
 
 def update_image_settings_v3(
     settings: dict,
@@ -250,6 +240,6 @@ def update_image_settings_v3(
     )
 
     # TODO: the save path will be broken now...
-    logging.debug(f"Image Settings: {image_settings}")
+    # logging.debug(f"Image Settings: {image_settings}")
 
     return image_settings

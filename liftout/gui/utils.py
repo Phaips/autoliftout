@@ -355,7 +355,6 @@ def setup_experiment_sample_ui(parent_ui):
     # load experiment
     if response:
         print(f"{response}: Loading an existing experiment.")
-
         sample = load_experiment_ui(parent_ui, default_experiment_path)
 
     # new_experiment
@@ -372,9 +371,7 @@ def setup_experiment_sample_ui(parent_ui):
         parent_ui.label_experiment_name.setText(f"Experiment: {sample.name}")
         parent_ui.statusBar.showMessage(f"Experiment {sample.name} loaded.")
         parent_ui.statusBar.repaint()
-        # parent_ui.update_scroll_ui()
-        # parent_ui.update_status()
-
+        
     return sample
 
 

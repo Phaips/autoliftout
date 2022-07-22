@@ -143,3 +143,12 @@ def save_metadata(settings, path):
     fname = os.path.join(path, "metadata.json")
     with open(fname, "w") as fp:
         json.dump(settings, fp, sort_keys=True, indent=4)
+
+
+def get_last_log_message(path: Path) -> str:
+    with open(path) as f:
+        lines = f.read().splitlines()
+        log_line = lines[-1:][-1]  # last log msg
+        log_msg = log_line.split("—")[-1].strip()
+
+    return log_msg

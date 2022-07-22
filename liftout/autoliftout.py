@@ -1,20 +1,16 @@
-import datetime
 import logging
 import time
-from tkinter import Image
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import (ManipulatorPosition,
-                                                         MoveSettings,
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
                                                          StagePosition)
 
-from liftout import utils
 from liftout.detection.detection import DetectionType
 from liftout.fibsem import acquire, calibration, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
+from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
 from liftout.gui import windows
 from liftout.gui.milling_window import MillingPattern
@@ -950,7 +946,7 @@ def start_of_stage_update(
 
     # update ui
     if parent_ui:
-        parent_ui.update_status()
+        parent_ui.update_status(lamella=lamella)
 
     return lamella
 

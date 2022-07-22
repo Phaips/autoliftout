@@ -103,12 +103,15 @@ class ReferenceImages:
 
 class Lamella:
 
-    def __init__(self, path: Path, number: int = 0) -> None:
+    def __init__(self, path: Path, number: int = 0, _petname: str = None) -> None:
         
         self._number: int = number
         self._id = str(uuid.uuid4())
-        self._petname = f"{self._number:02d}-{petname.generate(2)}"
-        
+        if _petname is None:
+            self._petname = f"{self._number:02d}-{petname.generate(2)}"
+        else:
+            self._petname = _petname    
+
         # filesystem
         self.base_path = path
         self.path = os.path.join(self.base_path, self._petname)
@@ -186,7 +189,7 @@ class Lamella:
 
 def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
 
-    lamella = Lamella(path = path, number = lamella_dict["number"])
+    lamella = Lamella(path = path, number = lamella_dict["number"], _petname = lamella_dict["petname"])
 
     lamella._petname = lamella_dict["petname"]
     lamella._id = lamella_dict["id"]
@@ -371,7 +374,7 @@ def create_experiment(experiment_name: str, path: Path = None):
     
     return sample
 
-
+# TODO: START_HERE load_experiment is duplicating the folders...
 def load_experiment(path: Path) -> Sample:
 
     sample_fname = os.path.join(path, "sample.yaml")
