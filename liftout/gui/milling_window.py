@@ -1,17 +1,15 @@
 import logging
 import sys
 import time
-from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client.structures import \
     Rectangle as RectangleArea
-from liftout import utils
 from liftout.fibsem import acquire, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
+from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from liftout.gui.utils import _WidgetPlot, create_crosshair
