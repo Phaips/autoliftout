@@ -261,24 +261,8 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
-    microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = ImageSettings(
-        resolution=settings["imaging"]["resolution"],
-        dwell_time=settings["imaging"]["dwell_time"],
-        hfw=settings["imaging"]["horizontal_field_width"],
-        autocontrast=True,
-        beam_type=BeamType.ION,
-        gamma=GammaSettings(
-            enabled=settings["gamma"]["correction"],
-            min_gamma=settings["gamma"]["min_gamma"],
-            max_gamma=settings["gamma"]["max_gamma"],
-            scale_factor=settings["gamma"]["scale_factor"],
-            threshold=settings["gamma"]["threshold"]
-        ),
-        save=False,
-        label="test",
-    )
+    microscope, settings, image_settings = fibsem_utils.quick_setup()
+
     app = QtWidgets.QApplication([])
     qt_app = GUIMMovementWindow(microscope=microscope,
                                 settings=settings,

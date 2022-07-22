@@ -29,7 +29,6 @@ class AutoLiftoutStage(Enum):
     Finished = 8
     Failure = 99
 
-# BUG: loading an experiment, recreates the experiment but one folder down...
 class Sample:
     def __init__(self, path: Path = None, name: str = "default") -> None:
 
@@ -48,8 +47,6 @@ class Sample:
             "log_path": self.log_path,
             "positions": [lamella.__to_dict__() for lamella in self.positions.values()]
         }
-        from pprint import pprint
-        pprint(state_dict)
 
         return state_dict
 

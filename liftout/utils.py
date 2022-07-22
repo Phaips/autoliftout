@@ -11,9 +11,6 @@ from pathlib import Path
 # TODO: better logs: https://www.toptal.com/python/in-depth-python-logging
 def configure_logging(path: Path = "", log_filename='logfile', log_level=logging.INFO):
     """Log to the terminal and to file simultaneously."""
-    timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(
-        '%Y%m%d.%H%M%S')
-
     logfile = os.path.join(path, f"{log_filename}.log")
 
     logging.basicConfig(

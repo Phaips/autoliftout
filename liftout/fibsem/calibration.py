@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 from scipy import fftpack
 
 from liftout.gui import windows
+from liftout.fibsem.sample import Lamella
 
 BeamType = acquire.BeamType
 
@@ -462,9 +463,6 @@ def get_current_microscope_state_v2(microscope: SdbMicroscopeClient, stage: Auto
 
 
 
-
-
-
 def get_current_microscope_state(microscope, stage: AutoLiftoutStage, eucentric: bool = False):
     """Get the current microscope state """
 
@@ -831,7 +829,7 @@ def automatic_eucentric_correction_v2(microscope: SdbMicroscopeClient, settings:
 
 
 
-def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings):
+def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, lamella: Lamella):
     # correct stage drift using machine learning
 
     from liftout.detection.utils import DetectionType
@@ -845,6 +843,7 @@ def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: di
         det = validate_detection_v2(microscope,
                                     settings,
                                     image_settings,
+                                    lamella=lamella,
                                     shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre),
                                     beam_type=beam_type)
 
@@ -865,8 +864,9 @@ def correct_stage_drift_with_ML_v2(microscope: SdbMicroscopeClient, settings: di
     acquire.take_reference_images(microscope, image_settings)
 
 
-def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings,
-                          shift_type: tuple, beam_type: BeamType = BeamType.ELECTRON, parent=None):
+def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, 
+                        image_settings: ImageSettings, lamella: Lamella,
+                        shift_type: tuple, beam_type: BeamType = BeamType.ELECTRON, parent=None):
 
     from liftout.gui.detection_window import GUIDetectionWindow
 
@@ -883,6 +883,7 @@ def validate_detection_v2(microscope: SdbMicroscopeClient, settings: dict, image
                                           settings=settings,
                                           image_settings=image_settings,
                                           detection_result=detection_result,
+                                          lamella=lamella,
                                           parent=parent
                                           )
     detection_window.show()

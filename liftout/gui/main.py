@@ -182,7 +182,6 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def run_sputter_platinum_utility(self):
         """Run the sputter platinum utility"""
 
-
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)        
         # sputter
@@ -196,30 +195,14 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         TEST_MOVEMENT_WINDOW = False
         TEST_USER_WINDOW = False
 
-        TEST_RESET_NEEDLE = True
-        if TEST_RESET_NEEDLE:
-            self.reset_needle()
-
-        if TEST_SAMPLE_POSITIONS:
-            self.select_sample_positions()
-
         if TEST_MILLING_WINDOW:
 
-            self.update_image_settings(hfw=150e-6, beam_type=BeamType.ION)
-            # windows.open_milling_window_v2(MillingPattern.JCut)
-            # print("hello jcut")
+            windows.open_milling_window_v2(MillingPattern.JCut)
+            print("hello jcut")
 
-            windows.open_milling_window_v2(MillingPattern.Thin)
-            print("hello thin")
 
-            self.update_image_settings(hfw=50.0e-6)
-            windows.open_milling_window_v2(MillingPattern.Polish)
-            print("hello polish")
 
         if TEST_DETECTION_WINDOW:
-
-            self.current_sample_position = SamplePosition(self.save_path, 9999)
-            # self.current_sample_position.sample_id = "9999"
 
             from pprint import pprint
 
@@ -227,6 +210,7 @@ class GUIMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.microscope,
                 self.settings,
                 self.image_settings,
+                lamella=None,
                 shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
             )
             pprint(det)

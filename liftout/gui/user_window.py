@@ -45,18 +45,8 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
-    microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = ImageSettings(
-        resolution = settings["imaging"]["resolution"],
-        dwell_time = settings["imaging"]["dwell_time"],
-        hfw = settings["imaging"]["horizontal_field_width"],
-        autocontrast = True,
-        beam_type = BeamType.ION,
-        gamma = settings["gamma"],
-        save = False,
-        label = "test",
-    )
+    microscope, settings, image_settings = fibsem_utils.quick_setup()
+
     app = QtWidgets.QApplication([])
 
     def ask_user_interaction(msg="Hello New Ask User", beam_type=None):

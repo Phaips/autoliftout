@@ -46,7 +46,6 @@ def mill_lamella_trench(
 
     # update the lamella coordinates, and save
     lamella.lamella_coordinates = calibration.get_raw_stage_position(microscope)
-    # self.current_sample_position.save_data()
 
     # mill_trenches
     windows.open_milling_window_v2(MillingPattern.Trench)
@@ -119,7 +118,7 @@ def mill_lamella_jcut(
     image_settings.hfw=settings["calibration"]["drift_correction_hfw_highres"],
     image_settings.save=True        
     image_settings.label=f"drift_correction_ML"
-    calibration.correct_stage_drift_with_ML_v2(microscope, settings, image_settings)
+    calibration.correct_stage_drift_with_ML_v2(microscope, settings, image_settings, lamella)
 
     ## MILL_JCUT
     # now we are at the angle for jcut, perform jcut
@@ -166,7 +165,7 @@ def liftout_lamella(
     )  # liftout angle is flat to SEM
 
     # correct stage drift from mill_lamella stage #TODO: shouldnt need to do this, remove...
-    calibration.correct_stage_drift_with_ML_v2(microscope, settings, image_settings)
+    calibration.correct_stage_drift_with_ML_v2(microscope, settings, image_settings, lamella)
 
     # move needle to liftout start position
     calibration.validate_stage_height_for_needle_insertion(microscope, settings, image_settings)
@@ -240,6 +239,7 @@ def land_needle_on_milled_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
         beam_type=BeamType.ELECTRON,
     )
@@ -266,6 +266,7 @@ def land_needle_on_milled_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
         beam_type=BeamType.ION,
     )
@@ -295,6 +296,7 @@ def land_needle_on_milled_lamella(
             microscope,
             settings,
             image_settings,
+            lamella=lamella,
             shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
             beam_type=BeamType.ION,
         )
@@ -391,6 +393,7 @@ def land_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost),
         beam_type=BeamType.ELECTRON,
     )
@@ -413,6 +416,7 @@ def land_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost),
         beam_type=BeamType.ION,
     )
@@ -438,6 +442,7 @@ def land_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost),
         beam_type=BeamType.ELECTRON,
     )
@@ -462,6 +467,7 @@ def land_lamella(
             microscope,
             settings,
             image_settings,
+            lamella=lamella,
             shift_type=(DetectionType.LamellaEdge, DetectionType.LandingPost),
             beam_type=BeamType.ELECTRON,
         )
@@ -509,6 +515,7 @@ def land_lamella(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre),
         beam_type=BeamType.ION,
     )
@@ -598,6 +605,7 @@ def reset_needle(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre),
         beam_type=BeamType.ION,
     )
@@ -618,6 +626,7 @@ def reset_needle(
         microscope,
         settings,
         image_settings,
+        lamella=lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.ImageCentre),
         beam_type=BeamType.ION,
     )
@@ -736,7 +745,7 @@ def polish_lamella(
     image_settings.save_path = lamella.path
 
     # restore state from thinning stage
-    # ref_image = self.current_sample_position.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
+    # ref_image = lamella.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
 
     # realign lamella to image centre
     image_settings.hfw=settings["calibration"]["reference_images"]["hfw_high_res"]

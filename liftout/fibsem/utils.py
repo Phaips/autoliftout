@@ -118,3 +118,17 @@ def sputter_platinum_on_whole_sample_grid_v2(microscope: SdbMicroscopeClient = N
         sputter_platinum(microscope, settings, whole_grid=True)
 
     return  
+
+
+def quick_setup():
+    
+    from liftout import utils
+    from liftout.fibsem import utils as fibsem_utils
+    from liftout.fibsem import acquire
+
+    settings = utils.load_config_v2()
+    microscope = fibsem_utils.connect_to_microscope(ip_address=settings["system"]["ip_address"])
+    image_settings = acquire.update_image_settings_v3(settings)
+
+
+    return microscope, settings, image_settings

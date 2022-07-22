@@ -10,6 +10,7 @@ from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      convert_pixel_distance_to_metres)
 from liftout.fibsem import acquire, calibration, movement
 from liftout.detection import detection
+from liftout.fibsem.sample import Lamella
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.milling import BeamType
 from liftout.gui import utils as gui_utils
@@ -19,7 +20,8 @@ from PyQt5 import QtCore, QtWidgets
 from liftout.fibsem.acquire import ImageSettings
 
 class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, detection_result: DetectionResult,  parent=None):
+    def __init__(self, microscope, settings: dict, image_settings: ImageSettings, 
+        detection_result: DetectionResult,  lamella: Lamella, parent=None):
         super(GUIDetectionWindow, self).__init__(parent=parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -28,6 +30,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self.settings = settings
         self.image_settings = image_settings
         self.detection_result = detection_result
+        self.lamella = lamella
 
         # images
         self.adorned_image = self.detection_result.adorned_image
@@ -100,15 +103,14 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
     def closeEvent(self, event):
         logging.info("Closing Detection Window")
 
-
         # log correct detection types
         if self.parent():
             try:
-                sample_id = self.parent().current_sample_position.sample_id
-                current_stage = self.parent().current_stage
+                petname = self.lamella._petname
+                current_stage = self.lamella.current_state.stage
                 for det_type in self.det_types:
                     if det_type not in self.logged_detection_types:
-                        logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}")
+                        logging.info(f"{petname} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}")
             except:
                 pass
 
@@ -132,9 +134,9 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
             # logging statistics
             if self.parent():
-                sample_id = self.parent().current_sample_position.sample_id
-                current_stage = self.parent().current_stage
-                logging.info(f"{sample_id} | {current_stage} | ml_detection | {self.current_detection_selected} | {False}")
+                petname = self.lamella._petname
+                current_stage = self.lamella.current_state.stage
+                logging.info(f"{petname} | {current_stage} | ml_detection | {self.current_detection_selected} | {False}")
             
                 self.logged_detection_types.append(self.current_detection_selected)
 
@@ -190,18 +192,9 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    settings = utils.load_config(r"C:\Users\Admin\Github\autoliftout\liftout\protocol_liftout.yml")
-    microscope = fibsem_utils.initialise_fibsem(ip_address=settings["system"]["ip_address"])
-    image_settings = ImageSettings(
-        resolution = settings["imaging"]["resolution"],
-        dwell_time = settings["imaging"]["dwell_time"],
-        hfw = settings["imaging"]["horizontal_field_width"],
-        autocontrast = True,
-        beam_type = BeamType.ION,
-        gamma = None,
-        save = False,
-        label = "test",
-    )
+
+    microscope, settings, image_settings = fibsem_utils.quick_setup()
+
     app = QtWidgets.QApplication([])
 
     detection_result = calibration.identify_shift_using_machine_learning(microscope,
