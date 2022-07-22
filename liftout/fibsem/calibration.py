@@ -1,20 +1,20 @@
 import logging
 import os
 
+from datetime import datetime
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
 from autoscript_sdb_microscope_client.structures import (
     AdornedImage,
-    ManipulatorPosition,
     StagePosition,
 )
 from liftout import utils
 from liftout.detection import detection
 from liftout.detection.utils import DetectionResult
 from liftout.fibsem import acquire, movement
-from liftout.fibsem.acquire import GammaSettings, ImageSettings
+from liftout.fibsem.acquire import ImageSettings, BeamType
 from liftout.fibsem.sample import (
     AutoLiftoutStage,
     BeamSettings,
@@ -26,9 +26,7 @@ from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
 
-BeamType = acquire.BeamType
-
-
+# TODO: START_HERE refactor this
 def correct_stage_drift(
     microscope: SdbMicroscopeClient,
     image_settings: ImageSettings,
@@ -467,7 +465,7 @@ def get_current_microscope_state_v2(
     """Get the current microscope state v2 """
 
     current_microscope_state = MicroscopeState(
-        timestamp=utils.current_timestamp(),
+        timestamp=datetime.timestamp(datetime.now()),
         last_completed_stage=stage,
         # get absolute stage coordinates (RAW)
         absolute_position=get_raw_stage_position(microscope),
@@ -539,7 +537,7 @@ def set_microscope_state(microscope, microscope_state: MicroscopeState):
 
     logging.info(f"restoring microscope state.")
     # move to position
-    safe_absolute_stage_movement(
+    movement.safe_absolute_stage_movement(
         microscope=microscope, stage_position=microscope_state.absolute_position
     )
 
@@ -577,7 +575,7 @@ def set_microscope_state_v2(microscope, microscope_state: MicroscopeState):
     )
 
     # move to position
-    safe_absolute_stage_movement(
+    movement.safe_absolute_stage_movement(
         microscope=microscope, stage_position=microscope_state.absolute_position
     )
 

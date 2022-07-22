@@ -1,6 +1,7 @@
 import logging
 import time
 
+from datetime import datetime
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
@@ -808,6 +809,7 @@ def run_autoliftout_workflow(
 ) -> Sample:
 
     HIGH_THROUGHPUT = settings["system"]["high_throughput"]
+    CONFIRM_WORKFLOW_ADVANCE = True
 
     # autoliftout_workflow
     autoliftout_stages = {
@@ -841,9 +843,12 @@ def run_autoliftout_workflow(
                         + 1
                     )
 
+                    # update image settings (save in correct directory)
+                    image_settings.save_path = lamella.path
+                    
                     # reset to the previous state
                     lamella = start_of_stage_update(
-                        microscope, lamella, next_stage=next_stage
+                        microscope, lamella, next_stage=next_stage, parent_ui=parent_ui
                     )
 
                     # run the next workflow stage
@@ -855,7 +860,7 @@ def run_autoliftout_workflow(
                     )
 
                     # advance workflow
-                    sample = end_of_stage_update(microscope, sample, lamella)
+                    sample = end_of_stage_update(microscope, sample, lamella, parent_ui)
 
     # standard workflow
     for lamella in sample.positions.values():
@@ -868,10 +873,13 @@ def run_autoliftout_workflow(
             next_stage = AutoLiftoutStage(
                 lamella.current_state.microscope_state.last_completed_stage.value + 1
             )
-            msg = f"""Continue Lamella {(lamella._petname)}) from {next_stage.name}?"""
-            response = windows.ask_user_interaction_v2(
-                microscope, msg=msg, beam_type=BeamType.ION,
-            )
+            if CONFIRM_WORKFLOW_ADVANCE:
+                msg = f"""Continue Lamella {(lamella._petname)}) from {next_stage.name}?"""
+                response = windows.ask_user_interaction_v2(
+                    microscope, msg=msg, beam_type=BeamType.ION,
+                )
+            else:
+                response = True
 
             # update image settings (save in correct directory)
             image_settings.save_path = lamella.path
@@ -880,7 +888,7 @@ def run_autoliftout_workflow(
 
                 # reset to the previous state
                 lamella = start_of_stage_update(
-                    microscope, lamella, next_stage=next_stage
+                    microscope, lamella, next_stage=next_stage, parent_ui=parent_ui
                 )
 
                 # run the next workflow stage
@@ -892,7 +900,7 @@ def run_autoliftout_workflow(
                 )
 
                 # advance workflow
-                sample = end_of_stage_update(microscope, sample, lamella)
+                sample = end_of_stage_update(microscope, sample, lamella, parent_ui=parent_ui)
             else:
                 break  # go to the next sample
 
@@ -908,11 +916,13 @@ def end_of_stage_update(
     lamella.current_state.microscope_state = calibration.get_current_microscope_state_v2(
         microscope=microscope, stage=lamella.current_state.stage,
     )
+    lamella.current_state.end_timestamp = datetime.timestamp(datetime.now())
 
-    # update sample
+    # write history
+    lamella.history.append(lamella.current_state)
+
+    # update and save sample
     sample = update_sample_lamella_data(sample, lamella)
-
-    # TODO: add history...
 
     # update ui
     if parent_ui:
@@ -932,6 +942,7 @@ def start_of_stage_update(
     """Check the last completed stage and reload the microscope state if required. Log that the stage has started. """
     last_completed_stage = lamella.current_state.microscope_state.last_completed_stage
 
+    # restore to the last state
     if last_completed_stage.value == next_stage.value - 1:
 
         logging.info(
@@ -941,7 +952,9 @@ def start_of_stage_update(
             microscope, lamella.current_state.microscope_state
         )
 
-    lamella.current_state.microscope_state.last_completed_stage = next_stage
+    # set current state information
+    lamella.current_state.stage = next_stage
+    lamella.current_state.start_timestamp = datetime.timestamp(datetime.now())
     logging.info(f"{lamella._petname} | {lamella.current_state.stage} | STARTED")
 
     # update ui

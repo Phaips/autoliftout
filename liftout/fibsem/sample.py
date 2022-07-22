@@ -1,8 +1,6 @@
 
 
-import datetime
 import os
-import time
 import uuid
 from dataclasses import dataclass
 from enum import Enum
@@ -11,9 +9,7 @@ from pathlib import Path
 import pandas as pd
 import petname
 import yaml
-from autoscript_sdb_microscope_client.structures import (AdornedImage,
-                                                         ManipulatorPosition,
-                                                         StagePosition)
+from autoscript_sdb_microscope_client.structures import (AdornedImage, StagePosition)
 from liftout import utils
 from liftout.fibsem.acquire import BeamType
 
