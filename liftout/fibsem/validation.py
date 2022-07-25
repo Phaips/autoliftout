@@ -124,3 +124,28 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
         msg.exec_()
 
     logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
+
+
+
+
+
+
+
+
+
+def validate_milling_settings(stage_settings: dict, settings: dict) -> dict:
+    # validation?
+    if "milling_current" not in stage_settings:
+        stage_settings["milling_current"] =  settings["calibration"]["imaging"]["milling_current"]
+    if "cleaning_cross_section" not in stage_settings:
+        stage_settings["cleaning_cross_section"] = False
+    if "rotation" not in stage_settings:
+        stage_settings["rotation"] = 0.0
+    if "scan_direction" not in stage_settings:
+        stage_settings["scan_direction"] = "TopToBottom"
+    
+    # remove list element from settings
+    if "protocol_stages" in stage_settings:
+        del stage_settings["protocol_stages"]
+
+    return stage_settings

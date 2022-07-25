@@ -1,9 +1,9 @@
 import logging
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from liftout.fibsem import movement
+from liftout.fibsem import movement, milling
 from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
-from liftout.gui.milling_window import GUIMillingWindow, MillingPattern
+from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 
@@ -50,7 +50,7 @@ def open_milling_window_v2(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
-    milling_pattern_type: MillingPattern,
+    milling_pattern_type: milling.MillingPattern,
     x: float = 0.0,
     y: float = 0.0,
     parent=None,
@@ -71,3 +71,6 @@ def open_milling_window_v2(
         y=y,
         parent=parent,
     )
+
+    milling_window.show()
+    milling_window.exec_()

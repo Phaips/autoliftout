@@ -135,13 +135,29 @@ def create_crosshair(
     )
 
 
-def draw_crosshair(image, canvas):
+def draw_crosshair(image, canvas, x:float = None, y:float = None):
     # draw crosshairs
-    crosshair = create_crosshair(image)
-    canvas.ax11.patches = []
+    crosshair = create_crosshair(image, x, y)
     for patch in crosshair.__dataclass_fields__:
         canvas.ax11.add_patch(getattr(crosshair, patch))
         getattr(crosshair, patch).set_visible(True)
+
+
+def draw_crosshair_v2(ax: plt.axes, image: np.ndarray or AdornedImage, x=None, y=None, colour="xkcd:yellow"):
+    
+    if type(image) == AdornedImage:
+        image = image.data
+
+    midx = int(image.shape[1] // 2) if x is None else x
+    midy = int(image.shape[0] // 2) if y is None else y
+
+
+    ax.plot(midx, midy, color=colour, marker="+", ms=20)
+
+
+    return 
+
+
 
 
 ###################
@@ -431,3 +447,28 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
         )
     )
 
+
+
+
+
+def draw_rectangle_pattern_v2(adorned_image, pattern, colour="yellow"):
+    from matplotlib.patches import Rectangle
+    rectangle = Rectangle((0, 0), 0.2, 0.2, color=colour, fill=None, alpha=1, angle=np.rad2deg(-pattern.rotation))
+    rectangle.set_visible(False)
+    rectangle.set_hatch('//////')
+    
+    image_width = adorned_image.width
+    image_height = adorned_image.height
+    pixel_size = adorned_image.metadata.binary_result.pixel_size.x
+
+    width = pattern.width / pixel_size
+    height = pattern.height / pixel_size
+    rotation = -pattern.rotation
+    rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
+    rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
+    rectangle.set_width(width)
+    rectangle.set_height(height)
+    rectangle.set_xy((rectangle_left, rectangle_bottom))
+    rectangle.set_visible(True)
+
+    return rectangle

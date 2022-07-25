@@ -40,9 +40,9 @@ cut:
   height: 0.5e-6
   depth: 25.e-6
   rotation: 0
-  hfw: 100.e-6
-  gap: 2.e-6
-  hgap: 4.e-6
+  milling_current: 2.0e-9
+  scan_direction: TopToBottom
+  cleaning_cross_section: False
 flatten_landing:
   width: 2.e-6
   height: 25.e-6

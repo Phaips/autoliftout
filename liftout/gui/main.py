@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
 matplotlib.use("Agg")
 
-_translate = QtCore.QCoreApplication.translate
+# _translate = QtCore.QCoreApplication.translate
 
 
 class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
@@ -188,6 +188,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self, settings: dict, log_path: str, ip_address: str = "10.0.0.1"
     ) -> SdbMicroscopeClient:
 
+        # TODO: add a ui indicator, as this can take a little while
         microscope = fibsem_utils.connect_to_microscope(
             ip_address=ip_address, parent_ui=self
         )
@@ -209,7 +210,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     ########################## USER INTERFACE ##########################
 
     def setup_connections(self):
-        logging.info("gui: setup connections started")
+        logging.info("UI | setup connections started")
         # connect buttons
         self.pushButton_initialise.clicked.connect(self.run_setup_autoliftout)
         self.pushButton_autoliftout.clicked.connect(self.run_autoliftout)
@@ -234,7 +235,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
 
-        logging.info("gui: setup connections finished")
+        logging.info("UI | setup connections finished")
 
     def set_ui_style(self):
         # UI style

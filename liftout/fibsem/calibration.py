@@ -21,7 +21,7 @@ from liftout.fibsem.sample import (
     Lamella,
     MicroscopeState,
 )
-from liftout.gui import windows
+
 from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
@@ -1047,6 +1047,7 @@ def validate_detection_v2(
 def validate_stage_height_for_needle_insertion(
     microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings
 ) -> None:
+    from liftout.gui import windows
     stage = microscope.specimen.stage
     stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
 
@@ -1074,6 +1075,7 @@ def validate_focus(
     link: bool = True,
 ) -> None:
 
+    from liftout.gui import windows
     # check focus distance is within tolerance
     if link:
         movement.auto_link_stage(microscope)  # TODO: remove?

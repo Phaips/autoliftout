@@ -14,7 +14,7 @@ from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
 from liftout.gui import windows
-from liftout.gui.milling_window import MillingPattern
+from liftout.fibsem.milling import MillingPattern
 
 # autoliftout workflow functions
 
