@@ -184,15 +184,19 @@ def identify_shift_using_machine_learning(
     shift_type: tuple,
 ) -> DetectionResult:
 
-    eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
-    weights_file = settings["machine_learning"]["weights"]
+
+
+    # eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
+    weights_file = settings["calibration"]["machine_learning"]["weights"]
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
     detector = detection.Detector(weights_path)
 
-    if image_settings.beam_type == BeamType.ION:
-        image = ib_image
-    else:
-        image = eb_image
+    # take new image
+    image = acquire.new_image(microscope, image_settings)
+    # if image_settings.beam_type == BeamType.ION:
+    #     image = ib_image
+    # else:
+    #     image = eb_image
 
     det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
 

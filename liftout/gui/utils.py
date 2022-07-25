@@ -128,10 +128,10 @@ def create_crosshair(
         rectangle_horizontal=rect_horizontal, rectangle_vertical=rect_vertical
     )
 
-
-def draw_crosshair(image, canvas, x: float = None, y: float = None):
+# TODO update with Point
+def draw_crosshair(image, canvas, x: float = None, y: float = None, colour: str ="yellow"):
     # draw crosshairs
-    crosshair = create_crosshair(image, x, y)
+    crosshair = create_crosshair(image, x, y, colour=colour)
     for patch in crosshair.__dataclass_fields__:
         canvas.ax11.add_patch(getattr(crosshair, patch))
         getattr(crosshair, patch).set_visible(True)

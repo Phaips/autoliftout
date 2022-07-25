@@ -4,6 +4,7 @@ import time
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from liftout.fibsem import movement
 from liftout.fibsem.acquire import BeamType, ImageSettings
+from liftout.utils import configure_logging
 
 
 def connect_to_microscope(ip_address="10.0.0.1", parent_ui=None):
@@ -124,15 +125,19 @@ def sputter_platinum_on_whole_sample_grid_v2(
 
 
 def quick_setup():
-
+    """Quick setup for microscope, settings, and iamge_settings"""
     from liftout import utils
     from liftout.fibsem import acquire
     from liftout.fibsem import utils as fibsem_utils
 
     settings = utils.load_config_v2()
+    
+    configure_logging("tools/test")
+
     microscope = fibsem_utils.connect_to_microscope(
         ip_address=settings["system"]["ip_address"]
     )
     image_settings = acquire.update_image_settings_v3(settings)
+
 
     return microscope, settings, image_settings

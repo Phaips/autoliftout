@@ -2,6 +2,7 @@ import os
 
 import liftout
 from liftout.fibsem.milling import MillingPattern
+from liftout.detection.utils import DetectionType
 
 base_path = os.path.dirname(liftout.__file__)
 system_config = os.path.join(base_path, "config", "system.yaml")
@@ -63,4 +64,22 @@ PATTERN_PROTOCOL_MAP = {
     MillingPattern.Polish: "polish_lamella",
     MillingPattern.Flatten: "flatten_landing",
     MillingPattern.Fiducial: "fiducial",
+}
+
+
+
+
+
+
+
+
+
+# DETECTIONS
+
+DETECTION_TYPE_COLOURS = {
+    DetectionType.LamellaCentre: (1, 0, 0, 1),
+    DetectionType.NeedleTip: (0, 1, 0, 1),
+    DetectionType.LamellaEdge: (1, 0, 0, 1),
+    DetectionType.LandingPost: (0, 1, 1, 1),
+    DetectionType.ImageCentre: (1, 1, 1, 1)
 }
