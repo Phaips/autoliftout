@@ -1,18 +1,17 @@
 
-import pandas as pd
-import numpy as np
-from PIL import Image
-import re
-
 import glob
-from random import shuffle
-import shutil
 import os
+import re
+import shutil
 from dataclasses import dataclass
 from enum import Enum
 
+import numpy as np
+import pandas as pd
 from autoscript_sdb_microscope_client.structures import AdornedImage
 from liftout.fibsem.movement import pixel_to_realspace_coordinate
+from liftout.fibsem.structures import Point
+from PIL import Image
 
 
 class DetectionType(Enum):
@@ -21,11 +20,6 @@ class DetectionType(Enum):
     LamellaEdge = 3
     LandingPost = 4
     ImageCentre = 5 
-
-@dataclass
-class Point:
-    x: float
-    y: float
 
 
 @dataclass
@@ -151,12 +145,13 @@ def extract_img_for_labelling(path, show=False):
     path: path to directory containing logged images
 
     """
+    import datetime
+    import random
+    import time
+
     import liftout
     import matplotlib.pyplot as plt
     from PIL import Image
-    import datetime, time
-    import random
-
 
     # mkdir for copying images to
     data_path = os.path.join(os.path.dirname(liftout.__file__), "data", "retrain")

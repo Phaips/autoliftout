@@ -11,8 +11,8 @@ from autoscript_sdb_microscope_client.structures import Rectangle as RectangleAr
 from liftout.config import config
 from liftout.fibsem import acquire, constants, milling, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem import validation
 from liftout.fibsem.acquire import BeamType, ImageSettings
+from liftout.fibsem.structures import Point
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from PyQt5 import QtCore, QtWidgets
 
@@ -93,8 +93,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setup_milling_image()
 
         # setup
-        milling.setup_ion_milling(
-            self.microscope, ion_beam_field_of_view=self.image_settings.hfw
+        milling.setup_milling(
+            microscope=self.microscope,
+            application_file=self.settings["system"]["application_file"],
+            hfw=self.image_settings.hfw,
         )
         self.setup_milling_patterns()
         self.setup_connections()
@@ -244,9 +246,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         )
 
         for i, stage_settings in enumerate(milling_protocol_stages, 1):
-            stage_settings = validation.validate_milling_settings(
-                stage_settings, self.settings
-            )
             self.milling_stages[f"{self.milling_pattern.name}_{i}"] = stage_settings
 
         # set the first milling stage settings
@@ -303,13 +302,11 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.patterns = []
             for stage_name, stage_settings in self.milling_stages.items():
 
-                patterns = milling.update_milling_patterns(
+                patterns = milling.create_milling_patterns(
                     self.microscope,
-                    self.settings,
                     stage_settings,
                     self.milling_pattern,
-                    self.center_x,
-                    self.center_y,
+                    Point(self.center_x, self.center_y),
                 )
                 self.patterns.append(patterns)  # 2D
 
@@ -354,17 +351,15 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
             # redraw patterns, and run milling
             self.microscope.patterning.clear_patterns()
-            self.patterns = milling.update_milling_patterns(
+            self.patterns = milling.create_milling_patterns(
                 self.microscope,
-                self.settings,
                 stage_settings,
                 self.milling_pattern,
-                self.center_x,
-                self.center_y,
+                Point(self.center_x, self.center_y),
             )
             milling.run_milling(
                 microscope=self.microscope,
-                settings=self.settings["protocol"],
+                settings=self.settings,
                 milling_current=stage_settings["milling_current"],
                 asynch=True,
             )
@@ -448,7 +443,7 @@ def main():
         microscope=microscope,
         settings=settings,
         image_settings=image_settings,
-        milling_pattern_type=milling.MillingPattern.Fiducial,
+        milling_pattern_type=milling.MillingPattern.Trench,
     )
     qt_app.show()
     sys.exit(app.exec_())
