@@ -1,5 +1,7 @@
-import liftout
 import os
+
+import liftout
+from liftout.fibsem.milling import MillingPattern
 
 base_path = os.path.dirname(liftout.__file__)
 system_config = os.path.join(base_path, "config", "system.yaml")
@@ -48,3 +50,17 @@ MILLING_SPUTTER_RATE = {
 
 # 30kV
 # 7.6nA: 3.041e0 um3/s
+
+
+PATTERN_PROTOCOL_MAP = {
+    MillingPattern.Trench: "lamella",
+    MillingPattern.JCut: "jcut",
+    MillingPattern.Sever: "sever",
+    MillingPattern.Weld: "weld",
+    MillingPattern.Cut: "cut",
+    MillingPattern.Sharpen: "sharpen",
+    MillingPattern.Thin: "thin_lamella",
+    MillingPattern.Polish: "polish_lamella",
+    MillingPattern.Flatten: "flatten_landing",
+    MillingPattern.Fiducial: "fiducial",
+}

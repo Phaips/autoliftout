@@ -8,28 +8,22 @@ import liftout
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndi
+import yaml
 from autoscript_sdb_microscope_client.structures import AdornedImage
 from liftout import utils
-from liftout.fibsem.constants import (
-    METRE_TO_MICRON,
-    METRE_TO_MILLIMETRE,
-    MICRON_TO_METRE,
-    MILLIMETRE_TO_METRE,
-)
-from liftout.fibsem.sample import Lamella, Sample, create_experiment, load_sample
+from liftout.config import config
+from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
+                                      MICRON_TO_METRE, MILLIMETRE_TO_METRE)
+from liftout.fibsem.milling import MillingPattern
+from liftout.fibsem.sample import (Lamella, Sample, create_experiment,
+                                   load_sample)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import (
-    QGridLayout,
-    QLabel,
-    QMessageBox,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt5.QtWidgets import (QGridLayout, QLabel, QMessageBox, QSizePolicy,
+                             QVBoxLayout, QWidget)
 
 
 class _WidgetPlot(QWidget):
@@ -135,7 +129,7 @@ def create_crosshair(
     )
 
 
-def draw_crosshair(image, canvas, x:float = None, y:float = None):
+def draw_crosshair(image, canvas, x: float = None, y: float = None):
     # draw crosshairs
     crosshair = create_crosshair(image, x, y)
     for patch in crosshair.__dataclass_fields__:
@@ -143,21 +137,23 @@ def draw_crosshair(image, canvas, x:float = None, y:float = None):
         getattr(crosshair, patch).set_visible(True)
 
 
-def draw_crosshair_v2(ax: plt.axes, image: np.ndarray or AdornedImage, x=None, y=None, colour="xkcd:yellow"):
-    
+def draw_crosshair_v2(
+    ax: plt.axes,
+    image: np.ndarray or AdornedImage,
+    x=None,
+    y=None,
+    colour="xkcd:yellow",
+):
+
     if type(image) == AdornedImage:
         image = image.data
 
     midx = int(image.shape[1] // 2) if x is None else x
     midy = int(image.shape[0] // 2) if y is None else y
 
-
     ax.plot(midx, midy, color=colour, marker="+", ms=20)
 
-
-    return 
-
-
+    return
 
 
 ###################
@@ -312,12 +308,11 @@ def load_configuration_from_ui(parent=None) -> dict:
     play_audio_alert()
 
     options = QtWidgets.QFileDialog.Options()
-    options |= QtWidgets.QFileDialog.DontUseNativeDialog
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent,
         "Load Configuration",
         os.path.dirname(liftout.__file__),
-        "Yaml Files (*.yml)",
+        "Yaml Files (*.yml, *.yaml)",
         options=options,
     )
 
@@ -387,7 +382,7 @@ def setup_experiment_sample_ui(parent_ui):
         parent_ui.label_experiment_name.setText(f"Experiment: {sample.name}")
         parent_ui.statusBar.showMessage(f"Experiment {sample.name} loaded.")
         parent_ui.statusBar.repaint()
-        
+
     return sample
 
 
@@ -448,15 +443,21 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
     )
 
 
-
-
-
 def draw_rectangle_pattern_v2(adorned_image, pattern, colour="yellow"):
     from matplotlib.patches import Rectangle
-    rectangle = Rectangle((0, 0), 0.2, 0.2, color=colour, fill=None, alpha=1, angle=np.rad2deg(-pattern.rotation))
+
+    rectangle = Rectangle(
+        (0, 0),
+        0.2,
+        0.2,
+        color=colour,
+        fill=None,
+        alpha=1,
+        angle=np.rad2deg(-pattern.rotation),
+    )
     rectangle.set_visible(False)
-    rectangle.set_hatch('//////')
-    
+    rectangle.set_hatch("//////")
+
     image_width = adorned_image.width
     image_height = adorned_image.height
     pixel_size = adorned_image.metadata.binary_result.pixel_size.x
@@ -464,11 +465,57 @@ def draw_rectangle_pattern_v2(adorned_image, pattern, colour="yellow"):
     width = pattern.width / pixel_size
     height = pattern.height / pixel_size
     rotation = -pattern.rotation
-    rectangle_left = (image_width / 2) + (pattern.center_x / pixel_size) - (width / 2) * np.cos(rotation) + (height / 2) * np.sin(rotation)
-    rectangle_bottom = (image_height / 2) - (pattern.center_y / pixel_size) - (height / 2) * np.cos(rotation) - (width / 2) * np.sin(rotation)
+    rectangle_left = (
+        (image_width / 2)
+        + (pattern.center_x / pixel_size)
+        - (width / 2) * np.cos(rotation)
+        + (height / 2) * np.sin(rotation)
+    )
+    rectangle_bottom = (
+        (image_height / 2)
+        - (pattern.center_y / pixel_size)
+        - (height / 2) * np.cos(rotation)
+        - (width / 2) * np.sin(rotation)
+    )
     rectangle.set_width(width)
     rectangle.set_height(height)
     rectangle.set_xy((rectangle_left, rectangle_bottom))
     rectangle.set_visible(True)
 
     return rectangle
+
+
+def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: list, parent_ui=None):
+
+    options = QtWidgets.QFileDialog.Options()
+    config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+        parent_ui,
+        "Select Protocol File",
+        os.path.dirname(liftout.__file__),
+        "Yaml Files (*.yml, *.yaml)",
+        options=options,
+    )
+
+    if config_filename == "":
+        raise ValueError("No protocol file was selected.")
+
+    protocol = utils.load_yaml(config_filename)
+
+    protocol_key = config.PATTERN_PROTOCOL_MAP[milling_pattern]
+
+    if len(milling_stages) == 1:
+        stage_settings = list(milling_stages.values())[0]
+        protocol[protocol_key].update(stage_settings)
+
+    else:
+        stage_settings = list(milling_stages.values())[0]
+        protocol[protocol_key].update(stage_settings)
+        for i, stage_settings in enumerate(milling_stages.values()):
+            protocol[protocol_key]["protocol_stages"][i].update(stage_settings)
+
+    # save yaml file
+    with open(config_filename, "w") as f:
+        yaml.safe_dump(protocol, f)
+
+    logging.info(f"Updated protocol: {config_filename}")
+

@@ -1,5 +1,6 @@
 import logging
 import math
+from turtle import width
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
@@ -19,258 +20,6 @@ class MillingPattern(Enum):
     Flatten = 9
     Fiducial = 10
 
-def jcut_severing_pattern(
-    microscope, settings: dict, centre_x: float = 0.0, centre_y: float = 0.0
-):
-    """Create J-cut milling pattern in the center of the ion beam field of view.
-    Parameters
-    ----------
-    microscope : AutoScript microscope instance.
-        The AutoScript microscope object.
-    settings : dict
-        Sample surface angle for J-cut in degrees, by default 6
-    Returns
-    -------
-    autoscript_sdb_microscope_client.structures.RectanglePattern
-        Rectangle milling pattern used to sever the remaining bit of the J-cut.
-    """
-    # Unpack settings
-    jcut_angle_degrees = settings["jcut"]["jcut_angle"]
-    jcut_lamella_depth = settings["jcut"]["height"]
-    jcut_length = settings["jcut"]["length"]
-    jcut_trench_thickness = settings["jcut"]["trench_thickness"]
-    jcut_milling_depth = settings["jcut"]["milling_depth"]
-    extra_bit = settings["jcut"]["extra_bit"]
-
-    # Create milling pattern - right hand side of J-cut
-    flat_to_ion_angle = settings["system"]["stage_tilt_flat_to_ion"]
-    assert flat_to_ion_angle == 52
-    angle_correction_factor = np.sin(
-        np.deg2rad(flat_to_ion_angle - jcut_angle_degrees)
-    )  # MAGIC NUMBER
-    center_x = centre_x + ((jcut_length - jcut_trench_thickness) / 2)
-    center_y = (
-        centre_y
-        + ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction_factor
-    )  # noqa: E501
-    width = jcut_trench_thickness
-    height = (jcut_lamella_depth + extra_bit) * angle_correction_factor
-    jcut_severing_pattern = microscope.patterning.create_rectangle(
-        center_x, center_y, width, height, jcut_milling_depth
-    )
-    return [jcut_severing_pattern]
-
-
-def run_milling(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    milling_current: float = None,
-    asynch: bool = False,
-):
-    """Run ion beam milling at specified current.
-    
-    - Change to milling current
-    - Run milling (synchronous) or Start Milling (asynchronous)
-
-    """
-    logging.info("milling: running ion beam milling now...")
-
-    # change to milling current
-    microscope.imaging.set_active_view(2)  # the ion beam view
-    if milling_current is None:
-        milling_current = settings["imaging"]["milling_current"]
-    if microscope.beams.ion_beam.beam_current.value != milling_current:
-        # if milling_current not in microscope.beams.ion_beam.beam_current.available_values:
-        #   switch to closest
-
-        microscope.beams.ion_beam.beam_current.value = milling_current
-
-    # run milling (asynchronously)
-    if asynch:
-        microscope.patterning.start()
-    else:
-        microscope.patterning.run()
-        microscope.patterning.clear_patterns()
-
-
-def finish_milling(microscope: SdbMicroscopeClient, imaging_current: float = 20e-12) -> None:
-    """Finish milling by clearing the patterns and restoring the default imaging current.
-
-    Args:
-        microscope (SdbMicroscopeClient): autoscript microscope client connection
-        settings (dict): configuration settings
-    """
-    # restore imaging current
-    logging.info("returning to the ion beam imaging current now.")
-    microscope.patterning.clear_patterns()
-    microscope.beams.ion_beam.beam_current.value = imaging_current
-    microscope.patterning.mode = "Serial"
-    logging.info("ion beam milling complete.")
-
-
-def mill_polish_lamella(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    patterns: list,
-):
-    """Polish the lamella edges to the desired thickness. Tilt by one degree between polishing steps to ensure beam mills along the correct axis.
-    
-    Align using crosscorrelation between after tilting.
-    """
-
-    from autoscript_sdb_microscope_client.structures import Rectangle
-
-    # align (move settings outside?)
-    image_settings.resolution = settings["polish_lamella"]["resolution"]
-    image_settings.dwell_time = settings["polish_lamella"]["dwell_time"]
-    image_settings.hfw = settings["polish_lamella"]["hfw"]
-    image_settings.beam_type = BeamType.ION
-    image_settings.gamma.enabled = False
-    image_settings.save = True
-    image_settings.label = f"polish_lamella_crosscorrelation_ref"
-
-    # user defined reduced area
-    reduced_area = Rectangle(
-        settings["reduced_area"]["x"],
-        settings["reduced_area"]["y"],
-        settings["reduced_area"]["dx"],
-        settings["reduced_area"]["dy"],
-    )
-
-    # TILT_OFFSET = settings["polish_lamella"]["tilt_offset"]
-    # CROSSCORRELATION_STEPS = 3
-
-    # reset beam shift
-    calibration.reset_beam_shifts(microscope)
-
-    # initial reference image
-    ref_image = acquire.new_image(microscope, image_settings, reduced_area=reduced_area)
-
-    # generate patterns (user change?)
-    # lower_pattern, upper_pattern = patterns
-
-    # # retrieve pattern values, (the objects are deleted by clear_patterns)
-    # l_cx = lower_pattern.center_x
-    # l_cy = lower_pattern.center_y
-    # l_w = lower_pattern.width
-    # l_h = lower_pattern.height
-    # l_d = lower_pattern.depth
-
-    # u_cx = upper_pattern.center_x
-    # u_cy = upper_pattern.center_y
-    # u_w = upper_pattern.width
-    # u_h = upper_pattern.height
-    # u_d = upper_pattern.depth
-
-    # # clear patterns...
-    # microscope.patterning.clear_patterns()
-
-    # # # tilt up for bottom pattern
-    # # tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
-    # # microscope.specimen.stage.relative_move(tilt_up)
-
-    # # absolute moves...
-    # tilt_negative = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    # microscope.specimen.stage.absolute_move(tilt_negative)
-
-    # # multi-step alignment
-    # for i in range(CROSSCORRELATION_STEPS):
-    #     image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_stage_{i+1}"
-    #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
-
-    # image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
-    # _ = acquire.new_image(microscope, image_settings, reduced_area)
-
-    # # mill bottom pattern
-    # # draw bottom pattern
-    # lower_pattern = microscope.patterning.create_cleaning_cross_section(
-    #     center_x=l_cx,
-    #     center_y=l_cy,
-    #     width=l_w,
-    #     height=l_h,
-    #     depth=l_d
-    # )
-    # lower_pattern.scan_direction = "BottomToTop"
-
-    # # run milling
-    # run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
-
-    # # reset back to starting tilt
-    # # tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
-    # # microscope.specimen.stage.relative_move(tilt_back)
-
-    # # reset beam shift
-    # calibration.reset_beam_shifts(microscope)
-
-    # # tilt down for top pattern
-    # tilt_positive = StagePosition(t=np.deg2rad(-TILT_OFFSET))
-    # microscope.specimen.stage.absolute_move(tilt_positive)
-
-    # # multi-step alignment
-    # for i in range(CROSSCORRELATION_STEPS):
-    #     image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_stage_{i+1}"
-    #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
-
-    # image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
-    # _ = acquire.new_image(microscope, image_settings, reduced_area)
-
-    # # mill top pattern
-    # # draw top pattern
-    # upper_pattern = microscope.patterning.create_cleaning_cross_section(
-    #     center_x = u_cx,
-    #     center_y = u_cy,
-    #     width = u_w,
-    #     height = u_h,
-    #     depth = u_d
-    # )
-    # upper_pattern.scan_direction = "TopToBottom"
-
-    # run milling
-    run_milling(
-        microscope,
-        settings,
-        milling_current=settings["polish_lamella"]["milling_current"],
-        asynch=False,
-    )
-
-    # reset back to starting tilt
-    # tilt_zero = StagePosition(t=np.deg2rad(0))
-    # microscope.specimen.stage.absolute_move(tilt_zero)
-
-    # reset beam shift
-    calibration.reset_beam_shifts(microscope)
-
-    # finish milling
-    finish_milling(microscope, settings)
-
-
-def mill_trench_patterns(
-    microscope: SdbMicroscopeClient, settings: dict, centre_x=0, centre_y=0
-):
-    """Calculate the trench milling patterns"""
-
-    lamella_width = settings["lamella_width"]
-    lamella_height = settings["lamella_height"]
-    trench_height = settings["trench_height"]
-    upper_trench_height = trench_height / max(settings["size_ratio"], 1.0)
-    offset = settings["offset"]
-    milling_depth = settings["milling_depth"]
-
-    centre_upper_y = centre_y + (lamella_height / 2 + upper_trench_height / 2 + offset)
-    centre_lower_y = centre_y - (lamella_height / 2 + trench_height / 2 + offset)
-
-    lower_pattern = microscope.patterning.create_cleaning_cross_section(
-        centre_x, centre_lower_y, lamella_width, trench_height, milling_depth,
-    )
-    lower_pattern.scan_direction = "BottomToTop"
-
-    upper_pattern = microscope.patterning.create_cleaning_cross_section(
-        centre_x, centre_upper_y, lamella_width, upper_trench_height, milling_depth,
-    )
-    upper_pattern.scan_direction = "TopToBottom"
-
-    return [lower_pattern, upper_pattern]
 
 
 def get_milling_protocol_stages(settings, stage_name):
@@ -343,6 +92,217 @@ def setup_ion_milling(
     logging.info(f"milling: patterning mode: {patterning_mode}")
     logging.info(f"milling: ion horizontal field width: {ion_beam_field_of_view}")
 
+def run_milling(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    milling_current: float = None,
+    asynch: bool = False,
+):
+    """Run ion beam milling at specified current.
+    
+    - Change to milling current
+    - Run milling (synchronous) or Start Milling (asynchronous)
+
+    """
+    logging.info("milling: running ion beam milling now...")
+
+    # change to milling current
+    microscope.imaging.set_active_view(2)  # the ion beam view
+    if milling_current is None:
+        milling_current = settings["imaging"]["milling_current"]
+    if microscope.beams.ion_beam.beam_current.value != milling_current:
+        # if milling_current not in microscope.beams.ion_beam.beam_current.available_values:
+        #   switch to closest
+
+        microscope.beams.ion_beam.beam_current.value = milling_current
+
+    # run milling (asynchronously)
+    if asynch:
+        microscope.patterning.start()
+    else:
+        microscope.patterning.run()
+        microscope.patterning.clear_patterns()
+
+
+def finish_milling(microscope: SdbMicroscopeClient, imaging_current: float = 20e-12) -> None:
+    """Finish milling by clearing the patterns and restoring the default imaging current.
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope client connection
+        settings (dict): configuration settings
+    """
+    # restore imaging current
+    logging.info("returning to the ion beam imaging current now.")
+    microscope.patterning.clear_patterns()
+    microscope.beams.ion_beam.beam_current.value = imaging_current
+    microscope.patterning.mode = "Serial"
+    logging.info("ion beam milling complete.")
+
+
+# def mill_polish_lamella(
+#     microscope: SdbMicroscopeClient,
+#     settings: dict,
+#     image_settings: ImageSettings,
+#     patterns: list,
+# ):
+#     """Polish the lamella edges to the desired thickness. Tilt by one degree between polishing steps to ensure beam mills along the correct axis.
+    
+#     Align using crosscorrelation between after tilting.
+#     """
+
+#     from autoscript_sdb_microscope_client.structures import Rectangle
+
+#     # align (move settings outside?)
+#     image_settings.resolution = settings["polish_lamella"]["resolution"]
+#     image_settings.dwell_time = settings["polish_lamella"]["dwell_time"]
+#     image_settings.hfw = settings["polish_lamella"]["hfw"]
+#     image_settings.beam_type = BeamType.ION
+#     image_settings.gamma.enabled = False
+#     image_settings.save = True
+#     image_settings.label = f"polish_lamella_crosscorrelation_ref"
+
+#     # user defined reduced area
+#     reduced_area = Rectangle(
+#         settings["reduced_area"]["x"],
+#         settings["reduced_area"]["y"],
+#         settings["reduced_area"]["dx"],
+#         settings["reduced_area"]["dy"],
+#     )
+
+#     # TILT_OFFSET = settings["polish_lamella"]["tilt_offset"]
+#     # CROSSCORRELATION_STEPS = 3
+
+#     # reset beam shift
+#     calibration.reset_beam_shifts(microscope)
+
+#     # initial reference image
+#     ref_image = acquire.new_image(microscope, image_settings, reduced_area=reduced_area)
+
+#     # generate patterns (user change?)
+#     # lower_pattern, upper_pattern = patterns
+
+#     # # retrieve pattern values, (the objects are deleted by clear_patterns)
+#     # l_cx = lower_pattern.center_x
+#     # l_cy = lower_pattern.center_y
+#     # l_w = lower_pattern.width
+#     # l_h = lower_pattern.height
+#     # l_d = lower_pattern.depth
+
+#     # u_cx = upper_pattern.center_x
+#     # u_cy = upper_pattern.center_y
+#     # u_w = upper_pattern.width
+#     # u_h = upper_pattern.height
+#     # u_d = upper_pattern.depth
+
+#     # # clear patterns...
+#     # microscope.patterning.clear_patterns()
+
+#     # # # tilt up for bottom pattern
+#     # # tilt_up = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+#     # # microscope.specimen.stage.relative_move(tilt_up)
+
+#     # # absolute moves...
+#     # tilt_negative = StagePosition(t=np.deg2rad(TILT_OFFSET))
+#     # microscope.specimen.stage.absolute_move(tilt_negative)
+
+#     # # multi-step alignment
+#     # for i in range(CROSSCORRELATION_STEPS):
+#     #     image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_stage_{i+1}"
+#     #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+
+#     # image_settings.label = f"polish_lamella_tilt_{tilt_negative.t:.2f}_aligned"
+#     # _ = acquire.new_image(microscope, image_settings, reduced_area)
+
+#     # # mill bottom pattern
+#     # # draw bottom pattern
+#     # lower_pattern = microscope.patterning.create_cleaning_cross_section(
+#     #     center_x=l_cx,
+#     #     center_y=l_cy,
+#     #     width=l_w,
+#     #     height=l_h,
+#     #     depth=l_d
+#     # )
+#     # lower_pattern.scan_direction = "BottomToTop"
+
+#     # # run milling
+#     # run_milling(microscope, settings, milling_current=settings["polish_lamella"]["milling_current"], asynch=False)
+
+#     # # reset back to starting tilt
+#     # # tilt_back = StagePosition(t=np.deg2rad(TILT_OFFSET))
+#     # # microscope.specimen.stage.relative_move(tilt_back)
+
+#     # # reset beam shift
+#     # calibration.reset_beam_shifts(microscope)
+
+#     # # tilt down for top pattern
+#     # tilt_positive = StagePosition(t=np.deg2rad(-TILT_OFFSET))
+#     # microscope.specimen.stage.absolute_move(tilt_positive)
+
+#     # # multi-step alignment
+#     # for i in range(CROSSCORRELATION_STEPS):
+#     #     image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_stage_{i+1}"
+#     #     calibration.beam_shift_alignment(microscope, image_settings, ref_image, reduced_area=reduced_area)
+
+#     # image_settings.label = f"polish_lamella_tilt_{tilt_positive.t:.2f}_aligned"
+#     # _ = acquire.new_image(microscope, image_settings, reduced_area)
+
+#     # # mill top pattern
+#     # # draw top pattern
+#     # upper_pattern = microscope.patterning.create_cleaning_cross_section(
+#     #     center_x = u_cx,
+#     #     center_y = u_cy,
+#     #     width = u_w,
+#     #     height = u_h,
+#     #     depth = u_d
+#     # )
+#     # upper_pattern.scan_direction = "TopToBottom"
+
+#     # run milling
+#     run_milling(
+#         microscope,
+#         settings,
+#         milling_current=settings["polish_lamella"]["milling_current"],
+#         asynch=False,
+#     )
+
+#     # reset back to starting tilt
+#     # tilt_zero = StagePosition(t=np.deg2rad(0))
+#     # microscope.specimen.stage.absolute_move(tilt_zero)
+
+#     # reset beam shift
+#     calibration.reset_beam_shifts(microscope)
+
+#     # finish milling
+#     finish_milling(microscope, settings)
+
+
+def mill_trench_patterns(
+    microscope: SdbMicroscopeClient, settings: dict, centre_x=0, centre_y=0
+):
+    """Calculate the trench milling patterns"""
+
+    lamella_width = settings["lamella_width"]
+    lamella_height = settings["lamella_height"]
+    trench_height = settings["trench_height"]
+    upper_trench_height = trench_height / max(settings["size_ratio"], 1.0)
+    offset = settings["offset"]
+    milling_depth = settings["milling_depth"]
+
+    centre_upper_y = centre_y + (lamella_height / 2 + upper_trench_height / 2 + offset)
+    centre_lower_y = centre_y - (lamella_height / 2 + trench_height / 2 + offset)
+
+    lower_pattern = microscope.patterning.create_cleaning_cross_section(
+        centre_x, centre_lower_y, lamella_width, trench_height, milling_depth,
+    )
+    lower_pattern.scan_direction = "BottomToTop"
+
+    upper_pattern = microscope.patterning.create_cleaning_cross_section(
+        centre_x, centre_upper_y, lamella_width, upper_trench_height, milling_depth,
+    )
+    upper_pattern.scan_direction = "TopToBottom"
+
+    return [lower_pattern, upper_pattern]
+
 
 def jcut_milling_patterns(
     microscope: SdbMicroscopeClient,
@@ -364,58 +324,62 @@ def jcut_milling_patterns(
      autoscript_sdb_microscope_client.structures.RectanglePattern)
         Tuple containing the three milling patterns comprising the J-cut.
     """
-    jcut_top = None
-    jcut_lhs = None
-    jcut_rhs = None
 
-    # Unpack settings
-    jcut_angle_degrees = settings["protocol"]["jcut"]["jcut_angle"]
-    jcut_lamella_depth = settings["protocol"]["jcut"]["height"]
-    jcut_length = settings["protocol"]["jcut"]["length"]
+    jcut_lhs_height = settings["protocol"]["jcut"]["lhs_height"]
+    jcut_rhs_height = settings["protocol"]["jcut"]["rhs_height"]
+    jcut_lamella_height = settings["protocol"]["jcut"]["lamella_height"]
+    jcut_width = settings["protocol"]["jcut"]["width"]
     jcut_trench_thickness = settings["protocol"]["jcut"]["trench_thickness"]
-    jcut_milling_depth = settings["protocol"]["jcut"]["milling_depth"]
-    extra_bit = settings["protocol"]["jcut"]["extra_bit"]
+    jcut_milling_depth = settings["protocol"]["jcut"]["depth"]
 
-    flat_to_ion_angle = settings["system"]["stage_tilt_flat_to_ion"]
-
-    # Create milling patterns
-    angle_correction = np.sin(np.deg2rad(flat_to_ion_angle - jcut_angle_degrees))
-
-    # Top bar of J-cut
+    # top_jcut
     jcut_top = microscope.patterning.create_rectangle(
-        centre_x,  # center_x
-        centre_y + jcut_lamella_depth * angle_correction,  # center_y
-        jcut_length,  # width
-        jcut_trench_thickness,  # height
-        jcut_milling_depth,
-    )  # depth
+        center_x = centre_x,
+        center_y = centre_y + jcut_lamella_height,
+        width = jcut_width,
+        height=jcut_trench_thickness,
+        depth=jcut_milling_depth
+    )
 
-    # Left hand side of J-cut (long side)
+    jcut_half_width = ((jcut_width - jcut_trench_thickness) / 2)
+    jcut_half_height = jcut_lamella_height / 2
+
+    # lhs_jcut
     jcut_lhs = microscope.patterning.create_rectangle(
-        centre_x + -((jcut_length - jcut_trench_thickness) / 2),  # center_x
-        centre_y
-        + ((jcut_lamella_depth - (extra_bit / 2)) / 2) * angle_correction,  # center_y
-        jcut_trench_thickness,  # width
-        (jcut_lamella_depth + extra_bit) * angle_correction,  # height
-        jcut_milling_depth,
+        center_x=centre_x - jcut_half_width,
+        center_y=centre_y + jcut_half_height - (jcut_lhs_height / 2 - jcut_half_height),  
+        width=jcut_trench_thickness,
+        height=jcut_lhs_height,  
+        depth=jcut_milling_depth,
     )  # depth
 
-    # Right hand side of J-cut (short side)
-    jcut_rightside_remaining = 1.5e-6  # in microns, how much to leave attached
-    height = (jcut_lamella_depth - jcut_rightside_remaining) * angle_correction
-    center_y = jcut_rightside_remaining + (height / 2)
+    # rhs jcut
     jcut_rhs = microscope.patterning.create_rectangle(
-        centre_x + ((jcut_length - jcut_trench_thickness) / 2),  # center_x
-        centre_y + center_y,  # center_y
-        jcut_trench_thickness,  # width
-        height,  # height
-        jcut_milling_depth,
-    )  # depth
+        center_x=centre_x + jcut_half_width,
+        center_y=centre_y + jcut_half_height - (jcut_rhs_height / 2 - jcut_half_height),  
+        width=jcut_trench_thickness,
+        height=jcut_rhs_height,  
+        depth=jcut_milling_depth,
+    ) 
 
     # use parallel mode for jcut
     # microscope.patterning.mode = "Parallel"
 
     return [jcut_top, jcut_lhs, jcut_rhs]
+
+def jcut_severing_pattern(
+    microscope, settings: dict, centre_x: float = 0.0, centre_y: float = 0.0
+):
+
+    jcut_severing_pattern = _draw_rectangle_pattern(
+        microscope=microscope,
+        settings=settings["protocol"]["sever"],
+        x=centre_x, y=centre_y
+
+    )
+
+    return [jcut_severing_pattern]
+
 
 
 def weld_to_landing_post(
@@ -433,14 +397,9 @@ def weld_to_landing_post(
     settings: dict
         The protocol settings dictionary
     """
-    pattern = _create_mill_pattern(
-        microscope,
-        center_x=centre_x,
-        center_y=centre_y,
-        width=settings["weld"]["width"],
-        height=settings["weld"]["height"],
-        depth=settings["weld"]["depth"],
-        rotation_degrees=settings["weld"]["rotation"],
+
+    pattern = _draw_rectangle_pattern(
+        microscope, settings["protocol"]["weld"], centre_x, centre_y
     )
 
     return [pattern]
@@ -449,54 +408,9 @@ def weld_to_landing_post(
 def cut_off_needle(microscope, settings, centre_x: float = 0.0, centre_y: float = 0.0):
     logging.info(f"milling: cut off needle")
 
-    pattern = _create_mill_pattern(
-        microscope,
-        center_x=centre_x,
-        center_y=centre_y,
-        width=settings["cut"]["width"],
-        height=settings["cut"]["height"],
-        depth=settings["cut"]["depth"],
-        rotation_degrees=settings["cut"]["rotation"],
-    )
-    return [pattern]
-
-def cut_off_needle_v2(microscope, settings, centre_x: float = 0.0, centre_y: float = 0.0):
-    logging.info(f"milling: cut off needle")
-
     pattern = _draw_rectangle_pattern(microscope, settings["protocol"]["cut"], centre_x, centre_y)
-    # pattern = _create_mill_pattern(
-    #     microscope,
-    #     center_x=centre_x,
-    #     center_y=centre_y,
-    #     width=settings["cut"]["width"],
-    #     height=settings["cut"]["height"],
-    #     depth=settings["cut"]["depth"],
-    #     rotation_degrees=settings["cut"]["rotation"],
-    # )
+
     return [pattern]
-
-
-def _create_mill_pattern(
-    microscope,
-    center_x=-10.5e-6,
-    center_y=-5e-6,
-    width=8e-6,
-    height=2e-6,
-    depth=1e-6,
-    rotation_degrees=40,
-):
-    pattern = microscope.patterning.create_rectangle(
-        center_x, center_y, width, height, depth
-    )
-    pattern.rotation = np.deg2rad(rotation_degrees)
-    logging.info(
-        f"milling: create milling pattern,  x:{center_x:.2e}, y: {center_y:.2e}"
-    )
-    logging.info(
-        f"w: {width:.2e}, h: {height:.2e}, d: {depth:.2e}, r:{rotation_degrees:.3f}"
-    )
-    return pattern
-
 
 def calculate_sharpen_needle_pattern(settings, x_0,  y_0):
 
@@ -587,8 +501,6 @@ def create_sharpen_needle_patterns(microscope: SdbMicroscopeClient, settings:dic
 
     return sharpen_patterns
 
-
-
 def _draw_rectangle_pattern(microscope:SdbMicroscopeClient, settings:dict , x: float = 0.0, y: float = 0.0):
 
     if settings["cleaning_cross_section"]:
@@ -634,15 +546,8 @@ def flatten_landing_pattern(
         Rectangle milling pattern used to flatten the landing area.
     """
 
-    # draw flatten landing pattern
-    pattern = microscope.patterning.create_cleaning_cross_section(
-        center_x=centre_x,
-        center_y=centre_y,
-        width=settings["flatten_landing"]["width"],
-        height=settings["flatten_landing"]["height"],
-        depth=settings["flatten_landing"]["depth"],
-    )
-    pattern.scan_direction = "LeftToRight"
+    # # draw flatten landing pattern
+    pattern = _draw_rectangle_pattern(microscope, settings["protocol"]["flatten_landing"], centre_x, centre_y)
 
     return pattern
 
@@ -666,23 +571,9 @@ def fiducial_marker_patterns(
             List of rectangular patterns used to create the fiducial marker.
     """
 
-    pattern_1 = microscope.patterning.create_rectangle(
-        center_x=centre_x,
-        center_y=centre_y,
-        width=settings["fiducial"]["width"],
-        height=settings["fiducial"]["length"],
-        depth=settings["fiducial"]["depth"],
-    )
-    pattern_1.rotation = np.deg2rad(settings["fiducial"]["rotation"])
-
-    pattern_2 = microscope.patterning.create_rectangle(
-        center_x=centre_x,
-        center_y=centre_y,
-        width=settings["fiducial"]["width"],
-        height=settings["fiducial"]["length"],
-        depth=settings["fiducial"]["depth"],
-    )
-    pattern_2.rotation = np.deg2rad(settings["fiducial"]["rotation"] + 90)
+    pattern_1 = _draw_rectangle_pattern(microscope, settings["protocol"]["fiducial"], centre_x, centre_y)
+    pattern_2 = _draw_rectangle_pattern(microscope, settings["protocol"]["fiducial"], centre_x, centre_y)
+    pattern_2.rotation = np.deg2rad(settings["protocol"]["fiducial"]["rotation"] + 90)
 
     return [pattern_1, pattern_2]
 
@@ -703,8 +594,7 @@ def update_milling_patterns(microscope:SdbMicroscopeClient, settings:dict , mill
 
     if milling_pattern_type == MillingPattern.Sever:
 
-        patterns = jcut_severing_pattern(microscope=microscope,
-                                                        settings=settings, centre_x=x, centre_y=y)
+        patterns = jcut_severing_pattern(microscope=microscope, settings=settings, centre_x=x, centre_y=y)
 
     if milling_pattern_type == MillingPattern.Weld:
 
@@ -713,7 +603,7 @@ def update_milling_patterns(microscope:SdbMicroscopeClient, settings:dict , mill
 
     if milling_pattern_type == MillingPattern.Cut:
 
-        patterns = cut_off_needle_v2(microscope=microscope, settings=settings,
+        patterns = cut_off_needle(microscope=microscope, settings=settings,
                                                 centre_x=x, centre_y=y)
 
     if milling_pattern_type == MillingPattern.Sharpen:
@@ -750,7 +640,7 @@ def get_milling_protocol_stage_settings(settings:dict, milling_pattern: MillingP
         milling_protocol_stages = settings["protocol"]["jcut"]
 
     if milling_pattern == MillingPattern.Sever:
-        milling_protocol_stages = settings["protocol"]["jcut"]
+        milling_protocol_stages = settings["protocol"]["sever"]
 
     if milling_pattern == MillingPattern.Weld:
         milling_protocol_stages = settings["protocol"]["weld"]
