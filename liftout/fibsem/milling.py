@@ -4,7 +4,6 @@ from enum import Enum
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from liftout.config import config
 from liftout.fibsem import constants
 from liftout.fibsem.structures import Point
 
@@ -482,6 +481,8 @@ def read_protocol_dictionary(settings, stage_name) -> list:
 def get_milling_protocol_stage_settings(settings:dict, milling_pattern: MillingPattern):
     
     from liftout.fibsem import validation
+    from liftout.config import config
+
 
     stage_name = config.PATTERN_PROTOCOL_MAP[milling_pattern]
     milling_protocol_stages = read_protocol_dictionary(settings["protocol"], stage_name)
@@ -498,6 +499,7 @@ def get_milling_protocol_stage_settings(settings:dict, milling_pattern: MillingP
     return milling_protocol_stages
 
 def calculate_milling_time(patterns: list, milling_current: float) -> float:
+    from liftout.config import config
 
 
     # volume (width * height * depth) / total_volume_sputter_rate

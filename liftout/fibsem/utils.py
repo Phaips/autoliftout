@@ -132,12 +132,15 @@ def quick_setup():
 
     settings = utils.load_config_v2()
     
-    configure_logging("tools/test")
+    import os
+    path = os.path.join(os.getcwd(), "tools/test")
+    os.makedirs(path, exist_ok=True)
+    configure_logging(path)
 
     microscope = fibsem_utils.connect_to_microscope(
         ip_address=settings["system"]["ip_address"]
     )
-    image_settings = acquire.update_image_settings_v3(settings)
-
+    image_settings = acquire.update_image_settings_v3(settings, path=path)
+    
 
     return microscope, settings, image_settings

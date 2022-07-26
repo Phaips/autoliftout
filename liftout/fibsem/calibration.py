@@ -20,6 +20,7 @@ from liftout.fibsem.sample import (
     BeamSettings,
     Lamella,
     MicroscopeState,
+    ReferenceImages,
 )
 
 from liftout.model import models
@@ -27,155 +28,263 @@ from PIL import Image, ImageDraw
 from scipy import fftpack
 
 # TODO: START_HERE refactor this
-def correct_stage_drift(
+# def correct_stage_drift(
+#     microscope: SdbMicroscopeClient,
+#     image_settings: ImageSettings,
+#     reference_images: list,
+#     mode: str = "eb",
+# ) -> bool:
+#     # TODO: refactor the whole cross-correlation workflow (de-duplicate it)
+#     ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
+
+#     lowres_count = 1
+#     if mode == "eb":
+#         ref_lowres = ref_eb_lowres
+#         ref_highres = ref_eb_highres
+#     elif mode == "ib":
+#         lowres_count = 2
+#         ref_lowres = rotate_AdornedImage(ref_ib_lowres)
+#         ref_highres = rotate_AdornedImage(ref_ib_highres)
+#     elif mode == "land":
+#         lowres_count = 1
+#         ref_lowres = ref_ib_lowres
+#         ref_highres = ref_ib_highres
+
+#     stage = microscope.specimen.stage
+#     image_settings.resolution = "1536x1024"
+#     image_settings.dwell_time = 1e-6
+
+#     pixelsize_x_lowres = ref_lowres.metadata.binary_result.pixel_size.x
+#     field_width_lowres = pixelsize_x_lowres * ref_lowres.width
+#     pixelsize_x_highres = ref_highres.metadata.binary_result.pixel_size.x
+#     field_width_highres = pixelsize_x_highres * ref_highres.width
+#     microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
+#     microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
+
+#     image_settings.hfw = field_width_lowres
+#     image_settings.save = True
+
+#     if mode == "land":
+#         image_settings.label = f"{mode}_drift_correction_landing_low_res"
+#         new_eb_lowres, new_ib_lowres = acquire.take_reference_images(
+#             microscope, image_settings=image_settings
+#         )
+#         ret = align_using_reference_images(
+#             microscope, ref_lowres, new_ib_lowres, stage, mode=mode
+#         )
+#         if ret is False:
+#             return ret
+
+#         # fine alignment
+#         image_settings.hfw = field_width_highres
+#         image_settings.save = True
+#         image_settings.label = f"drift_correction_landing_high_res"
+#         new_eb_highres, new_ib_highres = acquire.take_reference_images(
+#             microscope, image_settings=image_settings
+#         )
+#         ret = align_using_reference_images(
+#             microscope, ref_highres, new_ib_highres, stage, mode=mode
+#         )
+
+#     else:
+#         for i in range(lowres_count):
+
+#             image_settings.label = f"{mode}_drift_correction_lamella_low_res_{i}"
+#             new_eb_lowres, new_ib_lowres = acquire.take_reference_images(
+#                 microscope, image_settings=image_settings
+#             )
+#             ret = align_using_reference_images(
+#                 microscope, ref_lowres, new_eb_lowres, stage
+#             )
+#             if ret is False:
+#                 return ret
+
+#         # fine alignment
+#         image_settings.hfw = field_width_highres
+#         image_settings.save = True
+#         image_settings.label = f"drift_correction_lamella_high_res"
+#         new_eb_highres, new_ib_highres = acquire.take_reference_images(
+#             microscope, image_settings=image_settings
+#         )
+#         ret = align_using_reference_images(
+#             microscope, ref_highres, new_eb_highres, stage
+#         )
+
+#     logging.info(f"CROSSCORRELATION | {mode} | {ret}")
+#     return ret
+
+
+# def align_using_reference_images(
+#     microscope: SdbMicroscopeClient,
+#     ref_image: AdornedImage,
+#     new_image: AdornedImage,
+#     stage: StagePosition,
+#     mode: str = None,
+# ) -> bool:
+
+#     # three different types of cross correlation, E-E, E-I, I-I
+#     if mode == "land":
+#         beam_type = BeamType.ION
+#     if mode is None:
+#         beam_type = BeamType.ELECTRON
+#     lp_ratio = 3
+#     hp_ratio = 64
+
+#     logging.info(f"aligning using {beam_type.name} reference image in mode {mode}.")
+#     lowpass_pixels = int(
+#         max(new_image.data.shape) * 0.66
+#     )  # =128 @ 1536x1024, good for e-beam images
+#     highpass_pixels = int(max(new_image.data.shape) / hp_ratio)
+#     sigma = 6
+
+#     dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
+#         new_image,
+#         ref_image,
+#         lowpass=lowpass_pixels,
+#         highpass=highpass_pixels,
+#         sigma=sigma,
+#     )
+
+#     # check if the cross correlation is trying to move more than a safety threshold.
+#     pixelsize_x = ref_image.metadata.binary_result.pixel_size.x
+#     hfw = pixelsize_x * ref_image.width
+#     vfw = pixelsize_x * ref_image.height
+#     X_THRESHOLD = 0.25 * hfw
+#     Y_THRESHOLD = 0.25 * vfw
+#     if abs(dx_ei_meters) > X_THRESHOLD or abs(dy_ei_meters) > Y_THRESHOLD:
+#         logging.warning("calibration: calculated cross correlation movement too large.")
+#         logging.warning("calibration: cancelling automatic cross correlation.")
+#         return False
+#     else:
+
+#         tmp_settings = {  # TODO: MAGIC NUMBERS REMOVE when doing refactor
+#             "system": {
+#                 "pretilt_angle": 27,  # degrees
+#                 "stage_tilt_flat_to_ion": 52,  # degrees
+#                 "stage_rotation_flat_to_electron": 50,
+#                 "stage_rotation_flat_to_ion": 230,  # degrees
+#             }
+#         }
+#         x_move = movement.x_corrected_stage_movement(-dx_ei_meters)
+#         yz_move = movement.y_corrected_stage_movement(
+#             microscope=microscope,
+#             expected_y=dy_ei_meters,
+#             stage_tilt=stage.current_position.t,
+#             settings=tmp_settings,
+#             beam_type=beam_type,
+#         )  # check electron/ion movement
+#         stage.relative_move(x_move)
+#         stage.relative_move(yz_move)
+#         return True
+
+
+
+
+# TODO: START_HERE refactor this
+def correct_stage_drift_v2(
     microscope: SdbMicroscopeClient,
+    settings: dict, 
     image_settings: ImageSettings,
-    reference_images: list,
-    mode: str = "eb",
+    reference_images: ReferenceImages,
+    alignment: tuple(BeamType) = (BeamType.ELECTRON, BeamType.ELECTRON),
+    rotate: bool = False,
+    parent_ui = None
 ) -> bool:
-    # TODO: refactor the whole cross-correlation workflow (de-duplicate it)
-    ref_eb_lowres, ref_eb_highres, ref_ib_lowres, ref_ib_highres = reference_images
+ 
+    # set reference images
+    if alignment[0] is BeamType.ELECTRON:
+        ref_lowres, ref_highres = reference_images.low_res_eb, reference_images.high_res_eb
+    if alignment[0] is BeamType.ION:
+        ref_lowres, ref_highres = reference_images.low_res_ib, reference_images.high_res_ib
+    
+    # rotate?
+    if rotate:
+        ref_lowres = rotate_AdornedImage(ref_lowres) 
+        ref_highres = rotate_AdornedImage(ref_highres) 
 
-    lowres_count = 1
-    if mode == "eb":
-        ref_lowres = ref_eb_lowres
-        ref_highres = ref_eb_highres
-    elif mode == "ib":
-        lowres_count = 2
-        ref_lowres = rotate_AdornedImage(ref_ib_lowres)
-        ref_highres = rotate_AdornedImage(ref_ib_highres)
-    elif mode == "land":
-        lowres_count = 1
-        ref_lowres = ref_ib_lowres
-        ref_highres = ref_ib_highres
+    # take new images
+    # set new image settings (same as reference)
+    image_settings = match_image_settings(ref_lowres, image_settings, beam_type=alignment[1])
+    new_lowres = acquire.new_image(microscope, image_settings)
 
-    stage = microscope.specimen.stage
-    image_settings.resolution = "1536x1024"
-    image_settings.dwell_time = 1e-6
+    # TODO: check if ret is true
+    # lowres alignment
+    ret = align_using_reference_images_v2(
+        microscope, settings, ref_lowres, new_lowres,
+    )
 
-    pixelsize_x_lowres = ref_lowres.metadata.binary_result.pixel_size.x
-    field_width_lowres = pixelsize_x_lowres * ref_lowres.width
-    pixelsize_x_highres = ref_highres.metadata.binary_result.pixel_size.x
-    field_width_highres = pixelsize_x_highres * ref_highres.width
-    microscope.beams.ion_beam.horizontal_field_width.value = field_width_lowres
-    microscope.beams.electron_beam.horizontal_field_width.value = field_width_lowres
+    # high res alignment
+    image_settings = match_image_settings(ref_highres, image_settings, beam_type=alignment[1])
+    new_highres = acquire.new_image(microscope, image_settings)
 
-    image_settings.hfw = field_width_lowres
-    image_settings.save = True
+    # highres alignment
+    ret = align_using_reference_images_v2(
+        microscope, settings, ref_highres, new_highres,
+    )
 
-    if mode == "land":
-        image_settings.label = f"{mode}_drift_correction_landing_low_res"
-        new_eb_lowres, new_ib_lowres = acquire.take_reference_images(
-            microscope, image_settings=image_settings
-        )
-        ret = align_using_reference_images(
-            microscope, ref_lowres, new_ib_lowres, stage, mode=mode
-        )
-        if ret is False:
-            return ret
+    if ret is False and parent_ui:
+        from liftout.gui import windows
+        # # cross-correlation has failed, manual correction required
+        windows.ask_user_movement_v2(microscope, settings, image_settings, msg_type="centre_eb", parent=parent_ui)
 
-        # fine alignment
-        image_settings.hfw = field_width_highres
-        image_settings.save = True
-        image_settings.label = f"drift_correction_landing_high_res"
-        new_eb_highres, new_ib_highres = acquire.take_reference_images(
-            microscope, image_settings=image_settings
-        )
-        ret = align_using_reference_images(
-            microscope, ref_highres, new_ib_highres, stage, mode=mode
-        )
-
-    else:
-        for i in range(lowres_count):
-
-            image_settings.label = f"{mode}_drift_correction_lamella_low_res_{i}"
-            new_eb_lowres, new_ib_lowres = acquire.take_reference_images(
-                microscope, image_settings=image_settings
-            )
-            ret = align_using_reference_images(
-                microscope, ref_lowres, new_eb_lowres, stage
-            )
-            if ret is False:
-                return ret
-
-        # fine alignment
-        image_settings.hfw = field_width_highres
-        image_settings.save = True
-        image_settings.label = f"drift_correction_lamella_high_res"
-        new_eb_highres, new_ib_highres = acquire.take_reference_images(
-            microscope, image_settings=image_settings
-        )
-        ret = align_using_reference_images(
-            microscope, ref_highres, new_eb_highres, stage
-        )
-
-    logging.info(f"CROSSCORRELATION | {mode} | {ret}")
     return ret
 
 
-def align_using_reference_images(
+def match_image_settings(ref_image: AdornedImage, image_settings: ImageSettings, beam_type: BeamType = BeamType.ELECTRON) -> ImageSettings:
+    image_settings.hfw = f"{ref_image.height}x{ref_image.width}" 
+    image_settings.dwell_time = ref_image.metadata.scan_settings.dwell_time
+    image_settings.beam_type = beam_type
+    image_settings.save = True
+    image_settings.label = f"drift_correction_{utils.current_timestamp()}" 
+
+    return image_settings
+
+
+def align_using_reference_images_v2(
     microscope: SdbMicroscopeClient,
+    settings: dict, 
     ref_image: AdornedImage,
     new_image: AdornedImage,
-    stage: StagePosition,
-    mode: str = None,
 ) -> bool:
 
-    # three different types of cross correlation, E-E, E-I, I-I
-    if mode == "land":
-        beam_type = BeamType.ION
-    if mode is None:
-        beam_type = BeamType.ELECTRON
-    lp_ratio = 3
-    hp_ratio = 64
+    # get beam type
+    ref_beam_type = BeamType(ref_image.metadata.acquisition.beam_type.upper())
+    new_beam_type = BeamType(new_image.metadata.acquisition.beam_type.upper())
+    stage = microscope.specimen.stage
 
-    logging.info(f"aligning using {beam_type.name} reference image in mode {mode}.")
-    lowpass_pixels = int(
-        max(new_image.data.shape) * 0.66
-    )  # =128 @ 1536x1024, good for e-beam images
-    highpass_pixels = int(max(new_image.data.shape) / hp_ratio)
+    logging.info(f"aligning {ref_beam_type.name} reference image to {new_beam_type.name}.")
+    lp_px = int(max(new_image.data.shape) * 0.66)
+    hp_px = int(max(new_image.data.shape) / 64)
     sigma = 6
 
-    dx_ei_meters, dy_ei_meters = shift_from_crosscorrelation_AdornedImages(
-        new_image,
-        ref_image,
-        lowpass=lowpass_pixels,
-        highpass=highpass_pixels,
-        sigma=sigma,
-    )
+    dx, dy = shift_from_crosscorrelation_AdornedImages(new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma)
 
-    # check if the cross correlation is trying to move more than a safety threshold.
-    pixelsize_x = ref_image.metadata.binary_result.pixel_size.x
-    hfw = pixelsize_x * ref_image.width
-    vfw = pixelsize_x * ref_image.height
-    X_THRESHOLD = 0.25 * hfw
-    Y_THRESHOLD = 0.25 * vfw
-    if abs(dx_ei_meters) > X_THRESHOLD or abs(dy_ei_meters) > Y_THRESHOLD:
-        logging.warning("calibration: calculated cross correlation movement too large.")
-        logging.warning("calibration: cancelling automatic cross correlation.")
-        return False
-    else:
-
-        tmp_settings = {  # TODO: MAGIC NUMBERS REMOVE when doing refactor
-            "system": {
-                "pretilt_angle": 27,  # degrees
-                "stage_tilt_flat_to_ion": 52,  # degrees
-                "stage_rotation_flat_to_electron": 50,
-                "stage_rotation_flat_to_ion": 230,  # degrees
-            }
-        }
-        x_move = movement.x_corrected_stage_movement(-dx_ei_meters)
+    shift_within_tolerance = check_shift_within_tolerance(dx=dx, dy=dy, ref_image=ref_image)
+    
+    if shift_within_tolerance:
+        # move the stage
+        x_move = movement.x_corrected_stage_movement(-dx)
         yz_move = movement.y_corrected_stage_movement(
             microscope=microscope,
-            expected_y=dy_ei_meters,
+            expected_y=dy,
             stage_tilt=stage.current_position.t,
-            settings=tmp_settings,
-            beam_type=beam_type,
+            settings=settings,
+            beam_type=new_beam_type,
         )  # check electron/ion movement
         stage.relative_move(x_move)
         stage.relative_move(yz_move)
-        return True
 
+    return shift_within_tolerance
+
+def check_shift_within_tolerance(dx: float, dy: float , ref_image: AdornedImage, limit: float = 0.25) -> bool:
+    """Limit automatic movements to 25% of the field of view"""
+    # check if the cross correlation movement is within the safety limit
+
+    pixelsize_x = ref_image.metadata.binary_result.pixel_size.x
+    X_THRESHOLD = limit * pixelsize_x * ref_image.width
+    Y_THRESHOLD = limit * pixelsize_x * ref_image.height
+    
+    return (abs(dx) < X_THRESHOLD and abs(dy) < Y_THRESHOLD)
 
 def identify_shift_using_machine_learning(
     microscope: SdbMicroscopeClient,
@@ -184,40 +293,18 @@ def identify_shift_using_machine_learning(
     shift_type: tuple,
 ) -> DetectionResult:
 
-
-
-    # eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
+    # load model
     weights_file = settings["calibration"]["machine_learning"]["weights"]
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
     detector = detection.Detector(weights_path)
 
     # take new image
     image = acquire.new_image(microscope, image_settings)
-    # if image_settings.beam_type == BeamType.ION:
-    #     image = ib_image
-    # else:
-    #     image = eb_image
-
     det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
 
     return det_result
 
-
-def shift_from_correlation_electronBeam_and_ionBeam(
-    eb_image, ib_image, lowpass=128, highpass=6, sigma=2
-):
-    ib_image_rotated = rotate_AdornedImage(ib_image)
-    x_shift, y_shift = shift_from_crosscorrelation_AdornedImages(
-        eb_image, ib_image_rotated, lowpass=lowpass, highpass=highpass, sigma=sigma
-    )
-    return x_shift, y_shift
-
-
-def rotate_AdornedImage(image):
-    from autoscript_sdb_microscope_client.structures import (
-        AdornedImage,
-        GrabFrameSettings,
-    )
+def rotate_AdornedImage(image: AdornedImage):
 
     data = np.rot90(np.rot90(np.copy(image.data)))
     reference = AdornedImage(data=data)
@@ -715,11 +802,11 @@ def validate_beams_calibration(microscope, settings: dict):
         logging.warning(
             f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})"
         )
-        if "ETD" in microscope.detector.type.available_values:
-            microscope.detector.type.value = "ETD"
-            logging.warning(
-                f"Changed Electron detector type to {str(microscope.detector.type.value)}"
-            )
+        # if "ETD" in microscope.detector.type.available_values:
+        #     microscope.detector.type.value = "ETD"
+        #     logging.warning(
+        #         f"Changed Electron detector type to {str(microscope.detector.type.value)}"
+        #     )
 
     if str(microscope.detector.mode.value) != "SecondaryElectrons":
         logging.warning(
@@ -741,7 +828,7 @@ def validate_beams_calibration(microscope, settings: dict):
         atol=settings["calibration"]["limits"]["eucentric_height_tolerance"],
     ):
         logging.warning(
-            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_eb']}m
+            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['limits']['eucentric_height_eb']}m
             (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)"""
         )
 
@@ -792,7 +879,7 @@ def validate_beams_calibration(microscope, settings: dict):
         atol=settings["calibration"]["limits"]["eucentric_height_tolerance"],
     ):
         logging.warning(
-            f"Ion Beam is not close to eucentric height. It should be {settings['calibration']['eucentric_height_ib']}m \
+            f"Ion Beam is not close to eucentric height. It should be {settings['calibration']['limits']['eucentric_height_ib']}m \
         (Currently is {microscope.beams.ion_beam.working_distance.value:.4f}m)"
         )
 

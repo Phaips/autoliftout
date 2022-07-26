@@ -23,26 +23,26 @@ def validate_initial_microscope_state(
 
     # set default microscope state
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
-    microscope.beams.ion_beam.beam_current.value = settings["imaging"][
+    microscope.beams.ion_beam.beam_current.value = settings["calibration"]["imaging"][
         "imaging_current"
     ]
-    microscope.beams.ion_beam.horizontal_field_width.value = settings["imaging"][
+    microscope.beams.ion_beam.horizontal_field_width.value = settings["calibration"]["imaging"][
         "horizontal_field_width"
     ]
-    microscope.beams.ion_beam.scanning.resolution.value = settings["imaging"][
+    microscope.beams.ion_beam.scanning.resolution.value = settings["calibration"]["imaging"][
         "resolution"
     ]
-    microscope.beams.ion_beam.scanning.dwell_time.value = settings["imaging"][
+    microscope.beams.ion_beam.scanning.dwell_time.value = settings["calibration"]["imaging"][
         "dwell_time"
     ]
 
-    microscope.beams.electron_beam.horizontal_field_width.value = settings["imaging"][
+    microscope.beams.electron_beam.horizontal_field_width.value = settings["calibration"]["imaging"][
         "horizontal_field_width"
     ]
-    microscope.beams.electron_beam.scanning.resolution.value = settings["imaging"][
+    microscope.beams.electron_beam.scanning.resolution.value = settings["calibration"]["imaging"][
         "resolution"
     ]
-    microscope.beams.electron_beam.scanning.dwell_time.value = settings["imaging"][
+    microscope.beams.electron_beam.scanning.dwell_time.value = settings["calibration"]["imaging"][
         "dwell_time"
     ]
 
@@ -79,7 +79,7 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
 
     # run validation
-    validate_initial_microscope_state(microscope, settings["calibration"])
+    validate_initial_microscope_state(microscope, settings)
 
     # reminders
     reminder_str = """Please check that the following steps have been completed:

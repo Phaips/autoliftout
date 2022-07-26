@@ -12,7 +12,7 @@ from liftout.detection.detection import DetectionType
 from liftout.fibsem import acquire, calibration, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
+from liftout.fibsem.sample import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 from liftout.gui import windows
 from liftout.fibsem.milling import MillingPattern
 
@@ -37,6 +37,8 @@ def mill_lamella_trench(
 
     # Take an ion beam image at the *milling current*
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+
+    # correct stage drift?
 
     # confirm position
     windows.ask_user_movement_v2(
@@ -74,34 +76,21 @@ def mill_lamella_jcut(
     image_settings.save_path = lamella.path
 
     # load the reference images
-    reference_images = []
-    for fname in [
-        "ref_trench_low_res_eb",
-        "ref_trench_high_res_eb",
-        "ref_trench_low_res_ib",
-        "ref_trench_high_res_ib",
-    ]:
-
-        reference_images.append(lamella.load_reference_image(fname))
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image("ref_trench_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_trench_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_trench_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_trench_high_res_ib")
+    )
 
     # move flat to electron beam
     movement.flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
-    # TODO: move user correction inside correct_stage_drift
     # correct drift using reference images..
-    ret = calibration.correct_stage_drift(
-        microscope, image_settings, reference_images, mode="ib",
+    calibration.correct_stage_drift_v2(
+        microscope, settings, image_settings, reference_images, 
+        alignment=(BeamType.ELECTRON, BeamType.ION), rotate=True, parent_ui=True
     )
-
-    if ret is False:
-        # # cross-correlation has failed, manual correction required
-        logging.info(
-            f"{lamella.current_state.stage.name}: cross-correlation manually corrected"
-        )
-
-        windows.ask_user_movement_v2(
-            microscope, settings, image_settings, msg_type="centre_eb",
-        )
 
     # then using ML, tilting/correcting in steps so drift isn't too large
     image_settings.hfw = settings["calibration"]["drift_correction_hfw_highres"]

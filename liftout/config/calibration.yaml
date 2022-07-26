@@ -28,7 +28,7 @@ limits:
   max_working_distance_eb: 6.0e-3
 reference_images:
   # new config
-  hfw_wide: 2750.e-6
+  hfw_wide_max: 2750.e-6
   hfw_low_res: 900.e-6
   hfw_med_res: 400.e-6
   hfw_high_res: 150.e-6
