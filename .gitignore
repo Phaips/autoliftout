@@ -101,3 +101,4 @@ liftout/model/data.zip
 liftout/tools/*.png
 liftout/log/*
 liftout/gui/qtdesigner_files/main_backup.ui
+*data.csv

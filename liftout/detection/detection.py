@@ -22,7 +22,7 @@ class Detector:
         self.supported_feature_types = utils.DetectionType
 
 
-    def detect_features(self, img, mask, shift_type):
+    def detect_features(self, img, mask, shift_type) -> list[DetectionFeature]:
         """
 
         args:
@@ -107,12 +107,12 @@ class Detector:
             feature_1.feature_px, feature_2.feature_px, adorned_img, img_downscale)
 
         detection_result = DetectionResult(
-            feature_1=feature_1,
-            feature_2=feature_2,
+            features = [feature_1, feature_2],
             adorned_image=adorned_img,
             display_image=img_blend,
             downscale_image=img_downscale,
-            distance_metres=Point(x_distance_m, y_distance_m)
+            distance_metres=Point(x_distance_m, y_distance_m),
+            microscope_coordinate=[Point(0, 0), Point(0, 0)]
         )
 
         return detection_result

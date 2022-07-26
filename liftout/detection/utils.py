@@ -1,7 +1,7 @@
 import glob
+import logging
 import os
 import re
-import logging
 import shutil
 from dataclasses import dataclass
 from enum import Enum
@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from liftout.config import config
 from liftout.fibsem.movement import pixel_to_realspace_coordinate
 from liftout.fibsem.structures import Point
 from PIL import Image
@@ -33,12 +32,12 @@ class DetectionFeature:
 
 @dataclass
 class DetectionResult:
-    feature_1: DetectionFeature
-    feature_2: DetectionFeature
+    features: list[DetectionFeature]
     adorned_image: AdornedImage
     display_image: np.ndarray
     distance_metres: Point = Point(0, 0)  # x, y
     downscale_image: np.ndarray = None
+    microscope_coordinate: list[Point] = None
 
 
 def convert_pixel_distance_to_metres(
@@ -250,8 +249,10 @@ def load_detection_result(path: Path, data) -> DetectionResult:
     p2 = scale_coordinate_to_image(p2, img.data.shape)
 
     det = DetectionResult(
-        feature_1=DetectionFeature(detection_type=p1_type, feature_px=p1),
-        feature_2=DetectionFeature(detection_type=p2_type, feature_px=p2),
+        features=[
+            DetectionFeature(detection_type=p1_type, feature_px=p1),
+            DetectionFeature(detection_type=p2_type, feature_px=p2),
+        ],
         adorned_image=img,
         display_image=None,
         downscale_image=None,
@@ -262,12 +263,13 @@ def load_detection_result(path: Path, data) -> DetectionResult:
 
 def plot_detection_result(det_result: DetectionResult):
     """Plot the Detection Result using matplotlib"""
+    from liftout.config import config
 
-    p1 = det_result.feature_1.feature_px
-    p2 = det_result.feature_2.feature_px
+    p1 = det_result.features[0].feature_px
+    p2 = det_result.features[1].feature_px
 
-    c1 = config.DETECTION_TYPE_COLOURS[det_result.feature_1.detection_type]
-    c2 = config.DETECTION_TYPE_COLOURS[det_result.feature_2.detection_type]
+    c1 = config.DETECTION_TYPE_COLOURS[det_result.features[0].detection_type]
+    c2 = config.DETECTION_TYPE_COLOURS[det_result.features[1].detection_type]
 
     fig = plt.figure()
     plt.imshow(det_result.adorned_image.data, cmap="gray")
@@ -277,30 +279,31 @@ def plot_detection_result(det_result: DetectionResult):
     return fig
 
 
-def write_data_to_disk(path: Path, det_data, det_types: list ) -> None:
+def write_data_to_disk(path: Path, detection_result: DetectionResult) -> None:
     
     # TODO: move this
-    from liftout.gui.detection_window import DetectionData
     from liftout import utils
     label = utils.current_timestamp() + "_label"
 
     utils.save_image(
-        image=det_data.detection_result.adorned_image,
+        image=detection_result.adorned_image,
         save_path=path,
         label=label,
     )
 
+
     # get scale invariant coords
-    scaled_p0 = get_scale_invariant_coordinates(det_data.image_coordinate[0], shape=det_data.detection_result.downscale_image.shape)
-    scaled_p1 = get_scale_invariant_coordinates(det_data.image_coordinate[1], shape=det_data.detection_result.downscale_image.shape)
+    shape = detection_result.downscale_image.shape
+    scaled_p0 = get_scale_invariant_coordinates(detection_result.features[0].feature_px, shape=shape)
+    scaled_p1 = get_scale_invariant_coordinates(detection_result.features[1].feature_px, shape=shape)
 
     # get info
     logging.info(f"Label: {label}")
     info = [label, 
-        det_types[0].name, 
+        detection_result.features[0].detection_type.name, 
         scaled_p0.x, 
         scaled_p0.y, 
-        det_types[1].name, 
+        detection_result.features[1].detection_type.name, 
         scaled_p1.x, 
         scaled_p1.y
         ]
