@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import liftout
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndi
@@ -17,6 +18,7 @@ from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
 from liftout.fibsem.milling import MillingPattern
 from liftout.fibsem.sample import (Lamella, Sample, create_experiment,
                                    load_sample)
+from liftout.fibsem.structures import Point
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PyQt5 import QtWidgets
@@ -137,6 +139,9 @@ def draw_crosshair(image, canvas, x: float = None, y: float = None, colour: str 
         getattr(crosshair, patch).set_visible(True)
 
 
+
+
+
 def draw_crosshair_v2(
     ax: plt.axes,
     image: np.ndarray or AdornedImage,
@@ -155,6 +160,16 @@ def draw_crosshair_v2(
 
     return
 
+# draw arrow
+def draw_arrow(p1: Point, p2: Point, canvas) -> None:
+    """Draw an arrow patch from p1 to p2"""
+    x1, y1 = p1.x, p1.y
+    x2, y2 = p2.x, p2.y
+    line = mpatches.Arrow(x1, y1, x2 - x1, y2 - y1, color="white")
+
+    # draw line
+    canvas.ax11.add_patch(line)
+    return
 
 ###################
 

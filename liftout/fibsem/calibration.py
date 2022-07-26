@@ -1045,7 +1045,7 @@ def validate_detection_v2(
     detection_window.show()
     detection_window.exec_()
 
-    return detection_window.detection_result
+    return detection_window.det_data_v2.detection_result
 
 
 def validate_stage_height_for_needle_insertion(

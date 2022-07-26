@@ -1,14 +1,17 @@
-
 import glob
 import os
 import re
+import logging
 import shutil
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from autoscript_sdb_microscope_client.structures import AdornedImage
+from liftout.config import config
 from liftout.fibsem.movement import pixel_to_realspace_coordinate
 from liftout.fibsem.structures import Point
 from PIL import Image
@@ -19,13 +22,13 @@ class DetectionType(Enum):
     NeedleTip = 2
     LamellaEdge = 3
     LandingPost = 4
-    ImageCentre = 5 
+    ImageCentre = 5
 
 
 @dataclass
 class DetectionFeature:
     detection_type: DetectionType
-    feature_px: Point # x, y
+    feature_px: Point  # x, y
 
 
 @dataclass
@@ -34,23 +37,28 @@ class DetectionResult:
     feature_2: DetectionFeature
     adorned_image: AdornedImage
     display_image: np.ndarray
-    distance_metres: Point = Point(0, 0)# x, y
+    distance_metres: Point = Point(0, 0)  # x, y
     downscale_image: np.ndarray = None
-    
 
 
-def convert_pixel_distance_to_metres(p1:Point, p2: Point, adorned_image: AdornedImage, display_image: np.ndarray):
-    """Convert from pixel coordinates to distance in metres """        
+def convert_pixel_distance_to_metres(
+    p1: Point, p2: Point, adorned_image: AdornedImage, display_image: np.ndarray
+):
+    """Convert from pixel coordinates to distance in metres """
     # NB: need to use this func, not pixel_to_realspace because display_iamge and adorned image are no the same size...
-    
+
     # upscale the pixel coordinates to adorned image size
     scaled_px_1 = scale_pixel_coordinates(p1, display_image, adorned_image)
     scaled_px_2 = scale_pixel_coordinates(p2, display_image, adorned_image)
 
     # convert pixel coordinate to realspace coordinate
-    x1_real, y1_real = pixel_to_realspace_coordinate((scaled_px_1.x, scaled_px_1.y), adorned_image)
-    x2_real, y2_real = pixel_to_realspace_coordinate((scaled_px_2.x, scaled_px_2.y), adorned_image)
-    
+    x1_real, y1_real = pixel_to_realspace_coordinate(
+        (scaled_px_1.x, scaled_px_1.y), adorned_image
+    )
+    x2_real, y2_real = pixel_to_realspace_coordinate(
+        (scaled_px_2.x, scaled_px_2.y), adorned_image
+    )
+
     p1_real = Point(x1_real, y1_real)
     p2_real = Point(x2_real, y2_real)
 
@@ -59,18 +67,23 @@ def convert_pixel_distance_to_metres(p1:Point, p2: Point, adorned_image: Adorned
 
     return x_distance_m, y_distance_m
 
-def scale_pixel_coordinates(px:Point, downscale_image, upscale_image=None):
-    """Scale the pixel coordinate from one image to another"""
-    if isinstance(upscale_image, AdornedImage):
-        upscale_image = upscale_image.data
 
-    x_scale, y_scale = (px.x / downscale_image.shape[1], px.y / downscale_image.shape[0])  # (x, y)
-    
-    scaled_px = Point(x_scale * upscale_image.shape[1], y_scale * upscale_image.shape[0])
+def scale_pixel_coordinates(px: Point, from_image: np.ndarray, to_image=None) -> Point:
+    """Scale the pixel coordinate from one image to another"""
+    if isinstance(to_image, AdornedImage):
+        to_image = to_image.data
+
+    x_scale, y_scale = (
+        px.x / from_image.shape[1],
+        px.y / from_image.shape[0],
+    )  # (x, y)
+
+    scaled_px = Point(x_scale * to_image.shape[1], y_scale * to_image.shape[0])
 
     return scaled_px
 
-def coordinate_distance(p1:Point, p2:Point):
+
+def coordinate_distance(p1: Point, p2: Point):
     """Calculate the distance between two points in each coordinate"""
 
     return p2.x - p1.x, p2.y - p1.y
@@ -92,10 +105,26 @@ def scale_invariant_coordinates(px, mask):
 
     return scaled_px
 
+
+def get_scale_invariant_coordinates(point: Point, shape: tuple) -> Point:
+
+    scaled_pt = Point(x=point.x / shape[1], y=point.y / shape[0])
+
+    return scaled_pt
+
+
+def scale_coordinate_to_image(point: Point, shape: tuple) -> Point:
+    """Scale invariant coordinates to image shape"""
+    scaled_pt = Point(x=point.x * shape[1], y=point.y * shape[0])
+
+    return scaled_pt
+
+
 def draw_crosshairs(draw, mask, idx, color="white"):
     """ helper function for drawing crosshairs on an image"""
     draw.line([0, idx[0], mask.size[0], idx[0]], color)
     draw.line([idx[1], 0, idx[1], mask.size[1]], color)
+
 
 def load_image_from_file(fname):
 
@@ -104,6 +133,7 @@ def load_image_from_file(fname):
     img = np.asarray(Image.open(fname))
 
     return img
+
 
 def parse_metadata(filename):
 
@@ -155,9 +185,7 @@ def extract_img_for_labelling(path, show=False):
 
     # mkdir for copying images to
     data_path = os.path.join(os.path.dirname(liftout.__file__), "data", "retrain")
-    os.makedirs(
-        data_path, exist_ok=True
-    )
+    os.makedirs(data_path, exist_ok=True)
     print(f"Searching in {path} for retraining images...")
 
     # find all files for retraining (with _label postfix
@@ -169,8 +197,10 @@ def extract_img_for_labelling(path, show=False):
         # tqdm?
         print(f"Copying {i}/{len(filenames)}")
         # basename = os.path.basename(fname)
-        datetime_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d.%H%M%S')
-        basename = f"{datetime_str}.{random.random()}.tif" # use a random number to prevent duplicates at seconds time resolution
+        datetime_str = datetime.datetime.fromtimestamp(time.time()).strftime(
+            "%Y%m%d.%H%M%S"
+        )
+        basename = f"{datetime_str}.{random.random()}.tif"  # use a random number to prevent duplicates at seconds time resolution
         # print(fname, basename)
         if show:
             img = Image.open(fname)
@@ -181,8 +211,98 @@ def extract_img_for_labelling(path, show=False):
         destination_path = os.path.join(data_path, basename)
         # print(f"Source: {source_path}")
         # print(f"Destination: {destination_path}")
-        print("-"*50)
+        print("-" * 50)
         shutil.copyfile(source_path, destination_path)
 
     # zip the image folder
     # shutil.make_archive(f"{path}/images", 'zip', label_dir)
+
+def write_data_to_csv(path: Path, info) -> None:
+
+    dataframe_path = os.path.join(path, "data.csv")
+
+    cols = ["label", "p1.type", "p1.x", "p1.y", "p2.type", "p2.x", "p2.y"]
+    df_tmp = pd.DataFrame([info], columns=cols)
+    if os.path.exists(dataframe_path):
+        df = pd.read_csv(dataframe_path)
+        df = pd.concat([df, df_tmp], axis=0, ignore_index=True)
+    else:
+        df = df_tmp
+    df.to_csv(dataframe_path,index=False)
+
+    logging.info(f"Logged data to {dataframe_path}.")
+
+
+
+def load_detection_result(path: Path, data) -> DetectionResult:
+    """Read detection result from dataframe row, and return"""
+
+    label = data["label"]
+    p1_type = DetectionType[data["p1.type"]]
+    p1 = Point(x=data["p1.x"], y=data["p1.y"])
+    p2_type = DetectionType[data["p2.type"]]
+    p2 = Point(x=data["p2.x"], y=data["p2.y"])
+
+    fname = glob.glob(os.path.join(path, f"*{label}*.tif"))[0]
+    img = AdornedImage.load(fname)
+
+    p1 = scale_coordinate_to_image(p1, img.data.shape)
+    p2 = scale_coordinate_to_image(p2, img.data.shape)
+
+    det = DetectionResult(
+        feature_1=DetectionFeature(detection_type=p1_type, feature_px=p1),
+        feature_2=DetectionFeature(detection_type=p2_type, feature_px=p2),
+        adorned_image=img,
+        display_image=None,
+        downscale_image=None,
+    )
+
+    return det
+
+
+def plot_detection_result(det_result: DetectionResult):
+    """Plot the Detection Result using matplotlib"""
+
+    p1 = det_result.feature_1.feature_px
+    p2 = det_result.feature_2.feature_px
+
+    c1 = config.DETECTION_TYPE_COLOURS[det_result.feature_1.detection_type]
+    c2 = config.DETECTION_TYPE_COLOURS[det_result.feature_2.detection_type]
+
+    fig = plt.figure()
+    plt.imshow(det_result.adorned_image.data, cmap="gray")
+    plt.plot(p1.x, p1.y, color=c1, marker="+", ms=20)
+    plt.plot(p2.x, p2.y, color=c2, marker="+", ms=20)
+
+    return fig
+
+
+def write_data_to_disk(path: Path, det_data, det_types: list ) -> None:
+    
+    # TODO: move this
+    from liftout.gui.detection_window import DetectionData
+    from liftout import utils
+    label = utils.current_timestamp() + "_label"
+
+    utils.save_image(
+        image=det_data.detection_result.adorned_image,
+        save_path=path,
+        label=label,
+    )
+
+    # get scale invariant coords
+    scaled_p0 = get_scale_invariant_coordinates(det_data.image_coordinate[0], shape=det_data.detection_result.downscale_image.shape)
+    scaled_p1 = get_scale_invariant_coordinates(det_data.image_coordinate[1], shape=det_data.detection_result.downscale_image.shape)
+
+    # get info
+    logging.info(f"Label: {label}")
+    info = [label, 
+        det_types[0].name, 
+        scaled_p0.x, 
+        scaled_p0.y, 
+        det_types[1].name, 
+        scaled_p1.x, 
+        scaled_p1.y
+        ]
+
+    write_data_to_csv(path, info)

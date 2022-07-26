@@ -16,10 +16,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
 matplotlib.use("Agg")
-
-# _translate = QtCore.QCoreApplication.translate
-
-
 class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self):
         super(AutoLiftoutMainWindow, self).__init__()
