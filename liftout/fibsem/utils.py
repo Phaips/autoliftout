@@ -131,8 +131,9 @@ def quick_setup():
     from liftout.fibsem import utils as fibsem_utils
 
     settings = utils.load_config_v2()
-    
+
     import os
+
     path = os.path.join(os.getcwd(), "tools/test")
     os.makedirs(path, exist_ok=True)
     configure_logging(path)
@@ -141,6 +142,5 @@ def quick_setup():
         ip_address=settings["system"]["ip_address"]
     )
     image_settings = acquire.update_image_settings_v3(settings, path=path)
-    
 
     return microscope, settings, image_settings

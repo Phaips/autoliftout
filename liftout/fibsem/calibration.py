@@ -178,71 +178,82 @@ from scipy import fftpack
 #         return True
 
 
-
-
 # TODO: START_HERE refactor this
 def correct_stage_drift_v2(
     microscope: SdbMicroscopeClient,
-    settings: dict, 
+    settings: dict,
     image_settings: ImageSettings,
     reference_images: ReferenceImages,
     alignment: tuple(BeamType) = (BeamType.ELECTRON, BeamType.ELECTRON),
     rotate: bool = False,
-    parent_ui = None
+    parent_ui=None,
 ) -> bool:
- 
+
     # set reference images
     if alignment[0] is BeamType.ELECTRON:
-        ref_lowres, ref_highres = reference_images.low_res_eb, reference_images.high_res_eb
+        ref_lowres, ref_highres = (
+            reference_images.low_res_eb,
+            reference_images.high_res_eb,
+        )
     if alignment[0] is BeamType.ION:
-        ref_lowres, ref_highres = reference_images.low_res_ib, reference_images.high_res_ib
-    
-    # rotate?
+        ref_lowres, ref_highres = (
+            reference_images.low_res_ib,
+            reference_images.high_res_ib,
+        )
+
+    # rotate reference
     if rotate:
-        ref_lowres = rotate_AdornedImage(ref_lowres) 
-        ref_highres = rotate_AdornedImage(ref_highres) 
+        ref_lowres = rotate_AdornedImage(ref_lowres)
+        ref_highres = rotate_AdornedImage(ref_highres)
 
-    # take new images
-    # set new image settings (same as reference)
-    image_settings = match_image_settings(ref_lowres, image_settings, beam_type=alignment[1])
-    new_lowres = acquire.new_image(microscope, image_settings)
+    # align lowres, then highres
+    for ref_image in [ref_lowres, ref_highres]:
 
-    # TODO: check if ret is true
-    # lowres alignment
-    ret = align_using_reference_images_v2(
-        microscope, settings, ref_lowres, new_lowres,
-    )
+        # take new images
+        # set new image settings (same as reference)
+        image_settings = match_image_settings(
+            ref_image, image_settings, beam_type=alignment[1]
+        )
+        new_image = acquire.new_image(microscope, image_settings)
 
-    # high res alignment
-    image_settings = match_image_settings(ref_highres, image_settings, beam_type=alignment[1])
-    new_highres = acquire.new_image(microscope, image_settings)
+        # crosscorrelation alignment
+        ret = align_using_reference_images_v2(
+            microscope, settings, ref_lowres, new_image,
+        )
 
-    # highres alignment
-    ret = align_using_reference_images_v2(
-        microscope, settings, ref_highres, new_highres,
-    )
+        if ret is False and parent_ui:
+            from liftout.gui import windows
 
-    if ret is False and parent_ui:
-        from liftout.gui import windows
-        # # cross-correlation has failed, manual correction required
-        windows.ask_user_movement_v2(microscope, settings, image_settings, msg_type="centre_eb", parent=parent_ui)
+            # # cross-correlation has failed, manual correction required
+            windows.ask_user_movement_v2(
+                microscope,
+                settings,
+                image_settings,
+                msg_type="centre_eb",
+                parent=parent_ui,
+            )
+            break
 
     return ret
 
 
-def match_image_settings(ref_image: AdornedImage, image_settings: ImageSettings, beam_type: BeamType = BeamType.ELECTRON) -> ImageSettings:
-    image_settings.hfw = f"{ref_image.height}x{ref_image.width}" 
+def match_image_settings(
+    ref_image: AdornedImage,
+    image_settings: ImageSettings,
+    beam_type: BeamType = BeamType.ELECTRON,
+) -> ImageSettings:
+    image_settings.hfw = f"{ref_image.height}x{ref_image.width}"
     image_settings.dwell_time = ref_image.metadata.scan_settings.dwell_time
     image_settings.beam_type = beam_type
     image_settings.save = True
-    image_settings.label = f"drift_correction_{utils.current_timestamp()}" 
+    image_settings.label = f"drift_correction_{utils.current_timestamp()}"
 
     return image_settings
 
 
 def align_using_reference_images_v2(
     microscope: SdbMicroscopeClient,
-    settings: dict, 
+    settings: dict,
     ref_image: AdornedImage,
     new_image: AdornedImage,
 ) -> bool:
@@ -252,15 +263,21 @@ def align_using_reference_images_v2(
     new_beam_type = BeamType(new_image.metadata.acquisition.beam_type.upper())
     stage = microscope.specimen.stage
 
-    logging.info(f"aligning {ref_beam_type.name} reference image to {new_beam_type.name}.")
+    logging.info(
+        f"aligning {ref_beam_type.name} reference image to {new_beam_type.name}."
+    )
     lp_px = int(max(new_image.data.shape) * 0.66)
     hp_px = int(max(new_image.data.shape) / 64)
     sigma = 6
 
-    dx, dy = shift_from_crosscorrelation_AdornedImages(new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma)
+    dx, dy = shift_from_crosscorrelation_AdornedImages(
+        new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma
+    )
 
-    shift_within_tolerance = check_shift_within_tolerance(dx=dx, dy=dy, ref_image=ref_image)
-    
+    shift_within_tolerance = check_shift_within_tolerance(
+        dx=dx, dy=dy, ref_image=ref_image
+    )
+
     if shift_within_tolerance:
         # move the stage
         x_move = movement.x_corrected_stage_movement(-dx)
@@ -276,15 +293,19 @@ def align_using_reference_images_v2(
 
     return shift_within_tolerance
 
-def check_shift_within_tolerance(dx: float, dy: float , ref_image: AdornedImage, limit: float = 0.25) -> bool:
+
+def check_shift_within_tolerance(
+    dx: float, dy: float, ref_image: AdornedImage, limit: float = 0.25
+) -> bool:
     """Limit automatic movements to 25% of the field of view"""
     # check if the cross correlation movement is within the safety limit
 
     pixelsize_x = ref_image.metadata.binary_result.pixel_size.x
     X_THRESHOLD = limit * pixelsize_x * ref_image.width
     Y_THRESHOLD = limit * pixelsize_x * ref_image.height
-    
-    return (abs(dx) < X_THRESHOLD and abs(dy) < Y_THRESHOLD)
+
+    return abs(dx) < X_THRESHOLD and abs(dy) < Y_THRESHOLD
+
 
 def identify_shift_using_machine_learning(
     microscope: SdbMicroscopeClient,
@@ -303,6 +324,7 @@ def identify_shift_using_machine_learning(
     det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
 
     return det_result
+
 
 def rotate_AdornedImage(image: AdornedImage):
 
@@ -1139,6 +1161,7 @@ def validate_stage_height_for_needle_insertion(
     microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings
 ) -> None:
     from liftout.gui import windows
+
     stage = microscope.specimen.stage
     stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
 
@@ -1167,6 +1190,7 @@ def validate_focus(
 ) -> None:
 
     from liftout.gui import windows
+
     # check focus distance is within tolerance
     if link:
         movement.auto_link_stage(microscope)  # TODO: remove?

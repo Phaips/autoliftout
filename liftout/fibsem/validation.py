@@ -26,25 +26,25 @@ def validate_initial_microscope_state(
     microscope.beams.ion_beam.beam_current.value = settings["calibration"]["imaging"][
         "imaging_current"
     ]
-    microscope.beams.ion_beam.horizontal_field_width.value = settings["calibration"]["imaging"][
-        "horizontal_field_width"
-    ]
-    microscope.beams.ion_beam.scanning.resolution.value = settings["calibration"]["imaging"][
-        "resolution"
-    ]
-    microscope.beams.ion_beam.scanning.dwell_time.value = settings["calibration"]["imaging"][
-        "dwell_time"
-    ]
+    microscope.beams.ion_beam.horizontal_field_width.value = settings["calibration"][
+        "imaging"
+    ]["horizontal_field_width"]
+    microscope.beams.ion_beam.scanning.resolution.value = settings["calibration"][
+        "imaging"
+    ]["resolution"]
+    microscope.beams.ion_beam.scanning.dwell_time.value = settings["calibration"][
+        "imaging"
+    ]["dwell_time"]
 
-    microscope.beams.electron_beam.horizontal_field_width.value = settings["calibration"]["imaging"][
-        "horizontal_field_width"
-    ]
-    microscope.beams.electron_beam.scanning.resolution.value = settings["calibration"]["imaging"][
-        "resolution"
-    ]
-    microscope.beams.electron_beam.scanning.dwell_time.value = settings["calibration"]["imaging"][
-        "dwell_time"
-    ]
+    microscope.beams.electron_beam.horizontal_field_width.value = settings[
+        "calibration"
+    ]["imaging"]["horizontal_field_width"]
+    microscope.beams.electron_beam.scanning.resolution.value = settings["calibration"][
+        "imaging"
+    ]["resolution"]
+    microscope.beams.electron_beam.scanning.dwell_time.value = settings["calibration"][
+        "imaging"
+    ]["dwell_time"]
 
     # validate chamber state
     calibration.validate_chamber(microscope=microscope)
@@ -126,24 +126,19 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
 
 
-
-
-
-
-
-
-
 def validate_milling_settings(stage_settings: dict, settings: dict) -> dict:
     # validation?
     if "milling_current" not in stage_settings:
-        stage_settings["milling_current"] =  settings["calibration"]["imaging"]["milling_current"]
+        stage_settings["milling_current"] = settings["calibration"]["imaging"][
+            "milling_current"
+        ]
     if "cleaning_cross_section" not in stage_settings:
         stage_settings["cleaning_cross_section"] = False
     if "rotation" not in stage_settings:
         stage_settings["rotation"] = 0.0
     if "scan_direction" not in stage_settings:
         stage_settings["scan_direction"] = "TopToBottom"
-    
+
     # remove list element from settings
     if "protocol_stages" in stage_settings:
         del stage_settings["protocol_stages"]

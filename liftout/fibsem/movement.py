@@ -3,10 +3,16 @@ import logging
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
-    CoordinateSystem, ManipulatorCoordinateSystem, ManipulatorSavedPosition)
-from autoscript_sdb_microscope_client.structures import (ManipulatorPosition,
-                                                         MoveSettings,
-                                                         StagePosition, AdornedImage)
+    CoordinateSystem,
+    ManipulatorCoordinateSystem,
+    ManipulatorSavedPosition,
+)
+from autoscript_sdb_microscope_client.structures import (
+    ManipulatorPosition,
+    MoveSettings,
+    StagePosition,
+    AdornedImage,
+)
 from liftout.fibsem.acquire import BeamType
 
 
@@ -114,7 +120,9 @@ def move_to_sample_grid(
         ],
     )
     logging.info(f"movement: moving to sample grid {sample_grid_center}")
-    safe_absolute_stage_movement(microscope=microscope, stage_position=sample_grid_center)
+    safe_absolute_stage_movement(
+        microscope=microscope, stage_position=sample_grid_center
+    )
 
     # move flat to the electron beam
     flat_to_beam(
@@ -424,6 +432,7 @@ def safe_absolute_stage_movement(
     return stage.current_position
 
 
+# TODO: move to calibration
 def auto_link_stage(microscope: SdbMicroscopeClient, hfw: float = 150e-6) -> None:
     """Automatically focus and link sample stage z-height.
 
@@ -434,10 +443,12 @@ def auto_link_stage(microscope: SdbMicroscopeClient, hfw: float = 150e-6) -> Non
         - Linking determines the specimen coordinate system, as it is defined as the relative dimensions of the top of stage
           to the instruments.
     """
+    from liftout.fibsem import acquire
+
     microscope.imaging.set_active_view(1)
     original_hfw = microscope.beams.electron_beam.horizontal_field_width.value
     microscope.beams.electron_beam.horizontal_field_width.value = hfw
-    autocontrast(microscope, beam_type=BeamType.ELECTRON)
+    acquire.autocontrast(microscope, beam_type=BeamType.ELECTRON)
     microscope.auto_functions.run_auto_focus()
     microscope.specimen.stage.link()
     # NOTE: replace with auto_focus_and_link if performance of focus is poor

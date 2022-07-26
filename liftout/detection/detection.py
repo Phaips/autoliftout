@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 
 
-import matplotlib.pyplot as plt
+import liftout.detection.DetectionModel as DetectionModel
 import numpy as np
 import PIL
-
-from PIL import Image
-from skimage import feature
-from scipy.spatial import distance
-
-import liftout.detection.DetectionModel as DetectionModel
 from liftout.detection import utils
-from liftout.detection.utils import Point, DetectionType, DetectionFeature, DetectionResult
+from liftout.detection.utils import (DetectionFeature, DetectionResult,
+                                     DetectionType, Point)
+from PIL import Image
+from scipy.spatial import distance
+from skimage import feature
 
+
+# TODO: functionalise
 class Detector:
-
     def __init__(self, weights_file) -> None:
 
         self.detection_model = DetectionModel.DetectionModel(weights_file)
 
         self.supported_feature_types = utils.DetectionType
-
 
     def detect_features(self, img, mask, shift_type) -> list[DetectionFeature]:
         """
@@ -49,28 +47,34 @@ class Detector:
                 feature_px = feature_px[::-1]
 
             if det_type == DetectionType.LamellaCentre:
-                feature_px, lamella_mask = detect_lamella_centre(img, mask)  # lamella_centre
+                feature_px, lamella_mask = detect_lamella_centre(
+                    img, mask
+                )  # lamella_centre
                 feature_px = feature_px[::-1]
-            
+
             if det_type == DetectionType.LamellaEdge:
-                feature_px, lamella_mask = detect_lamella_edge(img, mask)  # lamella_centre
+                feature_px, lamella_mask = detect_lamella_edge(
+                    img, mask
+                )  # lamella_centre
                 feature_px = feature_px[::-1]
 
             if det_type == DetectionType.LandingPost:
-                img_landing = Image.fromarray(img).resize((mask.shape[1], mask.shape[0]))
+                img_landing = Image.fromarray(img).resize(
+                    (mask.shape[1], mask.shape[0])
+                )
                 landing_px = (img_landing.size[0] // 2, img_landing.size[1] // 2)
-                feature_px, landing_mask = detect_landing_edge(img_landing, landing_px)  # landing post 
+                feature_px, landing_mask = detect_landing_edge(
+                    img_landing, landing_px
+                )  # landing post
                 # feature_px = feature_px[::-1] # TODO: validate if this needs to be done.
 
-            detection_features.append(DetectionFeature(
-                detection_type=det_type,
-                feature_px=Point(*feature_px)
-            ))
+            detection_features.append(
+                DetectionFeature(detection_type=det_type, feature_px=Point(*feature_px))
+            )
 
         return detection_features
 
-
-    def locate_shift_between_features(self, adorned_img, shift_type:tuple):
+    def locate_shift_between_features(self, adorned_img, shift_type: tuple):
         """
         Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
@@ -84,7 +88,7 @@ class Detector:
         """
 
         # check image type
-        if hasattr(adorned_img, 'data'):
+        if hasattr(adorned_img, "data"):
             img = adorned_img.data  # extract image data from AdornedImage
         if isinstance(adorned_img, np.ndarray):
             img = adorned_img  # adorned image is just numpy array
@@ -100,24 +104,29 @@ class Detector:
         img_blend = np.array(draw_overlay(img, mask_combined))
 
         # # need to use the same scale images for both detection selections
-        img_downscale = np.array(Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1])))
+        img_downscale = np.array(
+            Image.fromarray(img).resize((mask_combined.size[0], mask_combined.size[1]))
+        )
 
         # calculate movement distance
         x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
-            feature_1.feature_px, feature_2.feature_px, adorned_img, img_downscale)
+            feature_1.feature_px, feature_2.feature_px, adorned_img, img_downscale
+        )
 
         detection_result = DetectionResult(
-            features = [feature_1, feature_2],
+            features=[feature_1, feature_2],
             adorned_image=adorned_img,
             display_image=img_blend,
             downscale_image=img_downscale,
             distance_metres=Point(x_distance_m, y_distance_m),
-            microscope_coordinate=[Point(0, 0), Point(0, 0)]
+            microscope_coordinate=[Point(0, 0), Point(0, 0)],
         )
 
         return detection_result
 
+
 # Detection and Drawing Tools
+
 
 def extract_class_pixels(mask, color):
     """ Extract only the pixels that are classified as the desired class (color)
@@ -176,7 +185,8 @@ def draw_feature(mask, px, color, RECT_WIDTH=2, crosshairs=False):
 
 
 def draw_two_features(
-        mask, feature_1, feature_2, color_1="red", color_2="green", line=False):
+    mask, feature_1, feature_2, color_1="red", color_2="green", line=False
+):
     """ Draw two detected features on the same mask, and optionally a line between
 
     args:
@@ -267,6 +277,7 @@ def detect_centre_point(mask, color, threshold=25):
 
 # - detect_right_edge(mask, color, threshold)
 
+
 def detect_right_edge(mask, color, threshold=25, left=False):
     """ Detect the right edge point of the mask for a given color (label)
 
@@ -333,7 +344,9 @@ def detect_lamella_edge(img, mask, threshold=25):
     """Detect the right edge of the lamella"""
     color = (255, 0, 0)  # fixed color
 
-    mask_filt, px_filt = extract_class_pixels(mask, color)  # this is duplicate in detect_func
+    mask_filt, px_filt = extract_class_pixels(
+        mask, color
+    )  # this is duplicate in detect_func
     edge_px = detect_right_edge(mask, color, threshold=threshold)
     mask_draw = draw_feature(mask_filt, edge_px, color, crosshairs=True)
     lamella_mask = draw_overlay(img, mask_draw)
@@ -461,7 +474,9 @@ def detect_thin_region(img, mask, top=True):
     centre_px, centre_mask = detect_lamella_centre(img, mask)
 
     # detect bounding box around lamella
-    bbox = detect_bounding_box(mask, color, threshold=threshold)  # top, bot, left, right
+    bbox = detect_bounding_box(
+        mask, color, threshold=threshold
+    )  # top, bot, left, right
 
     mask_draw = draw_feature(img, bbox[:2], color="blue", crosshairs=True)
     landing_mask = draw_overlay(img, mask_draw, alpha=0.5)
@@ -490,11 +505,3 @@ def detect_thin_region(img, mask, top=True):
     else:
         return bottom_thin_px, landing_mask
     # TODO: this is fooled by small red specks need a way to aggregate a whole detection clump and ignore outliers...
-
-
-def draw_final_detection_image(img: np.ndarray, feature_1_px, feature_2_px) -> np.ndarray:
-    """Draw the final features on the image"""
-    final_detection_img = Image.fromarray(img).convert("RGB")
-    final_detection_img = draw_two_features(final_detection_img, feature_1_px, feature_2_px)
-    final_detection_img = np.array(final_detection_img.convert("RGB"))
-    return final_detection_img

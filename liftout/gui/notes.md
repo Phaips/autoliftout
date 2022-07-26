@@ -10,8 +10,6 @@ tilt angle consideration, sin angle consideration
 centre eb, move z 
 cross correlate images
 
-
-
 centre on feature in eb
 start at 900hfw
     take reference images
@@ -23,3 +21,9 @@ repeat while outside tolerance (until movement falls below threshold, then exit 
 
 vertical_hfw = ~5 * distance_from_centre (unknown until alignment)
 
+
+
+# create ui for setting initial config stuff
+e.g. initial position, angles etc. 
+
+also create help for dry run
