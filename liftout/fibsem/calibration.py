@@ -110,7 +110,6 @@ def align_using_reference_images_v2(
     # get beam type
     ref_beam_type = BeamType(ref_image.metadata.acquisition.beam_type.upper())
     new_beam_type = BeamType(new_image.metadata.acquisition.beam_type.upper())
-    stage = microscope.specimen.stage
 
     logging.info(
         f"aligning {ref_beam_type.name} reference image to {new_beam_type.name}."
@@ -179,6 +178,11 @@ def rotate_AdornedImage(image: AdornedImage):
     return reference
 
 
+def normalise_image(img: AdornedImage) -> np.ndarray:
+    """Normalise the image"""
+    return (img.data - np.mean(img.data)) / np.std(img.data)
+
+
 def shift_from_crosscorrelation_AdornedImages(
     img1: AdornedImage,
     img2: AdornedImage,
@@ -187,32 +191,39 @@ def shift_from_crosscorrelation_AdornedImages(
     sigma: int = 6,
     use_rect_mask: bool = False,
 ):
-    pixelsize_x_1 = img1.metadata.binary_result.pixel_size.x
-    pixelsize_y_1 = img1.metadata.binary_result.pixel_size.y
-    pixelsize_x_2 = img2.metadata.binary_result.pixel_size.x
-    pixelsize_y_2 = img2.metadata.binary_result.pixel_size.y
+
+    # get pixel_size
+    pixelsize_x = img2.metadata.binary_result.pixel_size.x
+    pixelsize_y = img2.metadata.binary_result.pixel_size.y
+
     # normalise both images
-    img1_data_norm = (img1.data - np.mean(img1.data)) / np.std(img1.data)
-    img2_data_norm = (img2.data - np.mean(img2.data)) / np.std(img2.data)
+    img1_data_norm = normalise_image(img1)
+    img2_data_norm = normalise_image(img2)
+
     # cross-correlate normalised images
     if use_rect_mask:
         rect_mask = _mask_rectangular(img2_data_norm.shape)
         img1_data_norm = rect_mask * img1_data_norm
         img2_data_norm = rect_mask * img2_data_norm
-    xcorr = crosscorrelation(
-        img1_data_norm, img2_data_norm, bp="yes", lp=lowpass, hp=highpass, sigma=sigma
+
+    # run crosscorrelation
+    xcorr = crosscorrelation_v2(
+        img1_data_norm, img2_data_norm, bp=True, lp=lowpass, hp=highpass, sigma=sigma
     )
+
+    # calculate maximum crosscorrelation
     maxX, maxY = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-    logging.info(f"maxX: {maxX}, {maxY}")
     cen = np.asarray(xcorr.shape) / 2
-    logging.info(f"centre = {cen}")
     err = np.array(cen - [maxX, maxY], int)
-    logging.info(f"Shift between 1 and 2 is = {err}")
-    logging.info(f"img2 is X-shifted by  {err[1]}; Y-shifted by {err[0]}")
-    x_shift = err[1] * pixelsize_x_2
-    y_shift = err[0] * pixelsize_y_2
-    logging.info(f"X-shift =  {x_shift:.2e} meters")
-    logging.info(f"Y-shift =  {y_shift:.2e} meters")
+
+    # calculate shift in metres
+    x_shift = err[1] * pixelsize_x
+    y_shift = err[0] * pixelsize_y
+    
+    logging.info(f"cross-correlation:")
+    logging.info(f"maxX: {maxX}, {maxY}, centre: {cen}")
+    logging.info(f"x: {err[1]}px, y: {err[0]}px")
+    logging.info(f"x: {x_shift:.2e}m, y: {y_shift:.2e} meters")
 
     # metres
     return x_shift, y_shift, xcorr
@@ -223,7 +234,7 @@ def crosscorrelation(img1, img2, bp="no", *args, **kwargs):
         logging.error(
             "### ERROR in xcorr2: img1 and img2 do not have the same size ###"
         )
-        return -1
+        return -1    
     if img1.dtype != "float64":
         img1 = np.array(img1, float)
     if img2.dtype != "float64":
@@ -259,6 +270,41 @@ def crosscorrelation(img1, img2, bp="no", *args, **kwargs):
         )
         return -1
     return xcorr
+
+def crosscorrelation_v2(img1: np.ndarray, img2: np.ndarray,  
+    lp: int = 128, hp: int = 6, sigma: int = 6, bandpass: bool = False) -> np.ndarray:
+    
+    if img1.shape != img2.shape:
+        err = f"Image 1 {img1.shape} and Image 2 {img2.shape} need to have the same shape"
+        logging.error(err)
+        raise ValueError(err)
+
+    if bandpass: 
+        bandpass = bandpass_mask(
+            size=(img1.shape[1], img1.shape[0]), 
+            lp=lp, hp=hp, sigma=sigma
+        )
+        img1ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img1)))
+        
+        n_pixels = img1.shape[0] * img1.shape[1]
+        tmp = img1ft * np.conj(img1ft)
+        img1ft = n_pixels * img1ft / np.sqrt(tmp.sum())
+        
+        img2ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img2)))
+        img2ft[0, 0] = 0
+        tmp = img2ft * np.conj(img2ft)
+        
+        img2ft = n_pixels * img2ft / np.sqrt(tmp.sum())
+
+        xcorr = np.real(fftpack.fftshift(fftpack.ifft2(img1ft * np.conj(img2ft))))
+    else:
+        img1ft = fftpack.fft2(img1)
+        img2ft = np.conj(fftpack.fft2(img2))
+        img1ft[0, 0] = 0
+        xcorr = np.abs(fftpack.fftshift(fftpack.ifft2(img1ft * img2ft)))
+    
+    return xcorr
+
 
 
 def bandpass_mask(size=(128, 128), lp=32, hp=2, sigma=3):
@@ -846,24 +892,22 @@ def automatic_eucentric_correction_v2(
     return
 
 
-
-
-
 def correct_stage_drift_with_ML_v2(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
     lamella: Lamella,
+    iterations: int = 3
 ):
     # correct stage drift using machine learning
-
     from liftout.detection.utils import DetectionType
 
-    stage = microscope.specimen.stage
+
+    iteration_count = 0
+    beam_type = BeamType.ION
     label = image_settings.label
 
-    for beam_type in (BeamType.ION, BeamType.ELECTRON, BeamType.ION):
-
+    while True:
         image_settings.label = label + utils.current_timestamp()
         det = validate_detection_v2(
             microscope,
@@ -881,6 +925,12 @@ def correct_stage_drift_with_ML_v2(
             dy=det.distance_metres.y,
             beam_type=beam_type,
         )
+
+        beam_type = BeamType.ELECTRON if beam_type is BeamType.ION else BeamType.ION
+
+        iteration_count += 1
+        if iteration_count >= iterations:
+            break
 
     image_settings.save = True
     image_settings.label = f"drift_correction_ML_final_" + utils.current_timestamp()

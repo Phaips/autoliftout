@@ -570,8 +570,8 @@ def move_stage_relative_with_corrected_movement(microscope: SdbMicroscopeClient,
 
 def move_stage_eucentric_correction(microscope: SdbMicroscopeClient, settings: dict, dy: float, beam_type: BeamType):
     """Only move the stage in z"""
-    # TODO
     
+    # TODO: finish this?
     stage = microscope.specimen.stage 
 
     # calculate the correct movement?
@@ -614,7 +614,6 @@ def move_needle_relative_with_corrected_movement(microscope: SdbMicroscopeClient
         # z_distance = -det.distance_metres.y / np.sin(
         #     np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"])
         # )
-
 
         # Calculate movement
         x_move = x_corrected_needle_movement(expected_x=dx, stage_tilt=stage_tilt)

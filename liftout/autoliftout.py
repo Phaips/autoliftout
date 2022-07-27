@@ -37,7 +37,7 @@ def mill_lamella_trench(
     # Take an ion beam image at the *milling current*
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
 
-    # correct stage drift?
+    # TODO: correct stage drift?
 
     # confirm position
     windows.ask_user_movement_v2(
@@ -114,6 +114,7 @@ def mill_lamella_jcut(
         StagePosition(t=np.deg2rad(settings["jcut"]["jcut_angle"])), stage_settings
     )
 
+    # correct stage drift (ml)
     image_settings.hfw = settings["calibration"]["drift_correction_hfw_highres"]
     image_settings.save = True
     image_settings.label = f"drift_correction_ML"
