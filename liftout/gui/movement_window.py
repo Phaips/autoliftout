@@ -10,6 +10,7 @@ from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
 from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
                                       MICRON_TO_METRE, MILLIMETRE_TO_METRE)
+from liftout.fibsem.sample import microscope_state_from_dict
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
@@ -227,24 +228,14 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
     def stage_movement(self, beam_type: BeamType):
 
-        stage = self.microscope.specimen.stage
-
         # calculate stage movement
-        x_move = movement.x_corrected_stage_movement(
-            self.center_x, stage_tilt=stage.current_position.t
-        )
-        yz_move = movement.y_corrected_stage_movement(
-            microscope=self.microscope,
-            expected_y=self.center_y,
-            stage_tilt=stage.current_position.t,
+        movement.move_stage_relative_with_corrected_movement(
+            microscope=self.microscope, 
             settings=self.settings,
-            beam_type=beam_type,
+            dx=self.center_x, 
+            dy=self.center_y, 
+            beam_type=beam_type
         )
-        logging.info(f"x_move: {x_move}, yz_move: {yz_move}")
-
-        # move stage
-        stage.relative_move(x_move)
-        stage.relative_move(yz_move)
 
         # update displays
         self.update_displays()

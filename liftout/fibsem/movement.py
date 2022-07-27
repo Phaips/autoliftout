@@ -1,3 +1,4 @@
+from random import sample
 import time
 import logging
 import numpy as np
@@ -102,7 +103,7 @@ def move_to_landing_angle(
     )
     return microscope.specimen.stage.current_position
 
-
+# TODO: change this to use set_microscope_state_v2? 
 def move_to_sample_grid(
     microscope: SdbMicroscopeClient, settings: dict
 ) -> StagePosition:
@@ -137,8 +138,7 @@ def move_to_sample_grid(
 
 
 def move_to_landing_grid(
-    microscope: SdbMicroscopeClient, settings: dict, flat_to_sem: bool = True
-) -> StagePosition:
+    microscope: SdbMicroscopeClient, settings: dict) -> StagePosition:
     """Move stage to landing post grid.
     Assumes the landing grid is mounted on the right hand side of the holder.
     Parameters
@@ -164,10 +164,7 @@ def move_to_landing_grid(
         microscope=microscope, stage_position=landing_grid_position
     )
 
-    if flat_to_sem:
-        flat_to_beam(microscope, settings=settings, beam_type=BeamType.ELECTRON)
-    else:
-        move_to_landing_angle(microscope, settings=settings)
+    move_to_landing_angle(microscope, settings=settings)
 
     logging.info(f"movement: move to landing grid complete.")
     return microscope.specimen.stage.current_position
@@ -181,9 +178,7 @@ def move_sample_stage_out(microscope: SdbMicroscopeClient) -> StagePosition:
         x=-0.002507, y=0.025962792, z=0.0039559049
     )  # TODO: make these dynamically set based on initial_position
     logging.info(f"movement: move sample grid out to {sample_stage_out}")
-    microscope.specimen.stage.absolute_move(
-        sample_stage_out
-    )  # TODO: change to safe_absolute_stage_movement
+    safe_absolute_stage_movement(microscope, sample_stage_out)
     logging.info(f"movement: move sample stage out complete.")
     return microscope.specimen.stage.current_position
 
@@ -473,12 +468,10 @@ def x_corrected_stage_movement(
     return StagePosition(x=expected_x, y=0, z=0)
 
 
-# TODO: fix this function arguments properly
 def y_corrected_stage_movement(
     microscope: SdbMicroscopeClient = None,
-    expected_y: float = 0.0,
-    stage_tilt: float = 0.0,
     settings: dict = None,
+    expected_y: float = 0.0,
     beam_type: BeamType = BeamType.ELECTRON,
 ) -> StagePosition:
     """Stage movement in Y, corrected for tilt of sample surface plane.
@@ -535,13 +528,13 @@ def y_corrected_stage_movement(
         y_move = y_sample_move * np.cos(corrected_pretilt_angle)
         z_move = y_sample_move * np.sin(corrected_pretilt_angle)
 
-    print(f"rotation:  {microscope.specimen.stage.current_position.r} rad")
-    print(f"stage_tilt: {np.rad2deg(stage_tilt)}deg")
-    print(f"tilt_adjustment: {np.rad2deg(tilt_adjustment)}deg")
-    print(f"expected_y: {expected_y:.3e}m")
-    print(f"y_sample_move: {y_sample_move:.3e}m")
-    print(f"y-move: {y_move:.3e}m")
-    print(f"z-move: {z_move:.3e}m")
+    logging.info(f"rotation:  {microscope.specimen.stage.current_position.r} rad")
+    logging.info(f"stage_tilt: {np.rad2deg(stage_tilt)}deg")
+    logging.info(f"tilt_adjustment: {np.rad2deg(tilt_adjustment)}deg")
+    logging.info(f"expected_y: {expected_y:.3e}m")
+    logging.info(f"y_sample_move: {y_sample_move:.3e}m")
+    logging.info(f"y-move: {y_move:.3e}m")
+    logging.info(f"z-move: {z_move:.3e}m")
 
     logging.info(f"drift correction: the corrected Y shift is {y_move:.3e} meters")
     logging.info(f"drift correction: the corrected Z shift is  {z_move:.3e} meters")
@@ -550,4 +543,90 @@ def y_corrected_stage_movement(
 
 # TODO: z_corrected_stage_movement...?
 # resetting working distance after vertical movements
+
+
+
+def move_stage_relative_with_corrected_movement(microscope: SdbMicroscopeClient, settings: dict, dx: float, dy:float, beam_type: BeamType) -> None:
+    """Calculate the corrected stage movements, and then move the stage relatively."""
+    # dx, dy are in image coordinates
+
+    stage = microscope.specimen.stage
+
+    # calculate stage movement
+    x_move = x_corrected_stage_movement(
+        dx, stage_tilt=stage.current_position.t
+    )
+    yz_move = y_corrected_stage_movement(
+        microscope=microscope,
+        settings=settings,
+        expected_y=dy,
+        beam_type=beam_type,
+    )
+
+    # move stage
+    stage.relative_move(x_move) # x_move
+    stage.relative_move(yz_move) # yz_move
+
+
+def move_stage_eucentric_correction(microscope: SdbMicroscopeClient, settings: dict, dy: float, beam_type: BeamType):
+    """Only move the stage in z"""
+    # TODO
+    
+    stage = microscope.specimen.stage 
+
+    # calculate the correct movement?
+    yz_move = y_corrected_stage_movement(
+        microscope=microscope, settings=settings, expected_y=dy, beam_type=beam_type 
+    )
+
+    # only move the z-component
+    z_move = StagePosition(z=yz_move.z)
+    stage.relative_move(z_move)
+
+    return 
+
+
+
+def move_needle_relative_with_corrected_movement(microscope: SdbMicroscopeClient, settings: dict, dx: float, dy:float, beam_type: BeamType=  BeamType.ELECTRON) -> None:
+    """Calculate the corrected needle movements, and then move the needle relatively.
+    
+    moves in electron: x, y
+    moves in ion: x, z
+    
+    """
+
+    needle = microscope.specimen.manipulator
+    stage_tilt = microscope.specimen.stage.current_position.t
+
+
+    # xy
+    if beam_type is BeamType.ELECTRON:
+        x_move = x_corrected_needle_movement(dx, stage_tilt=stage_tilt)
+        yz_move = y_corrected_needle_movement(dy, stage_tilt=stage_tilt)
+    
+    # xz,
+    if beam_type is BeamType.ION:
+        # z- is divided by cos... then multipled by cos.. no change?
+        # calculate shift in xyz coordinates
+        z_distance = dy / np.cos(stage_tilt) # TODO: needle to check this
+
+        # TODO: this is used for land lamella
+        # z_distance = -det.distance_metres.y / np.sin(
+        #     np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"])
+        # )
+
+
+        # Calculate movement
+        x_move = x_corrected_needle_movement(expected_x=dx, stage_tilt=stage_tilt)
+        yz_move = z_corrected_needle_movement(z_distance, stage_tilt)
+    
+
+    # move needle (relative)
+    needle_position = ManipulatorPosition(x=x_move.x, y=yz_move.y, z=yz_move.z)
+    logging.info(f"Moving needle: {needle_position}.")
+    needle.relative_move(needle_position)
+
+
+
+    return
 

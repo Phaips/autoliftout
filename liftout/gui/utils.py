@@ -409,7 +409,7 @@ def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
     )
     # if the user doesnt select a folder, start a new experiment
     # nb. should we include a check for invalid folders here too?
-    if experiment_path is "":
+    if experiment_path == "":
         experiment_path = default_experiment_path
 
     sample_fname = os.path.join(experiment_path, "sample.yaml")
