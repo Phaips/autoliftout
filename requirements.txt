@@ -8,3 +8,4 @@ pyyaml
 scipy
 scikit-image
 petname
+pandas
