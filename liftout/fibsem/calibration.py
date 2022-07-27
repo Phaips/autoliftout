@@ -27,7 +27,7 @@ from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
 
-# TODO: START_HERE refactor this
+
 def correct_stage_drift_v2(
     microscope: SdbMicroscopeClient,
     settings: dict,
@@ -118,7 +118,7 @@ def align_using_reference_images_v2(
     hp_px = int(max(new_image.data.shape) / 64)
     sigma = 6
 
-    dx, dy, _ = shift_from_crosscorrelation_AdornedImages(
+    dx, dy, _ = shift_from_crosscorrelation(
         new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma
     )
 
@@ -183,7 +183,7 @@ def normalise_image(img: AdornedImage) -> np.ndarray:
     return (img.data - np.mean(img.data)) / np.std(img.data)
 
 
-def shift_from_crosscorrelation_AdornedImages(
+def shift_from_crosscorrelation(
     img1: AdornedImage,
     img2: AdornedImage,
     lowpass: int = 128,
@@ -228,65 +228,22 @@ def shift_from_crosscorrelation_AdornedImages(
     # metres
     return x_shift, y_shift, xcorr
 
-
-def crosscorrelation(img1, img2, bp="no", *args, **kwargs):
-    if img1.shape != img2.shape:
-        logging.error(
-            "### ERROR in xcorr2: img1 and img2 do not have the same size ###"
-        )
-        return -1    
-    if img1.dtype != "float64":
-        img1 = np.array(img1, float)
-    if img2.dtype != "float64":
-        img2 = np.array(img2, float)
-
-    if bp == "yes":
-        lpv = kwargs.get("lp", None)
-        hpv = kwargs.get("hp", None)
-        sigmav = kwargs.get("sigma", None)
-        if lpv == "None" or hpv == "None" or sigmav == "None":
-            logging.error("ERROR in xcorr2: check bandpass parameters")
-            return -1
-        bandpass = bandpass_mask(
-            size=(img1.shape[1], img1.shape[0]), lp=lpv, hp=hpv, sigma=sigmav
-        )
-        img1ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img1)))
-        s = img1.shape[0] * img1.shape[1]
-        tmp = img1ft * np.conj(img1ft)
-        img1ft = s * img1ft / np.sqrt(tmp.sum())
-        img2ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img2)))
-        img2ft[0, 0] = 0
-        tmp = img2ft * np.conj(img2ft)
-        img2ft = s * img2ft / np.sqrt(tmp.sum())
-        xcorr = np.real(fftpack.fftshift(fftpack.ifft2(img1ft * np.conj(img2ft))))
-    elif bp == "no":
-        img1ft = fftpack.fft2(img1)
-        img2ft = np.conj(fftpack.fft2(img2))
-        img1ft[0, 0] = 0
-        xcorr = np.abs(fftpack.fftshift(fftpack.ifft2(img1ft * img2ft)))
-    else:
-        logging.error(
-            "ERROR in xcorr2: bandpass value ( bp= " + str(bp) + " ) not recognized"
-        )
-        return -1
-    return xcorr
-
 def crosscorrelation_v2(img1: np.ndarray, img2: np.ndarray,  
-    lp: int = 128, hp: int = 6, sigma: int = 6, bandpass: bool = False) -> np.ndarray:
+    lp: int = 128, hp: int = 6, sigma: int = 6, bp: bool = False) -> np.ndarray:
     
     if img1.shape != img2.shape:
         err = f"Image 1 {img1.shape} and Image 2 {img2.shape} need to have the same shape"
         logging.error(err)
         raise ValueError(err)
 
-    if bandpass: 
+    if bp: 
         bandpass = bandpass_mask(
             size=(img1.shape[1], img1.shape[0]), 
             lp=lp, hp=hp, sigma=sigma
         )
-        img1ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img1)))
-        
         n_pixels = img1.shape[0] * img1.shape[1]
+        
+        img1ft = fftpack.ifftshift(bandpass * fftpack.fftshift(fftpack.fft2(img1)))
         tmp = img1ft * np.conj(img1ft)
         img1ft = n_pixels * img1ft / np.sqrt(tmp.sum())
         
@@ -792,7 +749,7 @@ def beam_shift_alignment(
     img2 = acquire.new_image(
         microscope, settings=image_settings, reduced_area=reduced_area
     )
-    dx, dy, _ = shift_from_crosscorrelation_AdornedImages(
+    dx, dy, _ = shift_from_crosscorrelation(
         img1, img2, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
     )
 
@@ -853,7 +810,7 @@ def automatic_eucentric_correction_v2(
         # x = horizontal, y = vertical
 
         # align using cross correlation
-        dx, dy, _ = shift_from_crosscorrelation_AdornedImages(
+        dx, dy, _ = shift_from_crosscorrelation(
             ref_eb, ref_ib, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
         )
 
@@ -866,7 +823,7 @@ def automatic_eucentric_correction_v2(
         # align eb (cross correlate) back to original ref (move eb back to centre)
         image_settings.beam_type = BeamType.ELECTRON
         new_eb = acquire.new_image(microscope, image_settings, reduced_area=None)
-        dx, dy, _ = shift_from_crosscorrelation_AdornedImages(
+        dx, dy, _ = shift_from_crosscorrelation(
             ref_eb, new_eb, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
         )
 

@@ -238,7 +238,7 @@ def move_needle_closer(
     needle.set_default_coordinate_system(ManipulatorCoordinateSystem.STAGE)
     # Needle starts from the parking position (after inserting it)
     # Move the needle back a bit in x, so the needle is not overlapping target
-    x_move = x_corrected_needle_movement(x_shift)
+    x_move = x_corrected_needle_movement(x_shift) # TODO: replace with move_needle_relative...
     logging.info(f"movement: moving needle by {x_move}")
     needle.relative_move(x_move)
     # Then move the needle towards the sample surface.
@@ -318,8 +318,12 @@ def retract_needle(
     # Retract the needle, preserving the correct parking postiion
     needle = microscope.specimen.manipulator
     current_position = needle.current_position
+    park_position = needle.get_saved_position(
+        ManipulatorSavedPosition.PARK, ManipulatorCoordinateSystem.RAW
+    )
+
     # To prevent collisions with the sample; first retract in z, then y, then x
-    logging.info(f"retracting needle to {park_position}")
+    logging.info(f"retracting needle to {park_position}") # TODO: replace with move_needle_relative...
     needle.relative_move(
         ManipulatorPosition(z=park_position.z - current_position.z)
     )  # noqa: E501
@@ -327,7 +331,7 @@ def retract_needle(
         ManipulatorPosition(y=park_position.y - current_position.y)
     )  # noqa: E501
     needle.relative_move(
-        ManipulatorPosition(x=park_position.x - current_position.x)
+        ManipulatorPosition(x=park_position.x - current_position.x) 
     )  # noqa: E501
     time.sleep(1)  # AutoScript sometimes throws errors if you retract too quick?
     logging.info(f"retracting needle")
@@ -357,10 +361,13 @@ def flat_to_beam(
     stage_settings = MoveSettings(rotate_compucentric=True)
     logging.info(f"movement: moving flat to {beam_type.name}")
 
+    # TODO: check why we can't just use safe_absolute_stage_movement
+    # I think it is because we want to maintain position, and only tilt/rotate
+    # why isnt it the same as going to the same xyz with new rt?
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
     if (
-        abs(np.rad2deg(rotation - stage.current_position.r)) > 90
-    ):  # TODO: this does a double move, need modulus
+        abs(np.rad2deg(rotation - stage.current_position.r)) % 360 > 90
+    ):  
         stage.absolute_move(StagePosition(t=0), stage_settings)  # just in case
         logging.info(f"movement: tilting to flat for large rotation.")
     logging.info(f"movement: rotating stage to {rotation:.4f}")
@@ -370,7 +377,7 @@ def flat_to_beam(
 
     return stage.current_position
 
-
+# TODO: use safe_absolute_stage_movement instead
 def move_to_thinning_angle(
     microscope: SdbMicroscopeClient, settings: dict
 ) -> StagePosition:
@@ -545,7 +552,7 @@ def y_corrected_stage_movement(
 # resetting working distance after vertical movements
 
 
-
+# TODO: test out these functions...
 def move_stage_relative_with_corrected_movement(microscope: SdbMicroscopeClient, settings: dict, dx: float, dy:float, beam_type: BeamType) -> None:
     """Calculate the corrected stage movements, and then move the stage relatively."""
     # dx, dy are in image coordinates
