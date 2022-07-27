@@ -320,7 +320,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             for i, stage in enumerate(self.patterns):
                 for pattern in stage:
                     colour = "cyan" if i == 1 else "yellow"
-                    rectangle = ui_utils.draw_rectangle_pattern_v2(
+                    rectangle = ui_utils.draw_rectangle_pattern(
                         adorned_image=self.adorned_image, pattern=pattern, colour=colour
                     )
                     self.pattern_rectangles.append(rectangle)

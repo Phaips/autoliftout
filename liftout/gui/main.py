@@ -21,7 +21,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         super(AutoLiftoutMainWindow, self).__init__()
 
         # load config
-        self.settings: dict = utils.load_config_v2()
+        self.settings: dict = utils.load_full_config()
         self.image_settings: ImageSettings = acquire.update_image_settings_v3(
             self.settings
         )
@@ -171,7 +171,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
         # sputter
-        fibsem_utils.sputter_platinum_on_whole_sample_grid_v2(
+        fibsem_utils.sputter_platinum_on_whole_sample_grid(
             self.microscope, self.settings, self.image_settings
         )
 

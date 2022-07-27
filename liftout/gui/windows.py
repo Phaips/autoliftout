@@ -8,7 +8,7 @@ from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 
 
-def ask_user_interaction_v2(
+def ask_user_interaction(
     microscope: SdbMicroscopeClient, msg="Default Ask User Message", beam_type=None
 ):
     """Create user interaction window and get return response"""
@@ -19,7 +19,7 @@ def ask_user_interaction_v2(
     return response
 
 
-def ask_user_movement_v2(
+def ask_user_movement(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
@@ -44,7 +44,7 @@ def ask_user_movement_v2(
     movement_window.show()
     movement_window.exec_()
 
-def open_milling_window_v2(
+def open_milling_window(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,

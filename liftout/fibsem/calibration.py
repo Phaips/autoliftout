@@ -29,7 +29,7 @@ from PIL import Image, ImageDraw
 from scipy import fftpack
 
 
-def correct_stage_drift_v2(
+def correct_stage_drift(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
@@ -67,7 +67,7 @@ def correct_stage_drift_v2(
         new_image = acquire.new_image(microscope, image_settings)
 
         # crosscorrelation alignment
-        ret = align_using_reference_images_v2(
+        ret = align_using_reference_images(
             microscope, settings, ref_lowres, new_image,
         )
 
@@ -75,7 +75,7 @@ def correct_stage_drift_v2(
             from liftout.gui import windows
 
             # # cross-correlation has failed, manual correction required
-            windows.ask_user_movement_v2(
+            windows.ask_user_movement(
                 microscope,
                 settings,
                 image_settings,
@@ -101,7 +101,7 @@ def match_image_settings(
     return image_settings
 
 
-def align_using_reference_images_v2(
+def align_using_reference_images(
     microscope: SdbMicroscopeClient,
     settings: dict,
     ref_image: AdornedImage,
@@ -210,7 +210,7 @@ def shift_from_crosscorrelation(
         img2_data_norm = rect_mask * img2_data_norm
 
     # run crosscorrelation
-    xcorr = crosscorrelation_v2(
+    xcorr = crosscorrelation(
         img1_data_norm, img2_data_norm, bp=True, lp=lowpass, hp=highpass, sigma=sigma
     )
 
@@ -231,7 +231,7 @@ def shift_from_crosscorrelation(
     # metres
     return x_shift, y_shift, xcorr
 
-def crosscorrelation_v2(img1: np.ndarray, img2: np.ndarray,  
+def crosscorrelation(img1: np.ndarray, img2: np.ndarray,  
     lp: int = 128, hp: int = 6, sigma: int = 6, bp: bool = False) -> np.ndarray:
     
     if img1.shape != img2.shape:
@@ -421,7 +421,7 @@ def get_raw_stage_position(microscope: SdbMicroscopeClient) -> StagePosition:
     return stage_position
 
 
-def get_current_microscope_state_v2(
+def get_current_microscope_state(
     microscope: SdbMicroscopeClient, stage: AutoLiftoutStage
 ) -> MicroscopeState:
     """Get the current microscope state v2 """
@@ -456,7 +456,7 @@ def get_current_microscope_state_v2(
     return current_microscope_state
 
 
-def set_microscope_state_v2(microscope, microscope_state: MicroscopeState):
+def set_microscope_state(microscope, microscope_state: MicroscopeState):
     """Reset the microscope state to the provided state"""
 
     logging.info(
@@ -791,7 +791,7 @@ def automatic_eucentric_correction(
     acquire.take_reference_images(microscope, image_settings)
 
 
-def automatic_eucentric_correction_v2(
+def automatic_eucentric_correction(
     microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings
 ) -> None:
 
@@ -852,7 +852,7 @@ def automatic_eucentric_correction_v2(
     return
 
 
-def correct_stage_drift_with_ML_v2(
+def correct_stage_drift_with_ml(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
@@ -869,7 +869,7 @@ def correct_stage_drift_with_ML_v2(
 
     while True:
         image_settings.label = label + utils.current_timestamp()
-        det = validate_detection_v2(
+        det = validate_detection(
             microscope,
             settings,
             image_settings,
@@ -897,7 +897,7 @@ def correct_stage_drift_with_ML_v2(
     acquire.take_reference_images(microscope, image_settings)
 
 
-def validate_detection_v2(
+def validate_detection(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
@@ -945,7 +945,7 @@ def validate_stage_height_for_needle_insertion(
         logging.warning(f"Calibration error detected: stage position height")
         logging.warning(f"Stage Position: {stage.current_position}")
 
-        windows.ask_user_interaction_v2(
+        windows.ask_user_interaction(
             microscope,
             msg="""The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
             "The needle will contact the sample, and it is unsafe to insert the needle. "
@@ -973,7 +973,7 @@ def validate_focus(
         microscope, settings=settings, beam_type=BeamType.ELECTRON
     ):
         logging.warning("Autofocus has failed")
-        windows.ask_user_interaction_v2(
+        windows.ask_user_interaction(
             microscope,
             msg="The AutoFocus routine has failed, please correct the focus manually.",
             beam_type=BeamType.ELECTRON,

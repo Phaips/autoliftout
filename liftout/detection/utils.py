@@ -86,22 +86,6 @@ def convert_pixel_distance_to_metres(p1: Point, p2: Point, adorned_image: Adorne
 
     return x_distance_m, y_distance_m
 
-
-def scale_pixel_coordinates(px: Point, from_image: np.ndarray, to_image=None) -> Point:
-    """Scale the pixel coordinate from one image to another"""
-    if isinstance(to_image, AdornedImage):
-        to_image = to_image.data
-
-    x_scale, y_scale = (
-        px.x / from_image.shape[1],
-        px.y / from_image.shape[0],
-    )  # (x, y)
-
-    scaled_px = Point(x_scale * to_image.shape[1], y_scale * to_image.shape[0])
-
-    return scaled_px
-
-
 def coordinate_distance(p1: Point, p2: Point):
     """Calculate the distance between two points in each coordinate"""
 
@@ -126,7 +110,7 @@ def scale_invariant_coordinates(px, mask):
 
 
 
-def scale_pixel_coordinates_v2(px: Point, from_image: np.ndarray, to_image=None) -> Point:
+def scale_pixel_coordinates(px: Point, from_image: np.ndarray, to_image=None) -> Point:
     """Scale the pixel coordinate from one image to another"""
     if isinstance(to_image, AdornedImage):
         to_image = to_image.data

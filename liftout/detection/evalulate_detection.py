@@ -55,5 +55,5 @@ if __name__ == "__main__":
             # x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance, df_metadata)
             # print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
-            ret = detection.locate_shift_between_features(model, img, shift_type=shift_type, show=True)
+            ret = detection.locate_shift_between_features(model, img, shift_type=shift_type, )
 

@@ -103,7 +103,7 @@ def move_to_landing_angle(
     )
     return microscope.specimen.stage.current_position
 
-# TODO: change this to use set_microscope_state_v2? 
+# TODO: change this to use set_microscope_state? 
 def move_to_sample_grid(
     microscope: SdbMicroscopeClient, settings: dict
 ) -> StagePosition:

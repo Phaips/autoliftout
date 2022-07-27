@@ -138,28 +138,6 @@ def draw_crosshair(image, canvas, x: float = None, y: float = None, colour: str 
         canvas.ax11.add_patch(getattr(crosshair, patch))
         getattr(crosshair, patch).set_visible(True)
 
-
-
-
-
-def draw_crosshair_v2(
-    ax: plt.axes,
-    image: np.ndarray or AdornedImage,
-    x=None,
-    y=None,
-    colour="xkcd:yellow",
-):
-
-    if type(image) == AdornedImage:
-        image = image.data
-
-    midx = int(image.shape[1] // 2) if x is None else x
-    midy = int(image.shape[0] // 2) if y is None else y
-
-    ax.plot(midx, midy, color=colour, marker="+", ms=20)
-
-    return
-
 # draw arrow
 def draw_arrow(p1: Point, p2: Point, canvas) -> None:
     """Draw an arrow patch from p1 to p2"""
@@ -334,7 +312,7 @@ def load_configuration_from_ui(parent=None) -> dict:
     if config_filename == "":
         raise ValueError("No protocol file was selected.")
 
-    settings = utils.load_config_v2(protocol_config=config_filename)
+    settings = utils.load_full_config(protocol_config=config_filename)
 
     return settings
 
@@ -458,7 +436,7 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
     )
 
 
-def draw_rectangle_pattern_v2(adorned_image, pattern, colour="yellow"):
+def draw_rectangle_pattern(adorned_image, pattern, colour="yellow"):
     from matplotlib.patches import Rectangle
 
     rectangle = Rectangle(

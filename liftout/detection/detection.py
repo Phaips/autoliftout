@@ -15,12 +15,19 @@ from skimage import feature
 # TODO: START_HERE
 # better edge detections for landing...
 # dont reload the model all the time
-# dont show unused masks (e..g dont show needle when detecting only lamella...)
+# convert to Point datastructure
 
 # TODO: 
 # import to get rid of downscalling the images, it causes very annoying bugs, tricky to debug, and
 # leads to lots of extra book keeping also probably not required.
 # however, will probably need to pad so images are square?
+
+
+# TODO: determine if there is a better way to figure out where the needle is without looking at it...
+# do the coordinates helP?
+# would be better to move into centre image.
+# probably need to do full transformation matrix to get it working properly.. long temr
+
 
 
 DETECTION_COLOURS_UINT8 = {
@@ -77,7 +84,7 @@ def detect_features(img, mask, shift_type) -> list[DetectionFeature]:
 
     return detection_features
 
-def locate_shift_between_features_v2(model: DetectionModel, adorned_img: AdornedImage, shift_type: tuple):
+def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedImage, shift_type: tuple):
     """
     Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 

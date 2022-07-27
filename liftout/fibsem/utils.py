@@ -103,16 +103,16 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     logging.info("sputtering platinum finished.")
 
 
-def sputter_platinum_on_whole_sample_grid_v2(
+def sputter_platinum_on_whole_sample_grid(
     microscope: SdbMicroscopeClient = None,
     settings: dict = None,
     image_settings: ImageSettings = None,
 ) -> None:
     """Move to the sample grid and sputter platinum over the whole grid"""
-    from liftout.gui.windows import ask_user_interaction_v2
+    from liftout.gui.windows import ask_user_interaction
 
     # Whole-grid platinum deposition
-    response = ask_user_interaction_v2(
+    response = ask_user_interaction(
         microscope=microscope,
         msg="Do you want to sputter the whole \nsample grid with platinum?",
         beam_type=BeamType.ELECTRON,
@@ -130,7 +130,7 @@ def quick_setup():
     from liftout.fibsem import acquire
     from liftout.fibsem import utils as fibsem_utils
 
-    settings = utils.load_config_v2()
+    settings = utils.load_full_config()
 
     import os
 

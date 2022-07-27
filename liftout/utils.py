@@ -53,7 +53,7 @@ def load_yaml(fname: Path) -> dict:
     return config
 
 
-def load_config_v2(
+def load_full_config(
     system_config: Path = None,
     calibration_config: Path = None,
     protocol_config: Path = None,

@@ -225,7 +225,7 @@ def main():
 
     app = QtWidgets.QApplication([])
 
-    calibration.validate_detection_v2(
+    calibration.validate_detection(
         microscope,
         settings,
         image_settings,
