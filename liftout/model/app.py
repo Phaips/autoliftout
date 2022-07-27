@@ -48,7 +48,7 @@ def main():
         img = load_image_from_file(fname)
 
         # model inference
-        mask = detector.detection_model.model_inference(img)
+        mask = detector.detection_model.inference(img)
 
         # individual detection modes
         lamella_mask, lamella_idx = extract_class_pixels(mask, color=(255, 0, 0)) # red

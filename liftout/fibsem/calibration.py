@@ -13,6 +13,7 @@ from autoscript_sdb_microscope_client.structures import (
 from liftout import utils
 from liftout.detection import detection
 from liftout.detection.utils import DetectionResult
+from liftout.detection.DetectionModel import DetectionModel
 from liftout.fibsem import acquire, movement
 from liftout.fibsem.acquire import ImageSettings, BeamType
 from liftout.fibsem.sample import (
@@ -161,11 +162,13 @@ def identify_shift_using_machine_learning(
     # load model
     weights_file = settings["calibration"]["machine_learning"]["weights"]
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
-    detector = detection.Detector(weights_path)
+    model = DetectionModel(weights_path)
 
     # take new image
     image = acquire.new_image(microscope, image_settings)
-    det_result = detector.locate_shift_between_features(image, shift_type=shift_type)
+
+    # run detection
+    det_result = detection.locate_shift_between_features(model, image, shift_type=shift_type)
 
     return det_result
 

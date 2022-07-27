@@ -14,6 +14,7 @@ from autoscript_sdb_microscope_client.structures import AdornedImage
 from liftout.fibsem.movement import pixel_to_realspace_coordinate
 from liftout.fibsem.structures import Point
 from PIL import Image
+import matplotlib.patches as mpatches
 
 
 class DetectionType(Enum):
@@ -36,26 +37,45 @@ class DetectionResult:
     adorned_image: AdornedImage
     display_image: np.ndarray
     distance_metres: Point = Point(0, 0)  # x, y
-    downscale_image: np.ndarray = None
     microscope_coordinate: list[Point] = None
 
 
-def convert_pixel_distance_to_metres(
-    p1: Point, p2: Point, adorned_image: AdornedImage, display_image: np.ndarray
-):
-    """Convert from pixel coordinates to distance in metres """
-    # NB: need to use this func, not pixel_to_realspace because display_iamge and adorned image are no the same size...
+def decode_segmap(image, nc=3):
 
-    # upscale the pixel coordinates to adorned image size
-    scaled_px_1 = scale_pixel_coordinates(p1, display_image, adorned_image)
-    scaled_px_2 = scale_pixel_coordinates(p2, display_image, adorned_image)
+    """ Decode segmentation class mask into an RGB image mask"""
+
+    # 0=background, 1=lamella, 2= needle
+    label_colors = np.array([(0, 0, 0),
+                                (255, 0, 0),
+                                (0, 255, 0)])
+
+    # pre-allocate r, g, b channels as zero
+    r = np.zeros_like(image, dtype=np.uint8)
+    g = np.zeros_like(image, dtype=np.uint8)
+    b = np.zeros_like(image, dtype=np.uint8)
+
+    # apply the class label colours to each pixel
+    for l in range(0, nc):
+        idx = image == l
+        r[idx] = label_colors[l, 0]
+        g[idx] = label_colors[l, 1]
+        b[idx] = label_colors[l, 2]
+
+    # stack rgb channels to form an image
+    rgb_mask = np.stack([r, g, b], axis=2)
+    return rgb_mask
+
+
+
+def convert_pixel_distance_to_metres(p1: Point, p2: Point, adorned_image: AdornedImage):
+    """Convert from pixel coordinates to distance in metres """
 
     # convert pixel coordinate to realspace coordinate
     x1_real, y1_real = pixel_to_realspace_coordinate(
-        (scaled_px_1.x, scaled_px_1.y), adorned_image
+        (p1.x, p1.y), adorned_image
     )
     x2_real, y2_real = pixel_to_realspace_coordinate(
-        (scaled_px_2.x, scaled_px_2.y), adorned_image
+        (p2.x, p2.y), adorned_image
     )
 
     p1_real = Point(x1_real, y1_real)
@@ -105,6 +125,22 @@ def scale_invariant_coordinates(px, mask):
     return scaled_px
 
 
+
+def scale_pixel_coordinates_v2(px: Point, from_image: np.ndarray, to_image=None) -> Point:
+    """Scale the pixel coordinate from one image to another"""
+    if isinstance(to_image, AdornedImage):
+        to_image = to_image.data
+    
+    if isinstance(from_image, AdornedImage):
+        from_image = from_image.data
+
+    invariant_pt = get_scale_invariant_coordinates(px, from_image.shape)
+
+    scaled_px = scale_coordinate_to_image(invariant_pt, to_image.shape)
+
+    return scaled_px
+
+
 def get_scale_invariant_coordinates(point: Point, shape: tuple) -> Point:
 
     scaled_pt = Point(x=point.x / shape[1], y=point.y / shape[0])
@@ -114,7 +150,7 @@ def get_scale_invariant_coordinates(point: Point, shape: tuple) -> Point:
 
 def scale_coordinate_to_image(point: Point, shape: tuple) -> Point:
     """Scale invariant coordinates to image shape"""
-    scaled_pt = Point(x=point.x * shape[1], y=point.y * shape[0])
+    scaled_pt = Point(x=int(point.x * shape[1]), y=int(point.y * shape[0]))
 
     return scaled_pt
 
@@ -255,15 +291,16 @@ def load_detection_result(path: Path, data) -> DetectionResult:
         ],
         adorned_image=img,
         display_image=None,
-        downscale_image=None,
     )
 
     return det
 
 
 def plot_detection_result(det_result: DetectionResult):
-    """Plot the Detection Result using matplotlib"""
+    """Plot the Detection Result using matplotlib using the full scale image and coordinates"""
     from liftout.config import config
+
+    # TODO: consolidate this with what is in detection_window
 
     p1 = det_result.features[0].feature_px
     p2 = det_result.features[1].feature_px
@@ -271,10 +308,22 @@ def plot_detection_result(det_result: DetectionResult):
     c1 = config.DETECTION_TYPE_COLOURS[det_result.features[0].detection_type]
     c2 = config.DETECTION_TYPE_COLOURS[det_result.features[1].detection_type]
 
-    fig = plt.figure()
-    plt.imshow(det_result.adorned_image.data, cmap="gray")
-    plt.plot(p1.x, p1.y, color=c1, marker="+", ms=20)
-    plt.plot(p2.x, p2.y, color=c2, marker="+", ms=20)
+    if det_result.display_image is None:
+        display_image = det_result.adorned_image.data
+    else:
+        display_image = det_result.display_image
+
+    fig = plt.figure(figsize=(15, 15))
+    plt.title(f"{det_result.features[0].detection_type.name} to {det_result.features[1].detection_type.name}")
+    plt.imshow(display_image, cmap="gray")
+    plt.plot(p1.x, p1.y, color=c1, marker="+", ms=50, markeredgewidth=2)
+    plt.plot(p2.x, p2.y, color=c2, marker="+", ms=50, markeredgewidth=2)
+    plt.plot((p1.x, p2.x),(p1.y, p2.y), color="white", ms=50, markeredgewidth=2) # line between
+
+    # legend
+    patch_one = mpatches.Patch(color=c1, label=det_result.features[0].detection_type.name)
+    patch_two = mpatches.Patch(color=c2, label=det_result.features[1].detection_type.name)
+    plt.legend(handles=[patch_one, patch_two])
 
     return fig
 
@@ -291,9 +340,8 @@ def write_data_to_disk(path: Path, detection_result: DetectionResult) -> None:
         label=label,
     )
 
-
     # get scale invariant coords
-    shape = detection_result.downscale_image.shape
+    shape = detection_result.adorned_image.data.shape
     scaled_p0 = get_scale_invariant_coordinates(detection_result.features[0].feature_px, shape=shape)
     scaled_p1 = get_scale_invariant_coordinates(detection_result.features[1].feature_px, shape=shape)
 

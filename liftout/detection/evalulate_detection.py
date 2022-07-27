@@ -5,6 +5,7 @@ from random import shuffle
 import argparse
 from liftout.detection import detection
 from liftout.detection import utils
+from liftout.detection.DetectionModel import DetectionModel
 
 if __name__ == "__main__":
 
@@ -24,7 +25,7 @@ if __name__ == "__main__":
     shuffle(filenames)
 
     # detector class (model)
-    detector = detection.Detector(weights_file)
+    model = DetectionModel(weights_file)
 
     for fname in filenames:
 
@@ -54,5 +55,5 @@ if __name__ == "__main__":
             # x_shift, y_shift = detection.calculate_shift_distance_in_metres(img, x_distance, y_distance, df_metadata)
             # print(f"x_shift =  {x_shift/1e-6:.4f}, um; y_shift = {y_shift/1e-6:.4f} um; ")
 
-            ret = detector.locate_shift_between_features(img, shift_type=shift_type, show=True)
+            ret = detection.locate_shift_between_features(model, img, shift_type=shift_type, show=True)
 

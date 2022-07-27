@@ -63,7 +63,7 @@ def test_model_inference(detection_model):
     """test model inference pipeline works correctly"""
     img = np.zeros((1024, 1536, 1), dtype=np.uint8)
 
-    rgb_mask = detection_model.model_inference(img)
+    rgb_mask = detection_model.inference(img)
 
     assert rgb_mask.shape == (256, 384, 3)
 

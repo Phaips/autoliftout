@@ -167,7 +167,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # calculate movement distance
         x_distance_m, y_distance_m = convert_pixel_distance_to_metres(
-            point_1, point_2, self.adorned_image, self.image
+            point_1, point_2, self.adorned_image
         )
         self.detection_result.distance_metres = Point(
             x_distance_m, y_distance_m

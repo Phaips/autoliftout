@@ -50,7 +50,7 @@ def pixel_to_realspace_coordinate(coord: list, image: AdornedImage) -> list:
     # reset origin to center
     coord -= np.array([x_shape / 2, y_shape / 2]).astype(np.int32)
     realspace_coord = list(np.array(coord) * pixelsize_x)  # to real space
-    return realspace_coord
+    return realspace_coord # TODO: convert to use Point struct
 
 
 def move_to_trenching_angle(
