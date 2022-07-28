@@ -103,11 +103,6 @@ def mill_lamella_jcut(
         parent_ui=True,
     )
 
-    # then using ML, tilting/correcting in steps so drift isn't too large
-    image_settings.hfw = settings["calibration"]["drift_correction_hfw_highres"]
-    image_settings.save = True
-    image_settings.label = f"drift_correction_ML"
-
     # move to jcut angle
     stage_settings = MoveSettings(rotate_compucentric=True)
     microscope.specimen.stage.relative_move(
@@ -340,6 +335,122 @@ def land_needle_on_milled_lamella(
     acquire.take_reference_images(microscope, image_settings)
 
     return lamella
+
+
+## TODO: test
+def land_needle_on_milled_lamella_v2(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    image_settings: ImageSettings,
+    lamella: Lamella,
+) -> Lamella:
+
+
+    # bookkeeping
+    image_settings.save_path = lamella.path
+
+    # reference images
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.save = True
+    image_settings.label = f"needle_liftout_start_position_lowres"
+
+    det = calibration.validate_detection(
+        microscope,
+        settings,
+        image_settings,
+        lamella=lamella,
+        shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
+        beam_type=BeamType.ELECTRON,
+    )
+
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        settings=settings,
+        dx=det.distance_metres.x,
+        dy=det.distance_metres.y,
+        beam_type=BeamType.ELECTRON,
+    )
+
+    ### Z-HALF MOVE (ION)
+    # calculate shift between lamella centre and needle tip in the ion view
+    image_settings.label = f"needle_liftout_post_xy_movement_lowres"
+    det = calibration.validate_detection(
+        microscope,
+        settings,
+        image_settings,
+        lamella=lamella,
+        shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
+        beam_type=BeamType.ION,
+    )
+
+    # calculate shift in xyz coordinates
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        settings=settings,
+        dx=det.distance_metres.x,
+        dy=-det.distance_metres.y / 2,
+        beam_type=BeamType.ION,
+    )
+
+
+     # take image
+    eb_image, ib_image = acquire.take_reference_images(microscope, image_settings) 
+    
+    # measure brightness
+    brightness = measure_brightness(ib_image, crop_size=200)
+
+    BRIGHTNESS_FACTOR  = 1.2
+
+    image_settings.hfw = settings["calibration"]["reference_images"][
+        "hfw_super_res"
+    ]
+    image_settings.label = f"needle_liftout_post_z_half_movement_highres"
+
+    while True:
+
+        # move needle down 1um
+        movement.move_needle_relative_with_corrected_movement(
+            microscope, settings, dx=0, dy=-1.e-6, beam_type=BeamType.ION
+        )
+
+        # take image
+        # TODO: use reduced area?
+        ib_image = acquire.new_image(microscope, image_settings) # maybe use the reduced area option?
+        brightness = measure_brightness(ib_image, crop_size=200)
+
+        if brightness > previous_brightness * BRIGHTNESS_FACTOR:
+            # needle has landed...
+
+            # check with user?
+            response = windows.ask_user_interaction(
+                microscope,
+                msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
+                beam_type=BeamType.ION,
+            )
+    
+            if response:
+                break
+            
+        previous_brightness = brightness
+
+    # take final reference images
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.save = True
+    image_settings.label = f"needle_liftout_landed_lowres"
+    acquire.take_reference_images(microscope, image_settings)
+
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.label = f"needle_liftout_landed_highres"
+    acquire.take_reference_images(microscope, image_settings)
+
+    return lamella
+
+
+
+
+
+
+
 
 
 def land_lamella(
