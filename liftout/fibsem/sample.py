@@ -370,7 +370,6 @@ def create_experiment(experiment_name: str, path: Path = None):
     
     return sample
 
-# TODO: START_HERE load_experiment is duplicating the folders...
 def load_experiment(path: Path) -> Sample:
 
     sample_fname = os.path.join(path, "sample.yaml")

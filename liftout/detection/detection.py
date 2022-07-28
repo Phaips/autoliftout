@@ -15,7 +15,6 @@ from skimage import feature
 # TODO: START_HERE
 # better edge detections for landing...
 # dont reload the model all the time
-# convert to Point datastructure
 
 # TODO: 
 # import to get rid of downscalling the images, it causes very annoying bugs, tricky to debug, and
@@ -27,7 +26,6 @@ from skimage import feature
 # do the coordinates helP?
 # would be better to move into centre image.
 # probably need to do full transformation matrix to get it working properly.. long temr
-
 
 
 DETECTION_COLOURS_UINT8 = {
@@ -53,33 +51,31 @@ def detect_features(img, mask, shift_type) -> list[DetectionFeature]:
     detection_features = []
 
     for det_type in shift_type:
+        
+        color = DETECTION_COLOURS_UINT8[det_type]
 
         if not isinstance(det_type, DetectionType):
             raise TypeError(f"Detection Type {det_type} is not supported.")
 
         if det_type == DetectionType.ImageCentre:
-            feature_px = (mask.shape[1] // 2, mask.shape[0] // 2)  # midpoint
+            feature_px = Point(x=mask.shape[1] // 2, y=mask.shape[0] // 2)  # midpoint
 
         if det_type == DetectionType.NeedleTip:
-            feature_px = detect_needle_tip(mask)  # needle_tip
-            feature_px = feature_px[::-1] # yx -> xy
+            feature_px = detect_right_edge(mask, color, threshold=200)
 
         if det_type == DetectionType.LamellaCentre:
-            feature_px = detect_lamella_centre(mask)  # lamella_centre
-            feature_px = feature_px[::-1] # yx -> xy
+            feature_px = detect_centre_point(mask, color, threshold=25)
 
         if det_type == DetectionType.LamellaEdge:
-            feature_px = detect_lamella_edge(mask)  # lamella_edge
-            feature_px = feature_px[::-1] # yx -> xy
+            feature_px = detect_right_edge(mask, color, threshold=25)
 
         if det_type == DetectionType.LandingPost:
 
             landing_px = (img.shape[0] // 2, img.shape[1] // 2)
-            feature_px, landing_mask = detect_landing_edge(img, landing_px)  # landing post
-            feature_px = feature_px[::-1] # yx -> xy
+            feature_px, _ = detect_closest_edge(img, landing_px)
 
         detection_features.append(
-            DetectionFeature(detection_type=det_type, feature_px=Point(*feature_px))
+            DetectionFeature(detection_type=det_type, feature_px=feature_px)
         )
 
     return detection_features
@@ -198,7 +194,7 @@ def draw_overlay(img: np.ndarray, mask: np.ndarray, alpha:float=0.2) -> np.ndarr
     return np.array(alpha_blend)
 
 
-def detect_centre_point(mask, color, threshold=25):
+def detect_centre_point(mask: np.ndarray, color: tuple, threshold:int=25) -> Point:
     """ Detect the centre (mean) point of the mask for a given color (label)
 
     args:
@@ -210,7 +206,7 @@ def detect_centre_point(mask, color, threshold=25):
 
         centre_px: the pixel coordinates of the centre point of the feature (tuple)
     """
-    centre_px = (0, 0)
+    centre_px = Point(x=0, y=0)
 
     # extract class pixels
     class_mask, idx = extract_class_pixels(mask, color)
@@ -218,19 +214,15 @@ def detect_centre_point(mask, color, threshold=25):
     # only return a centre point if detection is above a threshold
     if len(idx[0]) > threshold:
         # get the centre point of each coordinate
-        x_mid = int(np.mean(idx[0]))
-        y_mid = int(np.mean(idx[1]))
+        y_mid = int(np.mean(idx[0]))
+        x_mid = int(np.mean(idx[1]))
 
         # centre coordinate as tuple
-        centre_px = (x_mid, y_mid)
+        centre_px = Point(x=x_mid, y=y_mid )
 
     return centre_px
 
-
-# - detect_right_edge(mask, color, threshold)
-
-
-def detect_right_edge(mask, color, threshold=25, left=False) -> tuple[int]:
+def detect_right_edge(mask, color, threshold=25, left=False) -> Point:
     """ Detect the right edge point of the mask for a given color (label)
 
     args:
@@ -261,43 +253,18 @@ def detect_right_edge(mask, color, threshold=25, left=False) -> tuple[int]:
 
         edge_px = px[max_idx]  # right edge px
 
-    return edge_px
-
-
-def detect_needle_tip(mask, threshold=200) -> tuple[int]:
-    """Detect the needle tip"""
-    color = (0, 255, 0)  # fixed color
-    edge_px = detect_right_edge(mask, color, threshold=threshold)
-
-    return edge_px
-
-
-def detect_lamella_centre(mask, threshold=25) -> tuple[int]:
-    """Detect the centre of the lamella"""
-    color = (255, 0, 0)  # fixed color
-
-    centre_px = detect_centre_point(mask, color, threshold=threshold)
-
-    return centre_px
-
-
-def detect_lamella_edge(mask, threshold=25) -> tuple[int]:
-    """Detect the right edge of the lamella"""
-    color = (255, 0, 0)  # fixed color
-    edge_px = detect_right_edge(mask, color, threshold=threshold)
-
-    return edge_px
+    return Point(x=edge_px[1], y=edge_px[0])
 
 def edge_detection(img: np.ndarray, sigma=3) -> np.ndarray:
     return feature.canny(img, sigma=3)  # sigma higher usually better
 
 
-def detect_closest_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[tuple[int], np.ndarray]:
+def detect_closest_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[Point, np.ndarray]:
     """ Identify the closest edge point to the initially selected point
 
     args:
         img: base image (np.ndarray)
-        landing_px: the initial landing point pixel (tuple)
+        landing_px: the initial landing point pixel (tuple) (y, x) format
     return:
         landing_edge_pt: the closest edge point to the intitially selected point (tuple)
         edges: the edge mask (np.array)
@@ -325,25 +292,7 @@ def detect_closest_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[tuple[
             min_dst = dst
             landing_edge_px = px
 
-    return landing_edge_px, edges
-
-
-def detect_landing_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[tuple[int], np.ndarray]:
-    """ Detect the landing edge point closest to the initial point using canny edge detection
-
-    args:
-        img: base image (np.array)
-        landing_px: the initial landing point pixel (tuple)
-
-    returns:
-        landing_edge_px: the closest edge point to the intitially selected point (tuple)
-        landing_mask: the edge mask (PIL.Image)
-    """
-    landing_edge_px, edges_mask = detect_closest_edge(img, landing_px)
-    landing_mask = draw_overlay(img, edges_mask, alpha=0.8)
-
-    return landing_edge_px, landing_mask
-
+    return Point(x=landing_edge_px[1], y=landing_edge_px[0]), edges
 
 def detect_bounding_box(mask, color, threshold=25):
     """ Detect the bounding edge points of the mask for a given color (label)
