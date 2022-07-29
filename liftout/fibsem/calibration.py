@@ -335,6 +335,49 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
     return mask
 
 
+def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2):
+    """Create a mask around the lamella"""
+
+    # get real size from protocol
+    lamella_height = settings["protocol"]["lamella"]["lamella_height"]
+    lamella_width = settings["protocol"]["lamella"]["lamella_width"]
+    trench_height = settings["protocol"]["lamella"]["protocol_stages"][0]["trench_height"]
+
+    # convert to px
+    pixelsize = img.metadata.binary_result.pixel_size.x
+    vfw = img.height * pixelsize
+    hfw = img.width * pixelsize
+    
+    lamella_height_px = int((trench_height / vfw) * img.height) 
+    lamella_width_px = int((lamella_width / hfw) * img.width) 
+
+    mask = circ_mask(
+        size=(img.data.shape[1], img.data.shape[0]), 
+        radius=max(lamella_height_px, lamella_width_px) * factor , sigma=6
+    )
+
+    return mask
+
+def create_vertical_mask(img:AdornedImage, w: int = 50, h: int = 400) -> np.ndarray:
+    """Create a vertical rectangular mask for e"""
+
+    mask = np.zeros_like(img.data)
+
+    cy, cx = mask.shape[0] // 2, mask.shape[1] //2
+    w = np.clip(w, 0, mask.shape[1])
+    h = np.clip(h, 0, mask.shape[0])
+   
+    mask[cy-h:cy+h, cx-w:cx+w] = 1
+
+    return mask
+
+
+
+
+
+
+
+
 # def auto_focus_and_link(microscope):
 #     import skimage
 
@@ -600,11 +643,11 @@ def validate_beams_calibration(microscope, settings: dict):
         logging.warning(
             f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})"
         )
-        # if "ETD" in microscope.detector.type.available_values:
-        #     microscope.detector.type.value = "ETD"
-        #     logging.warning(
-        #         f"Changed Electron detector type to {str(microscope.detector.type.value)}"
-        #     )
+        if "ETD" in microscope.detector.type.available_values:
+            microscope.detector.type.value = "ETD"
+            logging.warning(
+                f"Changed Electron detector type to {str(microscope.detector.type.value)}"
+            )
 
     if str(microscope.detector.mode.value) != "SecondaryElectrons":
         logging.warning(
@@ -981,3 +1024,14 @@ def validate_focus(
 
     return
 
+
+
+def measure_brightness(img: AdornedImage, crop_size: int = None) -> float:
+    cx, cy = img.data.shape[1] //2, img.data.shape[0] // 2
+
+    if crop_size is not None:
+        img = img.data[cy-crop_size:cy+crop_size, cx-crop_size:cx+crop_size]
+    else:
+        img = img.data
+
+    return np.mean(img), img

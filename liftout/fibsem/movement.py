@@ -129,10 +129,6 @@ def move_to_sample_grid(
     flat_to_beam(
         microscope, settings=settings, beam_type=BeamType.ELECTRON,
     )
-
-    # Zoom out so you can see the whole sample grid
-    microscope.beams.ion_beam.horizontal_field_width.value = 100e-6
-    microscope.beams.electron_beam.horizontal_field_width.value = 100e-6
     logging.info(f"move to sample grid complete.")
     return microscope.specimen.stage.current_position
 
@@ -164,6 +160,7 @@ def move_to_landing_grid(
         microscope=microscope, stage_position=landing_grid_position
     )
 
+    # move to landing angle
     move_to_landing_angle(microscope, settings=settings)
 
     logging.info(f"movement: move to landing grid complete.")
@@ -364,6 +361,8 @@ def flat_to_beam(
     # TODO: check why we can't just use safe_absolute_stage_movement
     # I think it is because we want to maintain position, and only tilt/rotate
     # why isnt it the same as going to the same xyz with new rt?
+    # TODO: if we use tilt_compucentric, and rotate_compucentric it should be!
+    
     # If we rotating by a lot, tilt to zero so stage doesn't hit anything
     if (
         abs(np.rad2deg(rotation - stage.current_position.r)) % 360 > 90
@@ -385,7 +384,7 @@ def move_to_thinning_angle(
     stage = microscope.specimen.stage
 
     # tilt to zero for safety
-    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
     stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
     # thinning position
@@ -571,13 +570,19 @@ def move_stage_relative_with_corrected_movement(microscope: SdbMicroscopeClient,
     )
 
     # move stage
-    stage.relative_move(x_move) # x_move
-    stage.relative_move(yz_move) # yz_move
+    stage_position = StagePosition(x=x_move.x, y=yz_move.y, z=yz_move.z)
+    logging.info(f"moving stage: {stage_position}")
+    stage.relative_move(stage_position)
 
+    return
 
 def move_stage_eucentric_correction(microscope: SdbMicroscopeClient, settings: dict, dy: float, beam_type: BeamType):
     """Only move the stage in z"""
-    
+
+    # TODO: beam type should always be ION? 
+    # only move up/down in ion
+    # then recentre in eb
+
     # TODO: finish this?
     stage = microscope.specimen.stage 
 

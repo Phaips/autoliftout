@@ -105,7 +105,6 @@ def new_image(
         dwell_time=settings.dwell_time,
         reduced_area=reduced_area,
     )
-    tmp_settings = settings
 
     if settings.beam_type == BeamType.ELECTRON:
         hfw_limits = microscope.beams.electron_beam.horizontal_field_width.limits
@@ -133,7 +132,6 @@ def new_image(
 
     if settings.save:
         utils.save_image(image=image, save_path=settings.save_path, label=label)
-    settings = tmp_settings  # reset the settings to original # TODO: this doesnt work, need to reset
     return image
 
 

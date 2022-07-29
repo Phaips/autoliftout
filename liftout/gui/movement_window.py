@@ -14,12 +14,12 @@ from liftout.fibsem.sample import microscope_state_from_dict
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
-
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
-        microscope,
+        microscope: SdbMicroscopeClient,
         settings: dict,
         image_settings: ImageSettings,
         msg_type: str = None,
@@ -223,9 +223,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             if event.dblclick:
                 self.stage_movement(beam_type=beam_type)
 
-                # if self.parent():
-                #     logging.info(f"{self.parent().current_stage} | DOUBLE CLICK")
-
     def stage_movement(self, beam_type: BeamType):
 
         # calculate stage movement
@@ -249,8 +246,10 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         stage_tilt_rad: float = np.deg2rad(self.doubleSpinBox_tilt_degrees.value())
         stage = self.microscope.specimen.stage
+        from autoscript_sdb_microscope_client.structures import MoveSettings
+        move_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
         stage_position = StagePosition(t=stage_tilt_rad)
-        stage.absolute_move(stage_position)
+        stage.absolute_move(stage_position, move_settings)
 
         # update displays
         self.update_displays()

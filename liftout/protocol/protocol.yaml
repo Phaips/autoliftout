@@ -107,7 +107,7 @@ sharpen:
   hfw: 0.00015
   milling_current: 7.6e-09
   needle_angle: 40
-  tip_angle: 10
+  tip_angle: 25
   width: 2.0e-05
 thin_lamella:
   dwell_time: 2.0e-07

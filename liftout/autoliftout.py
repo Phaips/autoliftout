@@ -129,14 +129,17 @@ def mill_lamella_jcut(
         y=0,
     )
 
+    # TODO: tilt back flat ??
+    # correct position somehow??
+
     # take reference images of the jcut
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
     image_settings.save = True
-    image_settings.label = f"jcut_lowres"
+    image_settings.label = f"ref_jcut_low_res"
     acquire.take_reference_images(microscope, image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_ultra_res"]
-    image_settings.label = f"jcut_highres"
+    image_settings.label = f"ref_jcut_high_res"
     acquire.take_reference_images(microscope, image_settings)
 
     return lamella
@@ -161,8 +164,27 @@ def liftout_lamella(
 
     # check eucentric height
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="eucentric", flat_to_sem=True,
+        microscope, settings, image_settings, msg_type="eucentric",
     )  # liftout angle is flat to SEM
+
+
+    # change to use correct_stage_drift
+    # TODO: I need reference images flat to eb?? to align well here...
+    # there need to tilt back flat to eb before exiting jcut...
+
+    # OR 'untilt' the image... with perspective transform
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image("ref_jcut_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_jcut_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_jcut_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_jcut_high_res_ib"),
+    )
+
+    calibration.correct_stage_drift(
+        microscope, settings, image_settings, reference_images, 
+        alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
+        rotate=True, parent_ui=True
+    )
 
     # correct stage drift from mill_lamella stage #TODO: shouldnt need to do this, remove...
     calibration.correct_stage_drift_with_ml(
@@ -397,7 +419,7 @@ def land_needle_on_milled_lamella_v2(
     eb_image, ib_image = acquire.take_reference_images(microscope, image_settings) 
     
     # measure brightness
-    brightness = measure_brightness(ib_image, crop_size=200)
+    previous_brightness = calibration.measure_brightness(ib_image, crop_size=200)
 
     BRIGHTNESS_FACTOR  = 1.2
 
@@ -416,7 +438,7 @@ def land_needle_on_milled_lamella_v2(
         # take image
         # TODO: use reduced area?
         ib_image = acquire.new_image(microscope, image_settings) # maybe use the reduced area option?
-        brightness = measure_brightness(ib_image, crop_size=200)
+        brightness = calibration.measure_brightness(ib_image, crop_size=200)
 
         if brightness > previous_brightness * BRIGHTNESS_FACTOR:
             # needle has landed...
@@ -644,6 +666,7 @@ def land_lamella(
     image_settings.save = True
     image_settings.label = "landing_lamella_pre_cut_off"
 
+    # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
     det = calibration.validate_detection(
         microscope,
         settings,
@@ -654,7 +677,6 @@ def land_lamella(
     )
 
     # cut off needle
-
     windows.open_milling_window(
         microscope=microscope,
         settings=settings,
@@ -698,11 +720,11 @@ def land_lamella(
     # reference images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     image_settings.save = True
-    image_settings.label = "landing_lamella_final_lowres"
+    image_settings.label = "ref_landing_lamella_low_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
-    image_settings.label = "landing_lamella_final_highres"
+    image_settings.label = "ref_landing_lamella_high_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     return lamella
@@ -763,9 +785,7 @@ def reset_needle(
     # )
     # z_move = movement.z_corrected_needle_movement(z_distance, stage.current_position.t)
     # needle.relative_move(z_move)
-    # logging.info(
-    #     f"{lamella.current_state.stage.name}: moving needle to centre: x_move: {x_move}, z_move: {z_move}"
-    # )
+
 
     image_settings.label = f"sharpen_needle_centre"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
@@ -827,15 +847,32 @@ def thin_lamella(
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     movement.move_to_thinning_angle(microscope=microscope, settings=settings)
 
+
+    # load the reference images
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image("ref_landing_lamella_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_landing_lamella_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_landing_lamella_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_landing_lamella_high_res_ib"),
+    )
+
+    # TODO:
+    calibration.correct_stage_drift(
+        microscope, settings, image_settings,
+        reference_images=reference_images, 
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=True, parent_ui=True
+    )
+
     # ensure_eucentricity at thinning angle
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="eucentric", flat_to_sem=False,
+        microscope, settings, image_settings, msg_type="eucentric"
     )
 
     # lamella images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
     image_settings.save = True
-    image_settings.label = f"thin_lamella_0_deg_tilt"
+    image_settings.label = f"thin_lamella_high_res"
     acquire.take_reference_images(microscope, image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["high_super_res"]
@@ -861,15 +898,24 @@ def thin_lamella(
         settings=settings,
         image_settings=image_settings,
         milling_pattern=MillingPattern.Thin,
-        x=0,
-        y=0,
+        x=0, y=0,
     )
 
+
     # take reference images
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.save = True
+    image_settings.label = f"ref_thin_lamella_low_res"
+    acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
+
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.save = True
+    image_settings.label = f"ref_thin_lamella_high_res"
+    acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
+
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_ultra_res"]
     image_settings.save = True
-    image_settings.label = f"thin_lamella_post_superres"
-
+    image_settings.label = f"ref_thin_lamella_super_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     return
@@ -885,8 +931,21 @@ def polish_lamella(
     # bookkeeping
     image_settings.save_path = lamella.path
 
-    # restore state from thinning stage
-    # ref_image = lamella.load_reference_image("thin_lamella_crosscorrelation_ref_ib")
+    # restore state from thinning stage TODO: align?
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image("ref_thin_lamella_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_thin_lamella_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_thin_lamella_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_thin_lamella_high_res_ib"),
+    )
+
+    # TODO: Test
+    calibration.correct_stage_drift(
+        microscope, settings, image_settings,
+        reference_images=reference_images, 
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=True, parent_ui=True
+    )
 
     # realign lamella to image centre
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
@@ -902,10 +961,10 @@ def polish_lamella(
         microscope, settings, image_settings, msg_type="alignment"
     )
 
-    # take reference images
-    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
-    image_settings.save = True
-    image_settings.label = f"polish_drift_correction_highres"
+    # # take reference images
+    # image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    # image_settings.save = True
+    # image_settings.label = f"polish_drift_correction_highres"
     acquire.take_reference_images(microscope, image_settings)
 
     # polish (align and mill)
@@ -918,22 +977,21 @@ def polish_lamella(
         settings=settings,
         image_settings=image_settings,
         milling_pattern=MillingPattern.Polish,
-        x=0,
-        y=0,
+        x=0, y=0,
     )
 
     # take reference images (ultra, super, high)
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_ultra_res"]
     image_settings.save = True
-    image_settings.label = f"polish_lamella_post_ultra_res"
+    image_settings.label = f"ref_polish_lamella_ultra_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
-    image_settings.label = f"polish_lamella_post_super_res"
+    image_settings.label = f"ref_polish_lamella_super_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
-    image_settings.label = f"polish_lamella_post_high_res"
+    image_settings.label = f"ref_polish_lamella_high_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     logging.info(
