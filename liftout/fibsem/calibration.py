@@ -176,8 +176,7 @@ def identify_shift_using_machine_learning(
 def rotate_AdornedImage(image: AdornedImage):
 
     data = np.rot90(np.rot90(np.copy(image.data)))
-    reference = AdornedImage(data=data)
-    reference.metadata = image.metadata
+    reference = AdornedImage(data=data, metadata=image.metadata)
     return reference
 
 
@@ -193,7 +192,7 @@ def shift_from_crosscorrelation(
     highpass: int = 6,
     sigma: int = 6,
     use_rect_mask: bool = False,
-):
+) -> tuple(float, float, np.ndarray):
 
     # get pixel_size
     pixelsize_x = img2.metadata.binary_result.pixel_size.x
@@ -834,12 +833,14 @@ def automatic_eucentric_correction(
     acquire.take_reference_images(microscope, image_settings)
 
 
-def automatic_eucentric_correction(
+def automatic_eucentric_correction_v2(
     microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings
 ) -> None:
 
     # assume the feature of interest is on the image centre.
-
+    
+    # TODO: get user to manually centre?
+        
     # iterative eucentric alignment
 
     hfw = 900e-6
@@ -855,9 +856,12 @@ def automatic_eucentric_correction(
         # calculate cross correlation...
         # x = horizontal, y = vertical
 
+        # THESE ARE AT DIFFERENCE ANGLES??
+
+
         # align using cross correlation
         dx, dy, _ = shift_from_crosscorrelation(
-            ref_eb, ref_ib, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
+            ref_eb, ref_ib, use_rect_mask=True
         )
 
         # stop if both are within tolernace
@@ -865,12 +869,15 @@ def automatic_eucentric_correction(
             break
 
         # move z??
+        movement.move_stage_eucentric_correction(
+            microscope, settings, dy=dy, beam_type=BeamType.ION
+        )
 
         # align eb (cross correlate) back to original ref (move eb back to centre)
         image_settings.beam_type = BeamType.ELECTRON
         new_eb = acquire.new_image(microscope, image_settings, reduced_area=None)
         dx, dy, _ = shift_from_crosscorrelation(
-            ref_eb, new_eb, lowpass=50, highpass=4, sigma=5, use_rect_mask=True
+            ref_eb, new_eb, lowpass=128, highpass=6, sigma=6, use_rect_mask=True
         )
 
         # move feature back to centre of eb
@@ -880,7 +887,6 @@ def automatic_eucentric_correction(
             dx=dx, dy=dy, beam_type=BeamType.ELECTRON)
 
         # repeat
-
 
         # increase count
         iteration += 1
