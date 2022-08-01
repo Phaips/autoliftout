@@ -42,10 +42,10 @@ Setup
 
 
 Trench
-- move to lamella coordinates
+- move to lamella coordinates         
 - tilt to trench angle
 - correct position *
-- mill trench
+- mill trench                               # CRITICAL
 - take reference images (ref_trench*)
 
 JCut
@@ -54,7 +54,7 @@ JCut
 - correct position
 - tilt to jcut angle 
 - correct position
-- mill jcut
+- mill jcut                                 # CRITICAL
 - take reference images (ref_jcut*)
 
 Liftout
@@ -67,10 +67,10 @@ Liftout
 -   move in z (halfway... can probs manually set this)
 -   loop:
 -       while brightness not above history limit
--       continue moving down towards sample
+-       continue moving down towards sample        # CRITICAL
 -    take reference images
 - sputter platinum
-- mill jcut sever
+- mill jcut sever                                  # CRITICAL                           
 - remove needle from trench
 - retract needle
 - take reference images (ref_liftout_lamella*)
@@ -84,9 +84,9 @@ Landing
 - align needle ib (z)
 - align needle ib half (x)
 - loop:
-    - align needle ib (x) until landed
+    - align needle ib (x) until landed        # CRITICAL
 - mill weld
-- mill cut needle
+- mill cut needle                             # CRITICAL
 - take reference images
 - remove needle
 - retract needle
@@ -106,12 +106,12 @@ Thin
 - move to thinning angle (tilt, rotation)
 - eucentric correction
 - align to ref (rotated), ib 
-- mill thin lamella
+- mill thin lamella                              # CRITICAL
 - take reference images (ref_thin_lamella)
 
 
 Polish
 - move to thinning coordinates
 - align to ref (ref_thin_lamella)
-- mill polish lamella
+- mill polish lamella                            # CRITICAL
 - take reference images

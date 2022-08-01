@@ -2,7 +2,6 @@ system:
   ip_address: 10.0.0.1
   application_file: "autolamella"
   application_file_rectangle: "autolamella"
-  #application_file_rectangle: "Si_Alex"
   application_file_cleaning_cross_section: "autolamella"
   plasma_gas: "Argon" # proper case, e.g. Argon, Oxygen
   high_voltage: 30000 # volts

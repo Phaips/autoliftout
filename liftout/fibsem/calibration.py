@@ -192,7 +192,7 @@ def shift_from_crosscorrelation(
     highpass: int = 6,
     sigma: int = 6,
     use_rect_mask: bool = False,
-) -> tuple(float, float, np.ndarray):
+) -> tuple[float, float, np.ndarray]:
 
     # get pixel_size
     pixelsize_x = img2.metadata.binary_result.pixel_size.x

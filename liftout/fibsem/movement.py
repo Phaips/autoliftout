@@ -1,6 +1,7 @@
 from random import sample
 import time
 import logging
+from turtle import tilt
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
@@ -355,7 +356,7 @@ def flat_to_beam(
         rotation = settings["system"]["stage_rotation_flat_to_ion"]
         tilt = np.deg2rad(settings["system"]["stage_tilt_flat_to_ion"] - pretilt_angle)
     rotation = np.deg2rad(rotation)
-    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
     logging.info(f"movement: moving flat to {beam_type.name}")
 
     # TODO: check why we can't just use safe_absolute_stage_movement
@@ -598,7 +599,6 @@ def move_stage_eucentric_correction(microscope: SdbMicroscopeClient, settings: d
     return 
 
 
-
 def move_needle_relative_with_corrected_movement(microscope: SdbMicroscopeClient, settings: dict, dx: float, dy:float, beam_type: BeamType=  BeamType.ELECTRON) -> None:
     """Calculate the corrected needle movements, and then move the needle relatively.
     
@@ -641,3 +641,20 @@ def move_needle_relative_with_corrected_movement(microscope: SdbMicroscopeClient
 
     return
 
+
+
+def corrected_stage_movement_v2(microscope: SdbMicroscopeClient, 
+    settings:dict, 
+    dx:float = 0.0, dy: float = 0.0, 
+    zy_link: bool = False) -> None:
+
+
+    stage = microscope.specimen.stage
+
+    # move settings
+    move_settings = MoveSettings(link_z_y=zy_link, rotate_compucentric=True, tilt_compucentric=True)
+    
+    # move stage
+    stage_position = StagePosition(x=dx, y=dy)
+    logging.info(f"moving stage: {stage_position}")
+    stage.relative_move(stage_position, settings=move_settings)

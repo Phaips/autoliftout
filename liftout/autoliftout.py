@@ -39,6 +39,8 @@ def mill_lamella_trench(
 
     # TODO: correct stage drift?
 
+    ##### 
+
     # confirm position
     windows.ask_user_movement(
         microscope, settings, image_settings, msg_type="centre_ib"
@@ -46,6 +48,8 @@ def mill_lamella_trench(
 
     # update the lamella coordinates, and save
     lamella.lamella_coordinates = calibration.get_raw_stage_position(microscope)
+
+    ###### 
 
     # mill_trenches
     windows.open_milling_window(
@@ -57,15 +61,15 @@ def mill_lamella_trench(
         y=0,
     )
 
-    # reference images of milled trenches
-    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
-    image_settings.save = True
-    image_settings.label = f"ref_trench_low_res"
-    acquire.take_reference_images(microscope, image_settings=image_settings)
+    # # reference images of milled trenches
+    # image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
+    # image_settings.save = True
+    # image_settings.label = f"ref_trench_low_res"
+    # acquire.take_reference_images(microscope, image_settings=image_settings)
 
-    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
-    image_settings.label = f"ref_trench_high_res"
-    acquire.take_reference_images(microscope, image_settings=image_settings)
+    # image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    # image_settings.label = f"ref_trench_high_res"
+    # acquire.take_reference_images(microscope, image_settings=image_settings)
 
     return lamella
 
@@ -80,6 +84,16 @@ def mill_lamella_jcut(
 
     # bookkeeping
     image_settings.save_path = lamella.path
+
+    # reference images of milled trenches
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
+    image_settings.save = True
+    image_settings.label = f"ref_trench_low_res"
+    acquire.take_reference_images(microscope, image_settings=image_settings)
+
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.label = f"ref_trench_high_res"
+    acquire.take_reference_images(microscope, image_settings=image_settings)
 
     # load the reference images
     reference_images = ReferenceImages(
@@ -104,17 +118,20 @@ def mill_lamella_jcut(
     )
 
     # move to jcut angle
-    stage_settings = MoveSettings(rotate_compucentric=True)
+    stage_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
     microscope.specimen.stage.relative_move(
         StagePosition(t=np.deg2rad(settings["jcut"]["jcut_angle"])), stage_settings
     )
 
-    # correct stage drift (ml)
-    image_settings.hfw = settings["calibration"]["drift_correction_hfw_highres"]
-    image_settings.save = True
-    image_settings.label = f"drift_correction_ML"
-    calibration.correct_stage_drift_with_ml(
-        microscope, settings, image_settings, lamella
+    # correct drift using reference images..
+    calibration.correct_stage_drift(
+        microscope,
+        settings,
+        image_settings,
+        reference_images,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=True,
+        parent_ui=True,
     )
 
     ## MILL_JCUT
@@ -129,8 +146,32 @@ def mill_lamella_jcut(
         y=0,
     )
 
-    # TODO: tilt back flat ??
-    # correct position somehow??
+    # take reference images of the jcut
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
+    image_settings.save = True
+    image_settings.label = f"ref_jcut_low_res"
+    acquire.take_reference_images(microscope, image_settings)
+
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_ultra_res"]
+    image_settings.label = f"ref_jcut_high_res"
+    acquire.take_reference_images(microscope, image_settings)
+
+    # move to flat eb
+    movement.flat_to_beam(microscope, settings, BeamType.ELECTRON)
+
+    #TODO: need to align here??
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image("ref_jcut_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_jcut_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_jcut_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_jcut_high_res_ib"),
+    )
+
+    calibration.correct_stage_drift(
+        microscope, settings, image_settings, reference_images, 
+        alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
+        rotate=True, parent_ui=True
+    )
 
     # take reference images of the jcut
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
@@ -159,18 +200,13 @@ def liftout_lamella(
     stage = microscope.specimen.stage
     needle = microscope.specimen.manipulator
 
-    # get ready to do liftout by moving to liftout angle
+    # get ready to do liftout by moving to liftout angle (flat to eb)
     movement.move_to_liftout_angle(microscope, settings)
 
     # check eucentric height
     windows.ask_user_movement(
         microscope, settings, image_settings, msg_type="eucentric",
     )  # liftout angle is flat to SEM
-
-
-    # change to use correct_stage_drift
-    # TODO: I need reference images flat to eb?? to align well here...
-    # there need to tilt back flat to eb before exiting jcut...
 
     # OR 'untilt' the image... with perspective transform
     reference_images = ReferenceImages(
@@ -184,11 +220,6 @@ def liftout_lamella(
         microscope, settings, image_settings, reference_images, 
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
         rotate=True, parent_ui=True
-    )
-
-    # correct stage drift from mill_lamella stage #TODO: shouldnt need to do this, remove...
-    calibration.correct_stage_drift_with_ml(
-        microscope, settings, image_settings, lamella
     )
 
     # move needle to liftout start position
@@ -419,9 +450,9 @@ def land_needle_on_milled_lamella_v2(
     eb_image, ib_image = acquire.take_reference_images(microscope, image_settings) 
     
     # measure brightness
-    previous_brightness = calibration.measure_brightness(ib_image, crop_size=200)
-
     BRIGHTNESS_FACTOR  = 1.2
+    CROP_SIZE = 200
+    previous_brightness = calibration.measure_brightness(ib_image, crop_size=CROP_SIZE)
 
     image_settings.hfw = settings["calibration"]["reference_images"][
         "hfw_super_res"
@@ -438,7 +469,7 @@ def land_needle_on_milled_lamella_v2(
         # take image
         # TODO: use reduced area?
         ib_image = acquire.new_image(microscope, image_settings) # maybe use the reduced area option?
-        brightness = calibration.measure_brightness(ib_image, crop_size=200)
+        brightness = calibration.measure_brightness(ib_image, crop_size=CROP_SIZE)
 
         if brightness > previous_brightness * BRIGHTNESS_FACTOR:
             # needle has landed...
@@ -466,13 +497,6 @@ def land_needle_on_milled_lamella_v2(
     acquire.take_reference_images(microscope, image_settings)
 
     return lamella
-
-
-
-
-
-
-
 
 
 def land_lamella(

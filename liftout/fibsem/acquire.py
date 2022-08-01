@@ -233,11 +233,8 @@ def update_image_settings_v3(
         beam_type=BeamType.ELECTRON if beam_type is None else beam_type,
         gamma=gamma_settings if gamma is None else gamma,
         save=bool(settings["calibration"]["imaging"]["save"]) if save is None else save,
-        save_path="" if path is None else path,
+        save_path="" if path is None else path, # TODO: change to os.getcwd?
         label=utils.current_timestamp() if label is None else label,
     )
-
-    # TODO: the save path will be broken now...
-    # logging.debug(f"Image Settings: {image_settings}")
 
     return image_settings

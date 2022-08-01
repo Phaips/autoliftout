@@ -2,7 +2,7 @@
 
 import glob
 from random import shuffle
-
+import os
 import PIL
 import streamlit as st
 import numpy as np
@@ -10,9 +10,9 @@ import pandas as pd
 from datetime import datetime
 #
 # user functions
-from liftout.detection.detection import *
-from liftout.detection.DetectionModel import *
-from liftout.detection.utils import *
+
+from liftout.detection.DetectionModel import DetectionModel
+from liftout.detection import utils, detection
 
 
 @st.cache(allow_output_mutation=True)
@@ -25,7 +25,7 @@ def cached_streamlit_setup(images_path, weights_file, sort=True):
         shuffle(filenames)
 
     # load detector
-    detector = Detector(weights_file=weights_file)
+    detector = DetectionModel(weights_file=weights_file)
 
     return filenames, detector
 
@@ -34,7 +34,7 @@ def main():
 
     st.sidebar.subheader("Data Selection")
     images_path = st.sidebar.text_input("Image Path", "test_images/**/*")
-    weights_file = st.sidebar.text_input("Model", "models/fresh_full_n10.pt")
+    weights_file = st.sidebar.text_input("Model", "models/boost_n05_model.pt")
     filenames, detector = cached_streamlit_setup(images_path, weights_file)
 
     st.sidebar.subheader("Filter Options")
@@ -45,21 +45,20 @@ def main():
     for fname in filenames[:n_files]:
 
         # load image from file
-        img = load_image_from_file(fname)
+        img = utils.load_image_from_file(fname)
 
         # model inference
         mask = detector.detection_model.inference(img)
 
         # individual detection modes
-        lamella_mask, lamella_idx = extract_class_pixels(mask, color=(255, 0, 0)) # red
-        needle_mask, needle_idx = extract_class_pixels(mask, color=(0, 255, 0)) # green
+        lamella_mask, lamella_idx = detection.extract_class_pixels(mask, color=(255, 0, 0)) # red
+        needle_mask, needle_idx = detection.extract_class_pixels(mask, color=(0, 255, 0)) # green
 
-        feature_1_px, lamella_centre_detection = detect_lamella_centre(img, mask) # lamella_centre
-        feature_2_px, needle_tip_detection = detect_needle_tip(img, mask)
-        feature_3_px, lamella_edge_detection = detect_lamella_edge(img, mask)
+        feature_1_px, lamella_centre_detection = detection.detect_centre_point(mask, (255, 0, 0)) # lamella_centre
+        feature_2_px, needle_tip_detection = detection.detect_right_edge(mask, (0, 255, 0))
+        feature_3_px, lamella_edge_detection = detection.detect_closest_edge(mask, (mask.shape[1]//2, mask.shape[0] // 2))
 
-        mask_combined = draw_two_features(mask, feature_1_px, feature_2_px)
-        img_blend = draw_overlay(img, mask_combined)
+        img_blend = detection.draw_overlay(img, mask)
 
         # show images
         st.subheader(fname)
@@ -77,7 +76,7 @@ def main():
         cols_detection[2].image(lamella_edge_detection, caption="lamella_edge")
 
         cols_combined = st.columns(2)
-        cols_combined[0].image(mask_combined, caption="combined_mask")
+        cols_combined[0].image(mask, caption="combined_mask")
         cols_combined[1].image(img_blend, caption="combined_overlay")
 
 
