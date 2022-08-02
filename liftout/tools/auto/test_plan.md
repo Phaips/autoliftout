@@ -4,6 +4,9 @@ TODO: START_HERE: add more detail and example scripts to run
 autoliftout test plan
 for after maintenance
 
+MoveSettings
+- tilt_compucentric
+- link_z_y
 
 new stage movement
 - test the new move_stage_relative_with_correct_movement function using the movement_window

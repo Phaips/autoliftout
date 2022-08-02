@@ -352,7 +352,7 @@ def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2):
 
     mask = circ_mask(
         size=(img.data.shape[1], img.data.shape[0]), 
-        radius=max(lamella_height_px, lamella_width_px) * factor , sigma=6
+        radius=max(lamella_height_px, lamella_width_px) * factor , sigma=12
     )
 
     return mask

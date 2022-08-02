@@ -61,15 +61,15 @@ def mill_lamella_trench(
         y=0,
     )
 
-    # # reference images of milled trenches
-    # image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
-    # image_settings.save = True
-    # image_settings.label = f"ref_trench_low_res"
-    # acquire.take_reference_images(microscope, image_settings=image_settings)
+    # reference images of milled trenches
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
+    image_settings.save = True
+    image_settings.label = f"ref_trench_low_res"
+    acquire.take_reference_images(microscope, image_settings=image_settings)
 
-    # image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
-    # image_settings.label = f"ref_trench_high_res"
-    # acquire.take_reference_images(microscope, image_settings=image_settings)
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.label = f"ref_trench_high_res"
+    acquire.take_reference_images(microscope, image_settings=image_settings)
 
     return lamella
 
@@ -130,7 +130,7 @@ def mill_lamella_jcut(
         image_settings,
         reference_images,
         alignment=(BeamType.ION, BeamType.ION),
-        rotate=True,
+        rotate=False,
         parent_ui=True,
     )
 
