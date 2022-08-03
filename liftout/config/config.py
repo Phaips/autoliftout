@@ -79,7 +79,7 @@ PATTERN_PROTOCOL_MAP = {
 DETECTION_TYPE_COLOURS = {
     DetectionType.LamellaCentre: (1, 0, 0, 1),
     DetectionType.NeedleTip: (0, 1, 0, 1),
-    DetectionType.LamellaEdge: (1, 0, 0, 1),
+    DetectionType.LamellaEdge: (1, 0.5, 0, 1),
     DetectionType.LandingPost: (0, 1, 1, 1),
     DetectionType.ImageCentre: (1, 1, 1, 1)
 }

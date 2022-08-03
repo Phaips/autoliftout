@@ -47,22 +47,25 @@ Setup
 Trench
 - move to lamella coordinates         
 - tilt to trench angle
-- correct position *
+- correct position * (align / take images)
 - mill trench                               # CRITICAL
 - take reference images (ref_trench*)
 
 JCut
 - move to lamella coordinates
+- take reference images 
 - tilt flat to electron
-- correct position
+- correct position (align / take images)
 - tilt to jcut angle 
-- correct position
+- correct position (algin / take images)
 - mill jcut                                 # CRITICAL
 - take reference images (ref_jcut*)
+- tilt flat to electron
+- take reference imags (ref_jcut*)
 
 Liftout
 - move to lamella coordinate
-- tilt to liftout angle
+<!-- - tilt to liftout angle -->
 - correct position
 - insert needle
 - land_needle_on_milled_lamella
@@ -80,7 +83,7 @@ Liftout
 
 Landing
 - move to landing coordinate
-- link stage
+- link stage ?
 - eucentric correction
 - insert needle
 - align needle eb (xy)

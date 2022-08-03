@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 
+import os
+
 import numpy as np
 import PIL
 from autoscript_sdb_microscope_client.structures import AdornedImage
@@ -8,13 +10,17 @@ from liftout.detection import utils
 from liftout.detection.DetectionModel import DetectionModel
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      DetectionType, Point)
+from liftout.model import models
 from PIL import Image
 from scipy.spatial import distance
 from skimage import feature
+from liftout.fibsem import calibration
+import scipy.ndimage as ndi
 
 # TODO: START_HERE
 # better edge detections for landing...
 # dont reload the model all the time
+# rename DetectionResult to Detection
 
 # TODO: 
 # import to get rid of downscalling the images, it causes very annoying bugs, tricky to debug, and
@@ -31,16 +37,25 @@ from skimage import feature
 DETECTION_COLOURS_UINT8 = {
     DetectionType.ImageCentre: (255, 255, 255),
     DetectionType.LamellaCentre: (255, 0, 0),
-    DetectionType.LamellaEdge: (255, 0, 0),
+    DetectionType.LamellaEdge: (255, 165, 0),
     DetectionType.NeedleTip: (0, 255, 0),
     DetectionType.LandingPost: (255, 255, 255),
 }
 
-def detect_features(img, mask, shift_type) -> list[DetectionFeature]:
+
+def load_detection_model(settings: dict):
+    # load model
+    weights_file = settings["calibration"]["machine_learning"]["weights"]
+    weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
+    model = DetectionModel(weights_path)
+
+    return model
+
+def detect_features(img: AdornedImage, mask: np.ndarray, shift_type: tuple[DetectionType]) -> list[DetectionFeature]:
     """
 
     args:
-        img: the input img (np.array)
+        img: the input img (AdornedImage)
         mask: the output rgb prediction mask (np.array)
         shift_type: the type of feature detection to run (tuple)
 
@@ -67,12 +82,12 @@ def detect_features(img, mask, shift_type) -> list[DetectionFeature]:
             feature_px = detect_centre_point(mask, color, threshold=25)
 
         if det_type == DetectionType.LamellaEdge:
-            feature_px = detect_right_edge(mask, color, threshold=25)
+            feature_px = detect_lamella_edge(img)
 
         if det_type == DetectionType.LandingPost:
 
-            landing_px = (img.shape[0] // 2, img.shape[1] // 2)
-            feature_px, _ = detect_closest_edge(img, landing_px)
+
+            feature_px = detect_landing_post_v2(img)
 
         detection_features.append(
             DetectionFeature(detection_type=det_type, feature_px=feature_px)
@@ -80,12 +95,87 @@ def detect_features(img, mask, shift_type) -> list[DetectionFeature]:
 
     return detection_features
 
-def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedImage, shift_type: tuple):
+
+def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType]) -> list[DetectionFeature]:
     """
-    Calculate the distance between two features in the image coordinate system (as a proportion of the image).
 
     args:
-        adorned_img: input image (AdornedImage, or np.array)
+        img: the input img (AdornedImage)
+        mask: the output rgb prediction mask (np.array)
+        shift_type: the type of feature detection to run (tuple)
+
+    return:
+        detection_features [DetectionFeature, DetectionFeature]: the detected feature coordinates and types
+    """
+
+    detection_features = []
+    centre_pt = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)  # midpoint
+
+    for det_type in shift_type:
+        
+        if not isinstance(det_type, DetectionType):
+            raise TypeError(f"Detection Type {det_type} is not supported.")
+
+        if det_type == DetectionType.ImageCentre:
+            feature_px = centre_pt
+
+        if det_type == DetectionType.NeedleTip:
+            feature_px = detect_needle_tip_v2(ref_image, img)
+
+        if det_type == DetectionType.LamellaCentre:
+            feature_px = centre_pt # TODO
+
+        if det_type == DetectionType.LamellaEdge:
+            feature_px = detect_lamella_edge(img)
+
+        if det_type == DetectionType.LandingPost:
+            feature_px = detect_landing_post_v2(img, centre_pt)
+
+        detection_features.append(
+            DetectionFeature(detection_type=det_type, feature_px=feature_px)
+        )
+
+    return detection_features
+
+def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple):
+    """
+    Calculate the distance between two features in the image coordinate system.
+
+    args:
+        adorned_img: input image (AdornedImage)
+        ref_img: the reference image to align (AdornedImage)
+        shift_type: the type of feature detection shift to calculation
+
+    return:
+        detection_result (DetectionResult): The detection result containing the feature coordinates, and images
+
+    """
+    # detect features for calculation
+    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type)
+
+    # calculate movement distance
+    x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
+        feature_1.feature_px, feature_2.feature_px, adorned_img
+    )
+
+    detection_result = DetectionResult(
+        features=[feature_1, feature_2],
+        adorned_image=adorned_img,
+        display_image=adorned_img.data,
+        distance_metres=Point(x_distance_m, y_distance_m),
+        microscope_coordinate=[Point(0, 0), Point(0, 0)],
+    )
+
+    return detection_result
+
+
+def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedImage, shift_type: tuple):
+    """
+    Calculate the distance between two features in the image coordinate system.
+
+    args:
+        model: the detection model
+        adorned_img: input image (AdornedImage)
         shift_type: the type of feature detection shift to calculation
 
     return:
@@ -93,24 +183,20 @@ def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedIma
 
     """
 
-    # check image type
-    if isinstance(adorned_img, AdornedImage):
-        img = adorned_img.data  # extract image data from AdornedImage
-
     # model inference
-    mask = model.inference(img)
+    mask = model.inference(adorned_img.data)
 
     # upscale the mask # TODO: remove once model takes full sized images
-    mask = np.array(Image.fromarray(mask).resize((img.shape[1], img.shape[0])))
+    mask = np.array(Image.fromarray(mask).resize((adorned_img.data.shape[1], adorned_img.data.shape[0])))
 
     # detect features for calculation
-    feature_1, feature_2 = detect_features(img, mask, shift_type)
+    feature_1, feature_2 = detect_features(adorned_img, mask, shift_type)
 
     # filter to selected masks
     mask = filter_selected_masks(mask, shift_type)
 
     # display features for validation
-    display_image = draw_overlay(img, mask)
+    display_image = draw_overlay(adorned_img.data, mask)
 
     # calculate movement distance
     x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
@@ -193,6 +279,72 @@ def draw_overlay(img: np.ndarray, mask: np.ndarray, alpha:float=0.2) -> np.ndarr
 
     return np.array(alpha_blend)
 
+def detect_lamella_edge(img:AdornedImage):
+    
+    beam_type = img.metadata.acquisition.beam_type
+
+    if beam_type == "Electron":
+        pt = Point(x=int(img.data.shape[1] // 2.4), y=int(img.data.shape[0]*0.47)) # eb mask
+    if beam_type == "Ion":
+        pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
+
+    # ib mask
+    mask = np.zeros_like(img.data)
+    mask[pt.y:, :pt.x] = 1
+    
+    edge = edge_detection(img.data, sigma=9)  
+    edge_mask = edge * mask
+    lamella_edge = detect_right_edge_v2(edge_mask)
+
+    import matplotlib.pyplot as plt
+    plt.imshow(img.data * mask, cmap="gray")
+    plt.show()
+
+    return lamella_edge
+
+
+def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initial:Point =Point(400, 200)) -> Point:
+
+    minus = calibration.normalise_image(ref_image) - calibration.normalise_image(ref_image)
+
+    filt = ndi.filters.gaussian_filter(minus, sigma=12)
+
+    edge = edge_detection(filt, sigma=12)  # edges
+
+    # mask after edge detection
+    mask = np.zeros_like(ref_image.data)
+    
+    beam_type = ref_image.metadata.acquisition.beam_type
+    if beam_type == "Electron":
+        pt = Point(x=int(ref_image.data.shape[1] * 0.3), y=int(ref_image.data.shape[0]*0.3)) # eb mask, top left corner
+        mask[:pt.y, :pt.x] = 1
+    if beam_type == "Ion":
+        pt = Point(x=int(ref_image.data.shape[1] * 0.5), y=int(ref_image.data.shape[0]*0.5)) # ib mask, bottom, left corner
+        mask[pt.y:, :pt.x] = 1
+
+    edge_mask = edge * mask
+
+    if beam_type == "Electron":
+        needle = detect_closest_edge_v2(edge_mask, initial)  # closest edge  
+    if beam_type == "Ion":
+        needle = detect_right_edge_v2(edge_mask)   # right most edge
+    
+    # centre = Point(x=ref_image.data.shape[1]//2, y=ref_image.data.shape[0]//2)
+    # top_needle = detection.detect_closest_edge_v2(edge_mask, Point(x=400, y=200))  # closest edge  
+    # bottom_needle = detection.detect_closest_edge_v2(edge_mask, centre)  # closest edge  
+    # fig = plt.figure(figsize=(10, 10))
+    # plt.imshow(minus * mask, cmap="gray")
+    # plt.show()
+
+    return needle 
+
+
+def detect_landing_post_v2(img: AdornedImage, landing_pt: Point) -> Point:
+    landing_pt = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)
+    edge = edge_detection(img.data, sigma=3)
+    feature_px = detect_closest_edge_v2(edge, landing_pt)
+    return feature_px
+
 
 def detect_centre_point(mask: np.ndarray, color: tuple, threshold:int=25) -> Point:
     """ Detect the centre (mean) point of the mask for a given color (label)
@@ -221,6 +373,35 @@ def detect_centre_point(mask: np.ndarray, color: tuple, threshold:int=25) -> Poi
         centre_px = Point(x=x_mid, y=y_mid )
 
     return centre_px
+
+def detect_right_edge_v2(mask: np.ndarray, threshold=25, left=False) -> Point:
+
+    # get mask px coordinates
+    edge_mask = np.where(mask)
+    edge_px = (0, 0)
+
+    # only return an edge point if detection is above a threshold        
+    if len(edge_mask[0]) > threshold:
+        
+        # right_most: max(x_coord), left_most: min(x_coord)
+        px = np.max(edge_mask[1])
+        if left:
+            px = np.min(edge_mask[1])
+
+        # get all px corresponding to value
+        idx = np.where(edge_mask[1] == px)
+        if left:
+            idx = np.where(edge_mask[1]==px)
+        coords = edge_mask[0][idx], edge_mask[1][idx]
+
+        # get top value  (most vertical) to break ties
+        top_idx = np.argmax(coords[1])
+
+        edge_px = coords[0][top_idx], coords[1][top_idx]
+
+    return Point(x=edge_px[1], y=edge_px[0])
+
+
 
 def detect_right_edge(mask, color, threshold=25, left=False) -> Point:
     """ Detect the right edge point of the mask for a given color (label)
@@ -256,7 +437,44 @@ def detect_right_edge(mask, color, threshold=25, left=False) -> Point:
     return Point(x=edge_px[1], y=edge_px[0])
 
 def edge_detection(img: np.ndarray, sigma=3) -> np.ndarray:
-    return feature.canny(img, sigma=3)  # sigma higher usually better
+    return feature.canny(img, sigma=sigma)  # sigma higher usually better
+
+
+def detect_closest_edge_v2(mask: np.ndarray, landing_pt: Point) -> tuple[Point, np.ndarray]:
+    """ Identify the closest edge point to the initially selected point
+
+    args:
+        img: base image (np.ndarray)
+        landing_px: the initial landing point pixel (tuple) (y, x) format
+    return:
+        landing_edge_pt: the closest edge point to the intitially selected point (tuple)
+        edges: the edge mask (np.array)
+    """
+
+    # identify edge pixels
+    landing_px = (landing_pt.y, landing_pt.x)
+    edge_mask = np.where(mask)
+    edge_px = list(zip(edge_mask[0], edge_mask[1]))
+
+    # set min distance
+    min_dst = np.inf
+
+    # TODO: vectorise this like
+    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
+
+    landing_edge_px = (0, 0)
+    for px in edge_px:
+
+        # distance between edges and landing point
+        dst = distance.euclidean(landing_px, px)
+
+        # select point with min
+        if dst < min_dst:
+            min_dst = dst
+            landing_edge_px = px
+
+    return Point(x=landing_edge_px[1], y=landing_edge_px[0])
+
 
 
 def detect_closest_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[Point, np.ndarray]:

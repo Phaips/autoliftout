@@ -222,6 +222,12 @@ def liftout_lamella(
         rotate=True, parent_ui=True
     )
 
+    # reference images for needle location
+    image_settings.save = True
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
+    image_settings.label = f"ref_needle_liftout"
+    acquire.take_reference_images(microscope, image_settings)
+
     # move needle to liftout start position
     calibration.validate_stage_height_for_needle_insertion(
         microscope, settings, image_settings
@@ -232,7 +238,7 @@ def liftout_lamella(
     )
 
     # land needle on lamella
-    lamella = land_needle_on_milled_lamella(
+    lamella = land_needle_on_milled_lamella_v2(
         microscope, settings, image_settings, lamella
     )
 
@@ -405,7 +411,7 @@ def land_needle_on_milled_lamella_v2(
     # reference images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     image_settings.save = True
-    image_settings.label = f"needle_liftout_start_position_lowres"
+    image_settings.label = f"needle_liftout_start_position"
 
     det = calibration.validate_detection(
         microscope,
@@ -451,7 +457,7 @@ def land_needle_on_milled_lamella_v2(
     
     # measure brightness
     BRIGHTNESS_FACTOR  = 1.2
-    CROP_SIZE = 200
+    CROP_SIZE = 250
     previous_brightness = calibration.measure_brightness(ib_image, crop_size=CROP_SIZE)
 
     image_settings.hfw = settings["calibration"]["reference_images"][

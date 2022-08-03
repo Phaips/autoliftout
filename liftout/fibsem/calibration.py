@@ -160,9 +160,7 @@ def identify_shift_using_machine_learning(
 ) -> DetectionResult:
 
     # load model
-    weights_file = settings["calibration"]["machine_learning"]["weights"]
-    weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
-    model = DetectionModel(weights_path)
+    model = detection.load_detection_model(settings)
 
     # take new image
     image = acquire.new_image(microscope, image_settings)

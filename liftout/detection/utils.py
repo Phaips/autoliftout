@@ -138,22 +138,6 @@ def scale_coordinate_to_image(point: Point, shape: tuple) -> Point:
 
     return scaled_pt
 
-
-def draw_crosshairs(draw, mask, idx, color="white"):
-    """ helper function for drawing crosshairs on an image"""
-    draw.line([0, idx[0], mask.size[0], idx[0]], color)
-    draw.line([idx[1], 0, idx[1], mask.size[1]], color)
-
-
-def load_image_from_file(fname):
-
-    """ Load a .tif image from disk as np.array """
-
-    img = np.asarray(Image.open(fname))
-
-    return img
-
-
 def parse_metadata(filename):
 
     # FIB meta data key is 34682, comes as a string
