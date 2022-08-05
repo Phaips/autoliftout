@@ -144,3 +144,37 @@ def quick_setup():
     image_settings = acquire.update_image_settings_v3(settings, path=path)
 
     return microscope, settings, image_settings
+
+
+def full_setup():
+    """Quick setup for microscope, settings,  image_settings, sample and lamella"""
+    from liftout import utils
+    from liftout.fibsem import acquire
+    from liftout.fibsem import utils as fibsem_utils
+    from liftout.fibsem.sample import Sample, Lamella
+    import os
+
+    # settings
+    settings = utils.load_full_config()
+
+    # paths
+    path = os.path.join(os.getcwd(), "tools/test")
+    os.makedirs(path, exist_ok=True)
+    configure_logging(path)
+
+    # microscope
+    microscope = fibsem_utils.connect_to_microscope(
+        ip_address=settings["system"]["ip_address"]
+    )
+    # image settings
+    image_settings = acquire.update_image_settings_v3(settings, path=path)
+
+    # sample
+    sample = Sample(path = os.path.dirname(image_settings.save_path), name="test")
+    
+    # lamella
+    lamella = Lamella(sample.path, 999, _petname="999-test-mule")
+    sample.positions[lamella._number] = lamella
+    sample.save()
+
+    return microscope, settings, image_settings, sample, lamella

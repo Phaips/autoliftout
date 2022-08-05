@@ -6,7 +6,7 @@ stage_rotation_flat_to_electron: 50 # degrees
 stage_rotation_flat_to_ion: 230 # degrees
 pretilt_angle: 27 # degrees (flat to electron tilt)
 stage_tilt_flat_to_ion: 52 # degrees
-stage_tilt_landing: 13 # degrees
+stage_tilt_landing: 0 #13 # degrees
 piescope_enabled: False
 high_throughput: False
 autolamella: False

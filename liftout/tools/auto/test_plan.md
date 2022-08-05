@@ -33,6 +33,14 @@ new autolifout flow
 
 
 
+EUCENTRICITY:
+where is it ok if we lose eucentricty a bit, and where is it critcial
+
+Critical: Liftout needle landing, land lamella on posts
+OK: Mill Trench, Mill JCut, Mill Thin, Mill Polish
+
+what is the envelope?
+
 CHECK MOVE SETTINGS!!!! NEED TO TEST if this fixes problems
 should hopefully fix tilt alignments??
 
@@ -65,7 +73,6 @@ JCut
 
 Liftout
 - move to lamella coordinate
-<!-- - tilt to liftout angle -->
 - correct position
 - insert needle
 - land_needle_on_milled_lamella

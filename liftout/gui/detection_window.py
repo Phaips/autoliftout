@@ -28,7 +28,6 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self,
         microscope,
         settings: dict,
-        image_settings: ImageSettings,
         detection_result: DetectionResult,
         lamella: Lamella,
         parent=None,
@@ -40,7 +39,6 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         # microscope settings
         self.microscope = microscope
         self.settings = settings
-        self.image_settings = image_settings
         self.lamella = lamella
 
         # detection data
@@ -213,22 +211,13 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 def main():
 
     microscope, settings, image_settings = fibsem_utils.quick_setup()
-
-    lamella = Lamella("tools/test", 999, _petname="999-test-mule")
-    image_settings.save_path = lamella.path
-
-    print(image_settings.save_path)
-
-    import os
-
-    os.makedirs(image_settings.save_path, exist_ok=True)
+    lamella = Lamella(image_settings.save_path, 999, _petname="999-test-mule")
 
     app = QtWidgets.QApplication([])
 
     calibration.validate_detection(
         microscope,
         settings,
-        image_settings,
         lamella,
         shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
         beam_type=BeamType.ELECTRON,

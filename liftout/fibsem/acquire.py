@@ -55,7 +55,7 @@ def autocontrast(microscope: SdbMicroscopeClient, beam_type=BeamType.ELECTRON) -
 
 def take_reference_images(
     microscope: SdbMicroscopeClient, image_settings: ImageSettings
-) -> list:
+) -> list[AdornedImage]:
     tmp_beam_type = image_settings.beam_type
     image_settings.beam_type = BeamType.ELECTRON
     eb_image = new_image(microscope, image_settings)

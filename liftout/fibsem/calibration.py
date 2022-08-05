@@ -23,6 +23,7 @@ from liftout.fibsem.sample import (
     MicroscopeState,
     ReferenceImages,
 )
+from liftout.fibsem.structures import Point
 
 from liftout.model import models
 from PIL import Image, ImageDraw
@@ -36,6 +37,7 @@ def correct_stage_drift(
     reference_images: ReferenceImages,
     alignment: tuple(BeamType) = (BeamType.ELECTRON, BeamType.ELECTRON),
     rotate: bool = False,
+    use_ref_mask: bool = False,
     parent_ui=None,
 ) -> bool:
 
@@ -56,8 +58,15 @@ def correct_stage_drift(
         ref_lowres = rotate_AdornedImage(ref_lowres)
         ref_highres = rotate_AdornedImage(ref_highres)
 
+
+
     # align lowres, then highres
     for ref_image in [ref_lowres, ref_highres]:
+
+        if use_ref_mask:
+            ref_mask = create_lamella_mask(ref_image, settings, factor = 2)
+        else: 
+            ref_mask = None
 
         # take new images
         # set new image settings (same as reference)
@@ -68,7 +77,7 @@ def correct_stage_drift(
 
         # crosscorrelation alignment
         ret = align_using_reference_images(
-            microscope, settings, ref_lowres, new_image,
+            microscope, settings, ref_lowres, new_image, ref_mask=ref_mask
         )
 
         if ret is False and parent_ui:
@@ -106,6 +115,7 @@ def align_using_reference_images(
     settings: dict,
     ref_image: AdornedImage,
     new_image: AdornedImage,
+    ref_mask: np.ndarray = None
 ) -> bool:
 
     # get beam type
@@ -120,7 +130,8 @@ def align_using_reference_images(
     sigma = 6
 
     dx, dy, _ = shift_from_crosscorrelation(
-        new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma
+        new_image, ref_image, lowpass=lp_px, highpass=hp_px, sigma=sigma, 
+        use_rect_mask=True, ref_mask=ref_mask
     )
 
     shift_within_tolerance = check_shift_within_tolerance(
@@ -190,6 +201,7 @@ def shift_from_crosscorrelation(
     highpass: int = 6,
     sigma: int = 6,
     use_rect_mask: bool = False,
+    ref_mask: np.ndarray = None
 ) -> tuple[float, float, np.ndarray]:
 
     # get pixel_size
@@ -205,6 +217,9 @@ def shift_from_crosscorrelation(
         rect_mask = _mask_rectangular(img2_data_norm.shape)
         img1_data_norm = rect_mask * img1_data_norm
         img2_data_norm = rect_mask * img2_data_norm
+
+    if ref_mask is not None:
+        img1_data_norm = ref_mask * img1_data_norm # mask the reference
 
     # run crosscorrelation
     xcorr = crosscorrelation(
@@ -331,8 +346,52 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
     mask = ndi.gaussian_filter(mask, sigma=sigma)
     return mask
 
+def cosine_stretch(img: AdornedImage, tilt_degrees: float):
+    
+    tilt = np.deg2rad(tilt_degrees)
 
-def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2):
+    shape = int(img.data.shape[0] / np.cos(tilt)), int(img.data.shape[1] / np.cos(tilt))
+
+    # cosine stretch
+    print(f"tilt: {tilt}, cosine: {np.cos(tilt)}")
+    print("initial ", img.data.shape)
+    print("new shape: ", shape)
+
+    # larger
+
+    from PIL import Image
+
+    resized_img = np.asarray(Image.fromarray(img.data).resize(size=(shape[1], shape[0])))
+    # crop centre out?
+    c = Point(resized_img.shape[1]//2, resized_img.shape[0]//2)
+    dy, dx = img.data.shape[0]//2, img.data.shape[1]//2
+    scaled_img = resized_img[c.y-dy:c.y+dy, c.x-dx:c.x+dx]
+
+    print("rescaled shape:", scaled_img.shape)
+
+    return AdornedImage(data=scaled_img, metadata=img.metadata)
+
+
+def apply_image_mask(img: AdornedImage, mask: np.ndarray) -> np.ndarray:
+
+    return normalise_image(img) * mask
+
+
+def create_rect_mask(img: np.ndarray, pt: Point, w: int, h: int, sigma: int = 0) -> np.ndarray:
+
+    mask = np.zeros_like(img)
+
+    y_min, y_max = np.clip(pt.y-h, 0, img.shape[1]), np.clip(pt.y+h, 0, img.shape[1])
+    x_min, x_max = np.clip(pt.x-w, 0, img.shape[1]), np.clip(pt.x+w, 0, img.shape[1])
+
+    mask[y_min:y_max, x_min:x_max] = 1
+
+    if sigma:
+        mask = ndi.filters.gaussian_filter(mask, sigma=sigma)
+
+    return mask 
+
+def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True):
     """Create a mask around the lamella"""
 
     # get real size from protocol
@@ -348,10 +407,16 @@ def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2):
     lamella_height_px = int((trench_height / vfw) * img.height) 
     lamella_width_px = int((lamella_width / hfw) * img.width) 
 
-    mask = circ_mask(
-        size=(img.data.shape[1], img.data.shape[0]), 
-        radius=max(lamella_height_px, lamella_width_px) * factor , sigma=12
-    )
+    if circ:
+        mask = circ_mask(
+            size=(img.data.shape[1], img.data.shape[0]), 
+            radius=max(lamella_height_px, lamella_width_px) * factor , sigma=12
+        )
+    else:
+        mask = create_rect_mask(img=img.data,  
+            pt=Point(img.data.shape[1]//2, img.data.shape[0]//2),
+            w=lamella_width_px * factor, 
+            h=lamella_height_px * factor, sigma=3)
 
     return mask
 
@@ -885,6 +950,7 @@ def automatic_eucentric_correction_v2(
             dx=dx, dy=dy, beam_type=BeamType.ELECTRON)
 
         # repeat
+        hfw = hfw / 2
 
         # increase count
         iteration += 1
@@ -892,7 +958,6 @@ def automatic_eucentric_correction_v2(
         if iteration == 5:
             # unable to align within given iterations
             break
-        
 
     # TODO: do we want to align in x too?
 

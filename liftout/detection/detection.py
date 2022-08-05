@@ -5,17 +5,20 @@ import os
 
 import numpy as np
 import PIL
+import scipy.ndimage as ndi
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import AdornedImage
 from liftout.detection import utils
 from liftout.detection.DetectionModel import DetectionModel
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      DetectionType, Point)
+from liftout.fibsem import calibration
+from liftout.fibsem.acquire import BeamType, ImageSettings
+from liftout.fibsem.sample import Lamella
 from liftout.model import models
 from PIL import Image
 from scipy.spatial import distance
 from skimage import feature
-from liftout.fibsem import calibration
-import scipy.ndimage as ndi
 
 # TODO: START_HERE
 # better edge detections for landing...
@@ -96,7 +99,7 @@ def detect_features(img: AdornedImage, mask: np.ndarray, shift_type: tuple[Detec
     return detection_features
 
 
-def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType]) -> list[DetectionFeature]:
+def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType], settings: dict) -> list[DetectionFeature]:
     """
 
     args:
@@ -109,27 +112,29 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
     """
 
     detection_features = []
-    centre_pt = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)  # midpoint
 
     for det_type in shift_type:
         
         if not isinstance(det_type, DetectionType):
             raise TypeError(f"Detection Type {det_type} is not supported.")
 
+        # get the initial position estimate
+        initial_point = get_initial_position(img, settings, det_type)
+
         if det_type == DetectionType.ImageCentre:
-            feature_px = centre_pt
+            feature_px = initial_point
 
         if det_type == DetectionType.NeedleTip:
-            feature_px = detect_needle_tip_v2(ref_image, img)
+            feature_px = detect_needle_tip_v2(ref_image, img, initial_point)
 
         if det_type == DetectionType.LamellaCentre:
-            feature_px = centre_pt # TODO
+            feature_px = initial_point # TODO
 
         if det_type == DetectionType.LamellaEdge:
             feature_px = detect_lamella_edge(img)
 
         if det_type == DetectionType.LandingPost:
-            feature_px = detect_landing_post_v2(img, centre_pt)
+            feature_px = detect_landing_post_v2(img, initial_point)
 
         detection_features.append(
             DetectionFeature(detection_type=det_type, feature_px=feature_px)
@@ -137,7 +142,7 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
 
     return detection_features
 
-def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple):
+def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple, settings: dict):
     """
     Calculate the distance between two features in the image coordinate system.
 
@@ -151,7 +156,7 @@ def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: Adorn
 
     """
     # detect features for calculation
-    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type)
+    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type, settings)
 
     # calculate movement distance
     x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
@@ -212,6 +217,59 @@ def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedIma
     )
 
     return detection_result
+
+
+
+
+def validate_detection_v2(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    detection_result: DetectionResult,
+    image_settings: ImageSettings,
+    lamella: Lamella,
+    beam_type: BeamType = BeamType.ELECTRON,
+    parent=None,
+):
+    # TODO: validate the detection shift type...
+    from liftout.gui.detection_window import GUIDetectionWindow
+
+    image_settings.beam_type = beam_type  # change to correct beamtype
+
+    # user validates detection result
+    detection_window = GUIDetectionWindow(
+        microscope=microscope,
+        settings=settings,
+        image_settings=image_settings,
+        detection_result=detection_result,
+        lamella=lamella,
+        parent=parent,
+    )
+    detection_window.show()
+    detection_window.exec_()
+
+    return detection_window.detection_result
+
+def get_initial_position(img: AdornedImage, settings: dict, det_type: DetectionType) -> Point:
+
+    beam_type = img.metadata.acquisition.beam_type
+
+    if det_type in [DetectionType.ImageCentre, DetectionType.LamellaCentre, DetectionType.LandingPost]:
+        point = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)  # midpoint
+
+    if det_type == DetectionType.LamellaEdge:
+        point = Point(0, 0)
+
+    if det_type == DetectionType.NeedleTip:
+        
+        if beam_type == "Electron": 
+            pt = settings["calibration"]["initial"]["needle_eb_initial"]
+        if beam_type == "Ion":
+            pt = settings["calibration"]["initial"]["needle_ib_initial"]
+
+        point = Point(x=pt[0], y=pt[1])
+
+    print(f"{det_type}: {point}")
+    return point
 
 def filter_selected_masks(mask: np.ndarray, shift_type: tuple[DetectionType]) -> np.ndarray:
     """Combine only the masks for the selected detection types"""
@@ -292,24 +350,26 @@ def detect_lamella_edge(img:AdornedImage):
     mask = np.zeros_like(img.data)
     mask[pt.y:, :pt.x] = 1
     
-    edge = edge_detection(img.data, sigma=9)  
+    edge = edge_detection(img.data, sigma=3)  
     edge_mask = edge * mask
     lamella_edge = detect_right_edge_v2(edge_mask)
 
-    import matplotlib.pyplot as plt
-    plt.imshow(img.data * mask, cmap="gray")
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots(1, 2, figsize=(30,30))
+    # ax[0].imshow(img.data * mask, cmap="gray")
+    # ax[1].imshow(edge_mask,cmap="turbo")
+    # plt.show()
 
     return lamella_edge
 
 
-def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initial:Point =Point(400, 200)) -> Point:
+def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initial_point: Point = Point(400, 200) ) -> Point:
 
-    minus = calibration.normalise_image(ref_image) - calibration.normalise_image(ref_image)
+    minus = calibration.normalise_image(ref_image) - calibration.normalise_image(new_image)
 
     filt = ndi.filters.gaussian_filter(minus, sigma=12)
 
-    edge = edge_detection(filt, sigma=12)  # edges
+    edge = edge_detection(filt, sigma=3)  # edges
 
     # mask after edge detection
     mask = np.zeros_like(ref_image.data)
@@ -325,16 +385,19 @@ def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initia
     edge_mask = edge * mask
 
     if beam_type == "Electron":
-        needle = detect_closest_edge_v2(edge_mask, initial)  # closest edge  
+        needle = detect_closest_edge_v2(edge_mask, initial_point)  # closest edge  
     if beam_type == "Ion":
         needle = detect_right_edge_v2(edge_mask)   # right most edge
     
     # centre = Point(x=ref_image.data.shape[1]//2, y=ref_image.data.shape[0]//2)
     # top_needle = detection.detect_closest_edge_v2(edge_mask, Point(x=400, y=200))  # closest edge  
     # bottom_needle = detection.detect_closest_edge_v2(edge_mask, centre)  # closest edge  
-    # fig = plt.figure(figsize=(10, 10))
-    # plt.imshow(minus * mask, cmap="gray")
-    # plt.show()
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1, 3, figsize=(30, 30))
+    ax[0].imshow(filt, cmap="gray")
+    ax[1].imshow(minus * mask, cmap="gray")
+    ax[2].imshow(edge_mask, cmap="turbo", )
+    plt.show()
 
     return needle 
 

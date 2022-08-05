@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 import yaml
+import numpy as np
 
 import liftout
 
@@ -152,3 +153,61 @@ def get_last_log_message(path: Path) -> str:
         log_msg = log_line.split("—")[-1].strip()
 
     return log_msg
+
+
+def plot_two_images(img1, img2) -> None:
+    import matplotlib.pyplot as plt
+    from liftout.fibsem.structures import Point
+
+    c = Point(img1.data.shape[1]//2, img1.data.shape[0]//2)
+
+    fig, ax = plt.subplots(1, 2, figsize=(30, 30))
+    ax[0].imshow(img1.data, cmap="gray")
+    ax[0].plot(c.x, c.y, "y+", ms=50, markeredgewidth=2)
+    ax[1].imshow(img2.data, cmap="gray")
+    ax[1].plot(c.x, c.y, "y+", ms=50, markeredgewidth=2)
+    plt.show()
+
+
+# cross correlate
+def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int = 128, hp:int = 6, sigma: int = 6, ref_mask: np.ndarray = None):
+    import numpy as np
+    from liftout.fibsem import calibration
+    import matplotlib.pyplot as plt
+    from liftout.fibsem.structures import Point
+
+
+    # rotate ref
+    if rotate:
+        ref_image = calibration.rotate_AdornedImage(ref_image)
+
+    dx, dy, xcorr = calibration.shift_from_crosscorrelation(
+        ref_image, new_image, lowpass=lp, highpass=hp, sigma=sigma, use_rect_mask=True, ref_mask=ref_mask
+    )
+
+    pixelsize = ref_image.metadata.binary_result.pixel_size.x
+    dx_p, dy_p = int(dx / pixelsize), int(dy / pixelsize)
+
+    print(f"shift_m: {dx}, {dy}")
+    print(f"shift_px: {dx_p}, {dy_p}")
+
+    shift = np.roll(new_image.data, (-dy_p, -dx_p), axis=(0, 1))
+
+    mid = Point(shift.shape[1]//2, shift.shape[0]//2)
+
+    fig, ax = plt.subplots(1, 4, figsize=(30, 30))
+    ax[0].imshow(ref_image.data, cmap="gray")
+    ax[0].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[0].set_title(f"Reference (rotate={rotate})")
+    ax[1].imshow(new_image.data, cmap="gray")
+    ax[1].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[1].set_title(f"New Image")
+    ax[2].imshow(xcorr, cmap="turbo")
+    ax[2].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[2].plot(mid.x-dx_p, mid.y-dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[2].set_title("XCORR")
+    ax[3].imshow(shift, cmap="gray")
+    ax[3].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[3].plot(mid.x-dx_p, mid.y-dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[3].set_title("New Image Shifted")
+    plt.show()

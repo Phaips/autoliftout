@@ -218,7 +218,7 @@ def insert_needle(microscope: SdbMicroscopeClient) -> ManipulatorPosition:
 
 
 def move_needle_closer(
-    microscope: SdbMicroscopeClient, x_shift: float = -20e-6, z_shift: float = -160e-6
+    microscope: SdbMicroscopeClient, x_shift: float = -20e-6, z_shift: float = -160e-6, y_shift: float = 0.e-6
 ) -> ManipulatorPosition:
     """Move the needle closer to the sample surface, after inserting.
     Parameters
@@ -239,6 +239,12 @@ def move_needle_closer(
     x_move = x_corrected_needle_movement(x_shift) # TODO: replace with move_needle_relative...
     logging.info(f"movement: moving needle by {x_move}")
     needle.relative_move(x_move)
+
+    
+    y_move = y_corrected_needle_movement(y_shift, stage.current_position.t)
+    logging.info(f"movement: moving needle by {y_move}")
+    needle.relative_move(y_move)
+
     # Then move the needle towards the sample surface.
     z_move = z_corrected_needle_movement(z_shift, stage.current_position.t)
     logging.info(f"movement: moving needle by {z_move}")
