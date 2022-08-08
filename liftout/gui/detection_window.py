@@ -21,6 +21,7 @@ from liftout.fibsem.sample import Lamella
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
 from PyQt5 import QtCore, QtWidgets
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 
 
 class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
@@ -30,9 +31,8 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         settings: dict,
         detection_result: DetectionResult,
         lamella: Lamella,
-        parent=None,
     ):
-        super(GUIDetectionWindow, self).__init__(parent=parent)
+        super(GUIDetectionWindow, self).__init__()
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
 
@@ -211,6 +211,28 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
                 )
 
         event.accept()
+
+def validate_detection_v2(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    detection_result: DetectionResult,
+    lamella: Lamella,
+):
+    # TODO: validate the detection shift type...
+
+    # user validates detection result
+    detection_window = GUIDetectionWindow(
+        microscope=microscope,
+        settings=settings,
+        detection_result=detection_result,
+        lamella=lamella,
+    )
+    detection_window.show()
+    detection_window.exec_()
+
+    return detection_window.detection_result
+
+
 
 def main():
 

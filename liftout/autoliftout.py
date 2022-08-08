@@ -1,19 +1,21 @@
 import logging
 import time
-
 from datetime import datetime
+
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import MoveSettings, StagePosition
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
+                                                         StagePosition)
 
 from liftout.detection.detection import DetectionType
 from liftout.fibsem import acquire, calibration, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.sample import AutoLiftoutStage, Lamella, ReferenceImages, Sample
-from liftout.gui import windows
 from liftout.fibsem.milling import MillingPattern
+from liftout.fibsem.sample import (AutoLiftoutStage, Lamella, ReferenceImages,
+                                   Sample)
+from liftout.gui import windows
 
 # autoliftout workflow functions
 
@@ -42,12 +44,12 @@ def mill_lamella_trench(
     ##### 
 
     # confirm position
-    windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="centre_ib"
-    )
+    # windows.ask_user_movement(
+    #     microscope, settings, image_settings, msg_type="centre_ib"
+    # )
 
     # update the lamella coordinates, and save
-    lamella.lamella_coordinates = calibration.get_raw_stage_position(microscope)
+    # lamella.lamella_coordinates = calibration.get_raw_stage_position(microscope)
 
     ###### 
 
@@ -149,22 +151,22 @@ def mill_lamella_jcut(
     # take reference images of the jcut
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
     image_settings.save = True
-    image_settings.label = f"ref_jcut_low_res"
+    image_settings.label = f"ref_jcut_tilt_low_res"
     acquire.take_reference_images(microscope, image_settings)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_ultra_res"]
-    image_settings.label = f"ref_jcut_high_res"
+    image_settings.label = f"ref_jcut_tilt_high_res"
     acquire.take_reference_images(microscope, image_settings)
 
     # move to flat eb
     movement.flat_to_beam(microscope, settings, BeamType.ELECTRON)
 
-    #TODO: need to align here??
+    # realign
     reference_images = ReferenceImages(
-        low_res_eb=lamella.load_reference_image("ref_jcut_low_res_eb"),
-        high_res_eb=lamella.load_reference_image("ref_jcut_high_res_eb"),
-        low_res_ib=lamella.load_reference_image("ref_jcut_low_res_ib"),
-        high_res_ib=lamella.load_reference_image("ref_jcut_high_res_ib"),
+        low_res_eb=lamella.load_reference_image("ref_jcut_tilt_low_res_eb"),
+        high_res_eb=lamella.load_reference_image("ref_jcut_tilt_high_res_eb"),
+        low_res_ib=lamella.load_reference_image("ref_jcut_tilt_low_res_ib"),
+        high_res_ib=lamella.load_reference_image("ref_jcut_tilt_high_res_ib"),
     )
 
     calibration.correct_stage_drift(
@@ -228,10 +230,10 @@ def liftout_lamella(
     image_settings.label = f"ref_needle_liftout"
     acquire.take_reference_images(microscope, image_settings)
 
-    # move needle to liftout start position
-    calibration.validate_stage_height_for_needle_insertion(
-        microscope, settings, image_settings
-    )
+    # validate needle insertion conditions
+    validate_needle_insertion(microscope, settings)
+
+    # insert the needle
     park_position = movement.move_needle_to_liftout_position(microscope)
     logging.info(
         f"{lamella.current_state.stage.name}: needle inserted to park positon: {park_position}"
@@ -540,16 +542,17 @@ def land_lamella(
     )
 
     ############################## LAND_LAMELLA ##############################
-    calibration.validate_stage_height_for_needle_insertion(
-        microscope, settings, image_settings
-    )
+    validate_needle_insertion(microscope, settings)
     park_position = movement.move_needle_to_landing_position(microscope)
 
     #### Y-MOVE (ELECTRON)
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     image_settings.beam_type = BeamType.ELECTRON
     image_settings.save = True
-    image_settings.label = f"landing_needle_land_sample_lowres"
+    image_settings.label = f"landing_needle_start_position"
+
+    acquire.take_reference_images(microscope, image_settings)
+
 
     det = calibration.validate_detection(
         microscope,
@@ -568,6 +571,8 @@ def land_lamella(
         dy=det.distance_metres.y,
         beam_type=BeamType.ELECTRON,
     )
+
+    image_settings.label = f"landing_needle_after_y_move"
     acquire.take_reference_images(microscope, image_settings)
 
     #### Z-MOVE (ION)
@@ -575,7 +580,7 @@ def land_lamella(
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     image_settings.beam_type = BeamType.ION
     image_settings.save = True
-    image_settings.label = f"landing_needle_land_sample_lowres_after_y_move"
+    image_settings.label = f"landing_needle_after_z_move"
 
     det = calibration.validate_detection(
         microscope,
@@ -587,7 +592,6 @@ def land_lamella(
     )
 
     # up is down
-
     movement.move_needle_relative_with_corrected_movement(
         microscope=microscope,
         settings=settings,
@@ -1518,7 +1522,14 @@ def run_setup_autoliftout(
     acquire.take_reference_images(microscope, image_settings)
 
     # check if focus is good enough
-    calibration.validate_focus(microscope, settings, image_settings, link=False)
+    ret = calibration.validate_focus(microscope, settings, image_settings, link=False)
+
+    if ret is False:
+        windows.ask_user_interaction(
+            microscope,
+            msg="The AutoFocus routine has failed, please correct the focus manually.",
+            beam_type=BeamType.ELECTRON,
+        )
 
     # select the lamella and landing positions
     sample = select_lamella_positions(
@@ -1526,3 +1537,24 @@ def run_setup_autoliftout(
     )
 
     return sample
+
+
+def validate_needle_insertion(microscope: SdbMicroscopeClient, settings: dict) -> None:
+    
+    # move needle to liftout start position
+    ret = calibration.validate_stage_height_for_needle_insertion(
+        microscope, settings
+    )
+
+    while ret is False:
+        windows.ask_user_interaction(
+            microscope,
+            msg="""The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
+            "The needle will contact the sample, and it is unsafe to insert the needle. "
+            "\nPlease manually refocus and link the stage, then press OK to continue. """,
+            beam_type=BeamType.ELECTRON,
+        )
+        
+        ret = calibration.validate_stage_height_for_needle_insertion(
+            microscope, settings
+        )

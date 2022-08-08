@@ -83,12 +83,12 @@ def load_full_config(
     settings["protocol"] = config_protocol
 
     # validation
-    settings = _format_dictionary(settings)
+    # settings = _format_dictionary(settings)
 
     return settings
 
 
-def _format_dictionary(dictionary):
+def _format_dictionary(dictionary: dict):
     """Recursively traverse dictionary and covert all numeric values to flaot.
 
     Parameters

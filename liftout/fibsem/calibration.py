@@ -12,7 +12,7 @@ from autoscript_sdb_microscope_client.structures import (
 )
 from liftout import utils
 from liftout.detection import detection
-from liftout.detection.utils import DetectionResult
+from liftout.detection.utils import DetectionResult, DetectionType
 from liftout.fibsem import acquire, movement
 from liftout.fibsem.acquire import ImageSettings, BeamType
 from liftout.fibsem.sample import (
@@ -370,8 +370,8 @@ def create_rect_mask(img: np.ndarray, pt: Point, w: int, h: int, sigma: int = 0)
 
     mask = np.zeros_like(img)
 
-    y_min, y_max = np.clip(pt.y-h, 0, img.shape[1]), np.clip(pt.y+h, 0, img.shape[1])
-    x_min, x_max = np.clip(pt.x-w, 0, img.shape[1]), np.clip(pt.x+w, 0, img.shape[1])
+    y_min, y_max = int(np.clip(pt.y-h/2, 0, img.shape[1])), int(np.clip(pt.y+h/2, 0, img.shape[1]))
+    x_min, x_max = int(np.clip(pt.x-w/2, 0, img.shape[1])), int(np.clip(pt.x+w/2, 0, img.shape[1]))
 
     mask[y_min:y_max, x_min:x_max] = 1
 
@@ -380,20 +380,22 @@ def create_rect_mask(img: np.ndarray, pt: Point, w: int, h: int, sigma: int = 0)
 
     return mask 
 
-def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True):
+def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True, use_lamella_height: bool = False):
     """Create a mask around the lamella"""
 
     # get real size from protocol
-    lamella_height = settings["protocol"]["lamella"]["lamella_height"]
     lamella_width = settings["protocol"]["lamella"]["lamella_width"]
-    trench_height = settings["protocol"]["lamella"]["protocol_stages"][0]["trench_height"]
+    if use_lamella_height:
+        lamella_height = settings["protocol"]["lamella"]["lamella_height"]
+    else:
+        lamella_height = settings["protocol"]["lamella"]["protocol_stages"][0]["trench_height"]
 
     # convert to px
     pixelsize = img.metadata.binary_result.pixel_size.x
     vfw = img.height * pixelsize
     hfw = img.width * pixelsize
     
-    lamella_height_px = int((trench_height / vfw) * img.height) 
+    lamella_height_px = int((lamella_height / vfw) * img.height) 
     lamella_width_px = int((lamella_width / hfw) * img.width) 
 
     if circ:
@@ -406,6 +408,42 @@ def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ
             pt=Point(img.data.shape[1]//2, img.data.shape[0]//2),
             w=lamella_width_px * factor, 
             h=lamella_height_px * factor, sigma=3)
+
+    return mask
+
+def create_lamella_mask_v2(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True, pt: Point = None, use_lamella_height: bool = False):
+    """Create a mask around the lamella"""
+
+    if pt is None:
+        pt = Point(img.data.shape[1]//2, img.data.shape[0]//2)
+
+    # get real size from protocol
+    lamella_width = settings["protocol"]["lamella"]["lamella_width"]
+    if use_lamella_height:
+        lamella_height = settings["protocol"]["lamella"]["lamella_height"]
+    else:
+        lamella_height = settings["protocol"]["lamella"]["protocol_stages"][0]["trench_height"]
+        
+    # convert to px
+    pixelsize = img.metadata.binary_result.pixel_size.x
+    vfw = img.height * pixelsize
+    hfw = img.width * pixelsize
+    
+    lamella_height_px = int((lamella_height / vfw) * img.height) 
+    lamella_width_px = int((lamella_width / hfw) * img.width) 
+
+    print(lamella_height_px, lamella_width_px)
+
+    if circ:
+        mask = circ_mask(
+            size=(img.data.shape[1], img.data.shape[0]), 
+            radius=max(lamella_height_px, lamella_width_px) * factor , sigma=12
+        )
+    else:
+        mask = create_rect_mask(img=img.data,  
+            pt=pt,
+            w=int(lamella_width_px * factor), 
+            h=(lamella_height_px * factor), sigma=3)
 
     return mask
 
@@ -901,6 +939,33 @@ def correct_stage_drift_with_ml(
     acquire.take_reference_images(microscope, image_settings)
 
 
+def auto_shift_detection(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    image: AdornedImage, 
+    ref_image: AdornedImage,
+    lamella: Lamella,
+    shift_type: tuple[DetectionType],
+    initial_point: Point = None
+):
+
+    from liftout.gui.detection_window import validate_detection_v2
+
+    # det features
+    det = detection.locate_shift_between_features_v2(
+            adorned_img=image, 
+            ref_image=ref_image, 
+            shift_type=shift_type, 
+            settings=settings,
+            initial_point=initial_point)
+
+    # validate features
+    det = validate_detection_v2(microscope, settings, det, lamella)
+
+    return det
+
+    
+
 def validate_detection(
     microscope: SdbMicroscopeClient,
     settings: dict,
@@ -936,12 +1001,12 @@ def validate_detection(
 
 
 def validate_stage_height_for_needle_insertion(
-    microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings
-) -> None:
-    from liftout.gui import windows
+    microscope: SdbMicroscopeClient, settings: dict) -> None:
 
     stage = microscope.specimen.stage
     stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
+
+    valid_stage_height = True
 
     if stage.current_position.z < stage_height_limit:
 
@@ -949,15 +1014,9 @@ def validate_stage_height_for_needle_insertion(
         logging.warning(f"Calibration error detected: stage position height")
         logging.warning(f"Stage Position: {stage.current_position}")
 
-        windows.ask_user_interaction(
-            microscope,
-            msg="""The system has identified the distance between the sample and the pole piece is less than 3.7mm. "
-            "The needle will contact the sample, and it is unsafe to insert the needle. "
-            "\nPlease manually refocus and link the stage, then press OK to continue. """,
-            beam_type=BeamType.ELECTRON,
-        )
+        valid_stage_height = False
 
-    return
+    return valid_stage_height
 
 
 def validate_focus(
@@ -967,23 +1026,13 @@ def validate_focus(
     link: bool = True,
 ) -> None:
 
-    from liftout.gui import windows
-
     # check focus distance is within tolerance
     if link:
         movement.auto_link_stage(microscope)  # TODO: remove?
 
-    if not check_working_distance_is_within_tolerance(
+    return check_working_distance_is_within_tolerance(
         microscope, settings=settings, beam_type=BeamType.ELECTRON
-    ):
-        logging.warning("Autofocus has failed")
-        windows.ask_user_interaction(
-            microscope,
-            msg="The AutoFocus routine has failed, please correct the focus manually.",
-            beam_type=BeamType.ELECTRON,
-        )
-
-    return
+    )
 
 
 

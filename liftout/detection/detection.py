@@ -222,33 +222,7 @@ def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedIma
 
 
 
-def validate_detection_v2(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    detection_result: DetectionResult,
-    image_settings: ImageSettings,
-    lamella: Lamella,
-    beam_type: BeamType = BeamType.ELECTRON,
-    parent=None,
-):
-    # TODO: validate the detection shift type...
-    from liftout.gui.detection_window import GUIDetectionWindow
 
-    image_settings.beam_type = beam_type  # change to correct beamtype
-
-    # user validates detection result
-    detection_window = GUIDetectionWindow(
-        microscope=microscope,
-        settings=settings,
-        image_settings=image_settings,
-        detection_result=detection_result,
-        lamella=lamella,
-        parent=parent,
-    )
-    detection_window.show()
-    detection_window.exec_()
-
-    return detection_window.detection_result
 
 def get_initial_position(img: AdornedImage, settings: dict, det_type: DetectionType) -> Point:
 
