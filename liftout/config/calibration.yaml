@@ -14,6 +14,9 @@ gamma: # gamma correction parameters
   max_gamma: 1.8
   scale_factor: 0.01
   threshold: 46 # px
+initial:
+  needle_eb_initial: [400, 200]
+  needle_ib_initial: [800, 400]
 limits:
   max_eb_hfw: 2700.0e-6
   max_ib_hfw: 900.0e-6
