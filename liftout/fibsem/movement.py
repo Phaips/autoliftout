@@ -307,11 +307,8 @@ def z_corrected_needle_movement(
 
 
 def retract_needle(
-    microscope: SdbMicroscopeClient, park_position: ManipulatorPosition
-) -> ManipulatorPosition:
+    microscope: SdbMicroscopeClient) -> ManipulatorPosition:
     """Retract the needle and multichem, preserving the correct park position.
-    park_position : autoscript_sdb_microscope_client.structures.ManipulatorPosition
-        The parking position for the needle manipulator when inserted.
     """
 
     # Retract the multichem

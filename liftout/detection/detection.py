@@ -220,10 +220,6 @@ def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedIma
     return detection_result
 
 
-
-
-
-
 def get_initial_position(img: AdornedImage, settings: dict, det_type: DetectionType) -> Point:
 
     beam_type = img.metadata.acquisition.beam_type

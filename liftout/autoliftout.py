@@ -230,14 +230,7 @@ def liftout_lamella(
     image_settings.label = f"ref_needle_liftout"
     acquire.take_reference_images(microscope, image_settings)
 
-    # validate needle insertion conditions
-    validate_needle_insertion(microscope, settings)
 
-    # insert the needle
-    park_position = movement.move_needle_to_liftout_position(microscope)
-    logging.info(
-        f"{lamella.current_state.stage.name}: needle inserted to park positon: {park_position}"
-    )
 
     # land needle on lamella
     lamella = land_needle_on_milled_lamella_v2(
@@ -288,11 +281,11 @@ def liftout_lamella(
         time.sleep(1)
 
     # reference images after liftout complete
-    image_settings.label = f"liftout_of_trench"
+    image_settings.label = f"ref_liftout"
     acquire.take_reference_images(microscope, image_settings)
 
     # move needle to park position
-    movement.retract_needle(microscope, park_position)
+    movement.retract_needle(microscope)
 
     return lamella
 
@@ -306,6 +299,15 @@ def land_needle_on_milled_lamella(
 
     # bookkeeping
     image_settings.save_path = lamella.path
+
+    # validate needle insertion conditions
+    validate_needle_insertion(microscope, settings)
+
+    # insert the needle
+    park_position = movement.move_needle_to_liftout_position(microscope)
+    logging.info(
+        f"{lamella.current_state.stage.name}: needle inserted to park positon: {park_position}"
+    )
 
     # reference images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
@@ -409,6 +411,15 @@ def land_needle_on_milled_lamella_v2(
 
     # bookkeeping
     image_settings.save_path = lamella.path
+
+    # validate needle insertion conditions
+    validate_needle_insertion(microscope, settings)
+
+    # insert the needle
+    park_position = movement.move_needle_to_liftout_position(microscope)
+    logging.info(
+        f"{lamella.current_state.stage.name}: needle inserted to park positon: {park_position}"
+    )
 
     # reference images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
@@ -543,7 +554,7 @@ def land_lamella(
 
     ############################## LAND_LAMELLA ##############################
     validate_needle_insertion(microscope, settings)
-    park_position = movement.move_needle_to_landing_position(microscope)
+    movement.move_needle_to_landing_position(microscope)
 
     #### Y-MOVE (ELECTRON)
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
@@ -748,7 +759,7 @@ def land_lamella(
         time.sleep(1)
 
     # move needle to park position
-    movement.retract_needle(microscope, park_position)
+    movement.retract_needle(microscope)
     logging.info(f"{lamella.current_state.stage.name}: needle retracted.")
 
     # reference images
@@ -842,7 +853,7 @@ def reset_needle(
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     # retract needle
-    movement.retract_needle(microscope, park_position)
+    movement.retract_needle(microscope)
 
     # reset stage position
     stage_settings = MoveSettings(rotate_compucentric=True)
@@ -1250,8 +1261,6 @@ def run_thinning_workflow(
 
 def get_current_lamella(
     microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
     sample: Sample,
 ) -> bool:
 
@@ -1281,7 +1290,7 @@ def user_select_feature(
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
     image_settings.save = False
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="centre_ib"
+        microscope, settings, image_settings, msg_type="centre_ib", msg=msg,
     )
 
     return calibration.get_raw_stage_position(microscope)
@@ -1437,7 +1446,7 @@ def select_lamella_positions(
 ):
 
     select_another = get_current_lamella(
-        microscope, settings, image_settings, sample
+        microscope, sample
     )
 
     # allow the user to select additional lamella positions
@@ -1453,7 +1462,7 @@ def select_lamella_positions(
 
         # select another?
         select_another = get_current_lamella(
-            microscope, settings, image_settings, sample
+            microscope, sample
         )
 
         # state variable

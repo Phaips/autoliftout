@@ -4,7 +4,6 @@ import sys
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client.structures import StagePosition
-from liftout import utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
 from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings

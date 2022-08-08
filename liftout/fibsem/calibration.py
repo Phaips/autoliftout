@@ -949,7 +949,6 @@ def auto_shift_detection(
     initial_point: Point = None
 ):
 
-    from liftout.gui.detection_window import validate_detection_v2
 
     # det features
     det = detection.locate_shift_between_features_v2(
@@ -960,7 +959,8 @@ def auto_shift_detection(
             initial_point=initial_point)
 
     # validate features
-    det = validate_detection_v2(microscope, settings, det, lamella)
+    from liftout.gui import windows
+    det = windows.validate_detection_v2(microscope, settings, det, lamella)
 
     return det
 
