@@ -1,12 +1,10 @@
-import datetime
 import json
 import logging
 import os
-import time
 from pathlib import Path
 
-import yaml
 import numpy as np
+import yaml
 
 import liftout
 
@@ -115,30 +113,12 @@ def _format_dictionary(dictionary: dict):
     return dictionary
 
 
-def validate_settings(microscope, config):
-    from liftout import user_input
-
-    user_input._validate_configuration_values(microscope=microscope, dictionary=config)
-    user_input._validate_scanning_rotation(microscope=microscope)
-
-
 def make_logging_directory(path: Path = None, name="run"):
     if path is None:
         path = os.path.join(os.path.dirname(liftout.__file__), "log")
     directory = os.path.join(path, name)
     os.makedirs(directory, exist_ok=True)
     return directory
-
-
-def save_image(image, save_path, label=""):
-    os.makedirs(save_path, exist_ok=True)
-    path = os.path.join(save_path, f"{label}.tif")
-    image.save(path)
-
-
-def current_timestamp():
-    return datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d.%I-%M-%S%p")
-
 
 def save_metadata(settings, path):
     fname = os.path.join(path, "metadata.json")
@@ -157,6 +137,7 @@ def get_last_log_message(path: Path) -> str:
 
 def plot_two_images(img1, img2) -> None:
     import matplotlib.pyplot as plt
+
     from liftout.fibsem.structures import Point
 
     c = Point(img1.data.shape[1]//2, img1.data.shape[0]//2)
@@ -171,11 +152,11 @@ def plot_two_images(img1, img2) -> None:
 
 # cross correlate
 def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int = 128, hp:int = 6, sigma: int = 6, ref_mask: np.ndarray = None):
-    import numpy as np
-    from liftout.fibsem import calibration
     import matplotlib.pyplot as plt
-    from liftout.fibsem.structures import Point
+    import numpy as np
 
+    from liftout.fibsem import calibration
+    from liftout.fibsem.structures import Point
 
     # rotate ref
     if rotate:
@@ -211,3 +192,109 @@ def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int 
     ax[3].plot(mid.x-dx_p, mid.y-dy_p, "m+", ms=50, markeredgewidth=2)
     ax[3].set_title("New Image Shifted")
     plt.show()
+
+
+### VALIDATION
+
+def _validate_configuration_values(microscope, dictionary):
+    """Recursively traverse dictionary and validate all parameters.
+
+    Parameters
+    ----------
+    dictionary : dict
+        Any arbitrarily structured python dictionary.
+
+    Returns
+    ---------
+    dictionary: dict
+        Validated Configuration Dictionary
+    Raises
+    -------
+    ValueError
+        The parameter is not within the available range for the microscope.
+    """
+    
+    from liftout.fibsem import validation
+
+    for key, item in dictionary.items():
+        if isinstance(item, dict):
+            _validate_configuration_values(microscope, item)
+        elif isinstance(item, list):
+            dictionary[key] = [_validate_configuration_values(microscope, i) for i in item]
+        else:
+            if isinstance(item, float):
+                if "hfw" in key:
+                    if "max" in key or "grid" in key:
+                        continue  # skip checks on these keys
+                    validation._validate_horizontal_field_width(microscope=microscope, 
+                        horizontal_field_widths=[item])
+
+                if "milling_current" in key:
+                    validation._validate_ion_beam_currents(microscope, [item])
+
+                if "imaging_current" in key:
+                    validation._validate_electron_beam_currents(microscope, [item])
+
+                if "resolution" in key:
+                    validation._validate_scanning_resolutions(microscope, [item])
+
+                if "dwell_time" in key:
+                    validation._validate_dwell_time(microscope, [item])
+
+            if isinstance(item, str):
+                if "application_file" in key:
+                    validation._validate_application_files(microscope, [item])
+                if "weights" in key:
+                    _validate_model_weights_file(item)
+                    
+    return dictionary
+
+def _validate_model_weights_file(filename):
+    import os
+
+    from liftout.model import models
+    weights_path = os.path.join(os.path.dirname(models.__file__), filename)
+    if not os.path.exists(weights_path):
+        raise ValueError(
+            f"Unable to find model weights file {weights_path} specified."
+        )
+
+### SETUP
+def quick_setup():
+    """Quick setup for microscope, settings, and iamge_settings"""
+    from liftout.fibsem import acquire
+    from liftout.fibsem import utils as fibsem_utils
+
+    settings = load_full_config()
+
+    import os
+
+    path = os.path.join(os.getcwd(), "tools/test")
+    os.makedirs(path, exist_ok=True)
+    configure_logging(path)
+
+    microscope = fibsem_utils.connect_to_microscope(
+        ip_address=settings["system"]["ip_address"]
+    )
+    image_settings = acquire.update_image_settings_v3(settings, path=path)
+
+    return microscope, settings, image_settings
+
+
+def full_setup():
+    """Quick setup for microscope, settings,  image_settings, sample and lamella"""
+    import os
+
+    from liftout.fibsem.sample import Lamella, Sample
+
+    microscope, settings, image_settings = quick_setup()
+
+    # sample
+    sample = Sample(path = os.path.dirname(image_settings.save_path), name="test")
+    
+    # lamella
+    lamella = Lamella(sample.path, 999, _petname="999-test-mule")
+    sample.positions[lamella._number] = lamella
+    sample.save()
+
+    return microscope, settings, image_settings, sample, lamella

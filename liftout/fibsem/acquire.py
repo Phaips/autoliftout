@@ -9,10 +9,10 @@ from autoscript_sdb_microscope_client.structures import (AdornedImage,
                                                          GrabFrameSettings,
                                                          Rectangle,
                                                          RunAutoCbSettings)
-from liftout import utils
 from skimage import exposure
+from liftout.fibsem import utils
 
-
+# TODO: conver these to match autoscript...
 class BeamType(Enum):
     ELECTRON = 1
     ION = 2
@@ -238,3 +238,24 @@ def update_image_settings_v3(
     )
 
     return image_settings
+
+
+def reset_beam_shifts(microscope: SdbMicroscopeClient):
+    """Set the beam shift to zero for the electron and ion beams
+
+    Args:
+        microscope (SdbMicroscopeClient): Autoscript microscope object
+    """
+    from autoscript_sdb_microscope_client.structures import (GrabFrameSettings,
+                                                             Point)
+
+    # reset zero beamshift
+    logging.info(
+        f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} "
+    )
+    microscope.beams.electron_beam.beam_shift.value = Point(0, 0)
+    logging.info(
+        f"reseting ibeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} "
+    )
+    microscope.beams.ion_beam.beam_shift.value = Point(0, 0)
+    logging.info(f"reset beam shifts to zero complete")

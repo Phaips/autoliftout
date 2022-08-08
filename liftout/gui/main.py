@@ -7,11 +7,11 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from liftout import autoliftout, utils
 from liftout.fibsem import acquire, movement
 from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem import validation
 from liftout.fibsem.acquire import ImageSettings
 from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import main as gui_main
+from liftout.gui import windows
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
@@ -171,7 +171,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         # move to the initial sample grid position
         movement.move_to_sample_grid(self.microscope, self.settings)
         # sputter
-        fibsem_utils.sputter_platinum_on_whole_sample_grid(
+        windows.sputter_platinum_on_whole_sample_grid(
             self.microscope, self.settings, self.image_settings
         )
 
@@ -185,14 +185,16 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     ) -> SdbMicroscopeClient:
 
         # TODO: add a ui indicator, as this can take a little while
-        microscope = fibsem_utils.connect_to_microscope(
-            ip_address=ip_address, parent_ui=self
-        )
+        microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
         if microscope:
             # run validation and show in ui
-            validation.run_validation_ui(
+            windows.run_validation_ui(
                 microscope=microscope, settings=settings, log_path=log_path,
+            )
+        else:
+            ui_utils.display_error_message(
+                f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
             )
 
         return microscope

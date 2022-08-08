@@ -440,7 +440,7 @@ def main():
 
     from liftout.fibsem import calibration
 
-    calibration.reset_beam_shifts(microscope)
+    acquire.reset_beam_shifts(microscope)
 
     app = QtWidgets.QApplication([])
     qt_app = GUIMillingWindow(

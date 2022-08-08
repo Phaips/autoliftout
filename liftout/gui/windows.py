@@ -1,14 +1,18 @@
 import logging
+from pathlib import Path
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from liftout import utils
 from liftout.detection.detection import DetectionResult
-from liftout.fibsem import milling, movement
+from liftout.fibsem import milling, movement, validation
 from liftout.fibsem.acquire import BeamType, ImageSettings
 from liftout.fibsem.sample import Lamella
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
+from PyQt5.QtWidgets import QMessageBox
+from liftout.fibsem import utils as fibsem_utils
 
 
 def ask_user_interaction(
@@ -97,3 +101,124 @@ def validate_detection_v2(
     detection_window.exec_()
 
     return detection_window.detection_result
+
+
+def validate_detection(
+    microscope: SdbMicroscopeClient,
+    settings: dict,
+    image_settings: ImageSettings,
+    lamella: Lamella,
+    shift_type: tuple,
+    beam_type: BeamType = BeamType.ELECTRON,
+    parent=None,
+):
+    # TODO: validate the detection shift type...
+    from liftout.detection import detection
+    from liftout.gui.detection_window import GUIDetectionWindow
+
+    image_settings.beam_type = beam_type  # change to correct beamtype
+
+    # run model detection
+    detection_result = detection.identify_shift_using_machine_learning(
+        microscope, image_settings, settings, shift_type=shift_type
+    )
+
+    # user validates detection result
+    detection_window = GUIDetectionWindow(
+        microscope=microscope,
+        settings=settings,
+        image_settings=image_settings,
+        detection_result=detection_result,
+        lamella=lamella,
+        parent=parent,
+    )
+    detection_window.show()
+    detection_window.exec_()
+
+    return detection_window.detection_result
+
+
+def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path: Path):
+    """Run validation checks to confirm microscope state before run."""
+
+    msg = QMessageBox()
+    msg.setWindowTitle("Microscope State Validation")
+    msg.setText("Do you want to validate the microscope state?")
+    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msg.setIcon(QMessageBox.Question)
+    button = msg.exec()
+
+    if button == QMessageBox.No:
+        logging.info(f"PRE_RUN_VALIDATION cancelled by user.")
+        return
+
+    logging.info(f"INIT | PRE_RUN_VALIDATION | STARTED")
+
+    # run validation
+    validation.validate_initial_microscope_state(microscope, settings)
+
+    # validate user configuration
+    utils.validate_settings(microscope=microscope, config=settings)
+
+    # reminders
+    reminder_str = """Please check that the following steps have been completed:
+    \n - Sample is inserted
+    \n - Confirm Operating Temperature
+    \n - Needle Calibration
+    \n - Ion Column Calibration
+    \n - Crossover Calibration
+    \n - Plasma Gas Valve Open
+    \n - Initial Grid and Landing Positions
+    """
+    msg = QMessageBox()
+    msg.setWindowTitle("AutoLiftout Initialisation Checklist")
+    msg.setText(reminder_str)
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.exec_()
+
+    # Loop backwards through the log, until we find the start of validation
+    with open(log_path) as f:
+        lines = f.read().splitlines()
+        validation_warnings = []
+        for line in lines[::-1]:
+            if "PRE_RUN_VALIDATION" in line:
+                break
+            if "WARNING" in line:
+                logging.info(line)
+                validation_warnings.append(line)
+        logging.info(
+            f"{len(validation_warnings)} warnings were identified during intial setup."
+        )
+
+    if validation_warnings:
+        warning_str = f"The following {len(validation_warnings)} warnings were identified during initialisation."
+
+        for warning in validation_warnings[::-1]:
+            warning_str += f"\n{warning.split('—')[-1]}"
+
+        msg = QMessageBox()
+        msg.setWindowTitle("AutoLiftout Initialisation Warnings")
+        msg.setText(warning_str)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
+
+    logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
+
+
+def sputter_platinum_on_whole_sample_grid(
+    microscope: SdbMicroscopeClient = None,
+    settings: dict = None,
+) -> None:
+    """Move to the sample grid and sputter platinum over the whole grid"""
+
+    # Whole-grid platinum deposition
+    response = ask_user_interaction(
+        microscope=microscope,
+        msg="Do you want to sputter the whole \nsample grid with platinum?",
+        beam_type=BeamType.ELECTRON,
+    )
+
+    if response:
+        fibsem_utils.sputter_platinum(microscope, settings, whole_grid=True)
+
+    return

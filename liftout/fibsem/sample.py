@@ -13,6 +13,7 @@ from autoscript_sdb_microscope_client.structures import (AdornedImage, StagePosi
 from liftout import utils
 from liftout.fibsem.acquire import BeamType
 
+# move this up into liftout..
 
 class AutoLiftoutStage(Enum):
     Initialisation = -1

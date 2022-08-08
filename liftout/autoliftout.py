@@ -1522,7 +1522,7 @@ def run_setup_autoliftout(
     acquire.new_image(microscope, image_settings)
 
     # sputter platinum to protect grid and prevent charging...
-    fibsem_utils.sputter_platinum_on_whole_sample_grid(
+    windows.sputter_platinum_on_whole_sample_grid(
         microscope, settings, image_settings
     )
 

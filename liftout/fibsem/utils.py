@@ -1,13 +1,13 @@
+import datetime
 import logging
+import os
 import time
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from liftout.fibsem import movement
-from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.utils import configure_logging
 
 
-def connect_to_microscope(ip_address="10.0.0.1", parent_ui=None):
+def connect_to_microscope(ip_address="10.0.0.1"):
     """Connect to the FIBSEM microscope."""
     try:
         # TODO: get the port
@@ -16,16 +16,7 @@ def connect_to_microscope(ip_address="10.0.0.1", parent_ui=None):
         microscope.connect(ip_address)
         logging.info(f"Microscope client connected to [{ip_address}]")
     except Exception as e:
-
-        if parent_ui:
-            import liftout.gui.utils as ui_utils
-
-            ui_utils.display_error_message(
-                f"AutoLiftout is unavailable. Unable to connect to microscope: {e}"
-            )
-        else:
-            raise e
-
+        logging.error(f"Unable to connect to the microscope: {e}")
         microscope = None
 
     return microscope
@@ -68,7 +59,6 @@ def sputter_platinum(microscope, settings, whole_grid=False):
 
     # Create sputtering pattern
     microscope.beams.electron_beam.horizontal_field_width.value = hfw
-    horizontal_offset = 30e-6
     pattern = microscope.patterning.create_line(
         -line_pattern_length / 2,  # x_start
         +line_pattern_length,  # y_start
@@ -103,78 +93,11 @@ def sputter_platinum(microscope, settings, whole_grid=False):
     logging.info("sputtering platinum finished.")
 
 
-def sputter_platinum_on_whole_sample_grid(
-    microscope: SdbMicroscopeClient = None,
-    settings: dict = None,
-    image_settings: ImageSettings = None,
-) -> None:
-    """Move to the sample grid and sputter platinum over the whole grid"""
-    from liftout.gui.windows import ask_user_interaction
+def save_image(image, save_path, label=""):
+    os.makedirs(save_path, exist_ok=True)
+    path = os.path.join(save_path, f"{label}.tif")
+    image.save(path)
 
-    # Whole-grid platinum deposition
-    response = ask_user_interaction(
-        microscope=microscope,
-        msg="Do you want to sputter the whole \nsample grid with platinum?",
-        beam_type=BeamType.ELECTRON,
-    )
+def current_timestamp():
+    return datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d.%I-%M-%S%p")
 
-    if response:
-        sputter_platinum(microscope, settings, whole_grid=True)
-
-    return
-
-
-def quick_setup():
-    """Quick setup for microscope, settings, and iamge_settings"""
-    from liftout import utils
-    from liftout.fibsem import acquire
-    from liftout.fibsem import utils as fibsem_utils
-
-    settings = utils.load_full_config()
-
-    import os
-
-    path = os.path.join(os.getcwd(), "tools/test")
-    os.makedirs(path, exist_ok=True)
-    configure_logging(path)
-
-    microscope = fibsem_utils.connect_to_microscope(
-        ip_address=settings["system"]["ip_address"]
-    )
-    image_settings = acquire.update_image_settings_v3(settings, path=path)
-
-    return microscope, settings, image_settings
-
-
-def full_setup():
-    """Quick setup for microscope, settings,  image_settings, sample and lamella"""
-    from liftout import utils
-    from liftout.fibsem import acquire
-    from liftout.fibsem import utils as fibsem_utils
-    from liftout.fibsem.sample import Sample, Lamella
-    import os
-
-    # settings
-    settings = utils.load_full_config()
-
-    # paths
-    path = os.path.join(os.getcwd(), "tools/test")
-    os.makedirs(path, exist_ok=True)
-    configure_logging(path)
-
-    # microscope
-    microscope = fibsem_utils.connect_to_microscope(
-        ip_address=settings["system"]["ip_address"]
-    )
-    # image settings
-    image_settings = acquire.update_image_settings_v3(settings, path=path)
-
-    # sample
-    sample = Sample(path = os.path.dirname(image_settings.save_path), name="test")
-    
-    # lamella
-    lamella = Lamella(sample.path, 999, _petname="999-test-mule")
-    sample.positions[lamella._number] = lamella
-    sample.save()
-
-    return microscope, settings, image_settings, sample, lamella

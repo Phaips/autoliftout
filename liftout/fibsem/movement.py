@@ -1,7 +1,6 @@
-from random import sample
 import time
 import logging
-from turtle import tilt
+
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (

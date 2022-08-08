@@ -10,10 +10,7 @@ from autoscript_sdb_microscope_client.structures import (
     AdornedImage,
     StagePosition,
 )
-from liftout import utils
-from liftout.detection import detection
-from liftout.detection.utils import DetectionResult, DetectionType
-from liftout.fibsem import acquire, movement
+from liftout.fibsem import acquire, movement, utils
 from liftout.fibsem.acquire import ImageSettings, BeamType
 from liftout.fibsem.sample import (
     AutoLiftoutStage,
@@ -23,8 +20,6 @@ from liftout.fibsem.sample import (
     ReferenceImages,
 )
 from liftout.fibsem.structures import Point
-
-from liftout.model import models
 from PIL import Image, ImageDraw
 from scipy import fftpack
 
@@ -61,7 +56,7 @@ def correct_stage_drift(
     for ref_image in [ref_lowres, ref_highres]:
 
         if use_ref_mask:
-            ref_mask = create_lamella_mask(ref_image, settings, factor = 2)
+            ref_mask = create_lamella_mask(ref_image, settings, factor = 4)
         else: 
             ref_mask = None
 
@@ -92,7 +87,7 @@ def match_image_settings(
     image_settings.dwell_time = ref_image.metadata.scan_settings.dwell_time
     image_settings.beam_type = beam_type
     image_settings.save = True
-    image_settings.label = f"drift_correction_{utils.current_timestamp()}"
+    image_settings.label = utils.current_timestamp()
 
     return image_settings
 
@@ -150,24 +145,15 @@ def check_shift_within_tolerance(
     return abs(dx) < X_THRESHOLD and abs(dy) < Y_THRESHOLD
 
 
-def identify_shift_using_machine_learning(
-    microscope: SdbMicroscopeClient,
-    image_settings: ImageSettings,
-    settings: dict,
-    shift_type: tuple,
-) -> DetectionResult:
+def measure_brightness(img: AdornedImage, crop_size: int = None) -> float:
+    cx, cy = img.data.shape[1] //2, img.data.shape[0] // 2
 
-    # load model
-    model = detection.load_detection_model(settings)
+    if crop_size is not None:
+        img = img.data[cy-crop_size:cy+crop_size, cx-crop_size:cx+crop_size]
+    else:
+        img = img.data
 
-    # take new image
-    image = acquire.new_image(microscope, image_settings)
-
-    # run detection
-    det_result = detection.locate_shift_between_features(model, image, shift_type=shift_type)
-
-    return det_result
-
+    return np.mean(img), img
 
 def rotate_AdornedImage(image: AdornedImage):
     """Rotate the AdornedImage 180 degrees."""
@@ -335,6 +321,8 @@ def _mask_rectangular(image_shape, sigma=5.0, *, start=None, extent=None):
 
 def cosine_stretch(img: AdornedImage, tilt_degrees: float):
     
+    # TODO: do smaller version for negative tilt??
+
     tilt = np.deg2rad(tilt_degrees)
 
     shape = int(img.data.shape[0] / np.cos(tilt)), int(img.data.shape[1] / np.cos(tilt))
@@ -380,40 +368,10 @@ def create_rect_mask(img: np.ndarray, pt: Point, w: int, h: int, sigma: int = 0)
 
     return mask 
 
-def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True, use_lamella_height: bool = False):
+def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True, pt: Point = None, use_lamella_height: bool = False) -> np.ndarray:
     """Create a mask around the lamella"""
 
-    # get real size from protocol
-    lamella_width = settings["protocol"]["lamella"]["lamella_width"]
-    if use_lamella_height:
-        lamella_height = settings["protocol"]["lamella"]["lamella_height"]
-    else:
-        lamella_height = settings["protocol"]["lamella"]["protocol_stages"][0]["trench_height"]
-
-    # convert to px
-    pixelsize = img.metadata.binary_result.pixel_size.x
-    vfw = img.height * pixelsize
-    hfw = img.width * pixelsize
-    
-    lamella_height_px = int((lamella_height / vfw) * img.height) 
-    lamella_width_px = int((lamella_width / hfw) * img.width) 
-
-    if circ:
-        mask = circ_mask(
-            size=(img.data.shape[1], img.data.shape[0]), 
-            radius=max(lamella_height_px, lamella_width_px) * factor , sigma=12
-        )
-    else:
-        mask = create_rect_mask(img=img.data,  
-            pt=Point(img.data.shape[1]//2, img.data.shape[0]//2),
-            w=lamella_width_px * factor, 
-            h=lamella_height_px * factor, sigma=3)
-
-    return mask
-
-def create_lamella_mask_v2(img: AdornedImage, settings: dict, factor: int = 2, circ: bool = True, pt: Point = None, use_lamella_height: bool = False):
-    """Create a mask around the lamella"""
-
+    # centre mask point
     if pt is None:
         pt = Point(img.data.shape[1]//2, img.data.shape[0]//2)
 
@@ -432,8 +390,6 @@ def create_lamella_mask_v2(img: AdornedImage, settings: dict, factor: int = 2, c
     lamella_height_px = int((lamella_height / vfw) * img.height) 
     lamella_width_px = int((lamella_width / hfw) * img.width) 
 
-    print(lamella_height_px, lamella_width_px)
-
     if circ:
         mask = circ_mask(
             size=(img.data.shape[1], img.data.shape[0]), 
@@ -443,7 +399,7 @@ def create_lamella_mask_v2(img: AdornedImage, settings: dict, factor: int = 2, c
         mask = create_rect_mask(img=img.data,  
             pt=pt,
             w=int(lamella_width_px * factor), 
-            h=(lamella_height_px * factor), sigma=3)
+            h=int(lamella_height_px * factor), sigma=3)
 
     return mask
 
@@ -545,225 +501,6 @@ def set_microscope_state(microscope, microscope_state: MicroscopeState):
 
     logging.info(f"microscope state restored")
     return
-
-
-def reset_beam_shifts(microscope: SdbMicroscopeClient):
-    """Set the beam shift to zero for the electron and ion beams
-
-    Args:
-        microscope (SdbMicroscopeClient): Autoscript microscope object
-    """
-    from autoscript_sdb_microscope_client.structures import GrabFrameSettings, Point
-
-    # reset zero beamshift
-    logging.info(
-        f"reseting ebeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} "
-    )
-    microscope.beams.electron_beam.beam_shift.value = Point(0, 0)
-    logging.info(
-        f"reseting ibeam shift to (0, 0) from: {microscope.beams.electron_beam.beam_shift.value} "
-    )
-    microscope.beams.ion_beam.beam_shift.value = Point(0, 0)
-    logging.info(f"reset beam shifts to zero complete")
-
-
-def check_working_distance_is_within_tolerance(
-    microscope, settings, beam_type: BeamType = BeamType.ELECTRON
-):
-
-    if beam_type is BeamType.ELECTRON:
-        working_distance = microscope.beams.electron_beam.working_distance
-        eucentric_height = settings["calibration"]["limits"]["eucentric_height_eb"]
-        eucentric_tolerance = settings["calibration"]["limits"][
-            "eucentric_height_tolerance"
-        ]
-
-    if beam_type is BeamType.ION:
-        working_distance = microscope.beams.electron_beam.working_distance
-        eucentric_height = settings["calibration"]["limits"]["eucentric_height_ib"]
-        eucentric_tolerance = settings["calibration"]["limits"][
-            "eucentric_height_tolerance"
-        ]
-
-    return np.isclose(working_distance, eucentric_height, atol=eucentric_tolerance)
-
-
-def validate_stage_calibration(microscope):
-
-    if not microscope.specimen.stage.is_homed:
-        logging.warning("Stage is not homed.")
-
-    if not microscope.specimen.stage.is_linked:
-        logging.warning("Stage is not linked.")
-
-    logging.info("Stage calibration validation complete.")
-
-    return
-
-
-def validate_needle_calibration(microscope):
-
-    if str(microscope.specimen.manipulator.state) == "Retracted":
-        logging.info("Needle is retracted")
-    else:
-        logging.warning("Needle is inserted. Please retract before starting.")
-        # TODO: retract automatically?
-
-    # TODO: calibrate needle?
-
-    return
-
-
-def validate_beams_calibration(microscope, settings: dict):
-    """Validate Beam Settings"""
-
-    high_voltage = float(settings["system"]["high_voltage"])  # ion
-    plasma_gas = str(settings["system"]["plasma_gas"]).capitalize()
-
-    # TODO: check beam blanks?
-    # TODO: check electron voltage?
-
-    logging.info("Validating Electron Beam")
-    if not microscope.beams.electron_beam.is_on:
-        logging.warning("Electron Beam is not on, switching on now...")
-        microscope.beams.electron_beam.turn_on()
-        assert microscope.beams.electron_beam.is_on, "Unable to turn on Electron Beam."
-        logging.warning("Electron Beam turned on.")
-
-    microscope.imaging.set_active_view(1)
-    if str(microscope.detector.type.value) != "ETD":
-        logging.warning(
-            f"Electron detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})"
-        )
-        if "ETD" in microscope.detector.type.available_values:
-            microscope.detector.type.value = "ETD"
-            logging.warning(
-                f"Changed Electron detector type to {str(microscope.detector.type.value)}"
-            )
-
-    if str(microscope.detector.mode.value) != "SecondaryElectrons":
-        logging.warning(
-            f"Electron detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}"
-        )
-        if "SecondaryElectrons" in microscope.detector.mode.available_values:
-            microscope.detector.mode.value = "SecondaryElectrons"
-            logging.warning(
-                f"Changed Electron detector mode to {str(microscope.detector.mode.value)}"
-            )
-
-    # working distances
-    logging.info(
-        f"EB Working Distance: {microscope.beams.electron_beam.working_distance.value:.4f}m"
-    )
-    if not np.isclose(
-        microscope.beams.electron_beam.working_distance.value,
-        settings["calibration"]["limits"]["eucentric_height_eb"],
-        atol=settings["calibration"]["limits"]["eucentric_height_tolerance"],
-    ):
-        logging.warning(
-            f"""Electron Beam is not close to eucentric height. It should be {settings['calibration']['limits']['eucentric_height_eb']}m
-            (Currently is {microscope.beams.electron_beam.working_distance.value:.4f}m)"""
-        )
-
-    logging.info(
-        f"E OPTICAL MODE: {str(microscope.beams.electron_beam.optical_mode.value)}"
-    )
-    logging.info(
-        f"E OPTICAL MODES:  {str(microscope.beams.electron_beam.optical_mode.available_values)}"
-    )
-
-    # Validate Ion Beam
-    logging.info("Validating Ion Beam")
-
-    if not microscope.beams.ion_beam.is_on:
-        logging.warning("Ion Beam is not on, switching on now...")
-        microscope.beams.ion_beam.turn_on()
-        assert microscope.beams.ion_beam.is_on, "Unable to turn on Ion Beam."
-        logging.warning("Ion Beam turned on.")
-
-    microscope.imaging.set_active_view(2)
-    if str(microscope.detector.type.value) != "ETD":
-        logging.warning(
-            f"Ion detector type is  should be ETD (Currently is {str(microscope.detector.type.value)})"
-        )
-        if "ETD" in microscope.detector.type.available_values:
-            microscope.detector.type.value = "ETD"
-            logging.warning(
-                f"Changed Ion detector type to {str(microscope.detector.type.value)}"
-            )
-
-    if str(microscope.detector.mode.value) != "SecondaryElectrons":
-        logging.warning(
-            f"Ion detector mode is should be SecondaryElectrons (Currently is {str(microscope.detector.mode.value)}"
-        )
-        if "SecondaryElectrons" in microscope.detector.mode.available_values:
-            microscope.detector.mode.value = "SecondaryElectrons"
-            logging.warning(
-                f"Changed Ion detector mode to {str(microscope.detector.mode.value)}"
-            )
-
-    # working distance
-    logging.info(
-        f"IB Working Distance: {microscope.beams.ion_beam.working_distance.value:.4f}m"
-    )
-    if not np.isclose(
-        microscope.beams.ion_beam.working_distance.value,
-        settings["calibration"]["limits"]["eucentric_height_ib"],
-        atol=settings["calibration"]["limits"]["eucentric_height_tolerance"],
-    ):
-        logging.warning(
-            f"Ion Beam is not close to eucentric height. It should be {settings['calibration']['limits']['eucentric_height_ib']}m \
-        (Currently is {microscope.beams.ion_beam.working_distance.value:.4f}m)"
-        )
-
-    # validate high voltage
-    high_voltage_limits = str(microscope.beams.ion_beam.high_voltage.limits)
-    logging.info(f"Ion Beam High Voltage Limits are: {high_voltage_limits}")
-
-    if microscope.beams.ion_beam.high_voltage.value != high_voltage:
-        logging.warning(
-            f"Ion Beam High Voltage should be {high_voltage}V (Currently {microscope.beams.ion_beam.high_voltage.value}V)"
-        )
-
-        if bool(microscope.beams.ion_beam.high_voltage.is_controllable):
-            logging.warning(f"Changing Ion Beam High Voltage to {high_voltage}V.")
-            microscope.beams.ion_beam.high_voltage.value = high_voltage
-            assert (
-                microscope.beams.ion_beam.high_voltage.value == high_voltage
-            ), "Unable to change Ion Beam High Voltage"
-            logging.warning(f"Ion Beam High Voltage Changed")
-
-    # validate plasma gas
-    if plasma_gas not in microscope.beams.ion_beam.source.plasma_gas.available_values:
-        logging.warning("{plasma_gas} is not available as a plasma gas.")
-
-    if microscope.beams.ion_beam.source.plasma_gas.value != plasma_gas:
-        logging.warning(
-            f"Plasma Gas is should be {plasma_gas} (Currently {microscope.beams.ion_beam.source.plasma_gas.value})"
-        )
-
-    # reset beam shifts
-    reset_beam_shifts(microscope=microscope)
-
-
-def validate_chamber(microscope):
-    """Validate the state of the chamber"""
-
-    logging.info(
-        f"Validating Vacuum Chamber State: {str(microscope.vacuum.chamber_state)}"
-    )
-    if not str(microscope.vacuum.chamber_state) == "Pumped":
-        logging.warning(
-            f"Chamber vacuum state should be Pumped (Currently is {str(microscope.vacuum.chamber_state)})"
-        )
-
-    logging.info(
-        f"Validating Vacuum Chamber Pressure: {microscope.state.chamber_pressure.value:.6f} mbar"
-    )
-    if microscope.state.chamber_pressure.value >= 1e-3:
-        logging.warning(
-            f"Chamber pressure is too high, please pump the system (Currently {microscope.state.chamber_pressure.value:.6f} mbar)"
-        )
 
 
 def beam_shift_alignment(
@@ -892,156 +629,3 @@ def automatic_eucentric_correction_v2(
     # TODO: do we want to align in x too?
 
     return
-
-
-def correct_stage_drift_with_ml(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    lamella: Lamella,
-    iterations: int = 3
-):
-    # correct stage drift using machine learning
-    from liftout.detection.utils import DetectionType
-
-
-    iteration_count = 0
-    beam_type = BeamType.ION
-    label = image_settings.label
-
-    while True:
-        image_settings.label = label + utils.current_timestamp()
-        det = validate_detection(
-            microscope,
-            settings,
-            image_settings,
-            lamella=lamella,
-            shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre),
-            beam_type=beam_type,
-        )
-
-        movement.move_stage_relative_with_corrected_movement(
-            microscope=microscope,
-            settings=settings,
-            dx=det.distance_metres.x,
-            dy=det.distance_metres.y,
-            beam_type=beam_type,
-        )
-
-        beam_type = BeamType.ELECTRON if beam_type is BeamType.ION else BeamType.ION
-
-        iteration_count += 1
-        if iteration_count >= iterations:
-            break
-
-    image_settings.save = True
-    image_settings.label = f"drift_correction_ML_final_" + utils.current_timestamp()
-    acquire.take_reference_images(microscope, image_settings)
-
-
-def auto_shift_detection(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image: AdornedImage, 
-    ref_image: AdornedImage,
-    lamella: Lamella,
-    shift_type: tuple[DetectionType],
-    initial_point: Point = None
-):
-
-
-    # det features
-    det = detection.locate_shift_between_features_v2(
-            adorned_img=image, 
-            ref_image=ref_image, 
-            shift_type=shift_type, 
-            settings=settings,
-            initial_point=initial_point)
-
-    # validate features
-    from liftout.gui import windows
-    det = windows.validate_detection_v2(microscope, settings, det, lamella)
-
-    return det
-
-    
-
-def validate_detection(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    lamella: Lamella,
-    shift_type: tuple,
-    beam_type: BeamType = BeamType.ELECTRON,
-    parent=None,
-):
-    # TODO: validate the detection shift type...
-    from liftout.gui.detection_window import GUIDetectionWindow
-
-    image_settings.beam_type = beam_type  # change to correct beamtype
-
-    # run model detection
-    detection_result = identify_shift_using_machine_learning(
-        microscope, image_settings, settings, shift_type=shift_type
-    )
-
-    # user validates detection result
-    detection_window = GUIDetectionWindow(
-        microscope=microscope,
-        settings=settings,
-        image_settings=image_settings,
-        detection_result=detection_result,
-        lamella=lamella,
-        parent=parent,
-    )
-    detection_window.show()
-    detection_window.exec_()
-
-    return detection_window.detection_result
-
-
-def validate_stage_height_for_needle_insertion(
-    microscope: SdbMicroscopeClient, settings: dict) -> None:
-
-    stage = microscope.specimen.stage
-    stage_height_limit = settings["calibration"]["limits"]["stage_height_limit"]
-
-    valid_stage_height = True
-
-    if stage.current_position.z < stage_height_limit:
-
-        # Unable to insert the needle if the stage height is below this limit (3.7e-3)
-        logging.warning(f"Calibration error detected: stage position height")
-        logging.warning(f"Stage Position: {stage.current_position}")
-
-        valid_stage_height = False
-
-    return valid_stage_height
-
-
-def validate_focus(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    link: bool = True,
-) -> None:
-
-    # check focus distance is within tolerance
-    if link:
-        movement.auto_link_stage(microscope)  # TODO: remove?
-
-    return check_working_distance_is_within_tolerance(
-        microscope, settings=settings, beam_type=BeamType.ELECTRON
-    )
-
-
-
-def measure_brightness(img: AdornedImage, crop_size: int = None) -> float:
-    cx, cy = img.data.shape[1] //2, img.data.shape[0] // 2
-
-    if crop_size is not None:
-        img = img.data[cy-crop_size:cy+crop_size, cx-crop_size:cx+crop_size]
-    else:
-        img = img.data
-
-    return np.mean(img), img
