@@ -13,7 +13,6 @@ from autoscript_sdb_microscope_client.structures import (
 from liftout import utils
 from liftout.detection import detection
 from liftout.detection.utils import DetectionResult
-from liftout.detection.DetectionModel import DetectionModel
 from liftout.fibsem import acquire, movement
 from liftout.fibsem.acquire import ImageSettings, BeamType
 from liftout.fibsem.sample import (
@@ -38,8 +37,8 @@ def correct_stage_drift(
     alignment: tuple(BeamType) = (BeamType.ELECTRON, BeamType.ELECTRON),
     rotate: bool = False,
     use_ref_mask: bool = False,
-    parent_ui=None,
 ) -> bool:
+    """Correct the stage drift by crosscorrelating low-res and high-res reference images"""
 
     # set reference images
     if alignment[0] is BeamType.ELECTRON:
@@ -57,8 +56,6 @@ def correct_stage_drift(
     if rotate:
         ref_lowres = rotate_AdornedImage(ref_lowres)
         ref_highres = rotate_AdornedImage(ref_highres)
-
-
 
     # align lowres, then highres
     for ref_image in [ref_lowres, ref_highres]:
@@ -80,18 +77,8 @@ def correct_stage_drift(
             microscope, settings, ref_lowres, new_image, ref_mask=ref_mask
         )
 
-        if ret is False and parent_ui:
-            from liftout.gui import windows
-
-            # # cross-correlation has failed, manual correction required
-            windows.ask_user_movement(
-                microscope,
-                settings,
-                image_settings,
-                msg_type="centre_eb",
-                parent=parent_ui,
-            )
-            break
+        if ret is False:
+            break # cross correlation has failed...
 
     return ret
 
@@ -135,7 +122,7 @@ def align_using_reference_images(
     )
 
     shift_within_tolerance = check_shift_within_tolerance(
-        dx=dx, dy=dy, ref_image=ref_image
+        dx=dx, dy=dy, ref_image=ref_image, limit=0.25
     )
 
     if shift_within_tolerance:
@@ -183,7 +170,7 @@ def identify_shift_using_machine_learning(
 
 
 def rotate_AdornedImage(image: AdornedImage):
-
+    """Rotate the AdornedImage 180 degrees."""
     data = np.rot90(np.rot90(np.copy(image.data)))
     reference = AdornedImage(data=data, metadata=image.metadata)
     return reference
@@ -269,7 +256,7 @@ def crosscorrelation(img1: np.ndarray, img2: np.ndarray,
         img2ft = n_pixels * img2ft / np.sqrt(tmp.sum())
 
         xcorr = np.real(fftpack.fftshift(fftpack.ifft2(img1ft * np.conj(img2ft))))
-    else:
+    else: # TODO: why are these different...
         img1ft = fftpack.fft2(img1)
         img2ft = np.conj(fftpack.fft2(img2))
         img1ft[0, 0] = 0
@@ -367,6 +354,8 @@ def cosine_stretch(img: AdornedImage, tilt_degrees: float):
     dy, dx = img.data.shape[0]//2, img.data.shape[1]//2
     scaled_img = resized_img[c.y-dy:c.y+dy, c.x-dx:c.x+dx]
 
+    # TODO: smaller?
+
     print("rescaled shape:", scaled_img.shape)
 
     return AdornedImage(data=scaled_img, metadata=img.metadata)
@@ -419,103 +408,6 @@ def create_lamella_mask(img: AdornedImage, settings: dict, factor: int = 2, circ
             h=lamella_height_px * factor, sigma=3)
 
     return mask
-
-def create_vertical_mask(img:AdornedImage, w: int = 50, h: int = 400) -> np.ndarray:
-    """Create a vertical rectangular mask for e"""
-
-    mask = np.zeros_like(img.data)
-
-    cy, cx = mask.shape[0] // 2, mask.shape[1] //2
-    w = np.clip(w, 0, mask.shape[1])
-    h = np.clip(h, 0, mask.shape[0])
-   
-    mask[cy-h:cy+h, cx-w:cx+w] = 1
-
-    return mask
-
-
-
-
-
-
-
-
-# def auto_focus_and_link(microscope):
-#     import skimage
-
-#     from skimage.morphology import disk
-#     from skimage.filters.rank import gradient
-
-#     PLOT = False
-
-#     image_settings = {}
-#     image_settings["resolution"] = "768x512"  # "1536x1024"
-#     image_settings["dwell_time"] = 0.3e-6
-#     image_settings["hfw"] = 50e-6
-#     image_settings["autocontrast"] = True
-#     image_settings["beam_type"] = BeamType.ELECTRON
-#     image_settings["gamma"] = {
-#         "correction": True,
-#         "min_gamma": 0.15,
-#         "max_gamma": 1.8,
-#         "scale_factor": 0.01,
-#         "threshold": 46,
-#     }
-#     image_settings["save"] = False
-#     image_settings["label"] = ""
-#     image_settings["save_path"] = None
-#     print(image_settings)
-
-#     microscope.beams.electron_beam.working_distance.value = 4e-3
-#     current_working_distance = microscope.beams.electron_beam.working_distance.value
-
-#     print("Initial: ", current_working_distance)
-
-#     working_distances = [
-#         current_working_distance - 0.5e-3,
-#         current_working_distance - 0.25e-3,
-#         current_working_distance,
-#         current_working_distance + 0.25e-3,
-#         current_working_distance + 0.5e-3
-#     ]
-
-#     # loop through working distances and calculate the sharpness (acutance)
-#     # highest acutance is best focus
-#     sharpeness_metric = []
-#     for i, wd in enumerate(working_distances):
-#         microscope.beams.electron_beam.working_distance.value = wd
-#         img = acquire.new_image(microscope, image_settings)
-
-#         print(f"Img {i}: {img.metadata.optics.working_distance:.5f}")
-
-#         # sharpness (Acutance: https://en.wikipedia.org/wiki/Acutance
-#         out = gradient(skimage.filters.median(np.copy(img.data)), disk(5))
-
-#         if PLOT:
-#             import matplotlib.pyplot as plt
-#             plt.subplot(1, 2, 1)
-#             plt.imshow(img.data, cmap="gray")
-#             plt.subplot(1, 2, 2)
-#             plt.imshow(out, cmap="gray")
-#             plt.show()
-
-#         sharpness = np.mean(out)
-#         sharpeness_metric.append(sharpness)
-
-#     # select working distance with max acutance
-#     idx = np.argmax(sharpeness_metric)
-
-#     print(*zip(working_distances, sharpeness_metric))
-#     print(idx, working_distances[idx], sharpeness_metric[idx])
-
-#     # reset working distance
-#     microscope.beams.electron_beam.working_distance.value = working_distances[idx]
-
-#     # run fine auto focus and link
-#     microscope.imaging.set_active_view(1)  # set to Ebeam
-#     microscope.auto_functions.run_auto_focus()
-#     microscope.specimen.stage.link()
-
 
 def get_raw_stage_position(microscope: SdbMicroscopeClient) -> StagePosition:
     """Get the current stage position in raw coordinate system, and switch back to specimen"""

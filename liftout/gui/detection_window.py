@@ -65,6 +65,10 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setup_connections()
         self.update_display()
 
+        AUTO_CONTINUE = False
+        if AUTO_CONTINUE:
+            self.continue_button_pressed() # automatically continue
+
     def setup_connections(self):
 
         self.comboBox_detection_type.clear()

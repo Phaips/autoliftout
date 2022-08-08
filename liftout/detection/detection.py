@@ -99,12 +99,12 @@ def detect_features(img: AdornedImage, mask: np.ndarray, shift_type: tuple[Detec
     return detection_features
 
 
-def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType], settings: dict) -> list[DetectionFeature]:
+def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType], settings: dict, initial_point: Point = None) -> list[DetectionFeature]:
     """
 
     args:
         img: the input img (AdornedImage)
-        mask: the output rgb prediction mask (np.array)
+        ref_image: the reference image (AdornedImage)
         shift_type: the type of feature detection to run (tuple)
 
     return:
@@ -119,7 +119,8 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
             raise TypeError(f"Detection Type {det_type} is not supported.")
 
         # get the initial position estimate
-        initial_point = get_initial_position(img, settings, det_type)
+        if initial_point is None:
+            initial_point = get_initial_position(img, settings, det_type)
 
         if det_type == DetectionType.ImageCentre:
             feature_px = initial_point
@@ -142,7 +143,7 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
 
     return detection_features
 
-def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple, settings: dict):
+def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple, settings: dict, initial_point: Point = None):
     """
     Calculate the distance between two features in the image coordinate system.
 
@@ -156,7 +157,7 @@ def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: Adorn
 
     """
     # detect features for calculation
-    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type, settings)
+    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type, settings, initial_point)
 
     # calculate movement distance
     x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(

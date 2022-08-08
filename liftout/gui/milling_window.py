@@ -108,6 +108,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.INITIALISED = True
 
+        AUTO_CONTINUE = False
+        if AUTO_CONTINUE:
+            self.run_milling_button_pressed() # automatically continue
+
     def setup_milling_image(self):
 
         # image with a reduced area for thin/polishing.
