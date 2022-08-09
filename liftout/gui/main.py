@@ -4,18 +4,20 @@ from pprint import pprint
 
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from fibsem import acquire, movement
+from fibsem import utils as fibsem_utils
+from fibsem.acquire import ImageSettings
 from liftout import autoliftout, utils
-from liftout.fibsem import acquire, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import ImageSettings
-from liftout.fibsem.sample import AutoLiftoutStage, Lamella, Sample
 from liftout.gui import utils as ui_utils
-from liftout.gui.qtdesigner_files import main as gui_main
 from liftout.gui import windows
+from liftout.gui.qtdesigner_files import main as gui_main
+from liftout.sample import AutoLiftoutStage, Lamella, Sample
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
 matplotlib.use("Agg")
+
+
 class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self):
         super(AutoLiftoutMainWindow, self).__init__()
@@ -41,7 +43,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.microscope: SdbMicroscopeClient = self.initialize_hardware(
             settings=self.settings,
             log_path=self.sample.log_path,
-            ip_address=self.settings["system"]["ip_address"]
+            ip_address=self.settings["system"]["ip_address"],
         )
         # self.microscope: SdbMicroscopeClient = None
         self.MICROSCOPE_CONNECTED: bool = bool(self.microscope)  # offline mode
@@ -126,9 +128,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if okPressed:
                 # mark sample as failure
                 lamella = self.sample.positions[lamella_idx]
-                lamella.current_state.microscope_state.last_completed_stage = (
-                    AutoLiftoutStage.Failure
-                )
+                lamella.current_state.stage = AutoLiftoutStage.Failure
                 self.sample = autoliftout.update_sample_lamella_data(
                     self.sample, lamella
                 )
@@ -190,7 +190,9 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         if microscope:
             # run validation and show in ui
             windows.run_validation_ui(
-                microscope=microscope, settings=settings, log_path=log_path,
+                microscope=microscope,
+                settings=settings,
+                log_path=log_path,
             )
         else:
             ui_utils.display_error_message(
@@ -254,7 +256,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def update_scroll_ui(self):
         """Update the central ui grid with current sample data."""
 
-        horizontalGroupBox = QGroupBox() 
+        horizontalGroupBox = QGroupBox()
         gridLayout = ui_utils.draw_grid_layout(self.sample)
         horizontalGroupBox.setLayout(gridLayout)
         horizontalGroupBox.update()
@@ -268,7 +270,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             if self.sample.positions != {}:
                 key = list(self.sample.positions.keys())[0]
                 lamella = self.sample.positions[key]
-            else: 
+            else:
                 lamella = Lamella(self.sample.path, 0)
         ui_utils.update_stage_label(self.label_stage, lamella)
 

@@ -12,10 +12,11 @@ from liftout.detection import utils as det_utils
 from liftout import utils
 from liftout.detection.DetectionModel import DetectionModel
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
-                                     DetectionType, Point)
-from liftout.fibsem import calibration, acquire, movement
-from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.sample import Lamella
+                                     DetectionType)
+from fibsem.structures import Point
+from fibsem import calibration, acquire, movement
+from fibsem.acquire import BeamType, ImageSettings
+from liftout.sample import Lamella
 from liftout.model import models
 from PIL import Image
 from scipy.spatial import distance

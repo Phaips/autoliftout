@@ -1,11 +1,11 @@
-import logging
+
 import sys
 
 import scipy.ndimage as ndi
-from liftout import utils
-from liftout.fibsem import acquire, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings
+from fibsem import acquire
+from fibsem import utils as fibsem_utils
+from fibsem.acquire import BeamType
+from fibsem.structures import BeamType
 from liftout.gui.qtdesigner_files import user_dialog as user_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets

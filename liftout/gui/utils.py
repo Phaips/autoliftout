@@ -11,14 +11,12 @@ import numpy as np
 import scipy.ndimage as ndi
 import yaml
 from autoscript_sdb_microscope_client.structures import AdornedImage
+from fibsem.constants import METRE_TO_MILLIMETRE
+from fibsem.structures import Point
 from liftout import utils
 from liftout.config import config
-from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
-                                      MICRON_TO_METRE, MILLIMETRE_TO_METRE)
-from liftout.fibsem.milling import MillingPattern
-from liftout.fibsem.sample import (Lamella, Sample, create_experiment,
-                                   load_sample)
-from liftout.fibsem.structures import Point
+from liftout.patterning import MillingPattern
+from liftout.sample import Lamella, Sample, create_experiment, load_sample
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PyQt5 import QtWidgets
@@ -166,16 +164,7 @@ def draw_grid_layout(sample: Sample):
     sample_images = [[] for _ in sample.positions]
 
     # initial, mill, jcut, liftout, land, reset, thin, polish (TODO: add to protocol / external file)
-    exemplar_filenames = [
-        "ref_lamella_low_res_ib",
-        "ref_trench_high_res_ib",
-        "jcut_highres_ib",
-        "needle_liftout_landed_highres_ib",
-        "landing_lamella_final_highres_ib",
-        "sharpen_needle_final_ib",
-        "thin_lamella_post_superres_ib",
-        "polish_lamella_post_superres_ib",
-    ]
+    config.DISPLAY_REFERENCE_FNAMES
 
     # headers
     headers = [
@@ -204,7 +193,7 @@ def draw_grid_layout(sample: Sample):
 
         # load the exemplar images for each sample
         qimage_labels = []
-        for img_basename in exemplar_filenames:
+        for img_basename in config.DISPLAY_REFERENCE_FNAMES:
             fname = os.path.join(lamella.path, f"{img_basename}.tif")
             imageLabel = QLabel()
             imageLabel.setMaximumHeight(150)
@@ -241,7 +230,7 @@ def draw_grid_layout(sample: Sample):
         # display lamella info
         label_sample = QLabel()
         label_sample.setText(
-            f"""Sample {lamella._number:02d} \n{lamella._petname} \nStage: {lamella.current_state.microscope_state.last_completed_stage.name}"""
+            f"""Sample {lamella._number:02d} \n{lamella._petname} \nStage: {lamella.current_state.stage.name}"""
         )
         label_sample.setStyleSheet("font-family: Arial; font-size: 12px;")
         label_sample.setMaximumHeight(150)
@@ -438,7 +427,7 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
 
 def draw_rectangle_pattern(adorned_image, pattern, colour="yellow"):
     from matplotlib.patches import Rectangle
-
+    """Draw a Rectangle Pattern as Matplotib Rectangle"""
     rectangle = Rectangle(
         (0, 0),
         0.2,

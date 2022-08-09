@@ -2,17 +2,18 @@ import logging
 from pathlib import Path
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from liftout import utils
+from fibsem import movement
+from fibsem import utils as fibsem_utils
+from fibsem import validation
+from fibsem.acquire import BeamType, ImageSettings
+from liftout import patterning, utils
 from liftout.detection.detection import DetectionResult
-from liftout.fibsem import milling, movement, validation
-from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.sample import Lamella
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
+from liftout.sample import Lamella
 from PyQt5.QtWidgets import QMessageBox
-from liftout.fibsem import utils as fibsem_utils
 
 
 def ask_user_interaction(
@@ -57,7 +58,7 @@ def open_milling_window(
     microscope: SdbMicroscopeClient,
     settings: dict,
     image_settings: ImageSettings,
-    milling_pattern: milling.MillingPattern,
+    milling_pattern: patterning.MillingPattern,
     x: float = 0.0,
     y: float = 0.0,
     parent=None,

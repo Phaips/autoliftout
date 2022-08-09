@@ -1,29 +1,10 @@
-import json
-import logging
 import os
 from pathlib import Path
 
 import numpy as np
 import yaml
-
 import liftout
-
-
-# TODO: better logs: https://www.toptal.com/python/in-depth-python-logging
-def configure_logging(path: Path = "", log_filename="logfile", log_level=logging.INFO):
-    """Log to the terminal and to file simultaneously."""
-    logfile = os.path.join(path, f"{log_filename}.log")
-
-    logging.basicConfig(
-        format="%(asctime)s — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
-        level=log_level,
-        # Multiple handlers can be added to your logging configuration.
-        # By default log messages are appended to the file if it exists already
-        handlers=[logging.FileHandler(logfile), logging.StreamHandler(),],
-    )
-
-    return logfile
-
+from fibsem.utils import load_yaml, configure_logging
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -42,14 +23,6 @@ def load_config(yaml_filename):
         settings_dict = yaml.safe_load(f)
     settings_dict = _format_dictionary(settings_dict)
     return settings_dict
-
-
-def load_yaml(fname: Path) -> dict:
-
-    with open(fname, "r") as f:
-        config = yaml.safe_load(f)
-
-    return config
 
 
 def load_full_config(
@@ -120,11 +93,6 @@ def make_logging_directory(path: Path = None, name="run"):
     os.makedirs(directory, exist_ok=True)
     return directory
 
-def save_metadata(settings, path):
-    fname = os.path.join(path, "metadata.json")
-    with open(fname, "w") as fp:
-        json.dump(settings, fp, sort_keys=True, indent=4)
-
 
 def get_last_log_message(path: Path) -> str:
     with open(path) as f:
@@ -137,8 +105,7 @@ def get_last_log_message(path: Path) -> str:
 
 def plot_two_images(img1, img2) -> None:
     import matplotlib.pyplot as plt
-
-    from liftout.fibsem.structures import Point
+    from fibsem.structures import Point
 
     c = Point(img1.data.shape[1]//2, img1.data.shape[0]//2)
 
@@ -155,8 +122,8 @@ def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int 
     import matplotlib.pyplot as plt
     import numpy as np
 
-    from liftout.fibsem import calibration
-    from liftout.fibsem.structures import Point
+    from fibsem import calibration
+    from fibsem.structures import Point
 
     # rotate ref
     if rotate:
@@ -214,7 +181,7 @@ def _validate_configuration_values(microscope, dictionary):
         The parameter is not within the available range for the microscope.
     """
     
-    from liftout.fibsem import validation
+    from fibsem import validation
 
     for key, item in dictionary.items():
         if isinstance(item, dict):
@@ -261,9 +228,9 @@ def _validate_model_weights_file(filename):
 
 ### SETUP
 def quick_setup():
-    """Quick setup for microscope, settings, and iamge_settings"""
-    from liftout.fibsem import acquire
-    from liftout.fibsem import utils as fibsem_utils
+    """Quick setup for microscope, settings, and image_settings"""
+    from fibsem import acquire
+    from fibsem import utils as fibsem_utils
 
     settings = load_full_config()
 
@@ -285,7 +252,7 @@ def full_setup():
     """Quick setup for microscope, settings,  image_settings, sample and lamella"""
     import os
 
-    from liftout.fibsem.sample import Lamella, Sample
+    from liftout.sample import Lamella, Sample
 
     microscope, settings, image_settings = quick_setup()
 

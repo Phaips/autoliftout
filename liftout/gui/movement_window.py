@@ -3,17 +3,18 @@ import sys
 
 import numpy as np
 import scipy.ndimage as ndi
+from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import StagePosition
-from liftout.fibsem import acquire, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, GammaSettings, ImageSettings
-from liftout.fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
-                                      MICRON_TO_METRE, MILLIMETRE_TO_METRE)
-from liftout.fibsem.sample import microscope_state_from_dict
+from fibsem import acquire, movement
+from fibsem import utils as fibsem_utils
+from fibsem.acquire import ImageSettings
+from fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
+                              MICRON_TO_METRE, MILLIMETRE_TO_METRE)
+from fibsem.structures import BeamType
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
+
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
@@ -226,11 +227,11 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # calculate stage movement
         movement.move_stage_relative_with_corrected_movement(
-            microscope=self.microscope, 
+            microscope=self.microscope,
             settings=self.settings,
-            dx=self.center_x, 
-            dy=self.center_y, 
-            beam_type=beam_type
+            dx=self.center_x,
+            dy=self.center_y,
+            beam_type=beam_type,
         )
 
         # update displays
@@ -246,6 +247,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         stage_tilt_rad: float = np.deg2rad(self.doubleSpinBox_tilt_degrees.value())
         stage = self.microscope.specimen.stage
         from autoscript_sdb_microscope_client.structures import MoveSettings
+
         move_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
         stage_position = StagePosition(t=stage_tilt_rad)
         stage.absolute_move(stage_position, move_settings)

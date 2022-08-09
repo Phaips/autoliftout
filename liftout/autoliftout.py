@@ -5,17 +5,15 @@ from datetime import datetime
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import (MoveSettings,
-                                                         StagePosition)
+from autoscript_sdb_microscope_client.structures import MoveSettings, StagePosition
+from fibsem import acquire, calibration, movement, utils
+from fibsem.acquire import ImageSettings
+from fibsem.structures import BeamType
 
 from liftout.detection.detection import DetectionType
-from liftout.fibsem import acquire, calibration, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.milling import MillingPattern
-from liftout.fibsem.sample import (AutoLiftoutStage, Lamella, ReferenceImages,
-                                   Sample)
 from liftout.gui import windows
+from liftout.patterning import MillingPattern
+from liftout.sample import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 
 # autoliftout workflow functions
 
@@ -41,7 +39,7 @@ def mill_lamella_trench(
 
     # TODO: correct stage drift?
 
-    ##### 
+    #####
 
     # confirm position
     # windows.ask_user_movement(
@@ -51,7 +49,7 @@ def mill_lamella_trench(
     # update the lamella coordinates, and save
     # lamella.lamella_coordinates = calibration.get_raw_stage_position(microscope)
 
-    ###### 
+    ######
 
     # mill_trenches
     windows.open_milling_window(
@@ -170,9 +168,13 @@ def mill_lamella_jcut(
     )
 
     calibration.correct_stage_drift(
-        microscope, settings, image_settings, reference_images, 
+        microscope,
+        settings,
+        image_settings,
+        reference_images,
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
-        rotate=True, parent_ui=True
+        rotate=True,
+        parent_ui=True,
     )
 
     # take reference images of the jcut
@@ -207,7 +209,10 @@ def liftout_lamella(
 
     # check eucentric height
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="eucentric",
+        microscope,
+        settings,
+        image_settings,
+        msg_type="eucentric",
     )  # liftout angle is flat to SEM
 
     # OR 'untilt' the image... with perspective transform
@@ -219,9 +224,13 @@ def liftout_lamella(
     )
 
     calibration.correct_stage_drift(
-        microscope, settings, image_settings, reference_images, 
+        microscope,
+        settings,
+        image_settings,
+        reference_images,
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
-        rotate=True, parent_ui=True
+        rotate=True,
+        parent_ui=True,
     )
 
     # reference images for needle location
@@ -230,15 +239,13 @@ def liftout_lamella(
     image_settings.label = f"ref_needle_liftout"
     acquire.take_reference_images(microscope, image_settings)
 
-
-
     # land needle on lamella
     lamella = land_needle_on_milled_lamella_v2(
         microscope, settings, image_settings, lamella
     )
 
     # sputter platinum
-    fibsem_utils.sputter_platinum(microscope, settings, whole_grid=False)
+    utils.sputter_platinum(microscope, settings, whole_grid=False)
     logging.info(
         f"{lamella.current_state.stage.name}: lamella to needle welding complete."
     )
@@ -408,7 +415,6 @@ def land_needle_on_milled_lamella_v2(
     lamella: Lamella,
 ) -> Lamella:
 
-
     # bookkeeping
     image_settings.save_path = lamella.path
 
@@ -464,30 +470,29 @@ def land_needle_on_milled_lamella_v2(
         beam_type=BeamType.ION,
     )
 
+    # take image
+    eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
 
-     # take image
-    eb_image, ib_image = acquire.take_reference_images(microscope, image_settings) 
-    
     # measure brightness
-    BRIGHTNESS_FACTOR  = 1.2
+    BRIGHTNESS_FACTOR = 1.2
     CROP_SIZE = 250
     previous_brightness = calibration.measure_brightness(ib_image, crop_size=CROP_SIZE)
 
-    image_settings.hfw = settings["calibration"]["reference_images"][
-        "hfw_super_res"
-    ]
+    image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
     image_settings.label = f"needle_liftout_post_z_half_movement_highres"
 
     while True:
 
         # move needle down 1um
         movement.move_needle_relative_with_corrected_movement(
-            microscope, settings, dx=0, dy=-1.e-6, beam_type=BeamType.ION
+            microscope, settings, dx=0, dy=-1.0e-6, beam_type=BeamType.ION
         )
 
         # take image
         # TODO: use reduced area?
-        ib_image = acquire.new_image(microscope, image_settings) # maybe use the reduced area option?
+        ib_image = acquire.new_image(
+            microscope, image_settings
+        )  # maybe use the reduced area option?
         brightness = calibration.measure_brightness(ib_image, crop_size=CROP_SIZE)
 
         if brightness > previous_brightness * BRIGHTNESS_FACTOR:
@@ -499,10 +504,10 @@ def land_needle_on_milled_lamella_v2(
                 msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
                 beam_type=BeamType.ION,
             )
-    
+
             if response:
                 break
-            
+
         previous_brightness = brightness
 
     # take final reference images
@@ -534,15 +539,21 @@ def land_lamella(
 
     # move to landing coordinate
     movement.safe_absolute_stage_movement(
-        microscope=microscope, stage_position=lamella.landing_coordinates,
+        microscope=microscope,
+        stage_position=lamella.landing_coordinates,
     )
     movement.auto_link_stage(
-        microscope, hfw=settings["calibration"]["reference_images"]["hfw_med_res"],
+        microscope,
+        hfw=settings["calibration"]["reference_images"]["hfw_med_res"],
     )
 
     # confirm eucentricity
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="eucentric", flat_to_sem=False,
+        microscope,
+        settings,
+        image_settings,
+        msg_type="eucentric",
+        flat_to_sem=False,
     )
 
     # after eucentricity... we should be at 4mm,
@@ -563,7 +574,6 @@ def land_lamella(
     image_settings.label = f"landing_needle_start_position"
 
     acquire.take_reference_images(microscope, image_settings)
-
 
     det = calibration.validate_detection(
         microscope,
@@ -831,7 +841,6 @@ def reset_needle(
     # z_move = movement.z_corrected_needle_movement(z_distance, stage.current_position.t)
     # needle.relative_move(z_move)
 
-
     image_settings.label = f"sharpen_needle_centre"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
@@ -880,18 +889,22 @@ def thin_lamella(
 
     # move to the initial landing coordinates
     movement.safe_absolute_stage_movement(
-        microscope=microscope, stage_position=lamella.landing_coordinates,
+        microscope=microscope,
+        stage_position=lamella.landing_coordinates,
     )
 
     # ensure_eucentricity # TODO: Maybe remove, not required?
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="eucentric", flat_to_sem=False,
+        microscope,
+        settings,
+        image_settings,
+        msg_type="eucentric",
+        flat_to_sem=False,
     )
 
     # rotate_and_tilt_to_thinning_angle
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
     movement.move_to_thinning_angle(microscope=microscope, settings=settings)
-
 
     # load the reference images
     reference_images = ReferenceImages(
@@ -903,10 +916,13 @@ def thin_lamella(
 
     # TODO:
     calibration.correct_stage_drift(
-        microscope, settings, image_settings,
-        reference_images=reference_images, 
+        microscope,
+        settings,
+        image_settings,
+        reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
-        rotate=True, parent_ui=True
+        rotate=True,
+        parent_ui=True,
     )
 
     # ensure_eucentricity at thinning angle
@@ -943,9 +959,9 @@ def thin_lamella(
         settings=settings,
         image_settings=image_settings,
         milling_pattern=MillingPattern.Thin,
-        x=0, y=0,
+        x=0,
+        y=0,
     )
-
 
     # take reference images
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
@@ -986,10 +1002,13 @@ def polish_lamella(
 
     # TODO: Test
     calibration.correct_stage_drift(
-        microscope, settings, image_settings,
-        reference_images=reference_images, 
+        microscope,
+        settings,
+        image_settings,
+        reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
-        rotate=True, parent_ui=True
+        rotate=True,
+        parent_ui=True,
     )
 
     # realign lamella to image centre
@@ -1022,7 +1041,8 @@ def polish_lamella(
         settings=settings,
         image_settings=image_settings,
         milling_pattern=MillingPattern.Polish,
-        x=0, y=0,
+        x=0,
+        y=0,
     )
 
     # take reference images (ultra, super, high)
@@ -1079,15 +1099,9 @@ def run_autoliftout_workflow(
         ]:
             for lamella in sample.positions.values():
 
-                while (
-                    lamella.current_state.microscope_state.last_completed_stage.value
-                    < terminal_stage.value
-                ):
+                while lamella.current_state.stage.value < terminal_stage.value:
 
-                    next_stage = AutoLiftoutStage(
-                        lamella.current_state.microscope_state.last_completed_stage.value
-                        + 1
-                    )
+                    next_stage = AutoLiftoutStage(lamella.current_state.stage.value + 1)
 
                     # update image settings (save in correct directory)
                     image_settings.save_path = lamella.path
@@ -1111,18 +1125,15 @@ def run_autoliftout_workflow(
     # standard workflow
     for lamella in sample.positions.values():
 
-        while (
-            lamella.current_state.microscope_state.last_completed_stage.value
-            < AutoLiftoutStage.Reset.value
-        ):
+        while lamella.current_state.stage.value < AutoLiftoutStage.Reset.value:
 
-            next_stage = AutoLiftoutStage(
-                lamella.current_state.microscope_state.last_completed_stage.value + 1
-            )
+            next_stage = AutoLiftoutStage(lamella.current_state.stage.value + 1)
             if CONFIRM_WORKFLOW_ADVANCE:
                 msg = f"""Continue Lamella {(lamella._petname)}) from {next_stage.name}?"""
                 response = windows.ask_user_interaction(
-                    microscope, msg=msg, beam_type=BeamType.ION,
+                    microscope,
+                    msg=msg,
+                    beam_type=BeamType.ION,
                 )
             else:
                 response = True
@@ -1162,7 +1173,7 @@ def end_of_stage_update(
 
     # save state information
     lamella.current_state.microscope_state = calibration.get_current_microscope_state(
-        microscope=microscope, stage=lamella.current_state.stage,
+        microscope=microscope
     )
     lamella.current_state.end_timestamp = datetime.timestamp(datetime.now())
 
@@ -1187,8 +1198,8 @@ def start_of_stage_update(
     next_stage: AutoLiftoutStage,
     parent_ui=None,
 ) -> Lamella:
-    """Check the last completed stage and reload the microscope state if required. Log that the stage has started. """
-    last_completed_stage = lamella.current_state.microscope_state.last_completed_stage
+    """Check the last completed stage and reload the microscope state if required. Log that the stage has started."""
+    last_completed_stage = lamella.current_state.stage
 
     # restore to the last state
     if last_completed_stage.value == next_stage.value - 1:
@@ -1222,10 +1233,7 @@ def run_thinning_workflow(
     # thinning
     for lamella in sample.positions.values():
 
-        if (
-            lamella.current_state.microscope_state.last_completed_stage
-            == AutoLiftoutStage.Reset
-        ):
+        if lamella.current_state.stage == AutoLiftoutStage.Reset:
             lamella = start_of_stage_update(
                 microscope, lamella, next_stage=AutoLiftoutStage.Thinning
             )
@@ -1235,10 +1243,7 @@ def run_thinning_workflow(
     # polish
     for lamella in sample.positions.values():
 
-        if (
-            lamella.current_state.microscope_state.last_completed_stage
-            == AutoLiftoutStage.Thinning
-        ):
+        if lamella.current_state.stage == AutoLiftoutStage.Thinning:
             lamella = start_of_stage_update(
                 microscope, lamella, next_stage=AutoLiftoutStage.Polishing
             )
@@ -1247,13 +1252,8 @@ def run_thinning_workflow(
 
     # finish the experiment
     for lamella in sample.positions.values():
-        if (
-            lamella.current_state.microscope_state.last_completed_stage
-            == AutoLiftoutStage.Polishing
-        ):
-            lamella.current_state.microscope_state.last_completed_stage = (
-                AutoLiftoutStage.Finished
-            )
+        if lamella.current_state.stage == AutoLiftoutStage.Polishing:
+            lamella.current_state.stage = AutoLiftoutStage.Finished
             sample = end_of_stage_update(microscope, sample, lamella)
 
     return sample
@@ -1290,7 +1290,11 @@ def user_select_feature(
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_med_res"]
     image_settings.save = False
     windows.ask_user_movement(
-        microscope, settings, image_settings, msg_type="centre_ib", msg=msg,
+        microscope,
+        settings,
+        image_settings,
+        msg_type="centre_ib",
+        msg=msg,
     )
 
     return calibration.get_raw_stage_position(microscope)
@@ -1330,7 +1334,8 @@ def select_initial_lamella_positions(
 
     # save microscope state
     lamella.current_state.microscope_state = calibration.get_current_microscope_state(
-        microscope=microscope, stage=lamella.current_state.stage,
+        microscope=microscope,
+        stage=lamella.current_state.stage,
     )
 
     # take reference images
@@ -1445,9 +1450,7 @@ def select_lamella_positions(
     parent_ui=None,
 ):
 
-    select_another = get_current_lamella(
-        microscope, sample
-    )
+    select_another = get_current_lamella(microscope, sample)
 
     # allow the user to select additional lamella positions
     eucentric_calibration = False
@@ -1461,9 +1464,7 @@ def select_lamella_positions(
         sample = update_sample_lamella_data(sample, lamella)
 
         # select another?
-        select_another = get_current_lamella(
-            microscope, sample
-        )
+        select_another = get_current_lamella(microscope, sample)
 
         # state variable
         eucentric_calibration = True
@@ -1522,9 +1523,7 @@ def run_setup_autoliftout(
     acquire.new_image(microscope, image_settings)
 
     # sputter platinum to protect grid and prevent charging...
-    windows.sputter_platinum_on_whole_sample_grid(
-        microscope, settings, image_settings
-    )
+    windows.sputter_platinum_on_whole_sample_grid(microscope, settings, image_settings)
 
     # reference images
     image_settings.label = "grid_Pt"
@@ -1549,11 +1548,9 @@ def run_setup_autoliftout(
 
 
 def validate_needle_insertion(microscope: SdbMicroscopeClient, settings: dict) -> None:
-    
+
     # move needle to liftout start position
-    ret = calibration.validate_stage_height_for_needle_insertion(
-        microscope, settings
-    )
+    ret = calibration.validate_stage_height_for_needle_insertion(microscope, settings)
 
     while ret is False:
         windows.ask_user_interaction(
@@ -1563,7 +1560,7 @@ def validate_needle_insertion(microscope: SdbMicroscopeClient, settings: dict) -
             "\nPlease manually refocus and link the stage, then press OK to continue. """,
             beam_type=BeamType.ELECTRON,
         )
-        
+
         ret = calibration.validate_stage_height_for_needle_insertion(
             microscope, settings
         )

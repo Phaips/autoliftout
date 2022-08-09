@@ -9,10 +9,11 @@ import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import Rectangle as RectangleArea
 from liftout.config import config
-from liftout.fibsem import acquire, constants, milling, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType, ImageSettings
-from liftout.fibsem.structures import Point
+from liftout import patterning
+from fibsem import acquire, constants, movement
+from fibsem import utils as fibsem_utils
+from fibsem.acquire import ImageSettings
+from fibsem.structures import Point, BeamType
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from PyQt5 import QtCore, QtWidgets
 
@@ -23,7 +24,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         microscope: SdbMicroscopeClient,
         settings: dict,
         image_settings: ImageSettings,
-        milling_pattern_type: milling.MillingPattern,
+        milling_pattern_type: patterning.MillingPattern,
         x: float = 0.0,
         y: float = 0.0,
         parent=None,
@@ -93,7 +94,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setup_milling_image()
 
         # setup
-        milling.setup_milling(
+        patterning.setup_milling(
             microscope=self.microscope,
             application_file=self.settings["system"]["application_file"],
             hfw=self.image_settings.hfw,
@@ -116,8 +117,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         # image with a reduced area for thin/polishing.
         if self.milling_pattern in [
-            milling.MillingPattern.Thin,
-            milling.MillingPattern.Polish,
+            patterning.MillingPattern.Thin,
+            patterning.MillingPattern.Polish,
         ]:
             reduced_area = RectangleArea(0.3, 0.3, 0.4, 0.4)
         else:
@@ -245,7 +246,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def setup_milling_patterns(self):
         """Load the milling stages and settings for the selected milling pattern"""
 
-        milling_protocol_stages = milling.get_milling_protocol_stage_settings(
+        milling_protocol_stages = patterning.get_milling_protocol_stage_settings(
             self.settings, self.milling_pattern
         )
 
@@ -288,7 +289,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def update_estimated_time(self):
 
         # update estimted milling time
-        self.milling_time_seconds = milling.calculate_milling_time(
+        self.milling_time_seconds = patterning.calculate_milling_time(
             self.patterns,
             self.milling_stages[self.current_selected_stage]["milling_current"],
         )
@@ -306,7 +307,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.patterns = []
             for stage_name, stage_settings in self.milling_stages.items():
 
-                patterns = milling.create_milling_patterns(
+                patterns = patterning.create_milling_patterns(
                     self.microscope,
                     stage_settings,
                     self.milling_pattern,
@@ -355,13 +356,13 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
             # redraw patterns, and run milling
             self.microscope.patterning.clear_patterns()
-            self.patterns = milling.create_milling_patterns(
+            self.patterns = patterning.create_milling_patterns(
                 self.microscope,
                 stage_settings,
                 self.milling_pattern,
                 Point(self.center_x, self.center_y),
             )
-            milling.run_milling(
+            patterning.run_milling(
                 microscope=self.microscope,
                 settings=self.settings,
                 milling_current=stage_settings["milling_current"],
@@ -380,7 +381,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             logging.info(f"Milling finished: {self.microscope.patterning.state}")
 
         # reset to imaging mode
-        milling.finish_milling(
+        patterning.finish_milling(
             microscope=self.microscope,
             imaging_current=self.settings["calibration"]["imaging"]["imaging_current"],
         )
@@ -437,9 +438,6 @@ def main():
     image_settings.hfw = 80.0e-6
 
     os.makedirs(image_settings.save_path, exist_ok=True)
-
-    from liftout.fibsem import calibration
-
     acquire.reset_beam_shifts(microscope)
 
     app = QtWidgets.QApplication([])
@@ -447,7 +445,7 @@ def main():
         microscope=microscope,
         settings=settings,
         image_settings=image_settings,
-        milling_pattern_type=milling.MillingPattern.Trench,
+        milling_pattern_type=patterning.MillingPattern.Trench,
     )
     qt_app.show()
     sys.exit(app.exec_())

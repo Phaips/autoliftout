@@ -4,16 +4,16 @@ import sys
 from pprint import pprint
 
 import matplotlib.patches as mpatches
+from fibsem import calibration, movement
+from fibsem import utils as fibsem_utils
+from fibsem.structures import BeamType
 from liftout.config import config
 from liftout.detection import utils as det_utils
 from liftout.detection.utils import (DetectionResult, DetectionType, Point,
                                      convert_pixel_distance_to_metres)
-from liftout.fibsem import calibration, movement
-from liftout.fibsem import utils as fibsem_utils
-from liftout.fibsem.acquire import BeamType
-from liftout.fibsem.sample import Lamella
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
+from liftout.sample import Lamella
 from PyQt5 import QtCore, QtWidgets
 
 

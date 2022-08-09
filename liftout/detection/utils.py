@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from liftout.fibsem.movement import pixel_to_realspace_coordinate
-from liftout.fibsem.structures import Point
+from fibsem.movement import pixel_to_realspace_coordinate
+from fibsem.structures import Point
 from PIL import Image
-import matplotlib.patches as mpatches
 
 
 class DetectionType(Enum):
