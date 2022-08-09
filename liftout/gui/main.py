@@ -4,10 +4,10 @@ from pprint import pprint
 
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from fibsem import acquire, movement
+from fibsem import acquire
 from fibsem import utils as fibsem_utils
 from fibsem.acquire import ImageSettings
-from liftout import autoliftout, utils
+from liftout import autoliftout, utils, actions
 from liftout.gui import utils as ui_utils
 from liftout.gui import windows
 from liftout.gui.qtdesigner_files import main as gui_main
@@ -169,7 +169,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Run the sputter platinum utility"""
 
         # move to the initial sample grid position
-        movement.move_to_sample_grid(self.microscope, self.settings)
+        actions.move_to_sample_grid(self.microscope, self.settings)
         # sputter
         windows.sputter_platinum_on_whole_sample_grid(
             self.microscope, self.settings, self.image_settings

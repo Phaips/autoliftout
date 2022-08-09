@@ -6,12 +6,13 @@ import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
 from autoscript_sdb_microscope_client.structures import MoveSettings, StagePosition
-from fibsem import acquire, calibration, movement, utils
+from fibsem import acquire, calibration, utils, movement
 from fibsem.acquire import ImageSettings
 from fibsem.structures import BeamType
 
 from liftout.detection.detection import DetectionType
 from liftout.gui import windows
+from liftout import actions
 from liftout.patterning import MillingPattern
 from liftout.sample import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 
@@ -32,7 +33,7 @@ def mill_lamella_trench(
     movement.safe_absolute_stage_movement(microscope, lamella.lamella_coordinates)
 
     # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-    movement.move_to_trenching_angle(microscope, settings)
+    actions.move_to_trenching_angle(microscope, settings)
 
     # Take an ion beam image at the *milling current*
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_super_res"]
@@ -422,7 +423,7 @@ def land_needle_on_milled_lamella_v2(
     validate_needle_insertion(microscope, settings)
 
     # insert the needle
-    park_position = movement.move_needle_to_liftout_position(microscope)
+    park_position = actions.move_needle_to_liftout_position(microscope)
     logging.info(
         f"{lamella.current_state.stage.name}: needle inserted to park positon: {park_position}"
     )
@@ -800,16 +801,14 @@ def reset_needle(
     needle = microscope.specimen.manipulator
 
     # move sample stage out
-    movement.move_sample_stage_out(microscope)
+    actions.move_sample_stage_out(microscope)
     logging.info(f"{lamella.current_state.stage.name}: moved sample stage out")
 
     ###################################### SHARPEN_NEEDLE ######################################
 
     # move needle in
-    park_position = movement.insert_needle(microscope)
-    z_move_in = movement.z_corrected_needle_movement(-180e-6, stage.current_position.t)
-    needle.relative_move(z_move_in)
-    logging.info(f"{lamella.current_state.stage.name}: insert needle for reset")
+    actions.move_needle_to_reset_position(microscope)
+
 
     # needle images
     image_settings.save = True
@@ -904,7 +903,7 @@ def thin_lamella(
 
     # rotate_and_tilt_to_thinning_angle
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_high_res"]
-    movement.move_to_thinning_angle(microscope=microscope, settings=settings)
+    actions.move_to_thinning_angle(microscope=microscope, settings=settings)
 
     # load the reference images
     reference_images = ReferenceImages(
@@ -1315,7 +1314,7 @@ def select_initial_lamella_positions(
 
     # TODO: replace with auto eucentric calibration
     if eucentric_calibration is False:
-        movement.move_to_sample_grid(microscope, settings=settings)
+        actions.move_to_sample_grid(microscope, settings=settings)
         movement.auto_link_stage(microscope)
 
         windows.ask_user_movement(
@@ -1325,7 +1324,7 @@ def select_initial_lamella_positions(
             msg_type="eucentric",
             flat_to_sem=True,
         )
-        movement.move_to_trenching_angle(microscope, settings=settings)
+        actions.move_to_trenching_angle(microscope, settings=settings)
 
     # save lamella coordinates
     lamella.lamella_coordinates = user_select_feature(
@@ -1365,7 +1364,7 @@ def select_landing_positions(
 
     ####################################
     # # move to landing grid
-    movement.move_to_landing_grid(microscope, settings=settings)
+    actions.move_to_landing_grid(microscope, settings=settings)
     # movement.auto_link_stage(self.microscope, hfw=900e-6)
 
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_low_res"]
@@ -1511,7 +1510,7 @@ def run_setup_autoliftout(
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | STARTED")
 
     # move to the initial sample grid position
-    movement.move_to_sample_grid(microscope, settings)
+    actions.move_to_sample_grid(microscope, settings)
 
     # initial image settings
     image_settings.hfw = settings["calibration"]["reference_images"]["hfw_low_res"]

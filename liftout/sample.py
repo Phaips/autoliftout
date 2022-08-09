@@ -7,15 +7,12 @@ from pathlib import Path
 import pandas as pd
 import petname
 import yaml
-from autoscript_sdb_microscope_client.structures import AdornedImage, StagePosition
-from fibsem.structures import (
-    MicroscopeState,
-    ReferenceImages,
-    microscope_state_from_dict,
-)
+from autoscript_sdb_microscope_client.structures import (AdornedImage,
+                                                         StagePosition)
+from fibsem import utils as fibsem_utils
+from fibsem.structures import MicroscopeState, ReferenceImages
 
 from liftout import utils
-from fibsem import utils as fibsem_utils
 
 # move this up into liftout..
 
@@ -230,7 +227,7 @@ def autoliftout_state_from_dict(state_dict: dict) -> AutoLiftoutState:
 
     autoliftout_state = AutoLiftoutState(
         stage=AutoLiftoutStage[state_dict["stage"]],
-        microscope_state=microscope_state_from_dict(state_dict["microscope_state"]),
+        microscope_state=MicroscopeState.__from_dict__(state_dict["microscope_state"]),
         start_timestamp=state_dict["start_timestamp"],
         end_timestamp=state_dict["end_timestamp"],
     )
