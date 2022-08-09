@@ -133,25 +133,18 @@ def move_sample_stage_out(microscope: SdbMicroscopeClient) -> StagePosition:
     return microscope.specimen.stage.current_position
 
 
-def move_needle_to_liftout_position(
-    microscope: SdbMicroscopeClient,
-) -> ManipulatorPosition:
+def move_needle_to_liftout_position(microscope: SdbMicroscopeClient) -> None:
     """Move the needle into position, ready for liftout."""
-    park_position = movement.insert_needle(microscope)
+    movement.insert_needle(microscope)
     movement.move_needle_closer(microscope)
-    return park_position
 
-
-def move_needle_to_landing_position(
-    microscope: SdbMicroscopeClient,
-) -> ManipulatorPosition:
+def move_needle_to_landing_position(microscope: SdbMicroscopeClient) -> None:
     """Move the needle into position, ready for landing."""
-    park_position = movement.insert_needle(microscope)
+    movement.insert_needle(microscope)
     movement.move_needle_closer(microscope, x_shift=-25e-6)
-    return park_position
 
-def move_needle_to_reset_position(microscope: SdbMicroscopeClient):
-
+def move_needle_to_reset_position(microscope: SdbMicroscopeClient) -> None:
+    # TODO: change to use move needle closer...
     movement.insert_needle(microscope)
     z_move_in = movement.z_corrected_needle_movement(-180e-6, microscope.specimen.stage.current_position.t)
     microscope.specimen.manipulator.relative_move(z_move_in)

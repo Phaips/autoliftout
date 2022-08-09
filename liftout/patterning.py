@@ -7,8 +7,6 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import milling, validation
 from fibsem.structures import Point
 
-
-
 class MillingPattern(Enum):
     Trench = 1
     JCut = 2

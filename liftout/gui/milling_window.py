@@ -7,13 +7,13 @@ import liftout.gui.utils as ui_utils
 import matplotlib.patches as mpatches
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import Rectangle as RectangleArea
-from liftout.config import config
-from liftout import patterning
-from fibsem import acquire, constants, movement
+from autoscript_sdb_microscope_client.structures import \
+    Rectangle as RectangleArea
+from fibsem import acquire, constants, calibration
 from fibsem import utils as fibsem_utils
-from fibsem.acquire import ImageSettings
-from fibsem.structures import Point, BeamType
+from fibsem.structures import BeamType, ImageSettings, Point
+from liftout import patterning
+from liftout.config import config
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from PyQt5 import QtCore, QtWidgets
 
@@ -237,7 +237,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         if event.button == 1 and event.inaxes is not None:
             self.xclick = event.xdata
             self.yclick = event.ydata
-            self.center_x, self.center_y = movement.pixel_to_realspace_coordinate(
+            self.center_x, self.center_y = calibration.pixel_to_realspace_coordinate(
                 (self.xclick, self.yclick), self.adorned_image
             )
 

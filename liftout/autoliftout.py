@@ -7,8 +7,7 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
 from autoscript_sdb_microscope_client.structures import MoveSettings, StagePosition
 from fibsem import acquire, calibration, utils, movement
-from fibsem.acquire import ImageSettings
-from fibsem.structures import BeamType
+from fibsem.structures import BeamType, ImageSettings
 
 from liftout.detection.detection import DetectionType
 from liftout.gui import windows

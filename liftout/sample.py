@@ -10,7 +10,7 @@ import yaml
 from autoscript_sdb_microscope_client.structures import (AdornedImage,
                                                          StagePosition)
 from fibsem import utils as fibsem_utils
-from fibsem.structures import MicroscopeState, ReferenceImages
+from fibsem.structures import MicroscopeState, ReferenceImages, stage_position_from_dict
 
 from liftout import utils
 
@@ -193,11 +193,11 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
     )
 
     # load current state
-    lamella.current_state = autoliftout_state_from_dict(lamella_dict["current_state"])
+    lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])
 
     # load history
     lamella.history = [
-        autoliftout_state_from_dict(state_dict)
+        AutoLiftoutState.__from_dict__(state_dict)
         for state_dict in lamella_dict["history"]
     ]
 
@@ -222,31 +222,20 @@ class AutoLiftoutState:
 
         return state_dict
 
+    @classmethod
+    def __from_dict__(state_dict: dict) -> 'AutoLiftoutState':
 
-def autoliftout_state_from_dict(state_dict: dict) -> AutoLiftoutState:
+        autoliftout_state = AutoLiftoutState(
+            stage=AutoLiftoutStage[state_dict["stage"]],
+            microscope_state=MicroscopeState.__from_dict__(state_dict["microscope_state"]),
+            start_timestamp=state_dict["start_timestamp"],
+            end_timestamp=state_dict["end_timestamp"],
+        )
 
-    autoliftout_state = AutoLiftoutState(
-        stage=AutoLiftoutStage[state_dict["stage"]],
-        microscope_state=MicroscopeState.__from_dict__(state_dict["microscope_state"]),
-        start_timestamp=state_dict["start_timestamp"],
-        end_timestamp=state_dict["end_timestamp"],
-    )
-
-    return autoliftout_state
+        return autoliftout_state
 
 
-def stage_position_from_dict(state_dict: dict) -> StagePosition:
 
-    stage_position = StagePosition(
-        x=state_dict["x"],
-        y=state_dict["y"],
-        z=state_dict["z"],
-        r=state_dict["r"],
-        t=state_dict["t"],
-        coordinate_system=state_dict["coordinate_system"],
-    )
-
-    return stage_position
 
 
 # Sample:

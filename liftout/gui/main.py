@@ -6,7 +6,7 @@ import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import acquire
 from fibsem import utils as fibsem_utils
-from fibsem.acquire import ImageSettings
+from fibsem.structures import ImageSettings
 from liftout import autoliftout, utils, actions
 from liftout.gui import utils as ui_utils
 from liftout.gui import windows

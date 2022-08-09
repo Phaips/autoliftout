@@ -9,7 +9,7 @@ imaging: # default imaging settings
 machine_learning:
   weights: boost_n05_model.pt # please place in liftout/models/
 gamma: # gamma correction parameters
-  correction: True
+  enabled: True
   min_gamma: 0.15
   max_gamma: 1.8
   scale_factor: 0.01
