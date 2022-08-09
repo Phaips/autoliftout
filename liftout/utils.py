@@ -5,6 +5,8 @@ import numpy as np
 import yaml
 import liftout
 from fibsem.utils import load_yaml, configure_logging
+from fibsem.structures import ImageSettings, SystemSettings, StageSettings, CalibrationSettings, stage_position_from_dict
+from liftout.structures import AutoLiftoutOptions, AutoLiftoutSettings, ReferenceHFW
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -23,6 +25,32 @@ def load_config(yaml_filename):
         settings_dict = yaml.safe_load(f)
     settings_dict = _format_dictionary(settings_dict)
     return settings_dict
+
+
+def load_settings_from_config(fname: Path):
+
+    config = load_yaml(fname)
+    image_settings = ImageSettings.__from_dict__(config["calibration"]["imaging"])
+    system_settings = SystemSettings.__from_dict__(config["system"])
+    stage_settings = StageSettings.__from_dict__(config["system"])
+    calibration_settings = CalibrationSettings.__from_dict__(config["calibration"]["limits"])
+    reference_hfw = ReferenceHFW.__from_dict__(config["calibration"]["reference_hfw"])
+    options = AutoLiftoutOptions.__from_dict__(config["system"])
+    grid_position = stage_position_from_dict(config["system"]["initial_position"]["sample_grid"])
+    landing_position = stage_position_from_dict(config["system"]["initial_position"]["landing_grid"])
+
+    settings = AutoLiftoutSettings(
+        system = system_settings,
+        stage = stage_settings,
+        calibration = calibration_settings,
+        reference_hfw=reference_hfw,
+        options=options,
+        image_settings=image_settings,
+        grid_position=grid_position,
+        landing_position=landing_position,
+    )
+
+    return settings
 
 
 def load_full_config(

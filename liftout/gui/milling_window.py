@@ -9,7 +9,7 @@ import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import \
     Rectangle as RectangleArea
-from fibsem import acquire, constants, calibration
+from fibsem import acquire, constants, calibration, milling
 from fibsem import utils as fibsem_utils
 from fibsem.structures import BeamType, ImageSettings, Point
 from liftout import patterning
@@ -94,7 +94,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setup_milling_image()
 
         # setup
-        patterning.setup_milling(
+        milling.setup_milling(
             microscope=self.microscope,
             application_file=self.settings["system"]["application_file"],
             hfw=self.image_settings.hfw,
@@ -289,7 +289,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def update_estimated_time(self):
 
         # update estimted milling time
-        self.milling_time_seconds = patterning.calculate_milling_time(
+        self.milling_time_seconds = milling.calculate_milling_time(
             self.patterns,
             self.milling_stages[self.current_selected_stage]["milling_current"],
         )
@@ -362,7 +362,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 self.milling_pattern,
                 Point(self.center_x, self.center_y),
             )
-            patterning.run_milling(
+            milling.run_milling(
                 microscope=self.microscope,
                 settings=self.settings,
                 milling_current=stage_settings["milling_current"],
@@ -381,7 +381,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             logging.info(f"Milling finished: {self.microscope.patterning.state}")
 
         # reset to imaging mode
-        patterning.finish_milling(
+        milling.finish_milling(
             microscope=self.microscope,
             imaging_current=self.settings["calibration"]["imaging"]["imaging_current"],
         )
