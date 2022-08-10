@@ -174,7 +174,7 @@ def detect_features(img: AdornedImage, mask: np.ndarray, shift_type: tuple[Detec
     return detection_features
 
 
-def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tuple[DetectionType], settings: dict, initial_point: Point = None) -> list[DetectionFeature]:
+def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, features: tuple[DetectionFeature]) -> list[DetectionFeature]:
     """
 
     args:
@@ -188,14 +188,17 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
 
     detection_features = []
 
-    for det_type in shift_type:
+    for feature in features:
         
+        det_type = feature.detection_type
+        point = feature.feature_px
+
         if not isinstance(det_type, DetectionType):
             raise TypeError(f"Detection Type {det_type} is not supported.")
 
         # get the initial position estimate
-        if initial_point is None:
-            initial_point = get_initial_position(img, settings, det_type)
+        if point is None:
+            initial_point = get_initial_position(img, det_type)
 
         if det_type == DetectionType.ImageCentre:
             feature_px = initial_point
@@ -218,7 +221,7 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, shift_type: tu
 
     return detection_features
 
-def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, shift_type: tuple, settings: dict, initial_point: Point = None):
+def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, features: tuple[DetectionFeature]):
     """
     Calculate the distance between two features in the image coordinate system.
 
@@ -232,7 +235,7 @@ def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: Adorn
 
     """
     # detect features for calculation
-    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, shift_type, settings, initial_point)
+    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, features)
 
     # calculate movement distance
     x_distance_m, y_distance_m = det_utils.convert_pixel_distance_to_metres(
@@ -314,7 +317,7 @@ def identify_shift_using_machine_learning(
     return det_result
 
 
-def get_initial_position(img: AdornedImage, settings: dict, det_type: DetectionType) -> Point:
+def get_initial_position(img: AdornedImage, det_type: DetectionType) -> Point:
 
     beam_type = img.metadata.acquisition.beam_type
 
@@ -327,9 +330,9 @@ def get_initial_position(img: AdornedImage, settings: dict, det_type: DetectionT
     if det_type == DetectionType.NeedleTip:
         
         if beam_type == "Electron": 
-            pt = settings["calibration"]["initial"]["needle_eb_initial"]
+            pt = (400, 200) # settings["calibration"]["initial"]["needle_eb_initial"]
         if beam_type == "Ion":
-            pt = settings["calibration"]["initial"]["needle_ib_initial"]
+            pt = (800, 400) # settings["calibration"]["initial"]["needle_ib_initial"]
 
         point = Point(x=pt[0], y=pt[1])
 
@@ -458,12 +461,12 @@ def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initia
     # centre = Point(x=ref_image.data.shape[1]//2, y=ref_image.data.shape[0]//2)
     # top_needle = detection.detect_closest_edge_v2(edge_mask, Point(x=400, y=200))  # closest edge  
     # bottom_needle = detection.detect_closest_edge_v2(edge_mask, centre)  # closest edge  
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1, 3, figsize=(30, 30))
-    ax[0].imshow(filt, cmap="gray")
-    ax[1].imshow(minus * mask, cmap="gray")
-    ax[2].imshow(edge_mask, cmap="turbo", )
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots(1, 3, figsize=(30, 30))
+    # ax[0].imshow(filt, cmap="gray")
+    # ax[1].imshow(minus * mask, cmap="gray")
+    # ax[2].imshow(edge_mask, cmap="turbo", )
+    # plt.show()
 
     return needle 
 

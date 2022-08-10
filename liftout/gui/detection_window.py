@@ -5,7 +5,7 @@ from pprint import pprint
 
 import matplotlib.patches as mpatches
 from fibsem import calibration, movement
-from fibsem import utils as fibsem_utils
+from liftout import utils
 from fibsem.structures import BeamType
 from liftout.config import config
 from liftout.detection import utils as det_utils
@@ -97,7 +97,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
             )
 
             logging.info(
-                f"""on_click: {event.button} | {self.current_detection_selected} | IMAGE COORDINATE | {self.xclick:.2e}, {self.yclick:.2e} | REAL COORDINATE | {self.center_x:.2e}, {self.center_y:.2e}"""
+                f"""on_click: {event.button} | {self.current_detection_selected} | IMAGE COORDINATE | {int(self.xclick)}, {int(self.yclick)} | REAL COORDINATE | {self.center_x:.2e}, {self.center_y:.2e}"""
             )
 
             # update detection data
@@ -209,19 +209,22 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = fibsem_utils.quick_setup()
-    lamella = Lamella(image_settings.save_path, 999, _petname="999-test-mule")
-
+    microscope, settings, image_settings, sample, lamella = utils.full_setup()
+    
     app = QtWidgets.QApplication([])
 
-    calibration.validate_detection(
-        microscope,
-        settings,
-        lamella,
-        shift_type=(DetectionType.NeedleTip, DetectionType.LamellaCentre),
-        beam_type=BeamType.ELECTRON,
-        parent=None,
-    )
+    from liftout.gui import windows
+    from liftout.detection.detection import DetectionFeature
+
+    # select features
+    features = [DetectionFeature(detection_type=DetectionType.ImageCentre, feature_px=None),
+                DetectionFeature(detection_type=DetectionType.LamellaCentre, feature_px=None)]
+    det = windows.detect_features(microscope=microscope, 
+        settings=settings, image_settings=image_settings, lamella=lamella, ref_image=None, features=features, validate=True)
+
+
+    pprint(det)
+
     sys.exit(app.exec_())
 
 

@@ -2,19 +2,21 @@ import logging
 from pathlib import Path
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from fibsem import movement
+from autoscript_sdb_microscope_client.structures import AdornedImage
+from fibsem import acquire, movement, validation
 from fibsem import utils as fibsem_utils
-from fibsem import validation
 from fibsem.acquire import BeamType, ImageSettings
+from fibsem.structures import ImageSettings
 from liftout import patterning, utils
-from liftout.detection.detection import DetectionResult
+from liftout.detection import detection
+from liftout.detection.detection import DetectionFeature, DetectionResult
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 from liftout.sample import Lamella
 from PyQt5.QtWidgets import QMessageBox
-
+from liftout.gui import utils as ui_utils
 
 def ask_user_interaction(
     microscope: SdbMicroscopeClient, msg="Default Ask User Message", beam_type=None
@@ -83,6 +85,42 @@ def open_milling_window(
     milling_window.show()
     milling_window.exec_()
 
+
+def detect_features(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, lamella: Lamella,  ref_image: AdornedImage, features: tuple[DetectionFeature], validate: bool = True) -> DetectionResult:
+    """_summary_
+
+    Args:
+        microscope (SdbMicroscopeClient): _description_
+        settings (dict): _description_
+        image_settings (ImageSettings): _description_
+        lamella (Lamella): _description_
+        ref_image (AdornedImage): _description_
+        features (tuple[DetectionFeature]): _description_
+        validate (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        DetectionResult: _description_
+    """
+    # detect features
+    image = acquire.new_image(microscope, image_settings)
+
+    if ref_image is None:
+        ref_image = image
+
+    # detect features
+    det = detection.locate_shift_between_features_v2(
+        image, ref_image, features=features
+    )
+
+    # user validate features...
+    if validate:
+        det = validate_detection_v2(
+            microscope, settings, det, lamella,
+        )
+
+    return det
+
+
 def validate_detection_v2(
     microscope: SdbMicroscopeClient,
     settings: dict,
@@ -142,14 +180,11 @@ def validate_detection(
 def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path: Path):
     """Run validation checks to confirm microscope state before run."""
 
-    msg = QMessageBox()
-    msg.setWindowTitle("Microscope State Validation")
-    msg.setText("Do you want to validate the microscope state?")
-    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-    msg.setIcon(QMessageBox.Question)
-    button = msg.exec()
+    response = ui_utils.message_box_ui(
+        title="Microscope State Validation", 
+        text="Do you want to validate the microscope state?")
 
-    if button == QMessageBox.No:
+    if response is False:
         logging.info(f"PRE_RUN_VALIDATION cancelled by user.")
         return
 
@@ -159,7 +194,7 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     validation.validate_initial_microscope_state(microscope, settings)
 
     # validate user configuration
-    utils.validate_settings(microscope=microscope, config=settings)
+    utils._validate_configuration_values(microscope, settings) # TODO: fix
 
     # reminders
     reminder_str = """Please check that the following steps have been completed:
@@ -171,11 +206,11 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     \n - Plasma Gas Valve Open
     \n - Initial Grid and Landing Positions
     """
-    msg = QMessageBox()
-    msg.setWindowTitle("AutoLiftout Initialisation Checklist")
-    msg.setText(reminder_str)
-    msg.setStandardButtons(QMessageBox.Ok)
-    msg.exec_()
+
+    response = ui_utils.message_box_ui(
+        title="AutoLiftout Initialisation Checklist",
+        text=reminder_str,
+        buttons=QMessageBox.Ok)
 
     # Loop backwards through the log, until we find the start of validation
     with open(log_path) as f:
@@ -197,11 +232,11 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
         for warning in validation_warnings[::-1]:
             warning_str += f"\n{warning.split('—')[-1]}"
 
-        msg = QMessageBox()
-        msg.setWindowTitle("AutoLiftout Initialisation Warnings")
-        msg.setText(warning_str)
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec_()
+        ui_utils.message_box_ui(
+            title="AutoLiftout Initialisation Warning",
+            text=warning_str,
+            buttons=QMessageBox.Ok
+            )
 
     logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
 

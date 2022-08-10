@@ -10,9 +10,8 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import \
     Rectangle as RectangleArea
 from fibsem import acquire, constants, calibration, milling
-from fibsem import utils as fibsem_utils
 from fibsem.structures import BeamType, ImageSettings, Point
-from liftout import patterning
+from liftout import patterning, utils
 from liftout.config import config
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
 from PyQt5 import QtCore, QtWidgets
@@ -430,7 +429,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = fibsem_utils.quick_setup()
+    microscope, settings, image_settings = utils.quick_setup()
 
     import os
 

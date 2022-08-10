@@ -6,7 +6,7 @@ import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import StagePosition
 from fibsem import acquire, movement, calibration
-from fibsem import utils as fibsem_utils
+from liftout import utils
 from fibsem.structures import ImageSettings
 from fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
                               MICRON_TO_METRE, MILLIMETRE_TO_METRE)
@@ -272,7 +272,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = fibsem_utils.quick_setup()
+    microscope, settings, image_settings = utils.quick_setup()
 
     app = QtWidgets.QApplication([])
     qt_app = GUIMMovementWindow(

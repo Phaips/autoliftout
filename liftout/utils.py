@@ -215,7 +215,7 @@ def _validate_configuration_values(microscope, dictionary):
         if isinstance(item, dict):
             _validate_configuration_values(microscope, item)
         elif isinstance(item, list):
-            dictionary[key] = [_validate_configuration_values(microscope, i) for i in item]
+            dictionary[key] = [_validate_configuration_values(microscope, i) for i in item if isinstance(i, dict)]
         else:
             if isinstance(item, float):
                 if "hfw" in key:

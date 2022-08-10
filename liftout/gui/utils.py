@@ -322,15 +322,15 @@ def display_error_message(message, title="Error"):
     return error_dialog
 
 
-def message_box_ui(title: str, text: str):
+def message_box_ui(title: str, text: str, buttons = QMessageBox.Yes | QMessageBox.No):
 
     msg = QMessageBox()
     msg.setWindowTitle(title)
     msg.setText(text)
-    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msg.setStandardButtons(buttons)
     msg.exec_()
-
-    response = True if msg.clickedButton() == msg.button(QMessageBox.Yes) else False
+    
+    response = True if (msg.clickedButton() == msg.button(QMessageBox.Yes)) or (msg.clickedButton() == msg.button(QMessageBox.Ok) ) else False
 
     return response
 
