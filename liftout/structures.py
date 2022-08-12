@@ -6,21 +6,29 @@ from fibsem.structures import (
     StageSettings,
 )
 from autoscript_sdb_microscope_client.structures import StagePosition
+from enum import Enum
 
+class ReferenceHFW(Enum):
+    Wide: float = 2750.0e-6
+    Low: float = 900.0e-6
+    Medium: float = 400.0e-6
+    High: float = 150.0e-6
+    Super: float = 80.0e-6
+    Ultra: float = 50.0e-6
 
 @dataclass
-class ReferenceHFW:
-    wide: 2750.0e-6
-    low: 900.0e-6
-    medium: 400.0e-6
-    high: 150.0e-6
-    super: 80.0e-6
-    ultra: 50.0e-6
+class ReferenceHFW_DATACLASS:
+    wide: float = 2750.0e-6
+    low: float = 900.0e-6
+    medium: float = 400.0e-6
+    high: float = 150.0e-6
+    super: float = 80.0e-6
+    ultra: float = 50.0e-6
 
     @classmethod
-    def __from_dict__(self, settings: dict) -> 'ReferenceHFW':
+    def __from_dict__(self, settings: dict) -> 'ReferenceHFW_DATACLASS':
         
-        reference_hfw = ReferenceHFW(
+        reference_hfw = ReferenceHFW_DATACLASS(
             wide = settings["wide"],
             low = settings["low"],
             medium = settings["medium"],
@@ -53,10 +61,10 @@ class AutoLiftoutSettings:
     options: AutoLiftoutOptions
     stage: StageSettings
     calibration: CalibrationSettings
-    reference_hfw: ReferenceHFW
     image_settings: ImageSettings
     grid_position: StagePosition  
     landing_position: StagePosition
+    protocol: dict
 
     def __repr__(self) -> str:
 
@@ -65,8 +73,8 @@ System: {self.system},
 Options: {self.options},
 Stage: {self.stage},
 Calibration: {self.calibration},
-ReferenceHFW: {self.reference_hfw},
 Imaging: {self.image_settings},
 Grid: {self.grid_position}, 
-Landing: {self.landing_position}        
+Landing: {self.landing_position},
+Protocol: {len(self.protocol)} stages ({[k for k in self.protocol.keys()]}         
 """

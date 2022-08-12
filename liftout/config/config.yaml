@@ -30,12 +30,13 @@ system:
       t: null
       coordinate_system: "Raw"
 calibration:
+  imaging_current: 20.e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe # 3kV eB
+  milling_current: 2.e-9
   imaging: # default imaging settings
     hfw: 150.e-6 # ion beam horizontal field of view (meters)
     beam_type: "Electron"
     dwell_time: 1.e-6
     resolution: "1536x1024"
-    imaging_current: 20.e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe # 3kV eB
     save: False
     autocontrast: True
     gamma: # gamma correction parameters
@@ -44,20 +45,13 @@ calibration:
       max_gamma: 1.8
       scale_factor: 0.01
       threshold: 46 # px
-    milling_current: 2.e-9
-  machine_learning:
-    weights: boost_n05_model.pt # please place in liftout/models/
-  initial:
-    needle_eb_initial: [400, 200]
-    needle_ib_initial: [800, 400]
-  limits:
-    max_hfw_eb: 2700.0e-6
-    max_hfw_ib: 900.0e-6
-    eucentric_height_eb: 4.0e-3
-    eucentric_height_ib: 16.5e-3
-    eucentric_height_tolerance: 0.5e-3
-    needle_stage_height_limit: 3.7e-3 # relative coordinates
-    max_working_distance_eb: 6.0e-3
+  max_hfw_eb: 2700.0e-6
+  max_hfw_ib: 900.0e-6
+  eucentric_height_eb: 4.0e-3
+  eucentric_height_ib: 16.5e-3
+  eucentric_height_tolerance: 0.5e-3
+  needle_stage_height_limit: 3.7e-3 # relative coordinates
+  max_working_distance_eb: 6.0e-3
   reference_hfw:
     # new config
     wide: 2750.e-6

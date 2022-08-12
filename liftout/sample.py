@@ -204,6 +204,18 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
     return lamella
 
 
+def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:
+    reference_images = ReferenceImages(
+        low_res_eb=lamella.load_reference_image(f"{label}_low_res_eb"),
+        high_res_eb=lamella.load_reference_image(f"{label}_high_res_eb"),
+        low_res_ib=lamella.load_reference_image(f"{label}_low_res_ib"),
+        high_res_ib=lamella.load_reference_image(f"{label}_high_res_ib"),
+    )
+
+    return reference_images
+
+
+
 @dataclass
 class AutoLiftoutState:
     stage: AutoLiftoutStage = AutoLiftoutStage.Setup
