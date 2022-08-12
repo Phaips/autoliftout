@@ -52,11 +52,3 @@ calibration:
   eucentric_height_tolerance: 0.5e-3
   needle_stage_height_limit: 3.7e-3 # relative coordinates
   max_working_distance_eb: 6.0e-3
-  reference_hfw:
-    # new config
-    wide: 2750.e-6
-    low: 900.e-6
-    medium: 400.e-6
-    high: 150.e-6
-    super: 80.e-6
-    ultra: 50.e-6
