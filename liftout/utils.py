@@ -83,7 +83,7 @@ def load_full_config(
     settings["protocol"] = config_protocol
 
     # validation
-    # settings = _format_dictionary(settings)
+    settings = _format_dictionary(settings)
 
     return settings
 
@@ -105,7 +105,7 @@ def _format_dictionary(dictionary: dict):
         if isinstance(item, dict):
             _format_dictionary(item)
         elif isinstance(item, list):
-            dictionary[key] = [_format_dictionary(i) for i in item]
+            dictionary[key] = [_format_dictionary(i) for i in item if isinstance(i, list) or isinstance(i, dict)]
         else:
             if item is not None:
                 try:
@@ -144,6 +144,16 @@ def plot_two_images(img1, img2) -> None:
     ax[1].imshow(img2.data, cmap="gray")
     ax[1].plot(c.x, c.y, "y+", ms=50, markeredgewidth=2)
     plt.show()
+
+def take_reference_images_and_plot(microscope, image_settings: ImageSettings):
+    from pprint import pprint
+    from fibsem import acquire
+
+    eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
+    plot_two_images(eb_image, ib_image)
+    pprint(f"Stage Position: {microscope.specimen.stage.current_position}")
+
+    return eb_image, ib_image
 
 
 # cross correlate

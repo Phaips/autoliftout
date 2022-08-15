@@ -235,7 +235,7 @@ class AutoLiftoutState:
         return state_dict
 
     @classmethod
-    def __from_dict__(state_dict: dict) -> 'AutoLiftoutState':
+    def __from_dict__(self, state_dict: dict) -> 'AutoLiftoutState':
 
         autoliftout_state = AutoLiftoutState(
             stage=AutoLiftoutStage[state_dict["stage"]],

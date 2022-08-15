@@ -34,9 +34,7 @@ def move_to_trenching_angle(
         The position of the microscope stage after moving.
     """
     movement.flat_to_beam(
-        microscope,
-        settings=settings,
-        beam_type=BeamType.ION,
+        microscope, settings=settings, beam_type=BeamType.ION,
     )
     return microscope.specimen.stage.current_position
 
@@ -46,9 +44,7 @@ def move_to_liftout_angle(
 ) -> StagePosition:
     """Tilt the sample stage to the correct angle for liftout."""
     movement.flat_to_beam(
-        microscope,
-        settings=settings,
-        beam_type=BeamType.ELECTRON,
+        microscope, settings=settings, beam_type=BeamType.ELECTRON,
     )
     logging.info(f"move to liftout angle complete.")
     return microscope.specimen.stage.current_position
@@ -61,16 +57,12 @@ def move_to_landing_angle(
 
     landing_angle = np.deg2rad(settings["system"]["stage_tilt_landing"])
     movement.flat_to_beam(
-        microscope,
-        settings=settings,
-        beam_type=BeamType.ION,
+        microscope, settings=settings, beam_type=BeamType.ION,
     )  # stage tilt 25
     microscope.specimen.stage.relative_move(
         StagePosition(t=landing_angle)
     )  # more tilt by 13
-    logging.info(
-        f"movement: move to landing angle ({np.rad2deg(landing_angle)} deg) complete."
-    )
+    logging.info(f"move to landing angle ({np.rad2deg(landing_angle)} deg) complete.")
     return microscope.specimen.stage.current_position
 
 
@@ -91,16 +83,14 @@ def move_to_sample_grid(
             "coordinate_system"
         ],
     )
-    logging.info(f"movement: moving to sample grid {sample_grid_center}")
+    logging.info(f"moving to sample grid {sample_grid_center}")
     movement.safe_absolute_stage_movement(
         microscope=microscope, stage_position=sample_grid_center
     )
 
     # move flat to the electron beam
     movement.flat_to_beam(
-        microscope,
-        settings=settings,
-        beam_type=BeamType.ELECTRON,
+        microscope, settings=settings, beam_type=BeamType.ELECTRON,
     )
     logging.info(f"move to sample grid complete.")
     return microscope.specimen.stage.current_position
@@ -129,7 +119,7 @@ def move_to_landing_grid(
             "coordinate_system"
         ],
     )
-    logging.info(f"movement: moving to landing grid {landing_grid_position}")
+    logging.info(f"moving to landing grid {landing_grid_position}")
     movement.safe_absolute_stage_movement(
         microscope=microscope, stage_position=landing_grid_position
     )
@@ -137,69 +127,90 @@ def move_to_landing_grid(
     # move to landing angle
     move_to_landing_angle(microscope, settings=settings)
 
-    logging.info(f"movement: move to landing grid complete.")
+    logging.info(f"move to landing grid complete.")
     return microscope.specimen.stage.current_position
 
 
-def move_sample_stage_out(microscope: SdbMicroscopeClient) -> StagePosition:
+def move_sample_stage_out(
+    microscope: SdbMicroscopeClient, settings: dict
+) -> StagePosition:
     """Move stage completely out of the way, so it is not visible at all."""
     # Must set tilt to zero, so we don't see reflections from metal stage base
     microscope.specimen.stage.absolute_move(StagePosition(t=0))  # important!
     sample_stage_out = StagePosition(
-        x=-0.002507, y=0.025962792, z=0.0039559049
-    )  # TODO: make these dynamically set based on initial_position
-    logging.info(f"movement: move sample grid out to {sample_stage_out}")
+        x=-0.002507,
+        y=0.025962792,
+        z=0.0039559049,
+        r=np.deg2rad(settings["system"]["stage_rotation_flat_to_electron"]),
+    )  # TODO: make these dynamically set based on initial_position # TODO: magic number
+    logging.info(f"move sample grid out to {sample_stage_out}")
     movement.safe_absolute_stage_movement(microscope, sample_stage_out)
-    logging.info(f"movement: move sample stage out complete.")
+    logging.info(f"move sample stage out complete.")
     return microscope.specimen.stage.current_position
 
 
 def move_needle_to_liftout_position(
-    microscope: SdbMicroscopeClient, z_offset: float = 20e-6
+    microscope: SdbMicroscopeClient,
+    dx: float = -5.0e-6,
+    dy: float = 0.0,
+    dz: float = 10e-6,
 ) -> ManipulatorPosition:
     """Insert the needle to just above the eucentric point, ready for liftout.
 
     Args:
         microscope (SdbMicroscopeClient): autoscript microscope instance
-        z_offset (float): distance to move above the eucentric point (ManipulatorCoordinateSystem.RAW -> up = negative)
+        dz (float): distance to move above the eucentric point (ManipulatorCoordinateSystem.RAW -> up = negative)
 
     Returns:
         ManipulatorPosition: current needle position
     """
 
-    # needle
-    needle = microscope.specimen.manipulator
+    # insert to park position
+    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
+
+    # move to  offset position
+    movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
+
+    return microscope.specimen.manipulator.current_position
+
+
+def move_needle_to_landing_position_v2(
+    microscope: SdbMicroscopeClient,
+    dx: float = -30.0e-6,
+    dy: float = 0.0,
+    dz: float = 0e-6,
+) -> None:
+    """Insert the needle to just above, and left of the eucentric point, ready for landing.
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope instance
+        dz (float): distance to move above the eucentric point (ManipulatorCoordinateSystem.RAW -> up = negative)
+
+    Returns:
+        ManipulatorPosition: current needle position
+    """
 
     # insert to park position
-    movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
+    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
 
-    # move to just above the eucentric point
-    eucentric_position = needle.get_saved_position(
-        ManipulatorSavedPosition.EUCENTRIC, ManipulatorCoordinateSystem.RAW
-    )
-    eucentric_position.z += z_offset  # RAW, up = negative, STAGE: down = negative
-    needle.absolute_move(eucentric_position)
+    # move to  offset position
+    movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
 
-    return needle.current_position
-
-
-# def move_needle_to_liftout_position(microscope: SdbMicroscopeClient) -> None:
-#     """Move the needle into position, ready for liftout."""
-#     movement.insert_needle(microscope)
-#     movement.move_needle_closer(microscope)
-
-
-def move_needle_to_landing_position(microscope: SdbMicroscopeClient) -> None:
-    """Move the needle into position, ready for landing."""
-    movement.insert_needle(microscope)
-    movement.move_needle_closer(
-        microscope, x_shift=-25e-6
-    )  # TODO: tune to use eucentric position offset?
+    return microscope.specimen.manipulator.current_position
 
 
 def move_needle_to_reset_position(microscope: SdbMicroscopeClient) -> None:
     """Move the needle into position, ready for reset"""
-    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.EUCENTRIC)
+    # needle
+    needle = microscope.specimen.manipulator
+
+    # insert to park
+    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
+
+    # move to eucentric
+    movement.move_needle_to_eucentric_position_offset(microscope)
+
+    return needle.current_position
 
 
 # TODO: use safe_absolute_stage_movement instead

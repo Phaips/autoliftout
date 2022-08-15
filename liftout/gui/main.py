@@ -53,6 +53,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # update display
         self.update_ui_display()
+        self.enable_liftout_ui(self.sample)
 
         logging.info(f"INIT | {AutoLiftoutStage.Initialisation.name} | FINISHED")
 
@@ -60,17 +61,18 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_setup_autoliftout(self):
         """Run the autoliftout setup workflow."""
-        autoliftout.run_setup_autoliftout(
+        self.sample = autoliftout.run_setup_autoliftout(
             microscope=self.microscope,
             settings=self.settings,
             image_settings=self.image_settings,
             sample=self.sample,
             parent_ui=self,
         )
+
 
     def run_autoliftout(self):
         """Run the autoliftout main workflow."""
-        autoliftout.run_autoliftout_workflow(
+        self.sample = autoliftout.run_autoliftout_workflow(
             microscope=self.microscope,
             settings=self.settings,
             image_settings=self.image_settings,
@@ -78,9 +80,10 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             parent_ui=self,
         )
 
+
     def run_autoliftout_thinning(self):
         "Run the autoliftout thinning workflow."
-        autoliftout.run_thinning_workflow(
+        self.sample = autoliftout.run_thinning_workflow(
             microscope=self.microscope,
             settings=self.settings,
             image_settings=self.image_settings,
@@ -97,16 +100,21 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         try:
             sample: Sample = ui_utils.setup_experiment_sample_ui(parent_ui=self)
 
-            if sample.positions:
-                # enable autoliftout buttons
-                self.pushButton_autoliftout.setEnabled(True)
-                self.pushButton_thinning.setEnabled(True)
+            self.enable_liftout_ui(sample)
 
         except Exception as e:
             ui_utils.display_error_message(message=f"Unable to setup sample: {e}")
             sample = None
 
         return sample
+
+    def enable_liftout_ui(self, sample: Sample):
+        LIFTOUT_ENABLED = bool(sample.positions)
+        
+        # enable autoliftout buttons
+        self.pushButton_autoliftout.setEnabled(LIFTOUT_ENABLED)
+        self.pushButton_thinning.setEnabled(LIFTOUT_ENABLED)
+
 
     def set_lamella_failed(self):
         """Mark the indicated sample position as failed."""

@@ -8,7 +8,7 @@ pretilt_angle: 27 # degrees (flat to electron tilt)
 stage_tilt_flat_to_ion: 52 # degrees
 stage_tilt_landing: 0 #13 # degrees
 piescope_enabled: False
-high_throughput: False
+high_throughput: True
 autolamella: False
 initial_position:
   sample_grid: # need to check the coordinate systems

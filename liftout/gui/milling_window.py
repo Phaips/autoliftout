@@ -288,6 +288,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def update_estimated_time(self):
 
         # update estimted milling time
+
+        # TODO: change over:
+        total_time_seconds = milling.estimate_milling_time_in_seconds(self.patterns) # only works for current milling current.
+
         self.milling_time_seconds = milling.calculate_milling_time(
             self.patterns,
             self.milling_stages[self.current_selected_stage]["milling_current"],
@@ -437,16 +441,19 @@ def main():
     image_settings.hfw = 80.0e-6
 
     os.makedirs(image_settings.save_path, exist_ok=True)
-    acquire.reset_beam_shifts(microscope)
+    # acquire.reset_beam_shifts(microscope)
+
+    from liftout.patterning import MillingPattern
+    from liftout.gui import windows
 
     app = QtWidgets.QApplication([])
-    qt_app = GUIMillingWindow(
+    windows.open_milling_window(
         microscope=microscope,
         settings=settings,
         image_settings=image_settings,
-        milling_pattern_type=patterning.MillingPattern.Trench,
+        milling_pattern=MillingPattern.Trench,
+        x=0, y=0,
     )
-    qt_app.show()
     sys.exit(app.exec_())
 
 

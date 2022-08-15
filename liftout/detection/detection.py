@@ -191,13 +191,13 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, features: tupl
     for feature in features:
         
         det_type = feature.detection_type
-        point = feature.feature_px
+        initial_point = feature.feature_px
 
         if not isinstance(det_type, DetectionType):
             raise TypeError(f"Detection Type {det_type} is not supported.")
 
         # get the initial position estimate
-        if point is None:
+        if initial_point is None:
             initial_point = get_initial_position(img, det_type)
 
         if det_type == DetectionType.ImageCentre:
@@ -416,8 +416,8 @@ def detect_lamella_edge(img:AdornedImage):
         pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
 
     # ib mask
-    mask = np.zeros_like(img.data)
-    mask[pt.y:, :pt.x] = 1
+    mask = np.ones_like(img.data)
+    # mask[pt.y:, :pt.x] = 1
     
     edge = edge_detection(img.data, sigma=3)  
     edge_mask = edge * mask
@@ -450,7 +450,8 @@ def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initia
     if beam_type == "Ion":
         pt = Point(x=int(ref_image.data.shape[1] * 0.5), y=int(ref_image.data.shape[0]*0.5)) # ib mask, bottom, left corner
         mask[pt.y:, :pt.x] = 1
-
+        
+    mask = np.ones_like(ref_image.data)
     edge_mask = edge * mask
 
     if beam_type == "Electron":
