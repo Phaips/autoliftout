@@ -83,7 +83,6 @@ def move_to_sample_grid(
             "coordinate_system"
         ],
     )
-    logging.info(f"moving to sample grid {sample_grid_center}")
     movement.safe_absolute_stage_movement(
         microscope=microscope, stage_position=sample_grid_center
     )
@@ -152,7 +151,7 @@ def move_sample_stage_out(
 def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
     dx: float = -5.0e-6,
-    dy: float = 0.0,
+    dy: float = -5.0e-6,
     dz: float = 10e-6,
 ) -> ManipulatorPosition:
     """Insert the needle to just above the eucentric point, ready for liftout.

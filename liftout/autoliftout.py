@@ -11,7 +11,7 @@ from autoscript_sdb_microscope_client.structures import (
     Rectangle,
 )
 from fibsem import acquire, calibration, utils, movement, validation
-from fibsem.structures import BeamType, ImageSettings
+from fibsem.structures import BeamType, ImageSettings, MicroscopeState
 
 from liftout.detection.detection import DetectionType, DetectionFeature
 from liftout.gui import windows
@@ -42,17 +42,10 @@ def mill_lamella_trench(
     image_settings.save_path = lamella.path
 
     # move to lamella position
-    movement.safe_absolute_stage_movement(microscope, lamella.lamella_coordinates)
-
-    # move flat to the ion beam, stage tilt 25 (total image tilt 52)
-    actions.move_to_trenching_angle(
-        microscope, settings
-    )  # not required, lamella coords should be at this angle...
+    calibration.set_microscope_state(microscope, lamella.lamella_state)
 
     # Take an ion beam image at the *milling current*
-    image_settings.hfw = (
-        ReferenceHFW.Super.value
-    )  # settings["calibration"]["reference_images"]["hfw_super_res"]
+    image_settings.hfw = ReferenceHFW.Super.value
 
     ######
 
@@ -66,9 +59,11 @@ def mill_lamella_trench(
         y=0,
     )
 
-    hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
-    reference_images = acquire.take_set_of_reference_images(
-        microscope, image_settings, hfws=hfws, label="ref_trench"
+    acquire.take_set_of_reference_images(
+        microscope=microscope,
+        image_settings=image_settings,
+        hfws=[ReferenceHFW.Medium.value, ReferenceHFW.Super.value],
+        label="ref_trench",
     )
 
     return lamella
@@ -359,13 +354,18 @@ def land_needle_on_milled_lamella_v2(
     image_settings.beam_type = BeamType.ION
     image_settings.hfw = ReferenceHFW.Super.value
     image_settings.label = f"needle_liftout_land"
-    ib_image = acquire.new_image(
-        microscope, image_settings, reduced_area=Rectangle(0.4, 0.4, 0.2, 0.2)
-    )
+    image_settings.save = True
+    gamma_settings = image_settings.gamma
+    image_settings.gamma.enabled = False
+    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)
+    ib_image = acquire.new_image(microscope, image_settings, reduced_area)
     previous_brightness = calibration.measure_brightness(ib_image)
 
+    brightness_history = [previous_brightness] 
+    MEAN_BRIGHTNESS = np.mean(brightness_history)
+
     iteration_count = 0
-    MAX_ITERATIONS = 15
+    MAX_ITERATIONS = 25
 
     while True:
 
@@ -378,34 +378,46 @@ def land_needle_on_milled_lamella_v2(
         )
 
         # calculate brightness
-        ib_image = acquire.new_image(
-            microscope, image_settings, reduced_area=Rectangle(0.4, 0.4, 0.2, 0.2)
-        )
+        image_settings.label = f"bright_{utils.current_timestamp()}"
+        ib_image = acquire.new_image(microscope, image_settings, reduced_area=reduced_area)
         brightness = calibration.measure_brightness(ib_image)
 
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(1, 2, figsize=(15, 15))
+        ax[0].imshow(ib_image.data, cmap="gray")
+        ax[1].plot(np.mean(ib_image.data, axis=0))
+        plt.show()
+
         logging.info(
-            f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}"
+            f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}, MEAN BRIGHTNESS: {MEAN_BRIGHTNESS}"
         )
 
-        if brightness > previous_brightness * BRIGHTNESS_FACTOR:
+        if brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR:
             # needle has landed...
 
             # check with user?
-            response = windows.ask_user_interaction(
-                microscope,
-                msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
-                beam_type=BeamType.ION,
-            )
+            # response = windows.ask_user_interaction(
+            #     microscope,
+            #     msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
+            #     beam_type=BeamType.ION,
+            # )
 
-            if response:
-                break
-            pass
+            # if response:
+            #     break
+            # pass
+            logging.info("THRESHOLD REACHED STOPPPING")
+            break
 
         previous_brightness = brightness
+        brightness_history.append(brightness)
+        MEAN_BRIGHTNESS = np.mean(brightness_history)
+        # logging.info(f")
 
         iteration_count += 1
         if iteration_count >= MAX_ITERATIONS:
             break
+
+    image_settings.gamma.enabled = True
 
     acquire.take_set_of_reference_images(
         microscope,
@@ -432,12 +444,7 @@ def land_lamella(
     needle = microscope.specimen.manipulator
 
     # move to landing coordinate
-    movement.safe_absolute_stage_movement(
-        microscope=microscope, stage_position=lamella.landing_coordinates,
-    )
-    calibration.auto_link_stage(
-        microscope, hfw=ReferenceHFW.Medium.value,
-    )
+    calibration.set_microscope_state(microscope, lamella.landing_state)
 
     # confirm eucentricity
     windows.ask_user_movement(
@@ -627,9 +634,11 @@ def land_lamella(
     ################################### REMOVE_NEEDLE ##########################################
 
     # reference images
-    hfws = [ReferenceHFW.High.value, ReferenceHFW.Super.value]
-    reference_images = acquire.take_set_of_reference_images(
-        microscope, image_settings, hfws, label="landing_lamella_after_cut"
+    acquire.take_set_of_reference_images(
+        microscope=microscope, 
+        image_settings=image_settings, 
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value], 
+        label="landing_lamella_after_cut"
     )
 
     logging.info(
@@ -651,9 +660,11 @@ def land_lamella(
     logging.info(f"{lamella.current_state.stage.name}: needle retracted.")
 
     # reference images
-    hfws = [ReferenceHFW.High.value, ReferenceHFW.Super.value]
-    reference_images = acquire.take_set_of_reference_images(
-        microscope, image_settings, hfws, label="ref_landing_lamella"
+    acquire.take_set_of_reference_images(
+        microscope=microscope, 
+        image_settings=image_settings, 
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value], 
+        label="ref_landing_lamella"
     )
 
     return lamella
@@ -729,7 +740,6 @@ def reset_needle(
     # reset stage position
     stage_settings = MoveSettings(rotate_compucentric=True)
     stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-    # self.stage.absolute_move(StagePosition(r=lamella_coordinates.r))
     stage.absolute_move(StagePosition(x=0.0, y=0.0))
 
     # TODO: replace and test
@@ -750,9 +760,7 @@ def thin_lamella(
     image_settings.save_path = lamella.path
 
     # move to the initial landing coordinates
-    movement.safe_absolute_stage_movement(
-        microscope=microscope, stage_position=lamella.landing_coordinates,
-    )
+    calibration.set_microscope_state(microscope, lamella.landing_state)
 
     # ensure_eucentricity # TODO: Maybe remove, not required?
     windows.ask_user_movement(
@@ -1125,7 +1133,7 @@ def user_select_feature(
     settings: dict,
     image_settings: ImageSettings,
     msg: str = "Select the feature.",
-):
+) -> MicroscopeState:
     """Get the user to centre the beam on the desired feature"""
 
     # ask user to select feature
@@ -1135,7 +1143,7 @@ def user_select_feature(
         microscope, settings, image_settings, msg_type="centre_ib", msg=msg,
     )
 
-    return calibration.get_raw_stage_position(microscope)
+    return calibration.get_current_microscope_state(microscope)
 
 
 def select_initial_lamella_positions(
@@ -1169,7 +1177,7 @@ def select_initial_lamella_positions(
         actions.move_to_trenching_angle(microscope, settings=settings)
 
     # save lamella coordinates
-    lamella.lamella_coordinates = user_select_feature(
+    lamella.lamella_state = user_select_feature(
         microscope, settings, image_settings, msg="Select a lamella position."
     )
 

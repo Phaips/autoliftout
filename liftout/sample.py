@@ -107,11 +107,8 @@ class Lamella:
         self.path = os.path.join(self.base_path, self._petname)
         os.makedirs(self.path, exist_ok=True)
 
-        self.lamella_coordinates: StagePosition = StagePosition()
-        self.landing_coordinates: StagePosition = StagePosition()
-
-        self.lamella_ref_images: ReferenceImages = None
-        self.landing_ref_images: ReferenceImages = None
+        self.lamella_state: MicroscopeState = MicroscopeState()
+        self.landing_state: MicroscopeState = MicroscopeState()
 
         self.landing_selected: bool = False
 
@@ -124,8 +121,8 @@ class Lamella:
 
         return f"""
         Lamella {self._number} ({self._petname}). 
-        Lamella Coordinates: {self.lamella_coordinates}, 
-        Landing Coordinates: {self.landing_coordinates}, 
+        Lamella Coordinates: {self.lamella_state.absolute_position}, 
+        Landing Coordinates: {self.landing_state.absolute_position}, 
         Current Stage: {self.current_state.stage},
         History: {len(self.history)} stages completed ({[state.stage.name for state in self.history]}).
         """
@@ -138,22 +135,8 @@ class Lamella:
             "number": self._number,
             "base_path": self.base_path,
             "path": self.path,
-            "lamella_coordinates": {
-                "x": self.lamella_coordinates.x,
-                "y": self.lamella_coordinates.y,
-                "z": self.lamella_coordinates.z,
-                "r": self.lamella_coordinates.r,
-                "t": self.lamella_coordinates.t,
-                "coordinate_system": self.lamella_coordinates.coordinate_system,
-            },
-            "landing_coordinates": {
-                "x": self.landing_coordinates.x,
-                "y": self.landing_coordinates.y,
-                "z": self.landing_coordinates.z,
-                "r": self.landing_coordinates.r,
-                "t": self.landing_coordinates.t,
-                "coordinate_system": self.landing_coordinates.coordinate_system,
-            },
+            "lamella_state": self.lamella_state.__to_dict__(),
+            "landing_state": self.landing_state.__to_dict__(),
             "current_state": self.current_state.__to_dict__(),
             "history": [state.__to_dict__() for state in self.history],
         }
@@ -174,7 +157,7 @@ class Lamella:
 
         return adorned_img
 
-
+# TODO: convert to @classmethod
 def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
 
     lamella = Lamella(
@@ -185,12 +168,8 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
     lamella._id = lamella_dict["id"]
 
     # load stage positions from yaml
-    lamella.lamella_coordinates = stage_position_from_dict(
-        lamella_dict["lamella_coordinates"]
-    )
-    lamella.landing_coordinates = stage_position_from_dict(
-        lamella_dict["landing_coordinates"]
-    )
+    lamella.lamella_state = MicroscopeState.__from_dict__(lamella_dict["lamella_state"])
+    lamella.landing_state = MicroscopeState.__from_dict__(lamella_dict["landing_state"])
 
     # load current state
     lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])
@@ -203,7 +182,7 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
 
     return lamella
 
-
+# convert to static method
 def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:
     reference_images = ReferenceImages(
         low_res_eb=lamella.load_reference_image(f"{label}_low_res_eb"),
@@ -256,8 +235,8 @@ class AutoLiftoutState:
 #   positions: [Lamella, Lamella, Lamella]
 
 # Lamella
-#   lamella_coordinates: StagePosition
-#   landing_coordinates: StagePosition
+#   lamella_state: MicroscopeState
+#   landing_state: MicroscopeState
 #   lamella_ref_images: ReferenceImages
 #   landing_ref_images: ReferenceImages
 #   state: AutoLiftoutState
@@ -298,6 +277,7 @@ def load_experiment(path: Path) -> Sample:
 def sample_to_dataframe(sample: Sample) -> pd.DataFrame:
 
     lamella_list = []
+    lamella: Lamella
     for lamella in sample.positions.values():
 
         # lamella
@@ -305,18 +285,18 @@ def sample_to_dataframe(sample: Sample) -> pd.DataFrame:
             "number": lamella._number,
             "petname": lamella._petname,
             # "path": lamella.path,
-            "lamella.x": lamella.lamella_coordinates.x,
-            "lamella.y": lamella.lamella_coordinates.y,
-            "lamella.z": lamella.lamella_coordinates.z,
-            "lamella.r": lamella.lamella_coordinates.r,
-            "lamella.t": lamella.lamella_coordinates.t,
-            "lamella.coordinate_system": lamella.lamella_coordinates.coordinate_system,
-            "landing.x": lamella.landing_coordinates.x,
-            "landing.y": lamella.landing_coordinates.y,
-            "landing.z": lamella.landing_coordinates.z,
-            "landing.r": lamella.landing_coordinates.r,
-            "landing.t": lamella.landing_coordinates.t,
-            "landing.coordinate_system": lamella.landing_coordinates.coordinate_system,
+            "lamella.x": lamella.lamella_state.absolute_position.x,
+            "lamella.y": lamella.lamella_state.absolute_position.y,
+            "lamella.z": lamella.lamella_state.absolute_position.z,
+            "lamella.r": lamella.lamella_state.absolute_position.r,
+            "lamella.t": lamella.lamella_state.absolute_position.t,
+            "lamella.coordinate_system": lamella.lamella_state.absolute_position.coordinate_system,
+            "landing.x": lamella.landing_state.absolute_position.x,
+            "landing.y": lamella.landing_state.absolute_position.y,
+            "landing.z": lamella.landing_state.absolute_position.z,
+            "landing.r": lamella.landing_state.absolute_position.r,
+            "landing.t": lamella.landing_state.absolute_position.t,
+            "landing.coordinate_system": lamella.landing_state.absolute_position.coordinate_system,
             "landing_selected": lamella.landing_selected,
             "current_stage": lamella.current_state.stage.name,
             "last_timestamp": lamella.current_state.microscope_state.timestamp,

@@ -9,7 +9,7 @@ dependencies:
   - ipython
   - matplotlib
   - numpy
-  - opencv-python
+  - opencv
   - pillow
   - pyyaml
   - scipy
@@ -18,7 +18,7 @@ dependencies:
   - pandas
   - ipykernel
   - pytorch
+  - torchvision
   - cudatoolkit=11.6
   - segmentation-models-pytorch
-  - torchvision
   - pyqt

@@ -5,8 +5,15 @@ import numpy as np
 import yaml
 import liftout
 from fibsem.utils import load_yaml, configure_logging
-from fibsem.structures import ImageSettings, SystemSettings, StageSettings, CalibrationSettings, stage_position_from_dict
+from fibsem.structures import (
+    ImageSettings,
+    SystemSettings,
+    StageSettings,
+    CalibrationSettings,
+    stage_position_from_dict,
+)
 from liftout.structures import AutoLiftoutOptions, AutoLiftoutSettings, ReferenceHFW
+
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -35,20 +42,24 @@ def load_settings_from_config(fname: Path, protocol_filename: Path):
     stage_settings = StageSettings.__from_dict__(config["system"])
     calibration_settings = CalibrationSettings.__from_dict__(config["calibration"])
     options = AutoLiftoutOptions.__from_dict__(config["system"])
-    grid_position = stage_position_from_dict(config["system"]["initial_position"]["sample_grid"])
-    landing_position = stage_position_from_dict(config["system"]["initial_position"]["landing_grid"])
+    grid_position = stage_position_from_dict(
+        config["system"]["initial_position"]["sample_grid"]
+    )
+    landing_position = stage_position_from_dict(
+        config["system"]["initial_position"]["landing_grid"]
+    )
 
     protocol = load_yaml(protocol_filename)
 
     settings = AutoLiftoutSettings(
-        system = system_settings,
-        stage = stage_settings,
-        calibration = calibration_settings,
+        system=system_settings,
+        stage=stage_settings,
+        calibration=calibration_settings,
         options=options,
         image_settings=image_settings,
         grid_position=grid_position,
         landing_position=landing_position,
-        protocol=protocol
+        protocol=protocol,
     )
 
     return settings
@@ -105,7 +116,11 @@ def _format_dictionary(dictionary: dict):
         if isinstance(item, dict):
             _format_dictionary(item)
         elif isinstance(item, list):
-            dictionary[key] = [_format_dictionary(i) for i in item if isinstance(i, list) or isinstance(i, dict)]
+            dictionary[key] = [
+                _format_dictionary(i)
+                for i in item
+                if isinstance(i, list) or isinstance(i, dict)
+            ]
         else:
             if item is not None:
                 try:
@@ -136,7 +151,7 @@ def plot_two_images(img1, img2) -> None:
     import matplotlib.pyplot as plt
     from fibsem.structures import Point
 
-    c = Point(img1.data.shape[1]//2, img1.data.shape[0]//2)
+    c = Point(img1.data.shape[1] // 2, img1.data.shape[0] // 2)
 
     fig, ax = plt.subplots(1, 2, figsize=(30, 30))
     ax[0].imshow(img1.data, cmap="gray")
@@ -144,6 +159,7 @@ def plot_two_images(img1, img2) -> None:
     ax[1].imshow(img2.data, cmap="gray")
     ax[1].plot(c.x, c.y, "y+", ms=50, markeredgewidth=2)
     plt.show()
+
 
 def take_reference_images_and_plot(microscope, image_settings: ImageSettings):
     from pprint import pprint
@@ -157,7 +173,15 @@ def take_reference_images_and_plot(microscope, image_settings: ImageSettings):
 
 
 # cross correlate
-def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int = 128, hp:int = 6, sigma: int = 6, ref_mask: np.ndarray = None):
+def crosscorrelate_and_plot(
+    ref_image,
+    new_image,
+    rotate: bool = False,
+    lp: int = 128,
+    hp: int = 6,
+    sigma: int = 6,
+    ref_mask: np.ndarray = None,
+):
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -169,7 +193,13 @@ def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int 
         ref_image = calibration.rotate_AdornedImage(ref_image)
 
     dx, dy, xcorr = calibration.shift_from_crosscorrelation(
-        ref_image, new_image, lowpass=lp, highpass=hp, sigma=sigma, use_rect_mask=True, ref_mask=ref_mask
+        ref_image,
+        new_image,
+        lowpass=lp,
+        highpass=hp,
+        sigma=sigma,
+        use_rect_mask=True,
+        ref_mask=ref_mask,
     )
 
     pixelsize = ref_image.metadata.binary_result.pixel_size.x
@@ -180,7 +210,7 @@ def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int 
 
     shift = np.roll(new_image.data, (-dy_p, -dx_p), axis=(0, 1))
 
-    mid = Point(shift.shape[1]//2, shift.shape[0]//2)
+    mid = Point(shift.shape[1] // 2, shift.shape[0] // 2)
 
     fig, ax = plt.subplots(1, 4, figsize=(30, 30))
     ax[0].imshow(ref_image.data, cmap="gray")
@@ -191,16 +221,51 @@ def crosscorrelate_and_plot(ref_image, new_image, rotate: bool = False, lp: int 
     ax[1].set_title(f"New Image")
     ax[2].imshow(xcorr, cmap="turbo")
     ax[2].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
-    ax[2].plot(mid.x-dx_p, mid.y-dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[2].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
     ax[2].set_title("XCORR")
     ax[3].imshow(shift, cmap="gray")
     ax[3].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
-    ax[3].plot(mid.x-dx_p, mid.y-dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[3].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[3].set_title("New Image Shifted")
+    plt.show()
+
+    return dx, dy, xcorr
+
+
+def plot_crosscorrelation(ref_image, new_image, dx, dy, xcorr):
+    import matplotlib.pyplot as plt
+    from fibsem.structures import Point
+
+    pixelsize = ref_image.metadata.binary_result.pixel_size.x
+    dx_p, dy_p = int(dx / pixelsize), int(dy / pixelsize)
+
+    print(f"shift_m: {dx}, {dy}")
+    print(f"shift_px: {dx_p}, {dy_p}")
+
+    shift = np.roll(new_image.data, (-dy_p, -dx_p), axis=(0, 1))
+
+    mid = Point(shift.shape[1] // 2, shift.shape[0] // 2)
+
+    fig, ax = plt.subplots(1, 4, figsize=(30, 30))
+    ax[0].imshow(ref_image.data, cmap="gray")
+    ax[0].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[0].set_title(f"Reference)")
+    ax[1].imshow(new_image.data, cmap="gray")
+    ax[1].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[1].set_title(f"New Image")
+    ax[2].imshow(xcorr, cmap="turbo")
+    ax[2].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[2].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[2].set_title("XCORR")
+    ax[3].imshow(shift, cmap="gray")
+    ax[3].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
+    ax[3].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
     ax[3].set_title("New Image Shifted")
     plt.show()
 
 
 ### VALIDATION
+
 
 def _validate_configuration_values(microscope, dictionary):
     """Recursively traverse dictionary and validate all parameters.
@@ -219,21 +284,26 @@ def _validate_configuration_values(microscope, dictionary):
     ValueError
         The parameter is not within the available range for the microscope.
     """
-    
+
     from fibsem import validation
 
     for key, item in dictionary.items():
         if isinstance(item, dict):
             _validate_configuration_values(microscope, item)
         elif isinstance(item, list):
-            dictionary[key] = [_validate_configuration_values(microscope, i) for i in item if isinstance(i, dict)]
+            dictionary[key] = [
+                _validate_configuration_values(microscope, i)
+                for i in item
+                if isinstance(i, dict)
+            ]
         else:
             if isinstance(item, float):
                 if "hfw" in key:
                     if "max" in key or "grid" in key:
                         continue  # skip checks on these keys
-                    validation._validate_horizontal_field_width(microscope=microscope, 
-                        horizontal_field_widths=[item])
+                    validation._validate_horizontal_field_width(
+                        microscope=microscope, horizontal_field_widths=[item]
+                    )
 
                 if "milling_current" in key:
                     validation._validate_ion_beam_currents(microscope, [item])
@@ -252,18 +322,19 @@ def _validate_configuration_values(microscope, dictionary):
                     validation._validate_application_files(microscope, [item])
                 if "weights" in key:
                     _validate_model_weights_file(item)
-                    
+
     return dictionary
+
 
 def _validate_model_weights_file(filename):
     import os
 
     from liftout.model import models
+
     weights_path = os.path.join(os.path.dirname(models.__file__), filename)
     if not os.path.exists(weights_path):
-        raise ValueError(
-            f"Unable to find model weights file {weights_path} specified."
-        )
+        raise ValueError(f"Unable to find model weights file {weights_path} specified.")
+
 
 ### SETUP
 def quick_setup():
@@ -296,8 +367,8 @@ def full_setup():
     microscope, settings, image_settings = quick_setup()
 
     # sample
-    sample = Sample(path = os.path.dirname(image_settings.save_path), name="test")
-    
+    sample = Sample(path=os.path.dirname(image_settings.save_path), name="test")
+
     # lamella
     lamella = Lamella(sample.path, 999, _petname="999-test-mule")
     sample.positions[lamella._number] = lamella

@@ -34,7 +34,7 @@
         )
 
         # save lamella coordinates
-        sample_position.lamella_coordinates = StagePosition(
+        sample_position.lamella_state.absolute_position = StagePosition(
             x=float(self.piescope_gui_main_window.milling_position.x),
             y=float(self.piescope_gui_main_window.milling_position.y),
             z=float(self.piescope_gui_main_window.milling_position.z),

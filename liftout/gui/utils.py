@@ -189,6 +189,7 @@ def draw_grid_layout(sample: Sample):
         label_header.setAlignment(Qt.AlignCenter)
         gridLayout.addWidget(label_header, 0, j)
 
+    lamella: Lamella
     for i, lamella in enumerate(sample.positions.values()):
 
         # load the exemplar images for each sample
@@ -237,10 +238,13 @@ def draw_grid_layout(sample: Sample):
         gridLayout.addWidget(label_sample, row_id, 0)
 
         # display lamella position
+        lamella_coordinates = lamella.lamella_state.absolute_position
+        landing_coordinates = lamella.landing_state.absolute_position
+        
         label_pos = QLabel()
-        pos_text = f"""Pos: ({lamella.lamella_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {lamella.lamella_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {lamella.lamella_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
+        pos_text = f"""Pos: ({lamella_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {lamella_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {lamella_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
         if lamella.landing_selected:
-            pos_text += f"""Land: ({lamella.landing_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {lamella.landing_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {lamella.landing_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
+            pos_text += f"""Land: ({landing_coordinates.x*METRE_TO_MILLIMETRE:.2f}, {landing_coordinates.y*METRE_TO_MILLIMETRE:.2f}, {landing_coordinates.z*METRE_TO_MILLIMETRE:.2f})\n"""
 
         label_pos.setText(pos_text)
         label_pos.setStyleSheet("font-family: Arial; font-size: 12px;")

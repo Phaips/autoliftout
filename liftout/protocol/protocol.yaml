@@ -32,14 +32,14 @@ jcut:
   width: 1.2e-05
 lamella:
   cleaning_cross_section: 0.0
-  lamella_height: 6.0e-06
+  lamella_height: 10.0e-06
   lamella_width: 1.2e-05
   milling_current: 2.8e-08
   milling_depth: 1.0e-05
   offset: 2.0e-06
   protocol_stages:
   - cleaning_cross_section: 0.0
-    lamella_height: 6.0e-06
+    lamella_height: 10.0e-06
     lamella_width: 1.2e-05
     milling_current: 2.8e-08
     milling_depth: 1.0e-05
@@ -49,7 +49,7 @@ lamella:
     size_ratio: 5.0
     trench_height: 1.0e-05
   - cleaning_cross_section: 0.0
-    lamella_height: 6.0e-06
+    lamella_height: 10.0e-06
     lamella_width: 1.2e-05
     milling_current: 7.6e-09
     milling_depth: 1.0e-05
