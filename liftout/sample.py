@@ -7,10 +7,10 @@ from pathlib import Path
 import pandas as pd
 import petname
 import yaml
-from autoscript_sdb_microscope_client.structures import (AdornedImage,
-                                                         StagePosition)
+from autoscript_sdb_microscope_client.structures import AdornedImage
+                                                        
 from fibsem import utils as fibsem_utils
-from fibsem.structures import MicroscopeState, ReferenceImages, stage_position_from_dict
+from fibsem.structures import MicroscopeState, ReferenceImages
 
 from liftout import utils
 
@@ -157,7 +157,7 @@ class Lamella:
 
         return adorned_img
 
-# TODO: convert to @classmethod
+# TODO: convert to @staticmethod
 def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
 
     lamella = Lamella(
@@ -182,7 +182,7 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
 
     return lamella
 
-# convert to static method
+# convert to  method
 def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:
     reference_images = ReferenceImages(
         low_res_eb=lamella.load_reference_image(f"{label}_low_res_eb"),

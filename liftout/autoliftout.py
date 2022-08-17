@@ -121,7 +121,7 @@ def mill_lamella_jcut(
 
     # mask ref, cosine stretch
     new_ib = acquire.new_image(microscope, image_settings)
-    mask = calibration.create_lamella_mask(ref_ib, settings, factor=2.5, circ=False)
+    mask = calibration.create_lamella_mask(ref_ib, settings, factor=2.5, circ=False, use_trench_height=True)
     calibration.align_using_reference_images(
         microscope,
         settings,
@@ -159,7 +159,7 @@ def mill_lamella_jcut(
         ReferenceHFW.Super.value
     )  # settings["calibration"]["reference_images"]["hfw_ultra_res"]
     new_ib = acquire.new_image(microscope, image_settings)
-    mask = calibration.create_lamella_mask(ref_ib, settings, factor=2.5, circ=False)
+    mask = calibration.create_lamella_mask(ref_ib, settings, factor=2.5, circ=False, use_trench_height=True)
     calibration.align_using_reference_images(
         microscope,
         settings,
@@ -462,89 +462,12 @@ def land_lamella(
     validate_needle_insertion(microscope, settings)
     actions.move_needle_to_landing_position_v2(microscope)
 
-    #### Y-MOVE (ELECTRON)
+    # needle starting position
     image_settings.hfw = ReferenceHFW.High.value
     image_settings.beam_type = BeamType.ELECTRON
     image_settings.save = True
     image_settings.label = f"landing_needle_start_position"
-
-    ref_eb, ref_ib = acquire.take_reference_images(microscope, image_settings)
-
-    # det = windows.detect_features(
-    #     microscope=microscope, settings=settings,
-    #     image_settings=image_settings, lamella=lamella,
-    #     ref_image=ref_eb,
-    #     features=[DetectionFeature(DetectionType.LamellaEdge, None),
-    #             DetectionFeature(DetectionType.LandingPost, None)],
-    #         validate=True
-    # )
-
-    # # only move y
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     dx=0,
-    #     dy=det.distance_metres.y,
-    #     beam_type=BeamType.ELECTRON,
-    # )
-
-    # image_settings.label = f"landing_needle_after_y_move"
-    # acquire.take_reference_images(microscope, image_settings)
-
-    # #### Z-MOVE (ION)
-
-    # image_settings.hfw = ReferenceHFW.High.value
-    # image_settings.beam_type = BeamType.ION
-    # image_settings.save = True
-    # image_settings.label = f"landing_needle_after_z_move"
-    # ref_eb, ref_ib = acquire.take_reference_images(microscope, image_settings)
-
-    # det = windows.detect_features(
-    #     microscope=microscope, settings=settings,
-    #     image_settings=image_settings, lamella=lamella,
-    #     ref_image=ref_ib,
-    #     features=[DetectionFeature(DetectionType.LamellaEdge, None),
-    #             DetectionFeature(DetectionType.LandingPost, None)],
-    #         validate=True
-    # )
-
-    # # up is down
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     dx=0,
-    #     dy=-det.distance_metres.y,
-    #     beam_type=BeamType.ION,
-    # )
-
-    # acquire.take_reference_images(microscope, image_settings)
-
-    # #### X-HALF-MOVE (ION)
-    # image_settings.hfw = ReferenceHFW.High.value
-    # image_settings.beam_type = BeamType.ELECTRON
-    # image_settings.save = True
-    # image_settings.label = f"landing_needle_land_sample_lowres_after_z_move"
-
-    # ref_eb, ref_ib = acquire.take_reference_images(microscope, image_settings)
-
-    # det = windows.detect_features(
-    #     microscope=microscope, settings=settings,
-    #     image_settings=image_settings, lamella=lamella,
-    #     ref_image=ref_ib,
-    #     features=[DetectionFeature(DetectionType.LamellaEdge, None),
-    #             DetectionFeature(DetectionType.LandingPost, None)],
-    #     validate=True
-    # )
-
-    # # half move
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     dx=det.distance_metres.x / 2,
-    #     dy=0,
-    #     beam_type=BeamType.ION,
-    # )
-    # acquire.take_reference_images(microscope, image_settings)
+    acquire.take_reference_images(microscope, image_settings)
 
     # repeat final movement until user confirms landing
     response = False
@@ -608,7 +531,7 @@ def land_lamella(
     # final reference images
     image_settings.hfw = ReferenceHFW.Super.value
     image_settings.save = True
-    image_settings.label = f"landing_lamella_final_weld_highres"
+    image_settings.label = f"landing_lamella_final_weld_high_res"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     #################################################################################################
@@ -618,7 +541,7 @@ def land_lamella(
     image_settings.hfw = ReferenceHFW.High.value
     image_settings.beam_type = BeamType.ION
     image_settings.save = True
-    image_settings.label = "landing_lamella_pre_cut_off"
+    image_settings.label = "landing_lamella_pre_cut"
 
     # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
     # cut off needle
@@ -638,7 +561,7 @@ def land_lamella(
         microscope=microscope, 
         image_settings=image_settings, 
         hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value], 
-        label="landing_lamella_after_cut"
+        label="landing_lamella_post_cut"
     )
 
     logging.info(
@@ -682,7 +605,6 @@ def reset_needle(
 
     # convienence
     stage = microscope.specimen.stage
-    needle = microscope.specimen.manipulator
 
     # move sample stage out
     actions.move_sample_stage_out(microscope, settings)
@@ -696,26 +618,6 @@ def reset_needle(
     image_settings.save = True
     image_settings.label = f"sharpen_needle_start_position"
     acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
-
-    # det = windows.detect_features(
-    #     microscope=microscope, settings=settings,
-    #     image_settings=image_settings, lamella=lamella,
-    #     ref_image=ref_ib,
-    #     features=[DetectionFeature(DetectionType.NeedleTip, None),
-    #             DetectionFeature(DetectionType.ImageCentre, None)],
-    #     validate=True
-    # )
-
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     dx=det.distance_metres.x,
-    #     dy=-det.distance_metres.y,
-    #     beam_type=BeamType.ION,
-    # )
-
-    # image_settings.label = f"sharpen_needle_centre"
-    # acquire.take_reference_images(microscope=microscope, image_settings=image_settings)
 
     # create sharpening patterns
     windows.open_milling_window(
@@ -738,13 +640,12 @@ def reset_needle(
     movement.retract_needle(microscope)
 
     # reset stage position
-    stage_settings = MoveSettings(rotate_compucentric=True)
-    stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
-    stage.absolute_move(StagePosition(x=0.0, y=0.0))
+    move_settings = MoveSettings(rotate_compucentric=True)
+    stage.absolute_move(StagePosition(t=np.deg2rad(0)), move_settings)
+    stage.absolute_move(StagePosition(x=0.0, y=0.0), move_settings)
 
-    # TODO: replace and test
-    # stage_position = StagePosition(x=0, y=0, t=0)
-    # movement.safe_absolute_stage_movement(self.microscope, stage_position)
+    # TODO: test this
+    calibration.set_microscope_state(microscope, lamella.landing_state)
 
     return lamella
 
