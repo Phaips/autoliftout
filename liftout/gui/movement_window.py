@@ -1,19 +1,24 @@
 import logging
 import sys
+from enum import Enum
 
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import StagePosition
-from fibsem import acquire, movement, calibration
-from liftout import utils
-from fibsem.structures import ImageSettings
+from fibsem import acquire, calibration, movement
 from fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
                               MICRON_TO_METRE, MILLIMETRE_TO_METRE)
-from fibsem.structures import BeamType
+from fibsem.structures import BeamType, ImageSettings
+from liftout import utils
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
+
+
+class MovementMode(Enum):
+    Stable = 1
+    Eucentric = 2
 
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
@@ -38,22 +43,16 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.wp_ib = None
         self.wp_eb = None
 
-        # set message
-        msg_dict = {
-            "centre_ib": "Please centre the lamella in the Ion Beam (Double click to move).",
-            "centre_eb": "Please centre the lamella in the Electron Beam (Double click to move). ",
-            "eucentric": "Please centre a feature in both Beam views (Double click to move). ",
-            "alignment": "Please centre the lamella in the Ion Beam, and tilt so the lamella face is perpendicular to the Ion Beam.",
-        }
-        if msg is None:
-            msg = msg_dict[msg_type]
-        self.label_message.setText(msg)
+        # msg
+        self.msg_type = msg_type
+        self.msg = msg
+        self.movement_mode = MovementMode.Stable
+
 
         # enable / disable view movement
         self.eb_movement_enabled = False
         self.ib_movement_enabled = False
         self.tilt_movement_enabled = False
-        self.vertical_movement_enabled = False
 
         if msg_type in ["eucentric", "centre_eb", "alignment"]:
             self.eb_movement_enabled = True
@@ -64,9 +63,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         if msg_type in ["alignment"]:
             self.tilt_movement_enabled = True
 
-        if msg_type in ["eucentric"]:
-            self.vertical_movement_enabled = True
-
         # movement permissions:
         # eucentric: eb, ib, vertical
         # centre_eb: eb
@@ -74,11 +70,12 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         # alignment: eb, ib, tilt
 
         self.setup_connections()
+        self.set_message(self.msg_type, self.msg)
         self.update_displays()
 
     def update_displays(self):
         """Update the displays for both Electron and Ion Beam views"""
-
+        return
         logging.info("updating displays for Electron and Ion beam views")
         self.eb_image, self.ib_image = acquire.take_reference_images(
             self.microscope, self.image_settings
@@ -139,6 +136,13 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.doubleSpinBox_hfw.setValue(self.image_settings.hfw * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
+        # movement modes
+        self.comboBox_movement_mode.clear()
+        self.comboBox_movement_mode.addItems([mode.name for mode in MovementMode])
+        self.comboBox_movement_mode.currentTextChanged.connect(
+            self.movement_mode_changed
+        )
+
         # tilt functionality
         self.doubleSpinBox_tilt_degrees.setMinimum(0)
         self.doubleSpinBox_tilt_degrees.setMaximum(25.0)
@@ -158,25 +162,36 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             self.pushButton_tilt_stage.setVisible(False)
             self.doubleSpinBox_tilt_degrees.setVisible(False)
 
-        # vertical movement functionality
-        self.doubleSpinBox_stage_height.setMinimum(3.8)
-        self.doubleSpinBox_stage_height.setMaximum(4.1)
-        if self.vertical_movement_enabled:
-            self.pushButton_move_stage.setVisible(True)
-            self.pushButton_move_to_eucentric.setVisible(True)
-            self.doubleSpinBox_stage_height.setVisible(True)
-            self.label_height.setVisible(True)
-            self.label_header_height.setVisible(True)
-            self.pushButton_move_stage.clicked.connect(self.move_stage_vertical)
-            self.pushButton_move_to_eucentric.clicked.connect(
-                self.move_to_eucentric_point
-            )
-        else:
-            self.pushButton_move_stage.setVisible(False)
-            self.pushButton_move_to_eucentric.setVisible(False)
-            self.doubleSpinBox_stage_height.setVisible(False)
-            self.label_height.setVisible(False)
-            self.label_header_height.setVisible(False)
+    def movement_mode_changed(self):
+
+        mode_name = self.comboBox_movement_mode.currentText()
+        self.movement_mode = MovementMode[mode_name]
+
+        print(f"mode: {self.movement_mode}")
+
+        # set instruction message
+        self.set_message(self.msg_type, self.msg)
+
+
+    def set_message(self, msg_type: str, msg: str = None):
+            
+        # refactor the movement permissions
+        # set message
+        msg_dict = {
+            "centre_ib": "Please centre the lamella in the Ion Beam (Double click to move).",
+            "centre_eb": "Please centre the lamella in the Electron Beam (Double click to move). ",
+            "eucentric": "Please centre a feature in both Beam views (Double click to move). ",
+            "alignment": "Please centre the lamella in the Ion Beam, and tilt so the lamella face is perpendicular to the Ion Beam.",
+        }
+        if msg is None:
+            msg = msg_dict[msg_type]
+
+        if self.movement_mode is MovementMode.Eucentric:
+            self.label_message.setText("Centre a feature in the Electron Beam, then double click the same feature in the Ion Beam.") 
+
+        if self.movement_mode is MovementMode.Stable:
+            self.label_message.setText(msg)
+
 
     def take_image_button_pressed(self):
         """Take a new image with the current image settings."""
@@ -195,7 +210,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
     def closeEvent(self, event):
         logging.info("closing movement window")
-        # TODO: update parent image settings on close?
         event.accept()
 
     def on_click(self, event):
@@ -221,18 +235,29 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             )
             # draw crosshair?
             if event.dblclick:
+
                 self.stage_movement(beam_type=beam_type)
 
     def stage_movement(self, beam_type: BeamType):
 
-        # calculate stage movement
-        movement.move_stage_relative_with_corrected_movement(
-            microscope=self.microscope,
-            settings=self.settings,
-            dx=self.center_x,
-            dy=self.center_y,
-            beam_type=beam_type,
-        )
+        # eucentric is only supported for ION beam
+        if beam_type is BeamType.ION and self.movement_mode is MovementMode.Eucentric:
+            logging.info(f"moving eucentricly in {beam_type}")
+
+            movement.move_stage_eucentric_correction(
+                microscope=self.microscope, 
+                dy=self.center_y
+            )
+
+        else:
+            # corrected stage movement
+            movement.move_stage_relative_with_corrected_movement(
+                microscope=self.microscope,
+                settings=self.settings,
+                dx=self.center_x,
+                dy=self.center_y,
+                beam_type=beam_type,
+            )
 
         # update displays
         self.update_displays()
@@ -255,17 +280,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         # update displays
         self.update_displays()
 
-    def move_to_eucentric_point(self):
-        print("move to eucentric point")
-
-    def move_stage_vertical(self):
-        print("move stage vertical")
-        z_height_m = self.doubleSpinBox_stage_height.value() * MILLIMETRE_TO_METRE
-
-        print(f"stage_height: {z_height_m:.4f}m")
-
-        stage_position = StagePosition(z=z_height_m)
-
 
 # TODO: override enter
 
@@ -274,14 +288,17 @@ def main():
 
     microscope, settings, image_settings = utils.quick_setup()
 
+    from liftout.gui import windows
+
     app = QtWidgets.QApplication([])
-    qt_app = GUIMMovementWindow(
-        microscope=microscope,
-        settings=settings,
-        image_settings=image_settings,
+    windows.ask_user_movement(
+        microscope,
+        settings,
+        image_settings,
         msg_type="eucentric",
+        msg="Confirm lamella is centred in Ion Beam",
     )
-    qt_app.show()
+
     sys.exit(app.exec_())
 
 
