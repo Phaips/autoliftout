@@ -19,6 +19,7 @@ from liftout.patterning import MillingPattern
 from liftout.sample import Lamella, Sample, create_experiment, load_sample
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
@@ -429,8 +430,7 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
     )
 
 
-def draw_rectangle_pattern(adorned_image, pattern, colour="yellow"):
-    from matplotlib.patches import Rectangle
+def draw_rectangle_pattern(adorned_image: AdornedImage, pattern, colour: str ="yellow") -> Rectangle:
     """Draw a Rectangle Pattern as Matplotib Rectangle"""
     rectangle = Rectangle(
         (0, 0),

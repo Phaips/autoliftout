@@ -5,15 +5,16 @@ from enum import Enum
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import StagePosition
+from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
 from fibsem import acquire, calibration, movement
-from fibsem.constants import (METRE_TO_MICRON, METRE_TO_MILLIMETRE,
-                              MICRON_TO_METRE, MILLIMETRE_TO_METRE)
+from fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
 from fibsem.structures import BeamType, ImageSettings
 from liftout import utils
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
+
+
 
 
 class MovementMode(Enum):
@@ -271,7 +272,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         stage_tilt_rad: float = np.deg2rad(self.doubleSpinBox_tilt_degrees.value())
         stage = self.microscope.specimen.stage
-        from autoscript_sdb_microscope_client.structures import MoveSettings
 
         move_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
         stage_position = StagePosition(t=stage_tilt_rad)

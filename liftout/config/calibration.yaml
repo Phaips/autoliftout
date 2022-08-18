@@ -24,7 +24,6 @@ limits:
   eucentric_height_ib: 16.5e-3
   eucentric_height_tolerance: 0.5e-3
   stage_height_limit: 3.7e-3 # relative coordinates
-  max_working_distance_eb: 6.0e-3
 reference_images:
   # new config
   hfw_wide_max: 2750.e-6

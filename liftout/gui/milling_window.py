@@ -367,7 +367,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             )
             milling.run_milling(
                 microscope=self.microscope,
-                settings=self.settings,
                 milling_current=stage_settings["milling_current"],
                 asynch=True,
             )
