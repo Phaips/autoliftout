@@ -9,7 +9,8 @@ import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import \
     Rectangle as RectangleArea
-from fibsem import acquire, constants, calibration, milling
+from fibsem import acquire, calibration, constants, milling
+from fibsem import utils as fibsem_utils
 from fibsem.structures import BeamType, ImageSettings, Point
 from liftout import patterning, utils
 from liftout.config import config
@@ -296,9 +297,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.patterns,
             self.milling_stages[self.current_selected_stage]["milling_current"],
         )
-        time_str = str(datetime.timedelta(seconds=self.milling_time_seconds)).split(
-            "."
-        )[0]
+
+        time_str = fibsem_utils._format_time_seconds(self.milling_time_seconds)
         self.label_estimated_time.setText(f"Estimated Time: {time_str}")
         self.USER_UPDATE = True
 
@@ -442,8 +442,8 @@ def main():
     os.makedirs(image_settings.save_path, exist_ok=True)
     # acquire.reset_beam_shifts(microscope)
 
-    from liftout.patterning import MillingPattern
     from liftout.gui import windows
+    from liftout.patterning import MillingPattern
 
     app = QtWidgets.QApplication([])
     windows.open_milling_window(
