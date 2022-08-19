@@ -194,7 +194,8 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     validation.validate_initial_microscope_state(microscope, settings)
 
     # validate user configuration
-    validation._validate_configuration_values(microscope, settings)
+    # TODO: this will change when settings goes from dict -> struct
+    validation._validate_configuration_values(microscope, settings) 
 
     # reminders
     reminder_str = """Please check that the following steps have been completed:
