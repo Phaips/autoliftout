@@ -24,9 +24,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # load config
         self.settings: dict = utils.load_full_config()
-        self.image_settings: ImageSettings = acquire.update_image_settings_v3(
-            self.settings
-        )
+        self.image_settings: ImageSettings = ImageSettings.__from_dict__(self.settings["calibration"]["imaging"])
 
         # setup ui
         self.setupUi(self)
