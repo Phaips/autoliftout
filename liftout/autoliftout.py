@@ -1274,7 +1274,7 @@ def run_setup_autoliftout(
     acquire.take_reference_images(microscope, image_settings)
 
     # check if focus is good enough
-    ret = validation.validate_focus(microscope, settings, image_settings, link=False)
+    ret = validation.validate_focus(microscope, settings, link=False)
 
     if ret is False:
         windows.ask_user_interaction(

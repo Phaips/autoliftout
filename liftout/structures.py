@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from fibsem.structures import (
     SystemSettings,
-    CalibrationSettings,
     ImageSettings,
     StageSettings,
 )
@@ -60,7 +59,6 @@ class AutoLiftoutSettings:
     system: SystemSettings
     options: AutoLiftoutOptions
     stage: StageSettings
-    calibration: CalibrationSettings
     image_settings: ImageSettings
     grid_position: StagePosition  
     landing_position: StagePosition

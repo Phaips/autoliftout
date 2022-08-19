@@ -9,11 +9,10 @@ from fibsem.structures import (
     ImageSettings,
     SystemSettings,
     StageSettings,
-    CalibrationSettings,
     stage_position_from_dict,
 )
 from liftout.structures import AutoLiftoutOptions, AutoLiftoutSettings, ReferenceHFW
-
+from fibsem import validation
 
 def load_config(yaml_filename):
     """Load user input from yaml settings file.
@@ -34,35 +33,33 @@ def load_config(yaml_filename):
     return settings_dict
 
 
-def load_settings_from_config(fname: Path, protocol_filename: Path):
+# def load_settings_from_config(fname: Path, protocol_filename: Path):
 
-    config = load_yaml(fname)
-    image_settings = ImageSettings.__from_dict__(config["calibration"]["imaging"])
-    system_settings = SystemSettings.__from_dict__(config["system"])
-    stage_settings = StageSettings.__from_dict__(config["system"])
-    calibration_settings = CalibrationSettings.__from_dict__(config["calibration"])
-    options = AutoLiftoutOptions.__from_dict__(config["system"])
-    grid_position = stage_position_from_dict(
-        config["system"]["initial_position"]["sample_grid"]
-    )
-    landing_position = stage_position_from_dict(
-        config["system"]["initial_position"]["landing_grid"]
-    )
+#     config = load_yaml(fname)
+#     image_settings = ImageSettings.__from_dict__(config["calibration"]["imaging"])
+#     system_settings = SystemSettings.__from_dict__(config["system"])
+#     stage_settings = StageSettings.__from_dict__(config["system"])
+#     options = AutoLiftoutOptions.__from_dict__(config["system"])
+#     grid_position = stage_position_from_dict(
+#         config["system"]["initial_position"]["sample_grid"]
+#     )
+#     landing_position = stage_position_from_dict(
+#         config["system"]["initial_position"]["landing_grid"]
+#     )
 
-    protocol = load_yaml(protocol_filename)
+#     protocol = load_yaml(protocol_filename)
 
-    settings = AutoLiftoutSettings(
-        system=system_settings,
-        stage=stage_settings,
-        calibration=calibration_settings,
-        options=options,
-        image_settings=image_settings,
-        grid_position=grid_position,
-        landing_position=landing_position,
-        protocol=protocol,
-    )
+#     settings = AutoLiftoutSettings(
+#         system=system_settings,
+#         stage=stage_settings,
+#         options=options,
+#         image_settings=image_settings,
+#         grid_position=grid_position,
+#         landing_position=landing_position,
+#         protocol=protocol,
+#     )
 
-    return settings
+#     return settings
 
 
 def load_full_config(
@@ -265,66 +262,6 @@ def plot_crosscorrelation(ref_image, new_image, dx, dy, xcorr):
 
 
 ### VALIDATION
-
-
-def _validate_configuration_values(microscope, dictionary):
-    """Recursively traverse dictionary and validate all parameters.
-
-    Parameters
-    ----------
-    dictionary : dict
-        Any arbitrarily structured python dictionary.
-
-    Returns
-    ---------
-    dictionary: dict
-        Validated Configuration Dictionary
-    Raises
-    -------
-    ValueError
-        The parameter is not within the available range for the microscope.
-    """
-
-    from fibsem import validation
-
-    for key, item in dictionary.items():
-        if isinstance(item, dict):
-            _validate_configuration_values(microscope, item)
-        elif isinstance(item, list):
-            dictionary[key] = [
-                _validate_configuration_values(microscope, i)
-                for i in item
-                if isinstance(i, dict)
-            ]
-        else:
-            if isinstance(item, float):
-                if "hfw" in key:
-                    if "max" in key or "grid" in key:
-                        continue  # skip checks on these keys
-                    validation._validate_horizontal_field_width(
-                        microscope=microscope, horizontal_field_widths=[item]
-                    )
-
-                if "milling_current" in key:
-                    validation._validate_ion_beam_currents(microscope, [item])
-
-                if "imaging_current" in key:
-                    validation._validate_electron_beam_currents(microscope, [item])
-
-                if "resolution" in key:
-                    validation._validate_scanning_resolutions(microscope, [item])
-
-                if "dwell_time" in key:
-                    validation._validate_dwell_time(microscope, [item])
-
-            if isinstance(item, str):
-                if "application_file" in key:
-                    validation._validate_application_files(microscope, [item])
-                if "weights" in key:
-                    _validate_model_weights_file(item)
-
-    return dictionary
-
 
 def _validate_model_weights_file(filename):
     import os
