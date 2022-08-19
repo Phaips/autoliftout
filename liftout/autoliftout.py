@@ -236,7 +236,8 @@ def liftout_lamella(
     )
 
     # sputter platinum
-    utils.sputter_platinum(microscope, settings, whole_grid=False)
+    utils.sputter_platinum_v2(microscope, settings["protocol"]["platinum"], 
+        whole_grid = False, default_application_file=settings["system"]["application_file"])
     logging.info(
         f"{lamella.current_state.stage.name}: lamella to needle welding complete."
     )

@@ -7,7 +7,7 @@ from fibsem import acquire, movement, validation
 from fibsem import utils as fibsem_utils
 from fibsem.acquire import BeamType, ImageSettings
 from fibsem.structures import ImageSettings
-from liftout import patterning, utils
+from liftout import patterning, utils, actions
 from liftout.detection import detection
 from liftout.detection.detection import DetectionFeature, DetectionResult
 from liftout.gui.detection_window import GUIDetectionWindow
@@ -256,6 +256,11 @@ def sputter_platinum_on_whole_sample_grid(
     )
 
     if response:
-        fibsem_utils.sputter_platinum(microscope, settings, whole_grid=True)
+        actions.move_to_sample_grid(microscope, settings)
+        fibsem_utils.sputter_platinum_v2(
+            microscope=microscope, 
+            protocol=settings["protocol"]["platinum"], 
+            whole_grid = True, 
+            default_application_file=settings["system"]["application_file"])
 
     return

@@ -179,8 +179,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def run_sputter_platinum_utility(self):
         """Run the sputter platinum utility"""
 
-        # move to the initial sample grid position
-        actions.move_to_sample_grid(self.microscope, self.settings)
         # sputter
         windows.sputter_platinum_on_whole_sample_grid(
             self.microscope, self.settings, self.image_settings
