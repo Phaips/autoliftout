@@ -87,7 +87,7 @@ def mill_lamella_jcut(
     )
 
     # move flat to electron beam
-    movement.flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
+    movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
     # correct drift using reference images..
     calibration.correct_stage_drift(
@@ -149,7 +149,7 @@ def mill_lamella_jcut(
     )
 
     # move to flat eb
-    movement.flat_to_beam(microscope, settings, BeamType.ELECTRON)
+    movement.move_flat_to_beam(microscope, settings, BeamType.ELECTRON)
 
     # realign
 
@@ -320,7 +320,6 @@ def land_needle_on_milled_lamella_v2(
 
     # movement.move_needle_relative_with_corrected_movement(
     #     microscope=microscope,
-    #     settings=settings,
     #     dx=det.distance_metres.x,
     #     dy=det.distance_metres.y,
     #     beam_type=BeamType.ELECTRON,
@@ -341,7 +340,6 @@ def land_needle_on_milled_lamella_v2(
     # # calculate shift in xyz coordinates
     # movement.move_needle_relative_with_corrected_movement(
     #     microscope=microscope,
-    #     settings=settings,
     #     dx=det.distance_metres.x,
     #     dy=-det.distance_metres.y / 2,
     #     beam_type=BeamType.ION,
@@ -374,7 +372,7 @@ def land_needle_on_milled_lamella_v2(
             ManipulatorCoordinateSystem.STAGE
         )
         movement.move_needle_relative_with_corrected_movement(
-            microscope, settings, dx=0, dy=-1.0e-6, beam_type=BeamType.ION
+            microscope, dx=0, dy=-1.0e-6, beam_type=BeamType.ION
         )
 
         # calculate brightness
@@ -494,7 +492,6 @@ def land_lamella(
 
         movement.move_needle_relative_with_corrected_movement(
             microscope=microscope,
-            settings=settings,
             dx=det.distance_metres.x,
             dy=0,
             beam_type=BeamType.ION,

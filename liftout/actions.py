@@ -33,7 +33,7 @@ def move_to_trenching_angle(
     autoscript_sdb_microscope_client.structures.StagePosition
         The position of the microscope stage after moving.
     """
-    movement.flat_to_beam(
+    movement.move_flat_to_beam(
         microscope, settings=settings, beam_type=BeamType.ION,
     )
     return microscope.specimen.stage.current_position
@@ -43,7 +43,7 @@ def move_to_liftout_angle(
     microscope: SdbMicroscopeClient, settings: dict
 ) -> StagePosition:
     """Tilt the sample stage to the correct angle for liftout."""
-    movement.flat_to_beam(
+    movement.move_flat_to_beam(
         microscope, settings=settings, beam_type=BeamType.ELECTRON,
     )
     logging.info(f"move to liftout angle complete.")
@@ -56,7 +56,7 @@ def move_to_landing_angle(
     """Tilt the sample stage to the correct angle for the landing posts."""
 
     landing_angle = np.deg2rad(settings["system"]["stage_tilt_landing"])
-    movement.flat_to_beam(
+    movement.move_flat_to_beam(
         microscope, settings=settings, beam_type=BeamType.ION,
     )  # stage tilt 25
     microscope.specimen.stage.relative_move(
@@ -88,7 +88,7 @@ def move_to_sample_grid(
     )
 
     # move flat to the electron beam
-    movement.flat_to_beam(
+    movement.move_flat_to_beam(
         microscope, settings=settings, beam_type=BeamType.ELECTRON,
     )
     logging.info(f"move to sample grid complete.")
@@ -165,7 +165,7 @@ def move_needle_to_liftout_position(
     """
 
     # insert to park position
-    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
+    movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to  offset position
     movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
@@ -190,7 +190,7 @@ def move_needle_to_landing_position_v2(
     """
 
     # insert to park position
-    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
+    movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to  offset position
     movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
@@ -204,7 +204,7 @@ def move_needle_to_reset_position(microscope: SdbMicroscopeClient) -> None:
     needle = microscope.specimen.manipulator
 
     # insert to park
-    movement.insert_needle_v2(microscope, ManipulatorSavedPosition.PARK)
+    movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to eucentric
     movement.move_needle_to_eucentric_position_offset(microscope)

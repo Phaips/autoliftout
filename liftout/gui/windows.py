@@ -41,7 +41,7 @@ def ask_user_movement(
 
     logging.info(f"Asking user for confirmation for {msg_type} movement")
     if flat_to_sem:
-        movement.flat_to_beam(
+        movement.move_flat_to_beam(
             microscope, settings=settings, beam_type=BeamType.ELECTRON
         )
 

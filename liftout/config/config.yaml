@@ -45,9 +45,3 @@ calibration:
       max_gamma: 1.8
       scale_factor: 0.01
       threshold: 46 # px
-  max_hfw_eb: 2700.0e-6
-  max_hfw_ib: 900.0e-6
-  eucentric_height_eb: 4.0e-3
-  eucentric_height_ib: 16.5e-3
-  eucentric_height_tolerance: 0.5e-3
-  needle_stage_height_limit: 3.7e-3 # relative coordinates
