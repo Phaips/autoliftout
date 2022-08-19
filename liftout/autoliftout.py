@@ -851,6 +851,7 @@ def run_autoliftout_workflow(
             AutoLiftoutStage.MillTrench,
             AutoLiftoutStage.MillJCut,
         ]:
+            lamella: Lamella
             for lamella in sample.positions.values():
 
                 while lamella.current_state.stage.value < terminal_stage.value:
@@ -877,6 +878,7 @@ def run_autoliftout_workflow(
                     sample = end_of_stage_update(microscope, sample, lamella, parent_ui)
 
     # standard workflow
+    lamella: Lamella
     for lamella in sample.positions.values():
 
         while lamella.current_state.stage.value < AutoLiftoutStage.Reset.value:

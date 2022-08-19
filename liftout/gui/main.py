@@ -41,12 +41,17 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # initialise hardware
         self.microscope: SdbMicroscopeClient = self.initialize_hardware(
-            settings=self.settings,
-            log_path=self.sample.log_path,
             ip_address=self.settings["system"]["ip_address"],
         )
-        # self.microscope: SdbMicroscopeClient = None
         self.MICROSCOPE_CONNECTED: bool = bool(self.microscope)  # offline mode
+
+        # run validation and show in ui
+        if self.MICROSCOPE_CONNECTED:
+            windows.run_validation_ui(
+                microscope=self.microscope,
+                settings=self.settings,
+                log_path=self.sample.log_path,
+            )
 
         # setup connections
         self.setup_connections()
@@ -135,7 +140,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
             if okPressed:
                 # mark sample as failure
-                lamella = self.sample.positions[lamella_idx]
+                lamella: Lamella = self.sample.positions[lamella_idx]
                 lamella.current_state.stage = AutoLiftoutStage.Failure
                 self.sample = autoliftout.update_sample_lamella_data(
                     self.sample, lamella
@@ -189,20 +194,13 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     ########################## HARDWARE ##########################
 
     def initialize_hardware(
-        self, settings: dict, log_path: str, ip_address: str = "10.0.0.1"
+        self, ip_address: str = "10.0.0.1"
     ) -> SdbMicroscopeClient:
 
         # TODO: add a ui indicator, as this can take a little while
         microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
-        if microscope:
-            # run validation and show in ui
-            windows.run_validation_ui(
-                microscope=microscope,
-                settings=settings,
-                log_path=log_path,
-            )
-        else:
+        if microscope is None:
             ui_utils.display_error_message(
                 f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
             )
@@ -219,26 +217,28 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_connections(self):
         logging.info("UI | setup connections started")
+
         # connect buttons
-        self.pushButton_initialise.clicked.connect(self.run_setup_autoliftout)
-        self.pushButton_autoliftout.clicked.connect(self.run_autoliftout)
-        self.pushButton_thinning.clicked.connect(self.run_autoliftout_thinning)
-        self.pushButton_autoliftout.setEnabled(False)  # disable unless lamella selected
-        self.pushButton_thinning.setEnabled(False)  # disable unless lamella selected
+        if self.MICROSCOPE_CONNECTED:
+            self.pushButton_initialise.clicked.connect(self.run_setup_autoliftout)
+            self.pushButton_autoliftout.clicked.connect(self.run_autoliftout)
+            self.pushButton_thinning.clicked.connect(self.run_autoliftout_thinning)
+            self.pushButton_autoliftout.setEnabled(False)  # disable unless lamella selected
+            self.pushButton_thinning.setEnabled(False)  # disable unless lamella selected
 
-        # load data
-        self.pushButton_add_sample_position.setVisible(False)
+            # load data
+            self.pushButton_add_sample_position.setVisible(False)
 
-        # configuration management
-        self.actionLoad_Experiment.triggered.connect(self.run_load_experiment_utility)
-        self.actionLoad_Protocol.triggered.connect(self.load_protocol_from_file)
+            # configuration management
+            self.actionLoad_Experiment.triggered.connect(self.run_load_experiment_utility)
+            # self.actionLoad_Protocol.triggered.connect(self.load_protocol_from_file)
 
-        # actions
-        self.actionMark_Lamella_Failed.triggered.connect(self.set_lamella_failed)
+            # actions
+            self.actionMark_Lamella_Failed.triggered.connect(self.set_lamella_failed)
 
-        # utilities
-        self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
-        self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
+            # utilities
+            self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
+            self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
 
         # TESTING METHODS TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
