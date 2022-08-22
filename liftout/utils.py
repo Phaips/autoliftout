@@ -2,9 +2,8 @@ import os
 from pathlib import Path
 
 import numpy as np
-import yaml
 from fibsem.structures import ImageSettings
-from fibsem.utils import configure_logging, load_yaml
+from fibsem.utils import configure_logging
 
 
 def make_logging_directory(path: Path = None, name="run"):
@@ -67,7 +66,7 @@ def crosscorrelate_and_plot(
 
     # rotate ref
     if rotate:
-        ref_image = calibration.rotate_AdornedImage(ref_image)
+        ref_image = calibration.rotate_image(ref_image)
 
     dx, dy, xcorr = calibration.shift_from_crosscorrelation(
         ref_image,

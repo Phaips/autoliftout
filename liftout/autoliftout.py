@@ -1,37 +1,28 @@
+
 import logging
 import time
 from datetime import datetime
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.enumerations import CoordinateSystem
-from autoscript_sdb_microscope_client.structures import (
-    MoveSettings,
-    StagePosition,
-    Rectangle,
-)
-from fibsem import acquire, calibration, utils, movement, validation
-from fibsem.structures import (
-    BeamType,
-    MicroscopeState,
-    MicroscopeSettings,
-    Point
-)
+from autoscript_sdb_microscope_client.enumerations import (
+    CoordinateSystem, ManipulatorCoordinateSystem)
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
+                                                         Rectangle,
+                                                         StagePosition)
+from fibsem import acquire, alignment, calibration, movement, utils, validation
+from fibsem.imaging import masks
+from fibsem.imaging import utils as image_utils
+from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
+                               Point)
 
-from liftout.detection.detection import DetectionType, DetectionFeature
-from liftout.gui import windows
 from liftout import actions
+from liftout.detection.detection import DetectionFeature, DetectionType
+from liftout.gui import windows
 from liftout.patterning import MillingPattern
-from liftout.sample import (
-    AutoLiftoutStage,
-    Lamella,
-    ReferenceImages,
-    Sample,
-    get_reference_images,
-)
+from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample,
+                            get_reference_images)
 from liftout.structures import ReferenceHFW
-from autoscript_sdb_microscope_client.enumerations import ManipulatorCoordinateSystem
-
 
 # autoliftout workflow functions
 
@@ -91,7 +82,7 @@ def mill_lamella_jcut(
     movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
     # correct drift using reference images..
-    calibration.correct_stage_drift(
+    alignment.correct_stage_drift(
         microscope,
         settings,
         reference_images,
@@ -120,13 +111,13 @@ def mill_lamella_jcut(
 
     # mask ref, cosine stretch
     new_ib = acquire.new_image(microscope, settings.image)
-    mask = calibration.create_lamella_mask(
+    mask = masks.create_lamella_mask(
         ref_ib, settings, factor=2.5, circ=False, use_trench_height=True
     )
-    calibration.align_using_reference_images(
+    alignment.align_using_reference_images(
         microscope,
         settings,
-        calibration.cosine_stretch(ref_ib, TILT_DEGREES),
+        image_utils.cosine_stretch(ref_ib, TILT_DEGREES),
         new_ib,
         ref_mask=mask,
     )
@@ -156,14 +147,14 @@ def mill_lamella_jcut(
     # mask ref, cosine stretch
     settings.image.hfw = ReferenceHFW.Super.value
     new_ib = acquire.new_image(microscope, settings.image)
-    mask = calibration.create_lamella_mask(
+    mask = masks.create_lamella_mask(
         ref_ib, settings, factor=2.5, circ=False, use_trench_height=True
     )
-    calibration.align_using_reference_images(
+    alignment.align_using_reference_images(
         microscope,
         settings,
         reference_images.high_res_ib,
-        calibration.cosine_stretch(new_ib, TILT_DEGREES),
+        image_utils.cosine_stretch(new_ib, TILT_DEGREES),
         ref_mask=mask,
     )
 
@@ -203,7 +194,7 @@ def liftout_lamella(
 
     reference_images = get_reference_images(lamella, "ref_jcut")
 
-    calibration.correct_stage_drift(
+    alignment.correct_stage_drift(
         microscope,
         settings,
         settings.image,
@@ -317,7 +308,7 @@ def land_needle_on_milled_lamella(
     settings.image.gamma.enabled = False
     reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
-    previous_brightness = calibration.measure_brightness(ib_image)
+    previous_brightness = image_utils.measure_brightness(ib_image)
 
     brightness_history = [previous_brightness]
     MEAN_BRIGHTNESS = np.mean(brightness_history)
@@ -340,7 +331,7 @@ def land_needle_on_milled_lamella(
         ib_image = acquire.new_image(
             microscope, settings.image, reduced_area=reduced_area
         )
-        brightness = calibration.measure_brightness(ib_image)
+        brightness = image_utils.measure_brightness(ib_image)
 
         import matplotlib.pyplot as plt
 
@@ -629,7 +620,7 @@ def thin_lamella(
     reference_images = get_reference_images(lamella, label="ref_landing_lamella")
 
     # TODO:
-    calibration.correct_stage_drift(
+    alignment.correct_stage_drift(
         microscope,
         settings,
         reference_images=reference_images,
@@ -702,7 +693,7 @@ def polish_lamella(
     reference_images = get_reference_images(lamella, "ref_thin_lamella")
 
     # TODO: Test, probs only needs 1 step
-    calibration.correct_stage_drift(
+    alignment.correct_stage_drift(
         microscope,
         settings,
         reference_images=reference_images,

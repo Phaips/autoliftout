@@ -8,7 +8,6 @@ import pandas as pd
 import petname
 import yaml
 from autoscript_sdb_microscope_client.structures import AdornedImage
-                                                        
 from fibsem import utils as fibsem_utils
 from fibsem.structures import MicroscopeState, ReferenceImages
 
