@@ -9,6 +9,7 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
 from liftout import autoliftout, utils
 from liftout.gui import utils as ui_utils
+from fibsem.ui import utils as fibsem_ui
 from liftout.gui import windows
 from liftout.gui.qtdesigner_files import main as gui_main
 from liftout.sample import AutoLiftoutStage, Lamella, Sample
@@ -105,7 +106,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.enable_liftout_ui(sample)
 
         except Exception as e:
-            ui_utils.display_error_message(message=f"Unable to setup sample: {e}")
+            fibsem_ui.display_error_message(message=f"Unable to setup sample: {e}")
             sample = None
 
         return sample
@@ -156,7 +157,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         try:
             self.settings.protocol = ui_utils.load_configuration_from_ui(self)
         except Exception as e:
-            ui_utils.display_error_message(f"Unable to load selected protocol: {e}")
+            fibsem_ui.display_error_message(f"Unable to load selected protocol: {e}")
 
     def run_load_experiment_utility(self):
         """Run the laod experiment utility"""
@@ -196,7 +197,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
         if microscope is None:
-            ui_utils.display_error_message(
+            fibsem_ui.display_error_message(
                 f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
             )
 

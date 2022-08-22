@@ -7,11 +7,11 @@ import liftout.gui.utils as ui_utils
 import matplotlib.patches as mpatches
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import \
-    Rectangle as RectangleArea
+from autoscript_sdb_microscope_client.structures import Rectangle as ReducedAreaRectangle
 from fibsem import acquire, calibration, constants, milling
 from fibsem import utils as fibsem_utils
-from fibsem.structures import BeamType, ImageSettings, Point, MicroscopeSettings
+from fibsem.structures import BeamType, MicroscopeSettings, Point
+from fibsem.ui import utils as fibsem_ui
 from liftout import patterning, utils
 from liftout.config import config
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
@@ -117,7 +117,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             patterning.MillingPattern.Thin,
             patterning.MillingPattern.Polish,
         ]:
-            reduced_area = RectangleArea(0.3, 0.3, 0.4, 0.4)
+            reduced_area = ReducedAreaRectangle(0.3, 0.3, 0.4, 0.4)
         else:
             reduced_area = None
 
@@ -133,7 +133,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             self.wp.deleteLater()
 
         # pattern drawing
-        self.wp = ui_utils._WidgetPlot(self, display_image=self.image)
+        self.wp = fibsem_ui._WidgetPlot(self, display_image=self.image)
         self.label_image.setLayout(QtWidgets.QVBoxLayout())
         self.label_image.layout().addWidget(self.wp)
         self.wp.canvas.mpl_connect("button_press_event", self.on_click)
@@ -213,7 +213,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.wp.canvas.ax11.patches.clear()
 
         # draw crosshar
-        ui_utils.draw_crosshair(
+        fibsem_ui.draw_crosshair(
             self.image, self.wp.canvas, x=self.xclick, y=self.yclick
         )
 
@@ -325,7 +325,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             for i, stage in enumerate(self.patterns):
                 for pattern in stage:
                     colour = "cyan" if i == 1 else "yellow"
-                    rectangle = ui_utils.draw_rectangle_pattern(
+                    rectangle = fibsem_ui.draw_rectangle_pattern(
                         adorned_image=self.adorned_image, pattern=pattern, colour=colour
                     )
                     self.pattern_rectangles.append(rectangle)
@@ -395,7 +395,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
     def finalise_milling(self):
         # ask user if the milling succeeded
-        response = ui_utils.message_box_ui(
+        response = fibsem_ui.message_box_ui(
             title="Milling Confirmation", text="Do you want to redo milling?"
         )
 
@@ -403,9 +403,9 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             logging.info("Redoing milling")
             self.update_display(draw_patterns=False)
         else:
-            response = ui_utils.message_box_ui(
+            response = fibsem_ui.message_box_ui(
                 title="Save Milling Protocol?",
-                text="Do you want to save this milling protocol?",
+                text="Do you want to update the protocol to use these milling parameters?",
             )
 
             if response:

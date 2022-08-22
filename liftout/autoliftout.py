@@ -227,7 +227,7 @@ def liftout_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # land needle on lamella
-    lamella = land_needle_on_milled_lamella_v2(microscope, settings, lamella)
+    lamella = land_needle_on_milled_lamella(microscope, settings, lamella)
 
     # sputter platinum
     utils.sputter_platinum(
@@ -286,7 +286,7 @@ def liftout_lamella(
 
 
 ## TODO: test
-def land_needle_on_milled_lamella_v2(
+def land_needle_on_milled_lamella(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     lamella: Lamella,
@@ -415,16 +415,13 @@ def land_lamella(
         flat_to_sem=False,
     )
 
-    # after eucentricity... we should be at 4mm,
-    # so we should set wd to 4mm and link
-
     logging.info(
         f"{lamella.current_state.stage.name}: initial landing calibration complete."
     )
 
     ############################## LAND_LAMELLA ##############################
     validate_needle_insertion(microscope, settings)
-    actions.move_needle_to_landing_position_v2(microscope)
+    actions.move_needle_to_landing_position(microscope)
 
     # needle starting position
     settings.image.hfw = ReferenceHFW.High.value
@@ -930,6 +927,7 @@ def run_thinning_workflow(
 ) -> Sample:
 
     # thinning
+    lamella: Lamella
     for lamella in sample.positions.values():
 
         if lamella.current_state.stage == AutoLiftoutStage.Reset:

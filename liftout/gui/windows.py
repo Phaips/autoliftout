@@ -3,15 +3,14 @@ from pathlib import Path
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from fibsem import acquire, movement
+from fibsem import acquire, movement, validation
 from fibsem import utils as fibsem_utils
-from fibsem import validation
+from fibsem.ui import utils as fibsem_ui
 from fibsem.acquire import BeamType
 from fibsem.structures import MicroscopeSettings, Point
 from liftout import actions, patterning
 from liftout.detection import detection
 from liftout.detection.detection import DetectionFeature, DetectionResult
-from liftout.gui import utils as ui_utils
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
@@ -61,7 +60,7 @@ def open_milling_window(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
-    point: Point = Point()
+    point: Point = Point(),
     parent=None,
 ):
     """Open the Milling Window ready for milling
@@ -132,8 +131,6 @@ def validate_detection(
     detection_result: DetectionResult,
     lamella: Lamella,
 ):
-    # TODO: validate the detection shift type...
-
     # user validates detection result
     detection_window = GUIDetectionWindow(
         microscope=microscope,
@@ -151,7 +148,7 @@ def run_validation_ui(
 ):
     """Run validation checks to confirm microscope state before run."""
 
-    response = ui_utils.message_box_ui(
+    response = fibsem_ui.message_box_ui(
         title="Microscope State Validation",
         text="Do you want to validate the microscope state?",
     )
@@ -180,7 +177,7 @@ def run_validation_ui(
     \n - Initial Grid and Landing Positions
     """
 
-    response = ui_utils.message_box_ui(
+    response = fibsem_ui.message_box_ui(
         title="AutoLiftout Initialisation Checklist",
         text=reminder_str,
         buttons=QMessageBox.Ok,
@@ -206,7 +203,7 @@ def run_validation_ui(
         for warning in validation_warnings[::-1]:
             warning_str += f"\n{warning.split('—')[-1]}"
 
-        ui_utils.message_box_ui(
+        fibsem_ui.message_box_ui(
             title="AutoLiftout Initialisation Warning",
             text=warning_str,
             buttons=QMessageBox.Ok,

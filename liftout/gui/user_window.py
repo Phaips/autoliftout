@@ -7,7 +7,7 @@ from fibsem import utils as fibsem_utils
 from fibsem.acquire import BeamType
 from fibsem.structures import BeamType
 from liftout.gui.qtdesigner_files import user_dialog as user_gui
-from liftout.gui.utils import _WidgetPlot, draw_crosshair
+from fibsem.ui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
 
 
@@ -54,25 +54,16 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings = fibsem_utils.quick_setup()
+    from liftout import utils
+    from liftout.gui import windows
+    microscope, settings = utils.quick_setup()
 
     app = QtWidgets.QApplication([])
 
-    def ask_user_interaction(msg="Hello New Ask User", beam_type=None):
-        """Create user interaction window and get return response"""
-        ask_user_window = GUIUserWindow(
-            microscope=microscope,
-            settings=settings,
-            msg=msg,
-            beam_type=beam_type,
-        )
-        ask_user_window.show()
-        return ask_user_window.exec_()
+    ret = windows.ask_user_interaction(microscope, settings, BeamType.ELECTRON)
+    print(f"ret: {ret}")
 
-    print("RET: ", ask_user_interaction())
-
-    print("RET: ", ask_user_interaction(msg="Message 2", beam_type=BeamType.ELECTRON))
-    print("RET :", ask_user_interaction(msg="Message 2", beam_type=BeamType.ION))
+    
     sys.exit(app.exec_())
 
 

@@ -5,13 +5,13 @@ from pprint import pprint
 
 import matplotlib.patches as mpatches
 from fibsem import calibration
-from liftout import utils
 from fibsem.structures import MicroscopeSettings
+from fibsem.ui import utils as fibsem_ui
+from liftout import utils
 from liftout.config import config
 from liftout.detection import utils as det_utils
 from liftout.detection.utils import (DetectionResult, DetectionType, Point,
                                      convert_pixel_distance_to_metres)
-from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
 from liftout.sample import Lamella
 from PyQt5 import QtCore, QtWidgets
@@ -50,7 +50,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self._USER_CORRECTED = False
 
         # pattern drawing
-        self.wp = ui_utils._WidgetPlot(self, display_image=self.image)
+        self.wp = fibsem_ui._WidgetPlot(self, display_image=self.image)
         self.label_image.setLayout(QtWidgets.QVBoxLayout())
         self.label_image.layout().addWidget(self.wp)
         self.wp.canvas.mpl_connect("button_press_event", self.on_click)
@@ -143,15 +143,15 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self.wp.canvas.ax11.patches.clear()
 
         # draw cross hairs
-        ui_utils.draw_crosshair(
+        fibsem_ui.draw_crosshair(
             self.image, self.wp.canvas, x=point_1.x, y=point_1.y, colour=c1,
         )
-        ui_utils.draw_crosshair(
+        fibsem_ui.draw_crosshair(
             self.image, self.wp.canvas, x=point_2.x, y=point_2.y, colour=c2,
         )
 
         # draw arrow
-        ui_utils.draw_arrow(point_1, point_2, self.wp.canvas)
+        fibsem_ui.draw_arrow(point_1, point_2, self.wp.canvas)
 
         # legend
         patch_one = mpatches.Patch(
@@ -213,8 +213,8 @@ def main():
     
     app = QtWidgets.QApplication([])
 
-    from liftout.gui import windows
     from liftout.detection.detection import DetectionFeature
+    from liftout.gui import windows
 
     # select features
     features = [DetectionFeature(detection_type=DetectionType.ImageCentre, feature_px=None),

@@ -185,7 +185,7 @@ def move_needle_to_liftout_position(
     return microscope.specimen.manipulator.current_position
 
 
-def move_needle_to_landing_position_v2(
+def move_needle_to_landing_position(
     microscope: SdbMicroscopeClient,
     dx: float = -30.0e-6,
     dy: float = 0.0,

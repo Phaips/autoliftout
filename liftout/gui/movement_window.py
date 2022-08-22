@@ -11,7 +11,7 @@ from fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
 from fibsem.structures import BeamType, ImageSettings, MicroscopeSettings
 from liftout import utils
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
-from liftout.gui.utils import _WidgetPlot, draw_crosshair
+from fibsem.ui.utils import _WidgetPlot, draw_crosshair
 from PyQt5 import QtCore, QtWidgets
 
 
