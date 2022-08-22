@@ -136,3 +136,17 @@ weld:
   rotation: 0.0
   scan_direction: TopToBottom
   width: 3.0e-06
+initial_position:
+  sample_grid: # need to check the coordinate systems
+    x: -3.2375e-3
+    y: 3.9354e-3
+    z: 30.95e-3
+    coordinate_system: "Raw"
+  landing_grid:
+    # x is +6 mm from sample grid center
+    x: 2.76265e-3 # x: 2.76265e-3
+    # y is the same as sample grid center
+    y: 3.9354e-3 # y: 3.9354e-3
+    # z is the same as sample grid center
+    z: 31.379e-3 # z: 31.379e-3
+    coordinate_system: "Raw"

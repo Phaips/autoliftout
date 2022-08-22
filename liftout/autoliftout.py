@@ -1011,7 +1011,7 @@ def select_initial_lamella_positions(
 
     # TODO: replace with auto eucentric calibration
     if eucentric_calibration is False:
-        actions.move_to_sample_grid(microscope, settings=settings)
+        actions.move_to_sample_grid(microscope, settings=settings, protocol=settings.protocol)
         calibration.auto_link_stage(microscope)
 
         windows.ask_user_movement(
@@ -1055,8 +1055,8 @@ def select_landing_positions(
 
     ####################################
     # # move to landing grid
-    actions.move_to_landing_grid(microscope, settings=settings)
-    # movement.auto_link_stage(self.microscope, hfw=900e-6)
+    actions.move_to_landing_grid(microscope, settings, settings.protocol)
+
 
     settings.image.hfw = ReferenceHFW.Low.value
     windows.ask_user_movement(
@@ -1065,6 +1065,7 @@ def select_landing_positions(
     ####################################
 
     # select corresponding sample landing positions
+    lamella: Lamella
     for lamella in sample.positions.values():
 
         # check if landing position already selected? so it doesnt overwrite
@@ -1192,7 +1193,7 @@ def run_setup_autoliftout(
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | STARTED")
 
     # move to the initial sample grid position
-    actions.move_to_sample_grid(microscope, settings)
+    actions.move_to_sample_grid(microscope, settings, settings.protocol)
 
     # initial image settings
     settings.image.hfw = ReferenceHFW.Low.value
@@ -1204,7 +1205,7 @@ def run_setup_autoliftout(
     acquire.new_image(microscope, settings.image)
 
     # sputter platinum to protect grid and prevent charging...
-    windows.sputter_platinum_on_whole_sample_grid(microscope, settings)
+    windows.sputter_platinum_on_whole_sample_grid(microscope, settings, settings.protocol)
 
     # reference images
     settings.image.label = "grid_Pt"

@@ -171,7 +171,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         autoliftout.reset_needle(
             self.microscope,
             self.settings,
-            self.image_settings,
             Lamella(self.sample.path, 999),
         )
 
@@ -180,7 +179,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # sputter
         windows.sputter_platinum_on_whole_sample_grid(
-            self.microscope, self.settings, self.image_settings
+            self.microscope, self.settings, self.settings.protocol
         )
 
     def testing_function(self):

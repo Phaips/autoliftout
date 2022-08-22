@@ -213,8 +213,9 @@ def run_validation_ui(
 
 
 def sputter_platinum_on_whole_sample_grid(
-    microscope: SdbMicroscopeClient = None,
-    protocol: dict = None,
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    protocol: dict,
 ) -> None:
     """Move to the sample grid and sputter platinum over the whole grid"""
 
@@ -226,7 +227,7 @@ def sputter_platinum_on_whole_sample_grid(
     )
 
     if response:
-        actions.move_to_sample_grid(microscope, protocol)
+        actions.move_to_sample_grid(microscope, settings, protocol)
         fibsem_utils.sputter_platinum(
             microscope=microscope,
             protocol=protocol["protocol"]["platinum"],
