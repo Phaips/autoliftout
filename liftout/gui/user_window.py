@@ -7,7 +7,7 @@ from fibsem import utils as fibsem_utils
 from fibsem.acquire import BeamType
 from fibsem.structures import BeamType
 from liftout.gui.qtdesigner_files import user_dialog as user_gui
-from fibsem.ui.utils import _WidgetPlot, draw_crosshair
+from fibsem.ui import utils as fibsem_ui
 from PyQt5 import QtCore, QtWidgets
 
 
@@ -40,12 +40,12 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
             image = ndi.median_filter(self.adorned_image.data, size=3)
 
             # image widget
-            self.wp = _WidgetPlot(self, display_image=image)
+            self.wp = fibsem_ui._WidgetPlot(self, display_image=image)
             self.label_image.setLayout(QtWidgets.QVBoxLayout())
             self.label_image.layout().addWidget(self.wp)
 
             # draw crosshair
-            draw_crosshair(image, self.wp.canvas)
+            fibsem_ui.draw_crosshair(image, self.wp.canvas)
 
         self.show()
 

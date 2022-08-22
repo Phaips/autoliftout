@@ -9,7 +9,7 @@ from autoscript_sdb_microscope_client.structures import (MoveSettings,
                                                          StagePosition)
 from fibsem import acquire, calibration, movement, constants
 from fibsem.structures import BeamType, MicroscopeSettings
-from fibsem.ui.utils import _WidgetPlot, draw_crosshair
+from fibsem.ui import utils as fibsem_ui
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from PyQt5 import QtCore, QtWidgets
 
@@ -86,7 +86,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             # TODO: remove layouts properly
             self.wp_eb.deleteLater()
 
-        self.wp_eb = _WidgetPlot(self, display_image=eb_image_smooth)
+        self.wp_eb = fibsem_ui._WidgetPlot(self, display_image=eb_image_smooth)
         self.label_image_eb.setLayout(QtWidgets.QVBoxLayout())
         self.label_image_eb.layout().addWidget(self.wp_eb)
 
@@ -96,13 +96,13 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
             # TODO: remove layouts properly
             self.wp_ib.deleteLater()
 
-        self.wp_ib = _WidgetPlot(self, display_image=ib_image_smooth)
+        self.wp_ib = fibsem_ui._WidgetPlot(self, display_image=ib_image_smooth)
         self.label_image_ib.setLayout(QtWidgets.QVBoxLayout())
         self.label_image_ib.layout().addWidget(self.wp_ib)
 
         # draw crosshairs on both images
-        draw_crosshair(self.eb_image, self.wp_eb.canvas)
-        draw_crosshair(self.ib_image, self.wp_ib.canvas)
+        fibsem_ui.draw_crosshair(self.eb_image, self.wp_eb.canvas)
+        fibsem_ui.draw_crosshair(self.ib_image, self.wp_ib.canvas)
 
         self.wp_eb.canvas.ax11.set_title("Electron Beam")
         self.wp_ib.canvas.ax11.set_title("Ion Beam")
