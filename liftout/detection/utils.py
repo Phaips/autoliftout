@@ -91,42 +91,18 @@ def coordinate_distance(p1: Point, p2: Point):
 
     return p2.x - p1.x, p2.y - p1.y
 
-
-def scale_invariant_coordinates(px, mask):
-    """ Return the scale invariant coordinates of the features in the given mask
-
-    args:
-        px (tuple): pixel coordinates of the feature (y, x)
-        mask (PIL.Image): PIL Image of detection mask
-
-    returns:
-        scaled_px (tuple): pixel coordinates of the feature as proportion of mask size
-
-    """
-
-    scaled_px = (px[0] / mask.shape[0], px[1] / mask.shape[1])
-
-    return scaled_px
-
-
-
-def scale_pixel_coordinates(px: Point, from_image: np.ndarray, to_image=None) -> Point:
+def scale_pixel_coordinates(px: Point, from_image: AdornedImage, to_image: AdornedImage) -> Point:
     """Scale the pixel coordinate from one image to another"""
-    if isinstance(to_image, AdornedImage):
-        to_image = to_image.data
-    
-    if isinstance(from_image, AdornedImage):
-        from_image = from_image.data
 
-    invariant_pt = get_scale_invariant_coordinates(px, from_image.shape)
+    invariant_pt = get_scale_invariant_coordinates(px, from_image.data.shape)
 
-    scaled_px = scale_coordinate_to_image(invariant_pt, to_image.shape)
+    scaled_px = scale_coordinate_to_image(invariant_pt, to_image.data.shape)
 
     return scaled_px
 
 
 def get_scale_invariant_coordinates(point: Point, shape: tuple) -> Point:
-
+    """Convert the point coordinates from image coordinates to scale invariant coordinates"""
     scaled_pt = Point(x=point.x / shape[1], y=point.y / shape[0])
 
     return scaled_pt
@@ -220,7 +196,7 @@ def extract_img_for_labelling(path, show=False):
     # zip the image folder
     # shutil.make_archive(f"{path}/images", 'zip', label_dir)
 
-def write_data_to_csv(path: Path, info) -> None:
+def write_data_to_csv(path: Path, info: list) -> None:
 
     dataframe_path = os.path.join(path, "data.csv")
 
@@ -299,7 +275,7 @@ def plot_detection_result(det_result: DetectionResult):
 def write_data_to_disk(path: Path, detection_result: DetectionResult) -> None:
     
     # TODO: move this
-    from liftout import utils
+    from fibsem import utils
     label = utils.current_timestamp() + "_label"
 
     utils.save_image(

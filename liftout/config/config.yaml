@@ -1,47 +1,16 @@
-system:
-  ip_address: 10.0.0.1
-  application_file: "autolamella"
-  plasma_gas: "Argon" # proper case, e.g. Argon, Oxygen
-  high_voltage: 30000 # volts
-  rotation_flat_to_electron: 50 # degrees
-  rotation_flat_to_ion: 230 # degrees
-  tilt_flat_to_electron: 27 # degrees (pre_tilt)
-  tilt_flat_to_ion: 52 # degrees
-  stage_tilt_landing: 0 #13 # degrees
-  piescope_enabled: False
-  high_throughput: False
-  autolamella: False
-  initial_position:
-    sample_grid: # need to check the coordinate systems
-      x: -3.2375e-3
-      y: 3.9354e-3
-      z: 30.95e-3
-      r: 0.872665
-      t: null
-      coordinate_system: "Raw"
-    landing_grid:
-      # x is +6 mm from sample grid center
-      x: 2.76265e-3 # x: 2.76265e-3
-      # y is the same as sample grid center
-      y: 3.9354e-3 # y: 3.9354e-3
-      # z is the same as sample grid center
-      z: 31.379e-3 # z: 31.379e-3
-      r: 0.872665
-      t: null
-      coordinate_system: "Raw"
-calibration:
-  imaging_current: 20.e-12 # 20pA, 20kV for Ar, 30pA, 30kV for Xe # 3kV eB
-  milling_current: 2.e-9
-  imaging: # default imaging settings
-    hfw: 150.e-6 # ion beam horizontal field of view (meters)
-    beam_type: "Electron"
-    dwell_time: 1.e-6
-    resolution: "1536x1024"
-    save: False
-    autocontrast: True
-    gamma: # gamma correction parameters
-      enabled: True
-      min_gamma: 0.15
-      max_gamma: 1.8
-      scale_factor: 0.01
-      threshold: 46 # px
+# user config settings
+imaging_current: 20.e-12
+milling_current: 2.e-9
+resolution: "1536x1024"
+hfw: 150.e-6  
+beam_type: "Electron"
+autocontrast: True
+dwell_time: 1.e-6
+save: False
+gamma: # gamma correction parameters
+  enabled: True
+  min_gamma: 0.15
+  max_gamma: 1.8
+  scale_factor: 0.01
+  threshold: 46 # px
+

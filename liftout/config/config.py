@@ -5,9 +5,8 @@ from liftout.patterning import MillingPattern
 from liftout.detection.utils import DetectionType
 
 base_path = os.path.dirname(liftout.__file__)
-system_config = os.path.join(base_path, "config", "system.yaml")
-calibration_config = os.path.join(base_path, "config", "calibration.yaml")
-protocol_config = os.path.join(base_path, "protocol", "protocol.yaml")
+config_path = os.path.join(base_path, "config")
+protocol_path = os.path.join(base_path, "protocol", "protocol.yaml")
 
 
 # MILLING UI

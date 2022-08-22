@@ -3,20 +3,22 @@ from pathlib import Path
 
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from fibsem import acquire, movement, validation
+from fibsem import acquire, movement
 from fibsem import utils as fibsem_utils
-from fibsem.acquire import BeamType, ImageSettings
-from fibsem.structures import ImageSettings
-from liftout import patterning, utils, actions
+from fibsem import validation
+from fibsem.acquire import BeamType
+from fibsem.structures import MicroscopeSettings
+from liftout import actions, patterning
 from liftout.detection import detection
 from liftout.detection.detection import DetectionFeature, DetectionResult
+from liftout.gui import utils as ui_utils
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
 from liftout.gui.user_window import GUIUserWindow
 from liftout.sample import Lamella
 from PyQt5.QtWidgets import QMessageBox
-from liftout.gui import utils as ui_utils
+
 
 def ask_user_interaction(
     microscope: SdbMicroscopeClient, msg="Default Ask User Message", beam_type=None
@@ -31,8 +33,7 @@ def ask_user_interaction(
 
 def ask_user_movement(
     microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
+    settings: MicroscopeSettings,
     msg_type="eucentric",
     msg: str = None,
     flat_to_sem: bool = False,
@@ -48,18 +49,17 @@ def ask_user_movement(
     movement_window = GUIMMovementWindow(
         microscope=microscope,
         settings=settings,
-        image_settings=image_settings,
         msg_type=msg_type,
-        msg=msg, 
+        msg=msg,
         parent=parent,
     )
     movement_window.show()
     movement_window.exec_()
 
+
 def open_milling_window(
     microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
+    settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
     x: float = 0.0,
     y: float = 0.0,
@@ -75,7 +75,6 @@ def open_milling_window(
     milling_window = GUIMillingWindow(
         microscope=microscope,
         settings=settings,
-        image_settings=image_settings,
         milling_pattern_type=milling_pattern,
         x=x,
         y=y,
@@ -86,7 +85,14 @@ def open_milling_window(
     milling_window.exec_()
 
 
-def detect_features(microscope: SdbMicroscopeClient, settings: dict, image_settings: ImageSettings, lamella: Lamella,  ref_image: AdornedImage, features: tuple[DetectionFeature], validate: bool = True) -> DetectionResult:
+def detect_features(
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    lamella: Lamella,
+    ref_image: AdornedImage,
+    features: tuple[DetectionFeature],
+    validate: bool = True,
+) -> DetectionResult:
     """_summary_
 
     Args:
@@ -102,28 +108,29 @@ def detect_features(microscope: SdbMicroscopeClient, settings: dict, image_setti
         DetectionResult: _description_
     """
     # detect features
-    image = acquire.new_image(microscope, image_settings)
+    image = acquire.new_image(microscope, settings.image)
 
     if ref_image is None:
         ref_image = image
 
     # detect features
-    det = detection.locate_shift_between_features_v2(
-        image, ref_image, features=features
-    )
+    det = detection.locate_shift_between_features(image, ref_image, features=features)
 
     # user validate features...
     if validate:
-        det = validate_detection_v2(
-            microscope, settings, det, lamella,
+        det = validate_detection(
+            microscope,
+            settings,
+            det,
+            lamella,
         )
 
     return det
 
 
-def validate_detection_v2(
+def validate_detection(
     microscope: SdbMicroscopeClient,
-    settings: dict,
+    settings: MicroscopeSettings,
     detection_result: DetectionResult,
     lamella: Lamella,
 ):
@@ -141,48 +148,15 @@ def validate_detection_v2(
 
     return detection_window.detection_result
 
-
-def validate_detection(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    lamella: Lamella,
-    shift_type: tuple,
-    beam_type: BeamType = BeamType.ELECTRON,
-    parent=None,
+def run_validation_ui(
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, log_path: Path
 ):
-    # TODO: validate the detection shift type...
-    from liftout.detection import detection
-    from liftout.gui.detection_window import GUIDetectionWindow
-
-    image_settings.beam_type = beam_type  # change to correct beamtype
-
-    # run model detection
-    detection_result = detection.identify_shift_using_machine_learning(
-        microscope, image_settings, settings, shift_type=shift_type
-    )
-
-    # user validates detection result
-    detection_window = GUIDetectionWindow(
-        microscope=microscope,
-        settings=settings,
-        image_settings=image_settings,
-        detection_result=detection_result,
-        lamella=lamella,
-        parent=parent,
-    )
-    detection_window.show()
-    detection_window.exec_()
-
-    return detection_window.detection_result
-
-
-def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path: Path):
     """Run validation checks to confirm microscope state before run."""
 
     response = ui_utils.message_box_ui(
-        title="Microscope State Validation", 
-        text="Do you want to validate the microscope state?")
+        title="Microscope State Validation",
+        text="Do you want to validate the microscope state?",
+    )
 
     if response is False:
         logging.info(f"PRE_RUN_VALIDATION cancelled by user.")
@@ -195,7 +169,7 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
 
     # validate user configuration
     # TODO: this will change when settings goes from dict -> struct
-    validation._validate_configuration_values(microscope, settings) 
+    validation._validate_configuration_values(microscope, settings.protocol)
 
     # reminders
     reminder_str = """Please check that the following steps have been completed:
@@ -211,7 +185,8 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
     response = ui_utils.message_box_ui(
         title="AutoLiftout Initialisation Checklist",
         text=reminder_str,
-        buttons=QMessageBox.Ok)
+        buttons=QMessageBox.Ok,
+    )
 
     # Loop backwards through the log, until we find the start of validation
     with open(log_path) as f:
@@ -236,15 +211,15 @@ def run_validation_ui(microscope: SdbMicroscopeClient, settings: dict, log_path:
         ui_utils.message_box_ui(
             title="AutoLiftout Initialisation Warning",
             text=warning_str,
-            buttons=QMessageBox.Ok
-            )
+            buttons=QMessageBox.Ok,
+        )
 
     logging.info(f"INIT | PRE_RUN_VALIDATION | FINISHED")
 
 
 def sputter_platinum_on_whole_sample_grid(
     microscope: SdbMicroscopeClient = None,
-    settings: dict = None,
+    protocol: dict = None,
 ) -> None:
     """Move to the sample grid and sputter platinum over the whole grid"""
 
@@ -256,11 +231,12 @@ def sputter_platinum_on_whole_sample_grid(
     )
 
     if response:
-        actions.move_to_sample_grid(microscope, settings)
-        fibsem_utils.sputter_platinum_v2(
-            microscope=microscope, 
-            protocol=settings["protocol"]["platinum"], 
-            whole_grid = True, 
-            default_application_file=settings["system"]["application_file"])
+        actions.move_to_sample_grid(microscope, protocol)
+        fibsem_utils.sputter_platinum(
+            microscope=microscope,
+            protocol=protocol["protocol"]["platinum"],
+            whole_grid=True,
+            default_application_file=protocol["system"]["application_file"],
+        )
 
     return

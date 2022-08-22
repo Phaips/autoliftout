@@ -3,137 +3,17 @@ from pathlib import Path
 
 import numpy as np
 import yaml
-import liftout
-from fibsem.utils import load_yaml, configure_logging
-from fibsem.structures import (
-    ImageSettings,
-    SystemSettings,
-    StageSettings,
-    stage_position_from_dict,
-)
-from liftout.structures import AutoLiftoutOptions, AutoLiftoutSettings, ReferenceHFW
-from fibsem import validation
-
-def load_config(yaml_filename):
-    """Load user input from yaml settings file.
-
-    Parameters
-    ----------
-    yaml_filename : str
-        Filename path of user configuration file.
-
-    Returns
-    -------
-    dict
-        Dictionary containing user input settings.
-    """
-    with open(yaml_filename, "r") as f:
-        settings_dict = yaml.safe_load(f)
-    settings_dict = _format_dictionary(settings_dict)
-    return settings_dict
-
-
-# def load_settings_from_config(fname: Path, protocol_filename: Path):
-
-#     config = load_yaml(fname)
-#     image_settings = ImageSettings.__from_dict__(config["calibration"]["imaging"])
-#     system_settings = SystemSettings.__from_dict__(config["system"])
-#     stage_settings = StageSettings.__from_dict__(config["system"])
-#     options = AutoLiftoutOptions.__from_dict__(config["system"])
-#     grid_position = stage_position_from_dict(
-#         config["system"]["initial_position"]["sample_grid"]
-#     )
-#     landing_position = stage_position_from_dict(
-#         config["system"]["initial_position"]["landing_grid"]
-#     )
-
-#     protocol = load_yaml(protocol_filename)
-
-#     settings = AutoLiftoutSettings(
-#         system=system_settings,
-#         stage=stage_settings,
-#         options=options,
-#         image_settings=image_settings,
-#         grid_position=grid_position,
-#         landing_position=landing_position,
-#         protocol=protocol,
-#     )
-
-#     return settings
-
-
-def load_full_config(
-    system_config: Path = None,
-    calibration_config: Path = None,
-    protocol_config: Path = None,
-) -> dict:
-    """Load multiple config files into single settings dictionary."""
-
-    from liftout.config import config
-
-    # default paths
-    if system_config is None:
-        system_config = config.system_config
-    if calibration_config is None:
-        calibration_config = config.calibration_config
-    if protocol_config is None:
-        protocol_config = config.protocol_config
-
-    # load individual configs
-    config_system = load_yaml(system_config)
-    config_calibration = load_yaml(calibration_config)
-    config_protocol = load_yaml(protocol_config)
-
-    # consolidate
-    settings = dict()
-    settings["system"] = config_system
-    settings["calibration"] = config_calibration
-    settings["protocol"] = config_protocol
-
-    # validation
-    settings = _format_dictionary(settings)
-
-    return settings
-
-
-def _format_dictionary(dictionary: dict):
-    """Recursively traverse dictionary and covert all numeric values to flaot.
-
-    Parameters
-    ----------
-    dictionary : dict
-        Any arbitrarily structured python dictionary.
-
-    Returns
-    -------
-    dictionary
-        The input dictionary, with all numeric values converted to float type.
-    """
-    for key, item in dictionary.items():
-        if isinstance(item, dict):
-            _format_dictionary(item)
-        elif isinstance(item, list):
-            dictionary[key] = [
-                _format_dictionary(i)
-                for i in item
-                if isinstance(i, list) or isinstance(i, dict)
-            ]
-        else:
-            if item is not None:
-                try:
-                    dictionary[key] = float(dictionary[key])
-                except ValueError:
-                    pass
-    return dictionary
+from fibsem.structures import ImageSettings
+from fibsem.utils import configure_logging, load_yaml
 
 
 def make_logging_directory(path: Path = None, name="run"):
     if path is None:
-        path = os.path.join(os.path.dirname(liftout.__file__), "log")
+        from liftout.config import config
+        path = os.path.join(config.base_path, "log")
     directory = os.path.join(path, name)
     os.makedirs(directory, exist_ok=True)
     return directory
-
 
 def get_last_log_message(path: Path) -> str:
     with open(path) as f:
@@ -160,6 +40,7 @@ def plot_two_images(img1, img2) -> None:
 
 def take_reference_images_and_plot(microscope, image_settings: ImageSettings):
     from pprint import pprint
+
     from fibsem import acquire
 
     eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
@@ -181,7 +62,6 @@ def crosscorrelate_and_plot(
 ):
     import matplotlib.pyplot as plt
     import numpy as np
-
     from fibsem import calibration
     from fibsem.structures import Point
 
@@ -276,10 +156,13 @@ def _validate_model_weights_file(filename):
 ### SETUP
 def quick_setup():
     """Quick setup for microscope, settings, and image_settings"""
-    from fibsem import acquire
-    from fibsem import utils as fibsem_utils
 
-    settings = load_full_config()
+    from fibsem import utils as fibsem_utils
+    from liftout.config import config
+    settings = fibsem_utils.load_settings_from_config(
+        config_path = config.config_path,
+        protocol_path= config.protocol_path
+    )
 
     import os
 
@@ -288,11 +171,9 @@ def quick_setup():
     configure_logging(path)
 
     microscope = fibsem_utils.connect_to_microscope(
-        ip_address=settings["system"]["ip_address"]
+        ip_address=settings.system.ip_address
     )
-    image_settings = acquire.update_image_settings_v3(settings, path=path)
-
-    return microscope, settings, image_settings
+    return microscope, settings
 
 
 def full_setup():
@@ -301,14 +182,14 @@ def full_setup():
 
     from liftout.sample import Lamella, Sample
 
-    microscope, settings, image_settings = quick_setup()
+    microscope, settings = quick_setup()
 
     # sample
-    sample = Sample(path=os.path.dirname(image_settings.save_path), name="test")
+    sample = Sample(path=os.path.dirname(settings.image.save_path), name="test")
 
     # lamella
     lamella = Lamella(sample.path, 999, _petname="999-test-mule")
     sample.positions[lamella._number] = lamella
     sample.save()
 
-    return microscope, settings, image_settings, sample, lamella
+    return microscope, settings, sample, lamella

@@ -1,13 +1,13 @@
 import logging
+import os
 import sys
 from pprint import pprint
 
+from liftout.config import config
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from fibsem import acquire
 from fibsem import utils as fibsem_utils
-from fibsem.structures import ImageSettings
-from liftout import autoliftout, utils, actions
+from liftout import autoliftout, utils
 from liftout.gui import utils as ui_utils
 from liftout.gui import windows
 from liftout.gui.qtdesigner_files import main as gui_main
@@ -22,9 +22,11 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self):
         super(AutoLiftoutMainWindow, self).__init__()
 
-        # load config
-        self.settings: dict = utils.load_full_config()
-        self.image_settings: ImageSettings = ImageSettings.__from_dict__(self.settings["calibration"]["imaging"])
+        # load settings / protocol
+        self.settings = fibsem_utils.load_settings_from_config(
+            config_path = config.config_path,
+            protocol_path = config.protocol_path
+        )
 
         # setup ui
         self.setupUi(self)
@@ -39,7 +41,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # initialise hardware
         self.microscope: SdbMicroscopeClient = self.initialize_hardware(
-            ip_address=self.settings["system"]["ip_address"],
+            ip_address=self.settings.system.ip_address,
         )
         self.MICROSCOPE_CONNECTED: bool = bool(self.microscope)  # offline mode
 
@@ -67,7 +69,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.sample = autoliftout.run_setup_autoliftout(
             microscope=self.microscope,
             settings=self.settings,
-            image_settings=self.image_settings,
             sample=self.sample,
             parent_ui=self,
         )
@@ -78,7 +79,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.sample = autoliftout.run_autoliftout_workflow(
             microscope=self.microscope,
             settings=self.settings,
-            image_settings=self.image_settings,
             sample=self.sample,
             parent_ui=self,
         )
@@ -89,7 +89,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self.sample = autoliftout.run_thinning_workflow(
             microscope=self.microscope,
             settings=self.settings,
-            image_settings=self.image_settings,
             sample=self.sample,
             parent_ui=self,
         )
@@ -155,7 +154,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # reload the protocol from file
         try:
-            self.settings = ui_utils.load_configuration_from_ui(self)
+            self.settings.protocol = ui_utils.load_configuration_from_ui(self)
         except Exception as e:
             ui_utils.display_error_message(f"Unable to load selected protocol: {e}")
 
@@ -168,7 +167,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def run_sharpen_needle_utility(self):
         """Run the sharpen needle utility, e.g. reset stage"""
         # TODO: fix this so it doesnt rely on lamella...
-        self.image_settings.save = False
+        self.settings.image.save = False
         autoliftout.reset_needle(
             self.microscope,
             self.settings,

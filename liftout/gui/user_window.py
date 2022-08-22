@@ -54,7 +54,7 @@ class GUIUserWindow(user_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = fibsem_utils.quick_setup()
+    microscope, settings = fibsem_utils.quick_setup()
 
     app = QtWidgets.QApplication([])
 
@@ -63,7 +63,6 @@ def main():
         ask_user_window = GUIUserWindow(
             microscope=microscope,
             settings=settings,
-            image_settings=image_settings,
             msg=msg,
             beam_type=beam_type,
         )

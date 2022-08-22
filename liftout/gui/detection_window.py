@@ -4,9 +4,9 @@ import sys
 from pprint import pprint
 
 import matplotlib.patches as mpatches
-from fibsem import calibration, movement
+from fibsem import calibration
 from liftout import utils
-from fibsem.structures import BeamType
+from fibsem.structures import MicroscopeSettings
 from liftout.config import config
 from liftout.detection import utils as det_utils
 from liftout.detection.utils import (DetectionResult, DetectionType, Point,
@@ -21,7 +21,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
         microscope,
-        settings: dict,
+        settings: MicroscopeSettings,
         detection_result: DetectionResult,
         lamella: Lamella,
     ):
@@ -209,7 +209,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings, sample, lamella = utils.full_setup()
+    microscope, settings, sample, lamella = utils.full_setup()
     
     app = QtWidgets.QApplication([])
 
@@ -220,7 +220,7 @@ def main():
     features = [DetectionFeature(detection_type=DetectionType.ImageCentre, feature_px=None),
                 DetectionFeature(detection_type=DetectionType.LamellaCentre, feature_px=None)]
     det = windows.detect_features(microscope=microscope, 
-        settings=settings, image_settings=image_settings, lamella=lamella, ref_image=None, features=features, validate=True)
+        settings=settings, image_settings=settings.image, lamella=lamella, ref_image=None, features=features, validate=True)
 
 
     pprint(det)

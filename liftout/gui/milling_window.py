@@ -11,7 +11,7 @@ from autoscript_sdb_microscope_client.structures import \
     Rectangle as RectangleArea
 from fibsem import acquire, calibration, constants, milling
 from fibsem import utils as fibsem_utils
-from fibsem.structures import BeamType, ImageSettings, Point
+from fibsem.structures import BeamType, ImageSettings, Point, MicroscopeSettings
 from liftout import patterning, utils
 from liftout.config import config
 from liftout.gui.qtdesigner_files import milling_dialog as milling_gui
@@ -22,8 +22,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
         microscope: SdbMicroscopeClient,
-        settings: dict,
-        image_settings: ImageSettings,
+        settings: MicroscopeSettings,
         milling_pattern_type: patterning.MillingPattern,
         x: float = 0.0,
         y: float = 0.0,
@@ -36,7 +35,6 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.microscope = microscope
         self.settings = settings
-        self.image_settings = image_settings
         self.milling_pattern = milling_pattern_type
 
         self.wp = None  # plotting widget
@@ -96,8 +94,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         # setup
         milling.setup_milling(
             microscope=self.microscope,
-            application_file=self.settings["system"]["application_file"],
-            hfw=self.image_settings.hfw,
+            application_file=self.settings.system.application_file,
+            hfw=self.settings.image.hfw,
         )
         self.setup_milling_patterns()
         self.setup_connections()
@@ -124,9 +122,9 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         else:
             reduced_area = None
 
-        self.image_settings.beam_type = BeamType.ION
+        self.settings.image.beam_type = BeamType.ION
         self.adorned_image = acquire.new_image(
-            self.microscope, self.image_settings, reduced_area=reduced_area
+            self.microscope, self.settings.image, reduced_area=reduced_area
         )
         self.image = ndi.median_filter(self.adorned_image.data, size=3)
 
@@ -385,11 +383,11 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         # reset to imaging mode
         milling.finish_milling(
             microscope=self.microscope,
-            imaging_current=self.settings["calibration"]["imaging"]["imaging_current"],
+            imaging_current=self.settings.default.imaging_current,
         )
 
         # refresh image
-        self.image_settings.save = False
+        self.settings.image.save = False
         self.setup_milling_image()
         self.update_display(draw_patterns=False)
 
@@ -432,14 +430,14 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = utils.quick_setup()
+    microscope, settings = utils.quick_setup()
 
     import os
 
-    image_settings.save_path = "tools/test"
-    image_settings.hfw = 80.0e-6
+    settings.image.save_path = "tools/test"
+    settings.image.hfw = 80.0e-6
 
-    os.makedirs(image_settings.save_path, exist_ok=True)
+    os.makedirs(settings.image.save_path, exist_ok=True)
     # acquire.reset_beam_shifts(microscope)
 
     from liftout.gui import windows
@@ -449,7 +447,6 @@ def main():
     windows.open_milling_window(
         microscope=microscope,
         settings=settings,
-        image_settings=image_settings,
         milling_pattern=MillingPattern.Trench,
         x=0, y=0,
     )

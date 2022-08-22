@@ -11,6 +11,7 @@ import numpy as np
 import scipy.ndimage as ndi
 import yaml
 from autoscript_sdb_microscope_client.structures import AdornedImage
+from fibsem import utils as fibsem_utils
 from fibsem.constants import METRE_TO_MILLIMETRE
 from fibsem.structures import Point
 from liftout import utils
@@ -306,9 +307,9 @@ def load_configuration_from_ui(parent=None) -> dict:
     if config_filename == "":
         raise ValueError("No protocol file was selected.")
 
-    settings = utils.load_full_config(protocol_config=config_filename)
+    protocol = fibsem_utils.load_protocol(config_filename)
 
-    return settings
+    return protocol
 
     # TODO: validate protocol
 

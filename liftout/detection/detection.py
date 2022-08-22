@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 
 
+import logging
 import os
+from pathlib import Path
 
 import numpy as np
 import PIL
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from liftout.detection import utils as det_utils
+from fibsem import acquire, calibration, movement
+from fibsem import utils as fibsem_utils
+from fibsem.acquire import BeamType, ImageSettings
+from fibsem.structures import MicroscopeSettings, Point
 from liftout import utils
+from liftout.detection import utils as det_utils
 from liftout.detection.DetectionModel import DetectionModel
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      DetectionType)
-from fibsem.structures import Point
-from fibsem import calibration, acquire, movement
-from fibsem.acquire import BeamType, ImageSettings
-from liftout.sample import Lamella
 from liftout.model import models
+from liftout.sample import Lamella
 from PIL import Image
 from scipy.spatial import distance
 from skimage import feature
@@ -26,12 +29,6 @@ from skimage import feature
 # better edge detections for landing...
 # dont reload the model all the time
 # rename DetectionResult to Detection
-
-# TODO: 
-# import to get rid of downscalling the images, it causes very annoying bugs, tricky to debug, and
-# leads to lots of extra book keeping also probably not required.
-# however, will probably need to pad so images are square?
-
 
 # TODO: determine if there is a better way to figure out where the needle is without looking at it...
 # do the coordinates helP?
@@ -47,134 +44,15 @@ DETECTION_COLOURS_UINT8 = {
     DetectionType.LandingPost: (255, 255, 255),
 }
 
-
-
-def correct_stage_drift_with_ml(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image_settings: ImageSettings,
-    lamella: Lamella,
-    iterations: int = 3
-):
-    # correct stage drift using machine learning
-    from liftout.detection.utils import DetectionType
-    from liftout.gui import windows
-
-
-    iteration_count = 0
-    beam_type = BeamType.ION
-    label = image_settings.label
-
-    while True:
-        image_settings.label = label + utils.current_timestamp()
-        det = windows.validate_detection(
-            microscope,
-            settings,
-            image_settings,
-            lamella=lamella,
-            shift_type=(DetectionType.ImageCentre, DetectionType.LamellaCentre),
-            beam_type=beam_type,
-        )
-
-        movement.move_stage_relative_with_corrected_movement(
-            microscope=microscope,
-            settings=settings,
-            dx=det.distance_metres.x,
-            dy=det.distance_metres.y,
-            beam_type=beam_type,
-        )
-
-        beam_type = BeamType.ELECTRON if beam_type is BeamType.ION else BeamType.ION
-
-        iteration_count += 1
-        if iteration_count >= iterations:
-            break
-
-    image_settings.save = True
-    image_settings.label = f"drift_correction_ML_final_" + utils.current_timestamp()
-    acquire.take_reference_images(microscope, image_settings)
-
-
-def auto_shift_detection(
-    microscope: SdbMicroscopeClient,
-    settings: dict,
-    image: AdornedImage, 
-    ref_image: AdornedImage,
-    lamella: Lamella,
-    shift_type: tuple[DetectionType],
-    initial_point: Point = None
-):
-
-    # det features
-    det = locate_shift_between_features_v2(
-            adorned_img=image, 
-            ref_image=ref_image, 
-            shift_type=shift_type, 
-            settings=settings,
-            initial_point=initial_point)
-
-    # validate features
-    from liftout.gui import windows
-    det = windows.validate_detection_v2(microscope, settings, det, lamella)
-
-    return det
-
-
-
-def load_detection_model(settings: dict):
+def load_detection_model(weights_file: Path) -> DetectionModel:
     # load model
-    weights_file = settings["calibration"]["machine_learning"]["weights"]
     weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
     model = DetectionModel(weights_path)
 
     return model
 
-def detect_features(img: AdornedImage, mask: np.ndarray, shift_type: tuple[DetectionType]) -> list[DetectionFeature]:
-    """
 
-    args:
-        img: the input img (AdornedImage)
-        mask: the output rgb prediction mask (np.array)
-        shift_type: the type of feature detection to run (tuple)
-
-    return:
-        detection_features [DetectionFeature, DetectionFeature]: the detected feature coordinates and types
-    """
-
-    detection_features = []
-
-    for det_type in shift_type:
-        
-        color = DETECTION_COLOURS_UINT8[det_type]
-
-        if not isinstance(det_type, DetectionType):
-            raise TypeError(f"Detection Type {det_type} is not supported.")
-
-        if det_type == DetectionType.ImageCentre:
-            feature_px = Point(x=mask.shape[1] // 2, y=mask.shape[0] // 2)  # midpoint
-
-        if det_type == DetectionType.NeedleTip:
-            feature_px = detect_right_edge(mask, color, threshold=200)
-
-        if det_type == DetectionType.LamellaCentre:
-            feature_px = detect_centre_point(mask, color, threshold=25)
-
-        if det_type == DetectionType.LamellaEdge:
-            feature_px = detect_lamella_edge(img)
-
-        if det_type == DetectionType.LandingPost:
-
-
-            feature_px = detect_landing_post_v2(img)
-
-        detection_features.append(
-            DetectionFeature(detection_type=det_type, feature_px=feature_px)
-        )
-
-    return detection_features
-
-
-def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, features: tuple[DetectionFeature]) -> list[DetectionFeature]:
+def detect_features(img: AdornedImage, ref_image:AdornedImage, features: tuple[DetectionFeature]) -> list[DetectionFeature]:
     """
 
     args:
@@ -221,7 +99,7 @@ def detect_features_v2(img: AdornedImage, ref_image:AdornedImage, features: tupl
 
     return detection_features
 
-def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: AdornedImage, features: tuple[DetectionFeature]):
+def locate_shift_between_features(adorned_img: AdornedImage, ref_image: AdornedImage, features: tuple[DetectionFeature]):
     """
     Calculate the distance between two features in the image coordinate system.
 
@@ -235,7 +113,7 @@ def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: Adorn
 
     """
     # detect features for calculation
-    feature_1, feature_2 = detect_features_v2(adorned_img, ref_image, features)
+    feature_1, feature_2 = detect_features(adorned_img, ref_image, features)
 
     # calculate movement distance
     x_distance_m, y_distance_m = det_utils.convert_pixel_distance_to_metres(
@@ -252,71 +130,6 @@ def locate_shift_between_features_v2(adorned_img: AdornedImage, ref_image: Adorn
 
     return detection_result
 
-
-def locate_shift_between_features(model: DetectionModel, adorned_img: AdornedImage, shift_type: tuple):
-    """
-    Calculate the distance between two features in the image coordinate system.
-
-    args:
-        model: the detection model
-        adorned_img: input image (AdornedImage)
-        shift_type: the type of feature detection shift to calculation
-
-    return:
-        detection_result (DetectionResult): The detection result containing the feature coordinates, and images
-
-    """
-
-    # model inference
-    mask = model.inference(adorned_img.data)
-
-    # upscale the mask # TODO: remove once model takes full sized images
-    mask = np.array(Image.fromarray(mask).resize((adorned_img.data.shape[1], adorned_img.data.shape[0])))
-
-    # detect features for calculation
-    feature_1, feature_2 = detect_features(adorned_img, mask, shift_type)
-
-    # filter to selected masks
-    mask = filter_selected_masks(mask, shift_type)
-
-    # display features for validation
-    display_image = draw_overlay(adorned_img.data, mask)
-
-    # calculate movement distance
-    x_distance_m, y_distance_m = utils.convert_pixel_distance_to_metres(
-        feature_1.feature_px, feature_2.feature_px, adorned_img
-    )
-
-    detection_result = DetectionResult(
-        features=[feature_1, feature_2],
-        adorned_image=adorned_img,
-        display_image=display_image,
-        distance_metres=Point(x_distance_m, y_distance_m),
-        microscope_coordinate=[Point(0, 0), Point(0, 0)],
-    )
-
-    return detection_result
-
-
-def identify_shift_using_machine_learning(
-    microscope: SdbMicroscopeClient,
-    image_settings: ImageSettings,
-    settings: dict,
-    shift_type: tuple,
-) -> DetectionResult:
-
-    # load model
-    model = load_detection_model(settings)
-
-    # take new image
-    image = acquire.new_image(microscope, image_settings)
-
-    # run detection
-    det_result = locate_shift_between_features(model, image, shift_type=shift_type)
-
-    return det_result
-
-
 def get_initial_position(img: AdornedImage, det_type: DetectionType) -> Point:
 
     beam_type = img.metadata.acquisition.beam_type
@@ -330,13 +143,13 @@ def get_initial_position(img: AdornedImage, det_type: DetectionType) -> Point:
     if det_type == DetectionType.NeedleTip:
         
         if beam_type == "Electron": 
-            pt = (400, 200) # settings["calibration"]["initial"]["needle_eb_initial"]
+            pt = (400, 200) 
         if beam_type == "Ion":
-            pt = (800, 400) # settings["calibration"]["initial"]["needle_ib_initial"]
+            pt = (800, 400) 
 
         point = Point(x=pt[0], y=pt[1])
 
-    print(f"{det_type}: {point}")
+    logging.info(f"{det_type}: {point}")
    
     return point
 

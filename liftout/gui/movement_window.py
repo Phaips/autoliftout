@@ -8,7 +8,7 @@ from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
 from fibsem import acquire, calibration, movement
 from fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
-from fibsem.structures import BeamType, ImageSettings
+from fibsem.structures import BeamType, ImageSettings, MicroscopeSettings
 from liftout import utils
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from liftout.gui.utils import _WidgetPlot, draw_crosshair
@@ -26,8 +26,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
         microscope: SdbMicroscopeClient,
-        settings: dict,
-        image_settings: ImageSettings,
+        settings: MicroscopeSettings,
         msg_type: str = None,
         msg: str = None,
         parent=None,
@@ -39,7 +38,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.microscope = microscope
         self.settings = settings
-        self.image_settings = image_settings
 
         self.wp_ib = None
         self.wp_eb = None
@@ -76,10 +74,10 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
     def update_displays(self):
         """Update the displays for both Electron and Ion Beam views"""
-        return
+
         logging.info("updating displays for Electron and Ion beam views")
         self.eb_image, self.ib_image = acquire.take_reference_images(
-            self.microscope, self.image_settings
+            self.microscope, self.settings.image
         )
 
         # median filter image for better display
@@ -130,11 +128,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.pushButton_continue.clicked.connect(self.continue_button_pressed)
         self.pushButton_take_image.clicked.connect(self.take_image_button_pressed)
 
-        self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON)
-        self.doubleSpinBox_hfw.setMaximum(
-            self.settings["calibration"]["limits"]["max_ib_hfw"] * METRE_TO_MICRON
-        )
-        self.doubleSpinBox_hfw.setValue(self.image_settings.hfw * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON) # TODO: dynamic limits
+        self.doubleSpinBox_hfw.setMaximum(900e-6 * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setValue(self.settings.image.hfw * METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
         # movement modes
@@ -203,7 +199,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         """Update the image settings when ui elements change"""
 
         # TODO: validate these values....
-        self.image_settings.hfw = self.doubleSpinBox_hfw.value() * MICRON_TO_METRE
+        self.settings.image.hfw = self.doubleSpinBox_hfw.value() * MICRON_TO_METRE
 
     def continue_button_pressed(self):
         logging.info("continue button pressed")
@@ -286,7 +282,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings, image_settings = utils.quick_setup()
+    microscope, settings= utils.quick_setup()
 
     from liftout.gui import windows
 
@@ -294,7 +290,6 @@ def main():
     windows.ask_user_movement(
         microscope,
         settings,
-        image_settings,
         msg_type="eucentric",
         msg="Confirm lamella is centred in Ion Beam",
     )
