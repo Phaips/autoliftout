@@ -4,7 +4,7 @@ import sys
 from pprint import pprint
 
 import matplotlib.patches as mpatches
-from fibsem import calibration
+from fibsem import calibration, conversions
 from fibsem.structures import MicroscopeSettings
 from fibsem.ui import utils as fibsem_ui
 from liftout import utils
@@ -92,7 +92,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         if event.button == 1 and event.inaxes is not None:
             self.xclick = event.xdata
             self.yclick = event.ydata
-            self.center_x, self.center_y = calibration.pixel_to_realspace_coordinate(
+            self.center_x, self.center_y = conversions.pixel_to_realspace_coordinate(
                 (self.xclick, self.yclick), self.adorned_image
             )
 

@@ -7,7 +7,7 @@ import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import (MoveSettings,
                                                          StagePosition)
-from fibsem import acquire, calibration, movement, constants
+from fibsem import acquire, conversions, movement, constants
 from fibsem.structures import BeamType, MicroscopeSettings
 from fibsem.ui import utils as fibsem_ui
 from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
@@ -218,7 +218,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         if event.button == 1 and event.inaxes is not None:
             self.xclick = event.xdata
             self.yclick = event.ydata
-            self.center_x, self.center_y = calibration.pixel_to_realspace_coordinate(
+            self.center_x, self.center_y = conversions.pixel_to_realspace_coordinate(
                 (self.xclick, self.yclick), adorned_image
             )
 

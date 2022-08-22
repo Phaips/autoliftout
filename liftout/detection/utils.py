@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from fibsem.calibration import pixel_to_realspace_coordinate
+from fibsem.conversions import pixel_to_realspace_coordinate
 from fibsem.structures import Point
 from PIL import Image
 
