@@ -8,20 +8,15 @@ from pathlib import Path
 import numpy as np
 import PIL
 import scipy.ndimage as ndi
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.structures import AdornedImage
-from fibsem import acquire, calibration, movement
-from fibsem import utils as fibsem_utils
-from fibsem.acquire import BeamType, ImageSettings
-from fibsem.structures import MicroscopeSettings, Point
+from fibsem import calibration
+from fibsem.structures import Point
 from liftout import utils
 from liftout.detection import utils as det_utils
 from liftout.detection.DetectionModel import DetectionModel
 from liftout.detection.utils import (DetectionFeature, DetectionResult,
                                      DetectionType)
 from liftout.model import models
-from liftout.sample import Lamella
-from PIL import Image
 from scipy.spatial import distance
 from skimage import feature
 
@@ -188,9 +183,8 @@ def extract_class_pixels(mask, color):
 
     return class_mask, idx
 
-
 def draw_overlay(img: np.ndarray, mask: np.ndarray, alpha:float=0.2) -> np.ndarray:
-    """ Draw the detection overlay onto base image
+    """ Draw the detection overlay onto base image. Required to blend mixed grayscale / rgb images
 
     args:
         img: orignal image (np.array or PIL.Image)
@@ -221,26 +215,20 @@ def draw_overlay(img: np.ndarray, mask: np.ndarray, alpha:float=0.2) -> np.ndarr
 
 def detect_lamella_edge(img:AdornedImage):
     
-    beam_type = img.metadata.acquisition.beam_type
+    # beam_type = img.metadata.acquisition.beam_type
 
-    if beam_type == "Electron":
-        pt = Point(x=int(img.data.shape[1] // 2.4), y=int(img.data.shape[0]*0.47)) # eb mask
-    if beam_type == "Ion":
-        pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
+    # if beam_type == "Electron":
+    #     pt = Point(x=int(img.data.shape[1] // 2.4), y=int(img.data.shape[0]*0.47)) # eb mask
+    # if beam_type == "Ion":
+    #     pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
 
-    # ib mask
-    mask = np.ones_like(img.data)
+    # # ib mask
+    # mask = np.zeros_like(img.data)
     # mask[pt.y:, :pt.x] = 1
     
     edge = edge_detection(img.data, sigma=3)  
-    edge_mask = edge * mask
-    lamella_edge = detect_right_edge_v2(edge_mask)
-
-    # import matplotlib.pyplot as plt
-    # fig, ax = plt.subplots(1, 2, figsize=(30,30))
-    # ax[0].imshow(img.data * mask, cmap="gray")
-    # ax[1].imshow(edge_mask,cmap="turbo")
-    # plt.show()
+    # edge_mask = edge * mask
+    lamella_edge = detect_right_edge_v2(edge)
 
     return lamella_edge
 
@@ -348,42 +336,6 @@ def detect_right_edge_v2(mask: np.ndarray, threshold=25, left=False) -> Point:
     return Point(x=edge_px[1], y=edge_px[0])
 
 
-
-
-
-def detect_right_edge(mask, color, threshold=25, left=False) -> Point:
-    """ Detect the right edge point of the mask for a given color (label)
-
-    args:
-        mask: the detection mask (PIL.Image)
-        color: the color of the label for the feature to detect (rgb tuple)
-        threshold: the minimum number of required pixels for a detection to count (int)
-
-    return:
-
-        edge_px: the pixel coordinates of the right edge point of the feature (tuple)
-    """
-
-    edge_px = (0, 0)
-
-    # extract class pixels
-    class_mask, idx = extract_class_pixels(mask, color)
-
-    # only return an edge point if detection is above a threshold
-
-    if len(idx[0]) > threshold:
-        # convert mask to coordinates
-        px = list(zip(idx[0], idx[1]))
-
-        # get index of max value (right)
-        max_idx = np.argmax(idx[1])
-        if left:
-            max_idx = np.argmin(idx[1])
-
-        edge_px = px[max_idx]  # right edge px
-
-    return Point(x=edge_px[1], y=edge_px[0])
-
 def edge_detection(img: np.ndarray, sigma=3) -> np.ndarray:
     return feature.canny(img, sigma=sigma)  # sigma higher usually better
 
@@ -422,43 +374,6 @@ def detect_closest_edge_v2(mask: np.ndarray, landing_pt: Point) -> tuple[Point, 
             landing_edge_px = px
 
     return Point(x=landing_edge_px[1], y=landing_edge_px[0])
-
-
-
-def detect_closest_edge(img: np.ndarray, landing_px: tuple[int]) -> tuple[Point, np.ndarray]:
-    """ Identify the closest edge point to the initially selected point
-
-    args:
-        img: base image (np.ndarray)
-        landing_px: the initial landing point pixel (tuple) (y, x) format
-    return:
-        landing_edge_pt: the closest edge point to the intitially selected point (tuple)
-        edges: the edge mask (np.array)
-    """
-
-    # identify edge pixels
-    edges = edge_detection(img, sigma=3)
-    edge_mask = np.where(edges)
-    edge_px = list(zip(edge_mask[0], edge_mask[1]))
-
-    # set min distance
-    min_dst = np.inf
-
-    # TODO: vectorise this like
-    # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.euclidean_distances.html
-
-    landing_edge_px = (0, 0)
-    for px in edge_px:
-
-        # distance between edges and landing point
-        dst = distance.euclidean(landing_px, px)
-
-        # select point with min
-        if dst < min_dst:
-            min_dst = dst
-            landing_edge_px = px
-
-    return Point(x=landing_edge_px[1], y=landing_edge_px[0]), edges
 
 def detect_bounding_box(mask, color, threshold=25):
     """ Detect the bounding edge points of the mask for a given color (label)

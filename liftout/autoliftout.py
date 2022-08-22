@@ -314,7 +314,6 @@ def land_needle_on_milled_lamella(
     settings.image.hfw = ReferenceHFW.Super.value
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
-    gamma_settings = settings.image.gamma
     settings.image.gamma.enabled = False
     reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)

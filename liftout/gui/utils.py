@@ -3,18 +3,14 @@ import os
 import winsound
 from pathlib import Path
 
-import liftout
-import numpy as np
 import scipy.ndimage as ndi
 import yaml
 from autoscript_sdb_microscope_client.structures import AdornedImage
 from fibsem import utils as fibsem_utils
 from fibsem.constants import METRE_TO_MILLIMETRE
-from liftout import utils
 from liftout.config import config
 from liftout.patterning import MillingPattern
 from liftout.sample import Lamella, Sample, create_experiment, load_sample
-from matplotlib.patches import Rectangle
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
@@ -24,8 +20,6 @@ from fibsem.ui import utils as fibsem_ui
 
 
 ###################
-
-
 def draw_grid_layout(sample: Sample):
     gridLayout = QGridLayout()
     # TODO: refactor this better
@@ -173,7 +167,7 @@ def load_configuration_from_ui(parent=None) -> dict:
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent,
         "Load Configuration",
-        os.path.dirname(liftout.__file__),
+        config.base_path,
         "Yaml Files (*.yml, *.yaml)",
         options=options,
     )
@@ -190,7 +184,7 @@ def load_configuration_from_ui(parent=None) -> dict:
 def setup_experiment_sample_ui(parent_ui):
     """Setup the experiment sample by either creating or loading a sample"""
 
-    default_experiment_path = os.path.join(os.path.dirname(liftout.__file__), "log")
+    default_experiment_path = os.path.join(config.base_path, "log")
     default_experiment_name = "default_experiment"
 
     response = fibsem_ui.message_box_ui(
@@ -282,7 +276,7 @@ def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: 
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent_ui,
         "Select Protocol File",
-        os.path.dirname(liftout.__file__),
+        config.base_path,
         "Yaml Files (*.yml, *.yaml)",
         options=options,
     )

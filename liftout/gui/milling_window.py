@@ -25,7 +25,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         settings: MicroscopeSettings,
         milling_pattern_type: patterning.MillingPattern,
         point: Point = Point(),
-        parent=None,
+        parent = None,
     ):
         super(GUIMillingWindow, self).__init__(parent=parent)
         self.setupUi(self)
@@ -46,7 +46,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             [f"{current:.2e}" for current in self.available_milling_currents]
         )
 
-        # milling parameters
+        # milling parameters # TODO: redo these more dynamically
         self.parameter_labels = [
             self.label_01,
             self.label_02,

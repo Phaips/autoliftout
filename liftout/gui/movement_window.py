@@ -5,22 +5,18 @@ from enum import Enum
 import numpy as np
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import StagePosition, MoveSettings
-from fibsem import acquire, calibration, movement
-from fibsem.constants import METRE_TO_MICRON, MICRON_TO_METRE
-from fibsem.structures import BeamType, ImageSettings, MicroscopeSettings
-from liftout import utils
-from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
+                                                         StagePosition)
+from fibsem import acquire, calibration, movement, constants
+from fibsem.structures import BeamType, MicroscopeSettings
 from fibsem.ui.utils import _WidgetPlot, draw_crosshair
+from liftout.gui.qtdesigner_files import movement_dialog as movement_gui
 from PyQt5 import QtCore, QtWidgets
-
-
 
 
 class MovementMode(Enum):
     Stable = 1
     Eucentric = 2
-
 
 class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
@@ -128,9 +124,9 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         self.pushButton_continue.clicked.connect(self.continue_button_pressed)
         self.pushButton_take_image.clicked.connect(self.take_image_button_pressed)
 
-        self.doubleSpinBox_hfw.setMinimum(30e-6 * METRE_TO_MICRON) # TODO: dynamic limits
-        self.doubleSpinBox_hfw.setMaximum(900e-6 * METRE_TO_MICRON)
-        self.doubleSpinBox_hfw.setValue(self.settings.image.hfw * METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setMinimum(30e-6 * constants.METRE_TO_MICRON) # TODO: dynamic limits
+        self.doubleSpinBox_hfw.setMaximum(900e-6 * constants.METRE_TO_MICRON)
+        self.doubleSpinBox_hfw.setValue(self.settings.image.hfw * constants.METRE_TO_MICRON)
         self.doubleSpinBox_hfw.valueChanged.connect(self.update_image_settings)
 
         # movement modes
@@ -169,7 +165,6 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         # set instruction message
         self.set_message(self.msg_type, self.msg)
 
-
     def set_message(self, msg_type: str, msg: str = None):
             
         # refactor the movement permissions
@@ -199,7 +194,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         """Update the image settings when ui elements change"""
 
         # TODO: validate these values....
-        self.settings.image.hfw = self.doubleSpinBox_hfw.value() * MICRON_TO_METRE
+        self.settings.image.hfw = self.doubleSpinBox_hfw.value() * constants.MICRON_TO_METRE
 
     def continue_button_pressed(self):
         logging.info("continue button pressed")
@@ -281,7 +276,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
 
 def main():
-
+    from liftout import utils
     microscope, settings= utils.quick_setup()
 
     from liftout.gui import windows
