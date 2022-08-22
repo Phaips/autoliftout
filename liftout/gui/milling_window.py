@@ -24,8 +24,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         microscope: SdbMicroscopeClient,
         settings: MicroscopeSettings,
         milling_pattern_type: patterning.MillingPattern,
-        x: float = 0.0,
-        y: float = 0.0,
+        point: Point = Point(),
         parent=None,
     ):
         super(GUIMillingWindow, self).__init__(parent=parent)
@@ -101,7 +100,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.setup_connections()
 
         # initial pattern
-        self.center_x, self.center_y = x, y
+        self.center_x, self.center_y = point.x, point.y
         self.xclick, self.yclick = None, None
         self.update_display()
 
@@ -448,7 +447,7 @@ def main():
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
-        x=0, y=0,
+        point=Point(0, 0)
     )
     sys.exit(app.exec_())
 

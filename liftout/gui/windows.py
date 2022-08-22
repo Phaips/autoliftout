@@ -7,7 +7,7 @@ from fibsem import acquire, movement
 from fibsem import utils as fibsem_utils
 from fibsem import validation
 from fibsem.acquire import BeamType
-from fibsem.structures import MicroscopeSettings
+from fibsem.structures import MicroscopeSettings, Point
 from liftout import actions, patterning
 from liftout.detection import detection
 from liftout.detection.detection import DetectionFeature, DetectionResult
@@ -61,8 +61,7 @@ def open_milling_window(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
-    x: float = 0.0,
-    y: float = 0.0,
+    point: Point = Point()
     parent=None,
 ):
     """Open the Milling Window ready for milling
@@ -76,8 +75,7 @@ def open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern_type=milling_pattern,
-        x=x,
-        y=y,
+        point = point,
         parent=parent,
     )
 

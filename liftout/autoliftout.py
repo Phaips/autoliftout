@@ -13,9 +13,9 @@ from autoscript_sdb_microscope_client.structures import (
 from fibsem import acquire, calibration, utils, movement, validation
 from fibsem.structures import (
     BeamType,
-    ImageSettings,
     MicroscopeState,
     MicroscopeSettings,
+    Point
 )
 
 from liftout.detection.detection import DetectionType, DetectionFeature
@@ -58,8 +58,7 @@ def mill_lamella_trench(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
-        x=0,
-        y=0,
+        point = Point(0, 0)
     )
 
     acquire.take_set_of_reference_images(
@@ -139,8 +138,7 @@ def mill_lamella_jcut(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
-        x=0,
-        y=0,
+        point=Point(0, 0)
     )
 
     # take reference images of the jcut (tilted)
@@ -252,8 +250,7 @@ def liftout_lamella(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
-        x=-6e-6,
-        y=0,
+        point=Point(x=-6e-6,y=0)
     )
 
     # take reference images
@@ -488,8 +485,7 @@ def land_lamella(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
-        x=0,
-        y=0,
+        point = Point()
     )
 
     # final reference images
@@ -513,8 +509,7 @@ def land_lamella(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Cut,
-        x=0,
-        y=0,
+        point = Point()
     )
 
     ################################### REMOVE_NEEDLE ##########################################
@@ -586,8 +581,7 @@ def reset_needle(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
-        x=0,
-        y=0,
+        point = Point()
     )
 
     #################################################################################################
@@ -682,8 +676,7 @@ def thin_lamella(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Thin,
-        x=0,
-        y=0,
+        point = Point()
     )
 
     # # take reference images
@@ -754,8 +747,7 @@ def polish_lamella(
         settings=settings,
         image_settings=settings.image,
         milling_pattern=MillingPattern.Polish,
-        x=0,
-        y=0,
+        point = Point()
     )
 
     # take reference images (ultra, super, high)
@@ -1121,14 +1113,14 @@ def select_landing_sample_positions(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Flatten,
-        x=0,
-        y=0,
+        point=Point()
     )
 
     # take reference images
-    hfws = [ReferenceHFW.Medium.value, ReferenceHFW.High.value]
     acquire.take_set_of_reference_images(
-        microscope, settings.image, hfws, label="ref_landing"
+        microscope, settings.image, 
+        hfws=[ReferenceHFW.Medium.value, ReferenceHFW.High.value], 
+        label="ref_landing"
     )
 
     lamella.landing_selected = True
