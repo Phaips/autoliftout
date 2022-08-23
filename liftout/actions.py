@@ -14,8 +14,8 @@ from autoscript_sdb_microscope_client.enumerations import (
 )
 
 
-from fibsem import movement
-from fibsem.structures import BeamType, MicroscopeSettings
+from fibsem import movement, calibration
+from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState
 
 
 def move_to_trenching_angle(
@@ -99,6 +99,25 @@ def move_to_sample_grid(
     logging.info(f"move to sample grid complete.")
 
 
+# TODO: get the initial sample/landing grid state some how....
+def move_to_sample_grid_v2(microscope: SdbMicroscopeClient, microscope_state: MicroscopeState) -> None:
+    """Restore to the initial sample grid state 
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope state
+        microscope_state (MicroscopeState): sample grid microscope state
+    """
+    calibration.set_microscope_state(microscope, microscope_state)
+
+def move_to_landing_grid_v2(microscope: SdbMicroscopeClient, microscope_state: MicroscopeState) -> None:
+    """Restore to the initial landing grid state 
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope instance
+        microscope_state (MicroscopeState): landing grid microscope state
+    """
+    calibration.set_microscope_state(microscope, microscope_state)
+
 def move_to_landing_grid(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, protocol: dict
 ) -> StagePosition:
@@ -165,15 +184,12 @@ def move_needle_to_liftout_position(
     dx: float = -5.0e-6,
     dy: float = -5.0e-6,
     dz: float = 10e-6,
-) -> ManipulatorPosition:
+) -> None:
     """Insert the needle to just above the eucentric point, ready for liftout.
 
     Args:
         microscope (SdbMicroscopeClient): autoscript microscope instance
         dz (float): distance to move above the eucentric point (ManipulatorCoordinateSystem.RAW -> up = negative)
-
-    Returns:
-        ManipulatorPosition: current needle position
     """
 
     # insert to park position
@@ -181,8 +197,6 @@ def move_needle_to_liftout_position(
 
     # move to  offset position
     movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
-
-    return microscope.specimen.manipulator.current_position
 
 
 def move_needle_to_landing_position(
@@ -212,17 +226,12 @@ def move_needle_to_landing_position(
 
 def move_needle_to_reset_position(microscope: SdbMicroscopeClient) -> None:
     """Move the needle into position, ready for reset"""
-    # needle
-    needle = microscope.specimen.manipulator
 
     # insert to park
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to eucentric
     movement.move_needle_to_eucentric_position_offset(microscope)
-
-    return needle.current_position
-
 
 # TODO: use safe_absolute_stage_movement instead
 def move_to_thinning_angle(
@@ -247,4 +256,3 @@ def move_to_thinning_angle(
     logging.info(f"tilt to thinning angle: {thinning_tilt_angle}")
     stage.absolute_move(StagePosition(t=thinning_tilt_angle), stage_settings)
 
-    return stage.current_position

@@ -276,7 +276,6 @@ def liftout_lamella(
     return lamella
 
 
-## TODO: test
 def land_needle_on_milled_lamella(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
@@ -619,7 +618,7 @@ def thin_lamella(
     # load the reference images
     reference_images = get_reference_images(lamella, label="ref_landing_lamella")
 
-    # TODO:
+    # TODO: test
     alignment.correct_stage_drift(
         microscope,
         settings,

@@ -234,7 +234,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
             self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
 
-        # TESTING METHODS TODO: TO BE REMOVED
+        # TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
 
         logging.info("UI | setup connections finished")

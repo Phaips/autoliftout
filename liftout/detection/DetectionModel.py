@@ -17,9 +17,6 @@ class DetectionModel:
 
     def __init__(self, weights_file) -> None:
 
-        # TODO: make the path os agnostic
-        self.weights_file = weights_file
-
         # transformations
         self.transformation = transforms.Compose(
             [

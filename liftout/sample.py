@@ -198,7 +198,7 @@ def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:
 class AutoLiftoutState:
     stage: AutoLiftoutStage = AutoLiftoutStage.Setup
     microscope_state: MicroscopeState = MicroscopeState()
-    start_timestamp: float = None  # TODO
+    start_timestamp: float = None
     end_timestamp: float = None
 
     def __to_dict__(self) -> dict:
