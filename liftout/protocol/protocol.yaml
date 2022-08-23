@@ -88,11 +88,6 @@ polish_lamella:
   tilt_angle: 12
   tilt_offset: 1
   trench_height: 2.0e-07
-reduced_area:
-  dx: 1
-  dy: 1
-  x: 0
-  y: 0
 sever:
   cleaning_cross_section: true
   depth: 3.0e-06

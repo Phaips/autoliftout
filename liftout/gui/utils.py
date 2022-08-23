@@ -152,6 +152,27 @@ def draw_grid_layout(sample: Sample):
     gridLayout.setRowStretch(9, 1)  # grid spacing
     return gridLayout
 
+def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
+
+    stage = lamella.current_state.stage
+    status_colors = {
+        "Initialisation": "gray",
+        "Setup": "gold",
+        "MillTrench": "coral",
+        "MillJCut": "coral",
+        "Liftout": "seagreen",
+        "Landing": "dodgerblue",
+        "Reset": "salmon",
+        "Thinning": "mediumpurple",
+        "Polishing": "cyan",
+        "Finished": "silver",
+    }
+    label.setText(f"Lamella {lamella._number:02d} \n{stage.name}")
+    label.setStyleSheet(
+        str(
+            f"background-color: {status_colors[stage.name]}; color: white; border-radius: 5px"
+        )
+    )
 
 def play_audio_alert(freq: int = 1000, duration: int = 500) -> None:
     winsound.Beep(freq, duration)
@@ -248,27 +269,7 @@ def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
     return sample
 
 
-def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
 
-    stage = lamella.current_state.stage
-    status_colors = {
-        "Initialisation": "gray",
-        "Setup": "gold",
-        "MillTrench": "coral",
-        "MillJCut": "coral",
-        "Liftout": "seagreen",
-        "Landing": "dodgerblue",
-        "Reset": "salmon",
-        "Thinning": "mediumpurple",
-        "Polishing": "cyan",
-        "Finished": "silver",
-    }
-    label.setText(f"Lamella {lamella._number:02d} \n{stage.name}")
-    label.setStyleSheet(
-        str(
-            f"background-color: {status_colors[stage.name]}; color: white; border-radius: 5px"
-        )
-    )
 
 def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: list, parent_ui=None):
 
