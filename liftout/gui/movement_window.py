@@ -286,7 +286,7 @@ def main():
         microscope,
         settings,
         msg_type="eucentric",
-        msg="Confirm lamella is centred in Ion Beam",
+        msg="Move around",
     )
 
     sys.exit(app.exec_())
