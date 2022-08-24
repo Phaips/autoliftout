@@ -230,9 +230,9 @@ def sputter_platinum_on_whole_sample_grid(
         actions.move_to_sample_grid(microscope, settings, protocol)
         fibsem_utils.sputter_platinum(
             microscope=microscope,
-            protocol=protocol["protocol"]["platinum"],
+            protocol=protocol["platinum"],
             whole_grid=True,
-            default_application_file=protocol["system"]["application_file"],
+            default_application_file=settings.system.application_file,
         )
 
     return

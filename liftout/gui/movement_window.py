@@ -238,7 +238,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
 
             movement.move_stage_eucentric_correction(
                 microscope=self.microscope, 
-                dy=self.center_y
+                dy=-self.center_y
             )
 
         else:

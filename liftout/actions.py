@@ -241,7 +241,7 @@ def move_to_thinning_angle(
     stage = microscope.specimen.stage
 
     # tilt to zero for safety
-    stage_settings = MoveSettings(rotate_compucentric=True, tilt_compucentric=True)
+    stage_settings = MoveSettings(rotate_compucentric=True)
     stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
     # thinning position

@@ -88,10 +88,10 @@ DETECTION_TYPE_COLOURS = {
 DISPLAY_REFERENCE_FNAMES = [
     "ref_lamella_low_res_ib",
     "ref_trench_high_res_ib",
-    "jcut_highres_ib",
-    "needle_liftout_landed_highres_ib",
-    "landing_lamella_final_highres_ib",
-    "sharpen_needle_final_ib",
+    "ref_jcut_high_res_ib",
+    "ref_liftout_ib",
+    "ref_landing_ib",
+    "ref_reset_ib",
     "thin_lamella_post_superres_ib",
     "polish_lamella_post_superres_ib",
 ]

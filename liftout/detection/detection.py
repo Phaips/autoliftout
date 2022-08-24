@@ -77,7 +77,7 @@ def detect_features(img: AdornedImage, ref_image:AdornedImage, features: tuple[D
             feature_px = initial_point
 
         if det_type == DetectionType.NeedleTip:
-            feature_px = detect_needle_tip_v2(ref_image, img, initial_point)
+            feature_px = detect_needle_tip_v3(img, initial_point)
 
         if det_type == DetectionType.LamellaCentre:
             feature_px = initial_point # TODO
@@ -129,20 +129,20 @@ def get_initial_position(img: AdornedImage, det_type: DetectionType) -> Point:
 
     beam_type = img.metadata.acquisition.beam_type
 
-    if det_type in [DetectionType.ImageCentre, DetectionType.LamellaCentre, DetectionType.LandingPost]:
+    if det_type in [DetectionType.ImageCentre, DetectionType.LamellaCentre, DetectionType.LandingPost, DetectionType.NeedleTip]:
         point = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)  # midpoint
 
     if det_type == DetectionType.LamellaEdge:
         point = Point(0, 0)
 
-    if det_type == DetectionType.NeedleTip:
+    # if det_type == DetectionType.NeedleTip:
         
-        if beam_type == "Electron": 
-            pt = (400, 200) 
-        if beam_type == "Ion":
-            pt = (800, 400) 
+    #     if beam_type == "Electron": 
+    #         pt = (400, 200) 
+    #     if beam_type == "Ion":
+    #         pt = (800, 400) 
 
-        point = Point(x=pt[0], y=pt[1])
+    #     point = Point(x=pt[0], y=pt[1])
 
     logging.info(f"{det_type}: {point}")
    
@@ -215,20 +215,20 @@ def draw_overlay(img: np.ndarray, mask: np.ndarray, alpha:float=0.2) -> np.ndarr
 
 def detect_lamella_edge(img:AdornedImage):
     
-    # beam_type = img.metadata.acquisition.beam_type
+    beam_type = img.metadata.acquisition.beam_type
 
-    # if beam_type == "Electron":
-    #     pt = Point(x=int(img.data.shape[1] // 2.4), y=int(img.data.shape[0]*0.47)) # eb mask
-    # if beam_type == "Ion":
-    #     pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
+    if beam_type == "Electron":
+        pt = Point(x=int(img.data.shape[1] // 2.4), y=int(img.data.shape[0]*0.47)) # eb mask
+    if beam_type == "Ion":
+        pt = Point(x=int(img.data.shape[1] // 2.2), y=int(img.data.shape[0]*0.3)) # ib mask
 
-    # # ib mask
-    # mask = np.zeros_like(img.data)
-    # mask[pt.y:, :pt.x] = 1
+    # ib mask
+    mask = np.zeros_like(img.data)
+    mask[pt.y:, :pt.x] = 1
     
     edge = edge_detection(img.data, sigma=3)  
-    # edge_mask = edge * mask
-    lamella_edge = detect_right_edge_v2(edge)
+    edge_mask = edge * mask
+    lamella_edge = detect_right_edge_v2(edge_mask)
 
     return lamella_edge
 
@@ -272,6 +272,14 @@ def detect_needle_tip_v2(ref_image: AdornedImage, new_image:AdornedImage, initia
 
     return needle 
 
+def detect_needle_tip_v3(image:AdornedImage, initial_point: Point = None) -> Point:
+
+    edge = edge_detection(image.data, sigma=3)  # edges
+
+    needle = detect_closest_edge_v2(edge, initial_point)
+    # needle = detect_right_edge_v2(edge)   # right most edge
+
+    return needle
 
 def detect_landing_post_v2(img: AdornedImage, landing_pt: Point) -> Point:
     landing_pt = Point(x=img.data.shape[1] // 2, y=img.data.shape[0] // 2)

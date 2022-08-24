@@ -166,6 +166,7 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
         "Thinning": "mediumpurple",
         "Polishing": "cyan",
         "Finished": "silver",
+        "Failure": "gray"
     }
     label.setText(f"Lamella {lamella._number:02d} \n{stage.name}")
     label.setStyleSheet(

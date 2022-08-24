@@ -1,5 +1,36 @@
 ### Testing Plan
 
+
+Notes
+
+- excessive charging of EB (maybe just ice) -> can discharge using multiple images, and autocontrast, conisder adding function
+- need to reset working distance (focus_and_link) once eucentric (in order to properly save state)
+
+- landing edge detection, left edge post, lamella edge
+- alignment on thinning stage after rotation ()
+- restoring to landing state 
+- maintain working distance
+- thors hammer
+- decision:
+    - where to place the needle for reset
+    - xcorr: post landing
+    - tilt for thinning?
+    - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 TODO: START_HERE: add more detail and example scripts to run
 autoliftout test plan
 for after maintenance

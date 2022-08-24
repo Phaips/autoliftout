@@ -401,7 +401,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         if response:
             logging.info("Redoing milling")
-            self.update_display(draw_patterns=False)
+            self.update_display(draw_patterns=True)
         else:
             response = fibsem_ui.message_box_ui(
                 title="Save Milling Protocol?",

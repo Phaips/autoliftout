@@ -61,14 +61,15 @@ def crosscorrelate_and_plot(
 ):
     import matplotlib.pyplot as plt
     import numpy as np
-    from fibsem import calibration
+    from fibsem import alignment
     from fibsem.structures import Point
+    from fibsem.imaging import utils as image_utils
 
     # rotate ref
     if rotate:
-        ref_image = calibration.rotate_image(ref_image)
+        ref_image = image_utils.rotate_image(ref_image)
 
-    dx, dy, xcorr = calibration.shift_from_crosscorrelation(
+    dx, dy, xcorr = alignment.shift_from_crosscorrelation(
         ref_image,
         new_image,
         lowpass=lp,
