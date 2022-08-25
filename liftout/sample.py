@@ -68,7 +68,7 @@ class Sample:
         """
 
 
-def load_sample(fname: str) -> Sample:
+def load_sample(fname: Path) -> Sample:
     """Load a sample from disk."""
 
     # read and open existing yaml file

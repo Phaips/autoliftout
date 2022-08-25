@@ -18,13 +18,31 @@ Notes
     - 
 
 
+TODO: landing_selected not restored from file?
 
 
+needle being shorter after cut / sharpen
+
+API: set the eucentric position
+sharpen -> detect -> move to centre -> get needle position -> file
+
+insert to liftout -> use 
 
 
+change landing angle to 40deg
+pick up lamella from side:
+    - mill trenches larger (20um)
+    - mill left hand jcut much larger
+    - insert to liftout (x = - (half lamella width + 5), z=0)
+    - move x +=1, check brightness, careful of contact with the bottom trench 
+    - sever at same spot
+    - same landing process
+
+way too much platinum on the sample...
 
 
-
+thinning tilts: 
+13 deg
 
 
 

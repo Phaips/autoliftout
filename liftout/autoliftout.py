@@ -15,7 +15,6 @@ from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
 from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
                                Point)
-
 from liftout import actions
 from liftout.detection.detection import DetectionFeature, DetectionType
 from liftout.gui import windows
@@ -51,6 +50,9 @@ def mill_lamella_trench(
         milling_pattern=MillingPattern.Trench,
         point = Point(0, 0)
     )
+
+    # discharge check
+    calibration.auto_discharge_beam(microscope, settings.image)
 
     acquire.take_set_of_reference_images(
         microscope=microscope,
@@ -259,7 +261,7 @@ def liftout_lamella(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
-        point=Point(x=6e-6,y=0)
+        point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2 ,y=0) # half the lamella width
     )
 
     # take reference images
@@ -306,8 +308,11 @@ def land_needle_on_milled_lamella(
     # validate needle insertion conditions
     validate_needle_insertion(microscope, settings.system.stage.needle_stage_height_limit)
 
+    # get updated needle insertion position
+    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+
     # insert the needle for liftout
-    actions.move_needle_to_liftout_position(microscope)
+    actions.move_needle_to_liftout_position(microscope, insert_position)
 
     # # # reference images
     settings.image.hfw = ReferenceHFW.High.value
@@ -432,7 +437,11 @@ def land_lamella(
 
     ############################## LAND_LAMELLA ##############################
     validate_needle_insertion(microscope, settings.system.stage.needle_stage_height_limit)
-    actions.move_needle_to_landing_position(microscope)
+    
+    # get updated needle insertion position
+    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+
+    actions.move_needle_to_landing_position(microscope, insert_position)
 
     # needle starting position
     settings.image.hfw = ReferenceHFW.High.value
@@ -506,7 +515,7 @@ def land_lamella(
 
     ###################################### CUT_OFF_NEEDLE ######################################
 
-    settings.image.hfw = ReferenceHFW.High.value
+    settings.image.hfw = ReferenceHFW.Super.value
     settings.image.beam_type = BeamType.ION
     settings.image.save = True
     settings.image.label = "landing_lamella_pre_cut"
@@ -576,13 +585,22 @@ def reset_needle(
 
     ###################################### SHARPEN_NEEDLE ######################################
 
+    validation.validate_stage_height_for_needle_insertion(microscope, settings.system.stage.needle_stage_height_limit)
+
+    # get updated needle insertion position
+    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+
     # move needle in
-    actions.move_needle_to_reset_position(microscope)
+    actions.move_needle_to_reset_position(microscope, insert_position)
+
+    # explicitly set the coordinate system
+    microscope.specimen.manipulator.set_default_coordinate_system(ManipulatorCoordinateSystem.STAGE)
 
     # needle images
     settings.image.save = True
     settings.image.label = f"sharpen_needle_start_position"
     ref_eb, ref_ib = acquire.take_reference_images(microscope=microscope, image_settings=settings.image)
+    settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
     det = windows.detect_features(
@@ -600,7 +618,7 @@ def reset_needle(
     movement.move_needle_relative_with_corrected_movement(
         microscope=microscope,
         dx=det.distance_metres.x,
-        dy=det.distance_metres.y,
+        dy=-det.distance_metres.y,
         beam_type=BeamType.ION,
     )
 
@@ -616,10 +634,17 @@ def reset_needle(
 
     #################################################################################################
 
+    
+    # reset the "eucentric position" for the needle, centre needle in both views
+    align_needle_to_eucentric_position(microscope, settings, lamella)
+
+
     # take reference images
-    settings.image.label = f"sharpen_needle_final"
+    settings.image.label = f"ref_reset"
+    settings.image.hfw = ReferenceHFW.Super.value
     settings.image.save = True
     acquire.take_reference_images(microscope=microscope, image_settings=settings.image)
+
 
     # retract needle
     movement.retract_needle(microscope)
@@ -630,9 +655,76 @@ def reset_needle(
     stage.absolute_move(StagePosition(x=0.0, y=0.0), move_settings)
 
     # TODO: test this
-    calibration.set_microscope_state(microscope, lamella.landing_state)
+    if lamella.landing_selected:
+        calibration.set_microscope_state(microscope, lamella.landing_state)
 
     return lamella
+
+
+def align_needle_to_eucentric_position(microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella) -> None:
+    """Move the needle to the eucentric position, and save the updated position to disk
+
+    Args:
+        microscope (SdbMicroscopeClient): autoscript microscope instance
+        settings (MicroscopeSettings): microscope settings
+        lamella (Lamella): current lamella
+    """
+    
+    
+    # take reference images
+    settings.image.save = False
+    settings.image.beam_type = BeamType.ELECTRON
+    ref_eb = acquire.new_image(microscope=microscope, settings=settings.image)
+
+    det = windows.detect_features(
+        microscope=microscope,
+        settings=settings,
+        lamella=lamella,
+        ref_image=ref_eb,
+        features=[
+            DetectionFeature(DetectionType.NeedleTip, None),
+            DetectionFeature(DetectionType.ImageCentre, None),
+        ],
+        validate=True,
+    )
+
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        dx=det.distance_metres.x,
+        dy=det.distance_metres.y,
+        beam_type=BeamType.ELECTRON,
+    )
+
+    # take reference images
+    settings.image.save = False
+    settings.image.beam_type = BeamType.ION
+    ref_ib = acquire.new_image(microscope=microscope, settings=settings.image)
+
+    det = windows.detect_features(
+        microscope=microscope,
+        settings=settings,
+        lamella=lamella,
+        ref_image=ref_ib,
+        features=[
+            DetectionFeature(DetectionType.NeedleTip, None),
+            DetectionFeature(DetectionType.ImageCentre, None),
+        ],
+        validate=True,
+    )
+
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        dx=0,
+        dy=-det.distance_metres.y,
+        beam_type=BeamType.ION,
+    )
+
+    # take image
+    acquire.take_reference_images(microscope, settings.image)
+
+    # save the updated position to disk
+    utils.save_needle_yaml(lamella.base_path, microscope.specimen.manipulator.current_position)
+
 
 
 def thin_lamella(

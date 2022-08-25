@@ -68,6 +68,12 @@ def move_to_landing_angle(
         beam_type=BeamType.ION,
     )
 
+    # landing angle
+    landing_tilt_angle = np.deg2rad(settings.protocol["initial_position"]["landing_tilt_angle"])
+    landing_position = StagePosition(t= landing_tilt_angle)
+    movement.safe_absolute_stage_movement(microscope, landing_position)
+
+
 
 # TODO: change this to use set_microscope_state?
 def move_to_sample_grid(
@@ -181,8 +187,9 @@ def move_sample_stage_out(
 
 def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
-    dx: float = -5.0e-6,
-    dy: float = -5.0e-6,
+    position: ManipulatorPosition = None,
+    dx: float = -5.0e-6, # horizontal shift between beams
+    dy: float = 0.0e-6,
     dz: float = 10e-6,
 ) -> None:
     """Insert the needle to just above the eucentric point, ready for liftout.
@@ -196,14 +203,15 @@ def move_needle_to_liftout_position(
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to  offset position
-    movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
+    movement.move_needle_to_position_offset(microscope, position, dx, dy, dz)
 
 
 def move_needle_to_landing_position(
     microscope: SdbMicroscopeClient,
+    position: ManipulatorPosition = None,
     dx: float = -30.0e-6,
-    dy: float = 0.0,
-    dz: float = 0e-6,
+    dy: float = 0.0e-6,
+    dz: float = 0.0e-6,
 ) -> None:
     """Insert the needle to just above, and left of the eucentric point, ready for landing.
 
@@ -219,19 +227,19 @@ def move_needle_to_landing_position(
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to  offset position
-    movement.move_needle_to_eucentric_position_offset(microscope, dx, dy, dz)
+    movement.move_needle_to_position_offset(microscope, position, dx, dy, dz)
 
     return microscope.specimen.manipulator.current_position
 
 
-def move_needle_to_reset_position(microscope: SdbMicroscopeClient) -> None:
+def move_needle_to_reset_position(microscope: SdbMicroscopeClient, position: ManipulatorPosition = None) -> None:
     """Move the needle into position, ready for reset"""
 
     # insert to park
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
     # move to eucentric
-    movement.move_needle_to_eucentric_position_offset(microscope)
+    movement.move_needle_to_position_offset(microscope, position)
 
 # TODO: use safe_absolute_stage_movement instead
 def move_to_thinning_angle(

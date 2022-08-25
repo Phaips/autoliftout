@@ -160,7 +160,7 @@ class GUIMMovementWindow(movement_gui.Ui_Dialog, QtWidgets.QDialog):
         mode_name = self.comboBox_movement_mode.currentText()
         self.movement_mode = MovementMode[mode_name]
 
-        print(f"mode: {self.movement_mode}")
+        logging.info(f"changed mode to: {self.movement_mode}")
 
         # set instruction message
         self.set_message(self.msg_type, self.msg)

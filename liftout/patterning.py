@@ -82,7 +82,8 @@ def jcut_milling_patterns(
     jcut_rhs_height = protocol["rhs_height"]
     jcut_lamella_height = protocol["lamella_height"]
     jcut_width = protocol["width"]
-    jcut_trench_thickness = protocol["trench_thickness"]
+    jcut_trench_thickness = protocol["trench_width"]
+    jcut_lhs_trench_thickness = protocol["lhs_trench_width"]
     jcut_milling_depth = protocol["depth"]
 
     # top_jcut
@@ -101,7 +102,7 @@ def jcut_milling_patterns(
     jcut_lhs = microscope.patterning.create_rectangle(
         center_x=point.x - jcut_half_width,
         center_y=point.y + jcut_half_height - (jcut_lhs_height / 2 - jcut_half_height),
-        width=jcut_trench_thickness,
+        width=jcut_lhs_trench_thickness,
         height=jcut_lhs_height,
         depth=jcut_milling_depth,
     )  # depth

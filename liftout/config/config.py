@@ -90,8 +90,8 @@ DISPLAY_REFERENCE_FNAMES = [
     "ref_trench_high_res_ib",
     "ref_jcut_high_res_ib",
     "ref_liftout_ib",
-    "ref_landing_ib",
-    "ref_reset_ib",
+    "ref_landing_lamella_high_res_ib",
+    "ref_reset_high_res_ib",
     "thin_lamella_post_superres_ib",
     "polish_lamella_post_superres_ib",
 ]

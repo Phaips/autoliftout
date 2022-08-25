@@ -276,8 +276,9 @@ def detect_needle_tip_v3(image:AdornedImage, initial_point: Point = None) -> Poi
 
     edge = edge_detection(image.data, sigma=3)  # edges
 
-    needle = detect_closest_edge_v2(edge, initial_point)
-    # needle = detect_right_edge_v2(edge)   # right most edge
+    # needle = detect_closest_edge_v2(edge, initial_point)
+    needle = detect_right_edge_v2(edge)   # right most edge
+    # TODO: top point detection
 
     return needle
 

@@ -323,8 +323,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.pattern_rectangles = []
         try:
             for i, stage in enumerate(self.patterns):
+                colour = "cyan" if i == 1 else "yellow"
                 for pattern in stage:
-                    colour = "cyan" if i == 1 else "yellow"
                     rectangle = fibsem_ui.draw_rectangle_pattern(
                         adorned_image=self.adorned_image, pattern=pattern, colour=colour
                     )
@@ -433,11 +433,9 @@ def main():
 
     import os
 
-    settings.image.save_path = "tools/test"
     settings.image.hfw = 80.0e-6
 
     os.makedirs(settings.image.save_path, exist_ok=True)
-    # acquire.reset_beam_shifts(microscope)
 
     from liftout.gui import windows
     from liftout.patterning import MillingPattern
@@ -446,7 +444,7 @@ def main():
     windows.open_milling_window(
         microscope=microscope,
         settings=settings,
-        milling_pattern=MillingPattern.Trench,
+        milling_pattern=MillingPattern.JCut,
         point=Point(0, 0)
     )
     sys.exit(app.exec_())
