@@ -100,7 +100,7 @@ def jcut_milling_patterns(
 
     # lhs_jcut
     jcut_lhs = microscope.patterning.create_rectangle(
-        center_x=point.x - jcut_half_width,
+        center_x=point.x - jcut_half_width + (jcut_lhs_trench_thickness / 4),
         center_y=point.y + jcut_half_height - (jcut_lhs_height / 2 - jcut_half_height),
         width=jcut_lhs_trench_thickness,
         height=jcut_lhs_height,
