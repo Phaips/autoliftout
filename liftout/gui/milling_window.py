@@ -444,7 +444,7 @@ def main():
     windows.open_milling_window(
         microscope=microscope,
         settings=settings,
-        milling_pattern=MillingPattern.Trench,
+        milling_pattern=MillingPattern.JCut,
         point=Point(0, 0)
     )
     sys.exit(app.exec_())

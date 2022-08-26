@@ -17,7 +17,6 @@ Notes
     - tilt for thinning?
     - 
 
-
 TODO: landing_selected not restored from file?
 
 
@@ -39,6 +38,14 @@ pick up lamella from side:
     - same landing process
 
 way too much platinum on the sample...
+move windows out of liftout into fibsem?
+generalise detection
+independent control of jcut lhs position centre
+
+working distance update / stage height
+- reset focus and link of every eucentric movement
+
+only ask to save milling protocol if values are changed
 
 
 thinning tilts: 

@@ -3,18 +3,12 @@ import time
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import (
-    ManipulatorPosition,
-    MoveSettings,
-    StagePosition,
-)
 from autoscript_sdb_microscope_client.enumerations import (
-    ManipulatorCoordinateSystem,
-    ManipulatorSavedPosition,
-)
-
-
-from fibsem import movement, calibration
+    ManipulatorCoordinateSystem, ManipulatorSavedPosition)
+from autoscript_sdb_microscope_client.structures import (ManipulatorPosition,
+                                                         MoveSettings,
+                                                         StagePosition)
+from fibsem import calibration, movement
 from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState
 
 
@@ -70,7 +64,8 @@ def move_to_landing_angle(
 
     # landing angle
     landing_tilt_angle = np.deg2rad(settings.protocol["initial_position"]["landing_tilt_angle"])
-    landing_position = StagePosition(t= landing_tilt_angle)
+    landing_rotation_angle = np.deg2rad(settings.system.stage.rotation_flat_to_ion)
+    landing_position = StagePosition(r=landing_rotation_angle, t=landing_tilt_angle)
     movement.safe_absolute_stage_movement(microscope, landing_position)
 
 
@@ -188,9 +183,10 @@ def move_sample_stage_out(
 def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
-    dx: float = -10.0e-6, # horizontal shift between beams
+    dx: float = -5.0e-6, # horizontal shift between beams
     dy: float = 0.0e-6,
-    dz: float = 5e-6,
+    dz: float = 5.0e-6,
+    relative_horizontal_beam_shift: float = 0.0e-6 
 ) -> None:
     """Insert the needle to just above the eucentric point, ready for liftout.
 
