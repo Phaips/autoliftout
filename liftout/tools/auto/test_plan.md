@@ -19,16 +19,6 @@ Notes
 
 TODO: landing_selected not restored from file?
 
-
-needle being shorter after cut / sharpen
-
-API: set the eucentric position
-sharpen -> detect -> move to centre -> get needle position -> file
-
-insert to liftout -> use 
-
-
-change landing angle to 40deg
 pick up lamella from side:
     - mill trenches larger (20um)
     - mill left hand jcut much larger
