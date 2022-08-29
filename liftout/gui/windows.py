@@ -1,15 +1,10 @@
-import logging
-from pathlib import Path
-
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
+from fibsem import utils as fibsem_utils
 from fibsem.acquire import BeamType
 from fibsem.structures import MicroscopeSettings, Point
+from fibsem.ui import windows as fibsem_ui_windows
 from liftout import actions, patterning
 from liftout.gui.milling_window import GUIMillingWindow
-
-from fibsem.ui import windows as fibsem_ui_windows
-from fibsem import utils as fibsem_utils
-
 
 
 def open_milling_window(
