@@ -2,13 +2,13 @@ import logging
 import sys
 from pprint import pprint
 
-from liftout.config import config
+import fibsem.ui.windows as fibsem_ui_windows
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
 from liftout import autoliftout, utils
+from liftout.config import config
 from liftout.gui import utils as ui_utils
-from fibsem.ui import utils as fibsem_ui
 from liftout.gui import windows
 from liftout.gui.qtdesigner_files import main as gui_main
 from liftout.sample import AutoLiftoutStage, Lamella, Sample
@@ -16,6 +16,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
 matplotlib.use("Agg")
+
+# TODO:
+# add utils for movement, needle calibration, 
 
 
 class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
@@ -47,7 +50,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # run validation and show in ui
         if self.MICROSCOPE_CONNECTED:
-            windows.run_validation_ui(
+            fibsem_ui_windows.run_validation_ui(
                 microscope=self.microscope,
                 settings=self.settings,
                 log_path=self.sample.log_path,
@@ -195,7 +198,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
         if microscope is None:
-            fibsem_ui.display_error_message(
+            fibsem_ui.utils.display_error_message(
                 f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
             )
 

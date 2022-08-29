@@ -19,6 +19,9 @@ from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
 
 from liftout import actions
 from liftout.gui import windows
+
+from fibsem.ui import windows as fibsem_ui_windows
+
 from liftout.patterning import MillingPattern
 from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample,
                             get_reference_images)
@@ -431,7 +434,7 @@ def land_lamella(
         settings.image.label = f"landing_needle"
         ref_eb, ref_ib = acquire.take_reference_images(microscope, settings.image)
 
-        det = windows.detect_features(
+        det = fibsem_ui_windows.detect_features(
             microscope=microscope,
             settings=settings,
             lamella=lamella,
@@ -598,10 +601,9 @@ def reset_needle(
     settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
-    det = windows.detect_features(
+    det = fibsem_ui_windows.detect_features(
         microscope=microscope,
         settings=settings,
-        lamella=lamella,
         ref_image=ref_ib,
         features=[
             DetectionFeature(DetectionType.NeedleTip, None),
@@ -652,74 +654,6 @@ def reset_needle(
 
     return lamella
 
-
-def align_needle_to_eucentric_position(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    lamella: Lamella,
-    validate: bool = False,
-) -> None:
-    """Move the needle to the eucentric position, and save the updated position to disk
-
-    Args:
-        microscope (SdbMicroscopeClient): autoscript microscope instance
-        settings (MicroscopeSettings): microscope settings
-        lamella (Lamella): current lamella
-    """
-
-    # take reference images
-    settings.image.save = False
-    settings.image.beam_type = BeamType.ELECTRON
-    ref_eb = acquire.new_image(microscope=microscope, settings=settings.image)
-
-    det = windows.detect_features(
-        microscope=microscope,
-        settings=settings,
-        lamella=lamella,
-        ref_image=ref_eb,
-        features=[
-            DetectionFeature(DetectionType.NeedleTip, None),
-            DetectionFeature(DetectionType.ImageCentre, None),
-        ],
-        validate=validate,
-    )
-
-    movement.move_needle_relative_with_corrected_movement(
-        microscope=microscope,
-        dx=det.distance_metres.x,
-        dy=det.distance_metres.y,
-        beam_type=BeamType.ELECTRON,
-    )
-
-    # take reference images
-    settings.image.save = False
-    settings.image.beam_type = BeamType.ION
-    ref_ib = acquire.new_image(microscope=microscope, settings=settings.image)
-
-    det = windows.detect_features(
-        microscope=microscope,
-        settings=settings,
-        lamella=lamella,
-        ref_image=ref_ib,
-        features=[
-            DetectionFeature(DetectionType.NeedleTip, None),
-            DetectionFeature(DetectionType.ImageCentre, None),
-        ],
-        validate=validate,
-    )
-
-    movement.move_needle_relative_with_corrected_movement(
-        microscope=microscope, dx=0, dy=-det.distance_metres.y, beam_type=BeamType.ION,
-    )
-
-    # take image
-    acquire.take_reference_images(microscope, settings.image)
-
-    if lamella is not None:
-        # save the updated position to disk
-        utils.save_needle_yaml(
-            lamella.base_path, microscope.specimen.manipulator.current_position
-        )
 
 
 def thin_lamella(
