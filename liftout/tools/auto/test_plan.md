@@ -26,7 +26,8 @@ pick up lamella from side:
     - same landing process
 
 move windows out of liftout into fibsem?
-generalise detection
+generalise detection # moved to FIBSEM
+
 
 working distance update / stage height
 - reset focus and link of every eucentric movement

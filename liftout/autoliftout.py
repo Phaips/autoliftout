@@ -20,6 +20,7 @@ from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
 from liftout import actions
 from liftout.gui import windows
 
+
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout.patterning import MillingPattern
@@ -106,7 +107,7 @@ def mill_lamella_jcut(
     )
 
     # confirm
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope,
         settings,
         msg_type="eucentric",
@@ -206,7 +207,7 @@ def liftout_lamella(
     )
 
     # confirm
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope,
         settings,
         msg_type="eucentric",
@@ -352,7 +353,7 @@ def land_needle_on_milled_lamella(
             logging.info("THRESHOLD REACHED STOPPPING")
 
             # check with user?
-            response = windows.ask_user_interaction(
+            response = fibsem_ui_windows.ask_user_interaction(
                 microscope,
                 msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
                 beam_type=BeamType.ION,
@@ -399,8 +400,8 @@ def land_lamella(
     calibration.auto_link_stage(microscope)
 
     # confirm eucentricity
-    windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric", flat_to_sem=False,
+    fibsem_ui_windows.ask_user_movement(
+        microscope, settings, msg_type="eucentric"
     )
 
     logging.info(
@@ -462,7 +463,7 @@ def land_lamella(
             microscope=microscope, image_settings=settings.image
         )
 
-        response = windows.ask_user_interaction(
+        response = fibsem_ui_windows.ask_user_interaction(
             microscope,
             msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement",
             beam_type=BeamType.ION,
@@ -504,7 +505,6 @@ def land_lamella(
     # )
 
     # back out needle from lamella , no cut required?
-
 
     for i in range(5):
 
@@ -632,7 +632,7 @@ def reset_needle(
     #################################################################################################
 
     # reset the "eucentric position" for the needle, centre needle in both views
-    align_needle_to_eucentric_position(microscope, settings, lamella, validate=True)
+    calibration.align_needle_to_eucentric_position(microscope, settings, lamella, validate=True)
 
     # take reference images
     settings.image.label = f"ref_reset"
@@ -667,9 +667,8 @@ def thin_lamella(
     calibration.set_microscope_state(microscope, lamella.landing_state)
 
     # ensure_eucentricity # TODO: Maybe remove, not required?
-    windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric", flat_to_sem=False,
-    )
+    fibsem_ui_windows.ask_user_movement(
+        microscope, settings, msg_type="eucentric")
 
     # rotate_and_tilt_to_thinning_angle
     settings.image.hfw = ReferenceHFW.High.value
@@ -690,7 +689,7 @@ def thin_lamella(
 
     # ensure_eucentricity at thinning angle
     # confirm
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope,
         settings,
         msg_type="eucentric",
@@ -705,7 +704,7 @@ def thin_lamella(
 
     settings.image.hfw = ReferenceHFW.Super.value
     settings.image.save = False
-    windows.ask_user_movement(microscope, settings, msg_type="alignment")
+    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="alignment")
 
     # take reference images
     settings.image.hfw = ReferenceHFW.Super.value
@@ -781,7 +780,7 @@ def polish_lamella(
     )
 
     # confirm
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope,
         settings,
         msg_type="eucentric",
@@ -798,7 +797,7 @@ def polish_lamella(
     settings.image.save = False
 
     # confirm
-    windows.ask_user_movement(microscope, settings, msg_type="alignment")
+    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="alignment")
 
     # # take reference images
     acquire.take_reference_images(microscope, settings.image)
@@ -894,7 +893,7 @@ def run_autoliftout_workflow(
                 msg = (
                     f"""Continue Lamella {(lamella._petname)} from {next_stage.name}?"""
                 )
-                response = windows.ask_user_interaction(
+                response = fibsem_ui_windows.ask_user_interaction(
                     microscope, msg=msg, beam_type=BeamType.ION,
                 )
             else:
@@ -1034,7 +1033,7 @@ def run_thinning_workflow(
 def get_current_lamella(microscope: SdbMicroscopeClient, sample: Sample,) -> bool:
 
     if sample.positions:
-        select_another_lamella = windows.ask_user_interaction(
+        select_another_lamella = fibsem_ui_windows.ask_user_interaction(
             microscope,
             msg=f"Do you want to select another lamella?\n"
             f"{len(sample.positions)} currentlly selected.",
@@ -1057,7 +1056,7 @@ def user_select_feature(
     # ask user to select feature
     settings.image.hfw = ReferenceHFW.High.value
     settings.image.save = False
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope, settings, msg_type="eucentric", msg=msg,
     )
 
@@ -1084,11 +1083,9 @@ def select_initial_lamella_positions(
         actions.move_to_sample_grid(
             microscope, settings=settings, protocol=settings.protocol
         )
+        movement.move_flat_to_beam(microscope, settings, BeamType.ELECTRON)
         calibration.auto_link_stage(microscope)
-
-        windows.ask_user_movement(
-            microscope, settings, msg_type="eucentric", flat_to_sem=True,
-        )
+        fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
         actions.move_to_trenching_angle(microscope, settings=settings)
 
     # save lamella coordinates
@@ -1127,7 +1124,7 @@ def select_landing_positions(
     settings.image.save = False
 
     settings.image.hfw = ReferenceHFW.Low.value
-    windows.ask_user_movement(
+    fibsem_ui_windows.ask_user_movement(
         microscope, settings, msg_type="eucentric", flat_to_sem=False
     )
     ####################################
@@ -1284,7 +1281,7 @@ def run_setup_autoliftout(
     ret = validation.validate_focus(microscope, settings.system.electron, link=False)
 
     if ret is False:
-        windows.ask_user_interaction(
+        windofibsem_ui_windowsws.ask_user_interaction(
             microscope,
             msg="The AutoFocus routine has failed, please correct the focus manually.",
             beam_type=BeamType.ELECTRON,
@@ -1306,7 +1303,7 @@ def validate_needle_insertion(
     )
 
     while ret is False:
-        windows.ask_user_interaction(
+        fibsem_ui_windows.ask_user_interaction(
             microscope,
             msg=f"""The system has identified the distance between the sample and the pole piece is less than {needle_stage_height_limit * 1000}mm. "
             "The needle will contact the sample, and it is unsafe to insert the needle. "
@@ -1317,40 +1314,3 @@ def validate_needle_insertion(
         ret = validation.validate_stage_height_for_needle_insertion(
             microscope, needle_stage_height_limit
         )
-
-# TODO: move to fibsem
-def auto_needle_calibration(microscope: SdbMicroscopeClient, settings: MicroscopeSettings):
-
-    settings.image.hfw = 900e-6
-    acquire.take_reference_images(microscope, settings.image)
-
-    # TODO: do a proper detection here... using EB, wide hfw
-
-    # move needle into view for both beams
-    movement.move_needle_relative_with_corrected_movement(
-        microscope, dx=400e-6, dy=100e-6, beam_type=BeamType.ELECTRON
-    )
-    
-    # focus on the needle
-    acquire.autocontrast(microscope, BeamType.ELECTRON)
-    microscope.auto_functions.run_auto_focus()
-    acquire.take_reference_images(microscope, settings.image)
-
-    # set coordinate system
-    microscope.specimen.manipulator.set_default_coordinate_system(ManipulatorCoordinateSystem.STAGE)
-    
-    # low res alignment
-    align_needle_to_eucentric_position(microscope, settings, lamella=None, validate=False)
-
-    # focus on needle
-    acquire.autocontrast(microscope, BeamType.ELECTRON)
-    microscope.auto_functions.run_auto_focus()
-    acquire.take_reference_images(microscope, settings.image)
-
-    # medium res alignment
-    settings.image.hfw=400e-6
-    align_needle_to_eucentric_position(microscope, settings, lamella=None, validate=False)
-
-    # high res alignment
-    settings.image.hfw=150e-6
-    align_needle_to_eucentric_position(microscope, settings, lamella=None, validate=False)

@@ -87,7 +87,7 @@
             self.samples.append(sample_position)
             self.sample_no += 1
 
-        finished_selecting = windows.ask_user_interaction(
+        finished_selecting = fibsem_ui_windows.ask_user_interaction(
             self.microscope,
             msg=f"Do you want to select landing positions?\n"
             f"{len(self.samples)} positions selected so far.",
