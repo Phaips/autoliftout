@@ -157,5 +157,5 @@ weld:
   height: 9.999999999999999e-06
   milling_current: 2.0e-09
   rotation: 0.0
-  scan_direction: TopToBottom
+  scan_direction: LeftToRight
   width: 3.0e-06

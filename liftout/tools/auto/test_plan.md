@@ -39,8 +39,12 @@ for better efficiency, change the jcut to be done from the 'bottom' side.
 this means we only need to cut the large trench on the bottom side. 
 can go back to asymmetric trenches, which save a lot of milling time.
 
-
+stage requires re-homing after a period of time
 change weld platinum to milling weld
+
+
+get initial sample grid and landing grid microscope state
+
 
 thinning tilts: 
 13 deg
