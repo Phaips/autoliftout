@@ -7,6 +7,7 @@ import fibsem.ui.windows as fibsem_ui_windows
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
+from fibsem import calibration
 from liftout import autoliftout, utils
 from liftout.config import config
 from liftout.gui import utils as ui_utils
@@ -184,6 +185,23 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.microscope, self.settings, self.settings.protocol
         )
 
+    def run_movement_utility(self):
+
+        fibsem_ui_windows.ask_user_movement(
+            self.microscope,
+            self.settings,
+            msg_type="eucentric", 
+            msg="Free Movement",
+            parent=self
+        )
+
+        return 
+
+    def run_needle_calibration_utility(self):
+
+        calibration.auto_needle_calibration(self.microscope, self.settings)
+
+
     def testing_function(self):
         print("yay testing function")
 
@@ -235,6 +253,8 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             # utilities
             self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
             self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
+            self.actionMovement.triggered.connect(self.run_movement_utility)
+            self.actionNeedle_Calibration.triggered.connect(self.run_needle_calibration_utility)
 
         # TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())

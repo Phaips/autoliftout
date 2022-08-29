@@ -572,6 +572,8 @@
     </property>
     <addaction name="actionSputter_Platinum"/>
     <addaction name="actionSharpen_Needle"/>
+    <addaction name="actionMovement"/>
+    <addaction name="actionNeedle_Calibration"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuUtilities"/>
@@ -610,6 +612,16 @@
   <action name="actionSharpen_Needle">
    <property name="text">
     <string>Sharpen Needle</string>
+   </property>
+  </action>
+  <action name="actionMovement">
+   <property name="text">
+    <string>Movement</string>
+   </property>
+  </action>
+  <action name="actionNeedle_Calibration">
+   <property name="text">
+    <string>Needle Calibration</string>
    </property>
   </action>
  </widget>

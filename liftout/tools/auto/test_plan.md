@@ -1,6 +1,5 @@
 ### Testing Plan
 
-
 Notes
 
 - excessive charging of EB (maybe just ice) -> can discharge using multiple images, and autocontrast, conisder adding function
@@ -25,12 +24,9 @@ pick up lamella from side:
     - sever at same spot
     - same landing process
 
-
-
 working distance update / stage height
 - reset focus and link of every eucentric movement
 
-only ask to save milling protocol if values are changed # TODO: test
 remove cut step, just back out thee needle after welding # TODO: test
 
 remove white borders around the ui image windows
@@ -54,12 +50,20 @@ thinning tilts:
 
 
 
+
+
+
+
+
+
+
+
+
 TODO: START_HERE: add more detail and example scripts to run
 autoliftout test plan
 for after maintenance
 
 MoveSettings
-- tilt_compucentric
 - link_z_y
 
 new stage movement
