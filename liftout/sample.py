@@ -85,12 +85,12 @@ def load_sample(fname: Path) -> Sample:
 
     # load lamella from dict
     for lamella_dict in sample_dict["positions"]:
-        lamella = lamella_from_dict(path=sample.path, lamella_dict=lamella_dict)
+        lamella = Lamella.__from_dict__(path=sample.path, lamella_dict=lamella_dict)
         sample.positions[lamella._number] = lamella
 
     return sample
 
-
+# TODO: move to fibsem?
 class Lamella:
     def __init__(self, path: Path, number: int = 0, _petname: str = None) -> None:
 
@@ -157,31 +157,31 @@ class Lamella:
 
         return adorned_img
 
-# TODO: convert to @staticmethod
-def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
+    @staticmethod
+    def __from_dict__(path: str, lamella_dict: dict) -> 'Lamella':
 
-    lamella = Lamella(
-        path=path, number=lamella_dict["number"], _petname=lamella_dict["petname"]
-    )
+        lamella = Lamella(
+            path=path, number=lamella_dict["number"], _petname=lamella_dict["petname"]
+        )
 
-    lamella._petname = lamella_dict["petname"]
-    lamella._id = lamella_dict["id"]
+        lamella._petname = lamella_dict["petname"]
+        lamella._id = lamella_dict["id"]
 
-    # load stage positions from yaml
-    lamella.lamella_state = MicroscopeState.__from_dict__(lamella_dict["lamella_state"])
-    lamella.landing_state = MicroscopeState.__from_dict__(lamella_dict["landing_state"])
-    lamella.landing_selected = bool(lamella_dict["landing_selected"])
+        # load stage positions from yaml
+        lamella.lamella_state = MicroscopeState.__from_dict__(lamella_dict["lamella_state"])
+        lamella.landing_state = MicroscopeState.__from_dict__(lamella_dict["landing_state"])
+        lamella.landing_selected = bool(lamella_dict["landing_selected"])
 
-    # load current state
-    lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])
+        # load current state
+        lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])
 
-    # load history
-    lamella.history = [
-        AutoLiftoutState.__from_dict__(state_dict)
-        for state_dict in lamella_dict["history"]
-    ]
+        # load history
+        lamella.history = [
+            AutoLiftoutState.__from_dict__(state_dict)
+            for state_dict in lamella_dict["history"]
+        ]
 
-    return lamella
+        return lamella
 
 # convert to  method
 def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:

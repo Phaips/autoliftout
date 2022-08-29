@@ -99,7 +99,7 @@ def mill_horseshoe_pattern(
 
     # lhs 
     side_pattern = microscope.patterning.create_cleaning_cross_section(
-        center_x=point.x - (lamella_width / 2  - protocol["side_width"] / 2 +  protocol["side_offset"]),
+        center_x=point.x + (lamella_width / 2  - protocol["side_width"] / 2) - protocol["side_offset"],
         center_y=point.y,
         width=protocol["side_width"],
         height=lamella_height,
@@ -108,10 +108,6 @@ def mill_horseshoe_pattern(
     side_pattern.scan_direction = "LeftToRight"
 
     return [lower_pattern, upper_pattern, side_pattern]
-
-
-
-
 
 
 def jcut_milling_patterns(

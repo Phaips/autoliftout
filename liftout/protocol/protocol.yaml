@@ -35,13 +35,13 @@ initial_position:
     y: 0.0039354
     z: 0.03095
 jcut:
-  cleaning_cross_section: false
+  cleaning_cross_section: 0.0
   depth: 3.0e-06
   jcut_angle: 6.0
   lamella_height: 5.0e-06
   lhs_height: 1.4999999999999999e-05
+  lhs_offset: 0.0
   lhs_trench_width: 1.0e-06
-  lhs_offset: 0.0e-6
   milling_current: 7.6e-09
   rhs_height: 6.0e-06
   rotation: 0.0
@@ -64,10 +64,10 @@ lamella:
     offset: 2.0e-06
     rotation: 0.0
     scan_direction: TopToBottom
+    side_offset: 0.0
+    side_width: 8.0e-06
     size_ratio: 1.0
     trench_height: 1.0e-05
-    side_width: 8.0e-6
-    side_offset: 0.0e-6
   - cleaning_cross_section: 0.0
     lamella_height: 1.0e-05
     lamella_width: 2.5e-05
@@ -76,13 +76,15 @@ lamella:
     offset: 0.0
     rotation: 0.0
     scan_direction: TopToBottom
+    side_offset: 8.e-6
+    side_width: 5.0e-07
     size_ratio: 1.0
-    trench_height: 3.0e-06
-    side_width: 0.5e-6
-    side_offset: 0.0e-6
+    trench_height: 2.4999999999999998e-06
   rotation: 0.0
   scan_direction: TopToBottom
-  size_ratio: 5.0
+  side_offset: 0.0
+  side_width: 8.0e-06
+  size_ratio: 1.0
   trench_height: 1.0e-05
 platinum:
   application_file: cryo_Pt_dep

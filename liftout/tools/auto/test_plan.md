@@ -33,6 +33,13 @@ working distance update / stage height
 only ask to save milling protocol if values are changed # TODO: test
 remove cut step, just back out thee needle after welding # TODO: test
 
+remove white borders around the ui image windows
+
+for better efficiency, change the jcut to be done from the 'bottom' side.
+this means we only need to cut the large trench on the bottom side. 
+can go back to asymmetric trenches, which save a lot of milling time.
+
+
 thinning tilts: 
 13 deg
 #########################################################

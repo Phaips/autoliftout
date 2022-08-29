@@ -417,6 +417,7 @@ def land_lamella(
     insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
 
     actions.move_needle_to_landing_position(microscope, insert_position)
+    # TODO: move lower than eucentric to make sure landing
 
     # needle starting position
     settings.image.hfw = ReferenceHFW.High.value
@@ -1123,7 +1124,7 @@ def select_landing_positions(
 
     settings.image.hfw = ReferenceHFW.Low.value
     fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric", flat_to_sem=False
+        microscope, settings, msg_type="eucentric"
     )
     ####################################
 
