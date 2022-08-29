@@ -499,14 +499,34 @@ def land_lamella(
     settings.image.save = True
     settings.image.label = "landing_lamella_pre_cut"
 
-    # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
-    # cut off needle
-    windows.open_milling_window(
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=MillingPattern.Cut,
-        point=Point(),
-    )
+    # # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
+    # # cut off needle
+    # windows.open_milling_window(
+    #     microscope=microscope,
+    #     settings=settings,
+    #     milling_pattern=MillingPattern.Cut,
+    #     point=Point(),
+    # )
+
+    # back out needle from lamella , no cut required?
+
+
+    for i in range(5):
+
+        # move needle back
+        movement.move_needle_relative_with_corrected_movement(
+            microscope=microscope,
+            dx=-1e-6,
+            dy=0,
+            beam_type=BeamType.ION,
+        )
+
+        # take image 
+        acquire.new_image(microscope, settings.image)
+
+
+    # TODO: if this works, remove references to "cut"
+    # TODO: if this works, can probably remove the slow removal below too...
 
     ################################### REMOVE_NEEDLE ##########################################
 

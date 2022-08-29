@@ -106,8 +106,11 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.INITIALISED = True
 
-        AUTO_CONTINUE = False
-        if AUTO_CONTINUE:
+        self.USER_UPDATED_PROTOCOL = False # flag to determine if user has updated the protocol
+
+
+        self.AUTO_CONTINUE = False
+        if self.AUTO_CONTINUE:
             self.run_milling_button_pressed() # automatically continue
 
     def setup_milling_image(self):
@@ -206,6 +209,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         if self.USER_UPDATE:
             self.update_display()
+            self.USER_UPDATED_PROTOCOL = True 
+            
 
     def update_display(self, draw_patterns=True):
         """Update the millig window display. Redraw the crosshair, and milling patterns"""
@@ -403,18 +408,21 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
             logging.info("Redoing milling")
             self.update_display(draw_patterns=True)
         else:
-            response = fibsem_ui.message_box_ui(
-                title="Save Milling Protocol?",
-                text="Do you want to update the protocol to use these milling parameters?",
-            )
 
-            if response:
-                try:
-                    ui_utils.update_milling_protocol_ui(
-                        self.milling_pattern, self.milling_stages, self
-                    )
-                except Exception as e:
-                    logging.error(f"Unable to update protocol file: {e}")
+            # only update if the protocol has been changed...
+            if self.USER_UPDATED_PROTOCOL:
+                response = fibsem_ui.message_box_ui(
+                    title="Save Milling Protocol?",
+                    text="Do you want to update the protocol to use these milling parameters?",
+                )
+
+                if response:
+                    try:
+                        ui_utils.update_milling_protocol_ui(
+                            self.milling_pattern, self.milling_stages, self
+                        )
+                    except Exception as e:
+                        logging.error(f"Unable to update protocol file: {e}")
             self.close()
 
     def exit_milling_button_pressed(self):
@@ -444,7 +452,7 @@ def main():
     windows.open_milling_window(
         microscope=microscope,
         settings=settings,
-        milling_pattern=MillingPattern.JCut,
+        milling_pattern=MillingPattern.Trench,
         point=Point(0, 0)
     )
     sys.exit(app.exec_())

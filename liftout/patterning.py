@@ -63,6 +63,56 @@ def mill_trench_patterns(
 
     return [lower_pattern, upper_pattern]
 
+# "horseshoe" terminology https://www.researchgate.net/publication/351737991_A_Modular_Platform_for_Streamlining_Automated_Cryo-FIB_Workflows#pf14
+def mill_horseshoe_pattern(
+    microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()
+) -> list[CleaningCrossSectionPattern]:
+    """Calculate the trench milling patterns"""
+
+    lamella_width = protocol["lamella_width"]
+    lamella_height = protocol["lamella_height"]
+    trench_height = protocol["trench_height"]
+    upper_trench_height = trench_height / max(protocol["size_ratio"], 1.0)
+    offset = protocol["offset"]
+    milling_depth = protocol["milling_depth"]
+
+    centre_upper_y = point.y + (lamella_height / 2 + upper_trench_height / 2 + offset)
+    centre_lower_y = point.y - (lamella_height / 2 + trench_height / 2 + offset)
+
+    lower_pattern = microscope.patterning.create_cleaning_cross_section(
+        point.x,
+        centre_lower_y,
+        lamella_width,
+        trench_height,
+        milling_depth,
+    )
+    lower_pattern.scan_direction = "BottomToTop"
+
+    upper_pattern = microscope.patterning.create_cleaning_cross_section(
+        point.x,
+        centre_upper_y,
+        lamella_width,
+        upper_trench_height,
+        milling_depth,
+    )
+    upper_pattern.scan_direction = "TopToBottom"
+
+    # lhs 
+    side_pattern = microscope.patterning.create_cleaning_cross_section(
+        center_x=point.x - (lamella_width / 2  - protocol["side_width"] / 2 +  protocol["side_offset"]),
+        center_y=point.y,
+        width=protocol["side_width"],
+        height=lamella_height,
+        depth=milling_depth,
+    )
+    side_pattern.scan_direction = "LeftToRight"
+
+    return [lower_pattern, upper_pattern, side_pattern]
+
+
+
+
+
 
 def jcut_milling_patterns(
     microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()
@@ -247,7 +297,7 @@ def create_milling_patterns(
     """Redraw the milling patterns with updated milling protocol"""
 
     if milling_pattern_type == MillingPattern.Trench:
-        patterns = mill_trench_patterns(
+        patterns = mill_horseshoe_pattern(
             microscope=microscope, protocol=milling_protocol, point=point
         )
 

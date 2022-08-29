@@ -6,18 +6,16 @@ Notes
 - excessive charging of EB (maybe just ice) -> can discharge using multiple images, and autocontrast, conisder adding function
 - need to reset working distance (focus_and_link) once eucentric (in order to properly save state)
 
-- landing edge detection, left edge post, lamella edge
 - alignment on thinning stage after rotation ()
 - restoring to landing state 
 - maintain working distance
-- thors hammer
 - decision:
     - where to place the needle for reset
     - xcorr: post landing
     - tilt for thinning?
     - 
 
-TODO: landing_selected not restored from file?
+#######################################
 
 pick up lamella from side:
     - mill trenches larger (20um)
@@ -27,20 +25,18 @@ pick up lamella from side:
     - sever at same spot
     - same landing process
 
-way too much platinum on the sample...
 move windows out of liftout into fibsem?
 generalise detection
-independent control of jcut lhs position centre
 
 working distance update / stage height
 - reset focus and link of every eucentric movement
 
-only ask to save milling protocol if values are changed
-
+only ask to save milling protocol if values are changed # TODO: test
+remove cut step, just back out thee needle after welding # TODO: test
 
 thinning tilts: 
 13 deg
-
+#########################################################
 
 
 

@@ -134,6 +134,7 @@ class Lamella:
             "number": self._number,
             "base_path": self.base_path,
             "path": self.path,
+            "landing_selected": self.landing_selected,
             "lamella_state": self.lamella_state.__to_dict__(),
             "landing_state": self.landing_state.__to_dict__(),
             "current_state": self.current_state.__to_dict__(),
@@ -169,6 +170,7 @@ def lamella_from_dict(path: str, lamella_dict: dict) -> Lamella:
     # load stage positions from yaml
     lamella.lamella_state = MicroscopeState.__from_dict__(lamella_dict["lamella_state"])
     lamella.landing_state = MicroscopeState.__from_dict__(lamella_dict["landing_state"])
+    lamella.landing_selected = bool(lamella_dict["landing_selected"])
 
     # load current state
     lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])
