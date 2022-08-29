@@ -10,19 +10,19 @@ from autoscript_sdb_microscope_client.enumerations import (
 from autoscript_sdb_microscope_client.structures import (MoveSettings,
                                                          Rectangle,
                                                          StagePosition)
-from fibsem import acquire, alignment, calibration, movement, utils, validation
+from fibsem import acquire, alignment, calibration, movement
+from fibsem import utils as fibsem_utils
+from fibsem import validation
+from fibsem.acquire import BeamType
 from fibsem.detection.detection import DetectionFeature, DetectionType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
 from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
                                Point)
-
-from liftout import actions
-from liftout.gui import windows
-
-
 from fibsem.ui import windows as fibsem_ui_windows
 
+from liftout import actions, patterning
+from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
 from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample,
                             get_reference_images)
@@ -47,7 +47,7 @@ def mill_lamella_trench(
     ######
 
     # mill_trenches
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
@@ -141,7 +141,7 @@ def mill_lamella_jcut(
     ## MILL_JCUT
     # now we are at the angle for jcut, perform jcut
     settings.image.hfw = ReferenceHFW.Super.value
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
@@ -224,7 +224,7 @@ def liftout_lamella(
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella)
 
     # sputter platinum
-    utils.sputter_platinum(
+    fibsem_utils.sputter_platinum(
         microscope,
         settings.protocol["platinum"],
         whole_grid=False,
@@ -240,7 +240,7 @@ def liftout_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # jcut sever pattern
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
@@ -294,7 +294,7 @@ def land_needle_on_milled_lamella(
     )
 
     # get updated needle insertion position
-    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
 
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope, insert_position)
@@ -338,7 +338,7 @@ def land_needle_on_milled_lamella(
         )
 
         # calculate brightness
-        settings.image.label = f"bright_{utils.current_timestamp()}"
+        settings.image.label = f"bright_{fibsem_utils.current_timestamp()}"
         ib_image = acquire.new_image(
             microscope, settings.image, reduced_area=reduced_area
         )
@@ -414,7 +414,7 @@ def land_lamella(
     )
 
     # get updated needle insertion position
-    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
 
     actions.move_needle_to_landing_position(microscope, insert_position)
 
@@ -473,7 +473,7 @@ def land_lamella(
 
     ############################## WELD TO LANDING POST #############################################
 
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
@@ -497,7 +497,7 @@ def land_lamella(
 
     # # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
     # # cut off needle
-    # windows.open_milling_window(
+    # open_milling_window(
     #     microscope=microscope,
     #     settings=settings,
     #     milling_pattern=MillingPattern.Cut,
@@ -582,7 +582,7 @@ def reset_needle(
     )
 
     # get updated needle insertion position
-    insert_position = utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
 
     # move needle in
     actions.move_needle_to_reset_position(microscope, insert_position)
@@ -622,7 +622,7 @@ def reset_needle(
     # TODO: validate this movement
 
     # create sharpening patterns
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
@@ -718,7 +718,7 @@ def thin_lamella(
     settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
 
     # mill thin_lamella
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Thin,
@@ -759,8 +759,6 @@ def polish_lamella(
     #     alignment=(BeamType.ION, BeamType.ION),
     #     rotate=Fa;,
     # )
-
-    from fibsem import utils as fibsem_utils
 
     settings.image = fibsem_utils.match_image_settings(
         reference_images.high_res_ib, settings.image, BeamType.ION
@@ -807,7 +805,7 @@ def polish_lamella(
     settings.image.dwell_time = settings.protocol["polish_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["polish_lamella"]["hfw"]
 
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Polish,
@@ -1170,7 +1168,7 @@ def select_landing_sample_positions(
     settings.image.beam_type = BeamType.ION
     settings.image.save = False
 
-    windows.open_milling_window(
+    open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Flatten,
@@ -1269,7 +1267,7 @@ def run_setup_autoliftout(
     acquire.new_image(microscope, settings.image)
 
     # sputter platinum to protect grid and prevent charging...
-    windows.sputter_platinum_on_whole_sample_grid(
+    sputter_platinum_on_whole_sample_grid(
         microscope, settings, settings.protocol
     )
 
@@ -1314,3 +1312,54 @@ def validate_needle_insertion(
         ret = validation.validate_stage_height_for_needle_insertion(
             microscope, needle_stage_height_limit
         )
+
+def sputter_platinum_on_whole_sample_grid(
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    protocol: dict,
+) -> None:
+    """Move to the sample grid and sputter platinum over the whole grid"""
+
+    # Whole-grid platinum deposition
+    response = fibsem_ui_windows.ask_user_interaction(
+        microscope=microscope,
+        msg="Do you want to sputter the whole \nsample grid with platinum?",
+        beam_type=BeamType.ELECTRON,
+    )
+
+    if response:
+        actions.move_to_sample_grid(microscope, settings, protocol)
+        fibsem_utils.sputter_platinum(
+            microscope=microscope,
+            protocol=protocol["platinum"],
+            whole_grid=True,
+            default_application_file=settings.system.application_file,
+        )
+
+    return
+
+
+def open_milling_window(
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    milling_pattern: patterning.MillingPattern,
+    point: Point = Point(),
+    parent=None,
+):
+    """Open the Milling Window ready for milling
+
+    Args:
+        milling_pattern (MillingPattern): The type of milling pattern
+        x (float, optional): the initial pattern offset (x-direction). Defaults to 0.0.
+        y (float, optional): the initial pattenr offset (y-direction). Defaults to 0.0.
+    """
+    milling_window = GUIMillingWindow(
+        microscope=microscope,
+        settings=settings,
+        milling_pattern_type=milling_pattern,
+        point = point,
+        parent=parent,
+    )
+
+    milling_window.show()
+    milling_window.exec_()

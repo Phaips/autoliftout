@@ -7,8 +7,9 @@ import liftout.gui.utils as ui_utils
 import matplotlib.patches as mpatches
 import scipy.ndimage as ndi
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import Rectangle as ReducedAreaRectangle
-from fibsem import acquire, conversions, constants, milling
+from autoscript_sdb_microscope_client.structures import \
+    Rectangle as ReducedAreaRectangle
+from fibsem import acquire, constants, conversions, milling
 from fibsem import utils as fibsem_utils
 from fibsem.structures import BeamType, MicroscopeSettings, Point
 from fibsem.ui import utils as fibsem_ui
@@ -445,11 +446,11 @@ def main():
 
     os.makedirs(settings.image.save_path, exist_ok=True)
 
-    from liftout.gui import windows
     from liftout.patterning import MillingPattern
+    from liftout import autoliftout
 
     app = QtWidgets.QApplication([])
-    windows.open_milling_window(
+    autoliftout.open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,

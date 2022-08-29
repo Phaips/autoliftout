@@ -25,8 +25,6 @@ pick up lamella from side:
     - sever at same spot
     - same landing process
 
-move windows out of liftout into fibsem?
-generalise detection # moved to FIBSEM
 
 
 working distance update / stage height

@@ -2,15 +2,14 @@ import logging
 import sys
 from pprint import pprint
 
-import fibsem.ui.windows as fibsem_ui_windows
 import fibsem.ui.utils as fibsem_ui_utils
+import fibsem.ui.windows as fibsem_ui_windows
 import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
 from liftout import autoliftout, utils
 from liftout.config import config
 from liftout.gui import utils as ui_utils
-from liftout.gui import windows
 from liftout.gui.qtdesigner_files import main as gui_main
 from liftout.sample import AutoLiftoutStage, Lamella, Sample
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -181,7 +180,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         """Run the sputter platinum utility"""
 
         # sputter
-        windows.sputter_platinum_on_whole_sample_grid(
+        autoliftout.sputter_platinum_on_whole_sample_grid(
             self.microscope, self.settings, self.settings.protocol
         )
 
@@ -198,7 +197,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
         if microscope is None:
-            fibsem_ui_utils.utils.display_error_message(
+            fibsem_ui_utils.display_error_message(
                 f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
             )
 
