@@ -1281,7 +1281,7 @@ def run_setup_autoliftout(
     ret = validation.validate_focus(microscope, settings.system.electron, link=False)
 
     if ret is False:
-        windofibsem_ui_windowsws.ask_user_interaction(
+        fibsem_ui_windows.ask_user_interaction(
             microscope,
             msg="The AutoFocus routine has failed, please correct the focus manually.",
             beam_type=BeamType.ELECTRON,
