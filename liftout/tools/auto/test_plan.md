@@ -40,6 +40,8 @@ this means we only need to cut the large trench on the bottom side.
 can go back to asymmetric trenches, which save a lot of milling time.
 
 
+change weld platinum to milling weld
+
 thinning tilts: 
 13 deg
 #########################################################

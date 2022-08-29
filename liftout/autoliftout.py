@@ -223,13 +223,21 @@ def liftout_lamella(
     # land needle on lamella
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella)
 
-    # sputter platinum
-    fibsem_utils.sputter_platinum(
-        microscope,
-        settings.protocol["platinum"],
-        whole_grid=False,
-        default_application_file=settings.system.application_file,
+    # mill weld
+    open_milling_window(
+        microscope=microscope,
+        settings=settings,
+        milling_pattern=MillingPattern.Weld,
+        point=Point(),
     )
+
+    # sputter platinum
+    # fibsem_utils.sputter_platinum(
+    #     microscope,
+    #     settings.protocol["platinum"],
+    #     whole_grid=False,
+    #     default_application_file=settings.system.application_file,
+    # )
     logging.info(
         f"{lamella.current_state.stage.name}: lamella to needle welding complete."
     )
@@ -851,6 +859,9 @@ def run_autoliftout_workflow(
     }
 
     logging.info(f"AutoLiftout Workflow started for {len(sample.positions)} lamellae.")
+    settings.image.save = False
+    settings.image.label = f"{fibsem_utils.current_timestamp()}"
+        
 
     # high throughput workflow
     if HIGH_THROUGHPUT:
