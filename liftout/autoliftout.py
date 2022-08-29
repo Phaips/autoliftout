@@ -1,36 +1,28 @@
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
-    CoordinateSystem,
-    ManipulatorCoordinateSystem,
-)
-from autoscript_sdb_microscope_client.structures import (
-    MoveSettings,
-    Rectangle,
-    StagePosition,
-)
+    CoordinateSystem, ManipulatorCoordinateSystem)
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
+                                                         Rectangle,
+                                                         StagePosition)
 from fibsem import acquire, alignment, calibration, movement, utils, validation
+from fibsem.detection.detection import DetectionFeature, DetectionType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
-from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Point
+from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
+                               Point)
+
 from liftout import actions
-from liftout.detection.detection import DetectionFeature, DetectionType
 from liftout.gui import windows
 from liftout.patterning import MillingPattern
-from liftout.sample import (
-    AutoLiftoutStage,
-    Lamella,
-    ReferenceImages,
-    Sample,
-    get_reference_images,
-)
+from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample,
+                            get_reference_images)
 from liftout.structures import ReferenceHFW
-
-from pathlib import Path
 
 # autoliftout workflow functions
 
@@ -1398,6 +1390,8 @@ def auto_needle_calibration(microscope: SdbMicroscopeClient, settings: Microscop
     settings.image.hfw = 900e-6
     acquire.take_reference_images(microscope, settings.image)
 
+    # TODO: do a proper detection here... using EB, wide hfw
+
     # move needle into view for both beams
     movement.move_needle_relative_with_corrected_movement(
         microscope, dx=400e-6, dy=100e-6, beam_type=BeamType.ELECTRON
@@ -1413,7 +1407,6 @@ def auto_needle_calibration(microscope: SdbMicroscopeClient, settings: Microscop
     
     # low res alignment
     align_needle_to_eucentric_position(microscope, settings, lamella=None, validate=False)
-
 
     # focus on needle
     acquire.autocontrast(microscope, BeamType.ELECTRON)

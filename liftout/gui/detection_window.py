@@ -4,18 +4,17 @@ import sys
 from pprint import pprint
 
 import matplotlib.patches as mpatches
-from fibsem import calibration, conversions
+from fibsem import conversions
 from fibsem.structures import MicroscopeSettings
 from fibsem.ui import utils as fibsem_ui
-from liftout import utils
-from liftout.config import config
-from liftout.detection import utils as det_utils
-from liftout.detection.utils import (DetectionResult, DetectionType, Point,
-                                     convert_pixel_distance_to_metres)
+
+from fibsem.detection import utils as det_utils
+from fibsem.detection.utils import DetectionResult, DetectionType, Point
+                                     
 from liftout.gui.qtdesigner_files import detection_dialog as detection_gui
-from liftout.sample import Lamella
 from PyQt5 import QtCore, QtWidgets
 
+# TODO: move this to FIBSEM
 
 class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
@@ -23,7 +22,6 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         microscope,
         settings: MicroscopeSettings,
         detection_result: DetectionResult,
-        lamella: Lamella,
     ):
         super(GUIDetectionWindow, self).__init__()
         self.setupUi(self)
@@ -32,7 +30,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         # microscope settings
         self.microscope = microscope
         self.settings = settings
-        self.lamella = lamella
+        self.log_path = os.path.dirname(settings.image.save_path)
 
         # detection data
         self.detection_result = detection_result
@@ -109,10 +107,8 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
             ] = Point(self.center_x, self.center_y)
 
             # logging statistics
-            petname = self.lamella._petname
-            current_stage = self.lamella.current_state.stage
             logging.info(
-                f"{petname} | {current_stage} | ml_detection | {self.current_detection_selected} | {False}"
+                f"detection | {self.current_detection_selected} | {False}"
             )
 
             self.logged_detection_types.append(self.current_detection_selected)
@@ -132,10 +128,10 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         point_2 = self.detection_result.features[1].feature_px
 
         # colours
-        c1 = config.DETECTION_TYPE_COLOURS[
+        c1 = det_utils.DETECTION_TYPE_COLOURS[
             self.detection_result.features[0].detection_type
         ]
-        c2 = config.DETECTION_TYPE_COLOURS[
+        c2 = det_utils.DETECTION_TYPE_COLOURS[
             self.detection_result.features[1].detection_type
         ]
 
@@ -163,7 +159,7 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         self.wp.canvas.ax11.legend(handles=[patch_one, patch_two])
 
         # calculate movement distance
-        x_distance_m, y_distance_m = convert_pixel_distance_to_metres(
+        x_distance_m, y_distance_m = det_utils.convert_pixel_distance_to_metres(
             point_1, point_2, self.adorned_image
         )
         self.detection_result.distance_metres = Point(
@@ -193,35 +189,32 @@ class GUIDetectionWindow(detection_gui.Ui_Dialog, QtWidgets.QDialog):
         # log active learning data...
         logging.info(f"Writing machine learning data to disk...")
         if self._USER_CORRECTED:
-            path = os.path.join(self.lamella.base_path, "label")
+            path = os.path.join(self.log_path, "label")
             det_utils.write_data_to_disk(path, self.detection_result)
 
         # log correct detection types
-        petname = self.lamella._petname
-        current_stage = self.lamella.current_state.stage
         for feature in self.detection_result.features:
             if feature.detection_type not in self.logged_detection_types:
                 logging.info(
-                    f"{petname} | {current_stage} | ml_detection | {self.current_detection_selected} | {True}"
+                    f" detection | {self.current_detection_selected} | {True}"
                 )
 
         event.accept()
 
 def main():
-
-    microscope, settings, sample, lamella = utils.full_setup()
+    from liftout import utils
+    from fibsem.detection.detection import DetectionFeature
+    from liftout.gui import windows
+    
+    microscope, settings = utils.quick_setup()
     
     app = QtWidgets.QApplication([])
-
-    from liftout.detection.detection import DetectionFeature
-    from liftout.gui import windows
 
     # select features
     features = [DetectionFeature(detection_type=DetectionType.ImageCentre, feature_px=None),
                 DetectionFeature(detection_type=DetectionType.LamellaCentre, feature_px=None)]
     det = windows.detect_features(microscope=microscope, 
-        settings=settings, image_settings=settings.image, lamella=lamella, ref_image=None, features=features, validate=True)
-
+        settings=settings, ref_image=None, features=features, validate=True)
 
     pprint(det)
 

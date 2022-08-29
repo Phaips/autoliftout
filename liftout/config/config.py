@@ -2,7 +2,6 @@ import os
 
 import liftout
 from liftout.patterning import MillingPattern
-from liftout.detection.utils import DetectionType
 
 base_path = os.path.dirname(liftout.__file__)
 config_path = os.path.join(base_path, "config")
@@ -66,25 +65,6 @@ PATTERN_PROTOCOL_MAP = {
 }
 
 
-
-
-
-
-
-
-
-# DETECTIONS
-
-DETECTION_TYPE_COLOURS = {
-    DetectionType.LamellaCentre: (1, 0, 0, 1),
-    DetectionType.NeedleTip: (0, 1, 0, 1),
-    DetectionType.LamellaEdge: (1, 0.5, 0, 1),
-    DetectionType.LandingPost: (0, 1, 1, 1),
-    DetectionType.ImageCentre: (1, 1, 1, 1)
-}
-
-
-
 DISPLAY_REFERENCE_FNAMES = [
     "ref_lamella_low_res_ib",
     "ref_trench_high_res_ib",
@@ -92,6 +72,6 @@ DISPLAY_REFERENCE_FNAMES = [
     "ref_liftout_ib",
     "ref_landing_lamella_high_res_ib",
     "ref_reset_high_res_ib",
-    "thin_lamella_post_superres_ib",
-    "polish_lamella_post_superres_ib",
+    "ref_thin_lamella_post_superres_ib",
+    "ref_polish_lamella_post_superres_ib",
 ]

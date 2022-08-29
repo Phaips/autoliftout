@@ -12,7 +12,7 @@ from datetime import datetime
 # user functions
 
 from liftout.detection.DetectionModel import DetectionModel
-from liftout.detection import utils, detection
+from fibsem.detection import utils, detection
 
 
 @st.cache(allow_output_mutation=True)

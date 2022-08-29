@@ -169,6 +169,7 @@ def quick_setup():
     path = os.path.join(os.getcwd(), "tools/test")
     os.makedirs(path, exist_ok=True)
     configure_logging(path)
+    settings.image.save_path = path
 
     microscope = fibsem_utils.connect_to_microscope(
         ip_address=settings.system.ip_address

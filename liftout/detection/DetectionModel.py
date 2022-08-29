@@ -5,8 +5,9 @@ import segmentation_models_pytorch as smp
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-import liftout.detection.utils as det_utils
+import fibsem.detection.utils as det_utils
 from pathlib import Path
+from liftout.model import models
 
 class DetectionModel:
     """Detection Model Class 
@@ -71,5 +72,13 @@ def load_model(weights_file: Path, device):
     model.load_state_dict(torch.load(weights_file, map_location="cpu"))
     model.to(device)
     model.eval()
+
+    return model
+
+
+def load_detection_model(weights_file: Path) -> DetectionModel:
+    # load model
+    weights_path = os.path.join(os.path.dirname(models.__file__), weights_file)
+    model = DetectionModel(weights_path)
 
     return model

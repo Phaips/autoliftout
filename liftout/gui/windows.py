@@ -9,8 +9,8 @@ from fibsem.ui import utils as fibsem_ui
 from fibsem.acquire import BeamType
 from fibsem.structures import MicroscopeSettings, Point
 from liftout import actions, patterning
-from liftout.detection import detection
-from liftout.detection.detection import DetectionFeature, DetectionResult
+from fibsem.detection import detection
+from fibsem.detection.detection import DetectionFeature, DetectionResult
 from liftout.gui.detection_window import GUIDetectionWindow
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.gui.movement_window import GUIMMovementWindow
@@ -85,7 +85,6 @@ def open_milling_window(
 def detect_features(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
-    lamella: Lamella,
     ref_image: AdornedImage,
     features: tuple[DetectionFeature],
     validate: bool = True,
@@ -96,7 +95,6 @@ def detect_features(
         microscope (SdbMicroscopeClient): _description_
         settings (dict): _description_
         image_settings (ImageSettings): _description_
-        lamella (Lamella): _description_
         ref_image (AdornedImage): _description_
         features (tuple[DetectionFeature]): _description_
         validate (bool, optional): _description_. Defaults to True.
@@ -119,7 +117,6 @@ def detect_features(
             microscope,
             settings,
             det,
-            lamella,
         )
 
     return det
@@ -129,14 +126,12 @@ def validate_detection(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     detection_result: DetectionResult,
-    lamella: Lamella,
 ):
     # user validates detection result
     detection_window = GUIDetectionWindow(
         microscope=microscope,
         settings=settings,
         detection_result=detection_result,
-        lamella=lamella,
     )
     detection_window.show()
     detection_window.exec_()
