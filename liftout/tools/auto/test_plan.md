@@ -2,17 +2,11 @@
 
 Notes
 
-- excessive charging of EB (maybe just ice) -> can discharge using multiple images, and autocontrast, conisder adding function
 - need to reset working distance (focus_and_link) once eucentric (in order to properly save state)
 
 - alignment on thinning stage after rotation ()
-- restoring to landing state 
-- maintain working distance
-- decision:
-    - where to place the needle for reset
-    - xcorr: post landing
-    - tilt for thinning?
-    - 
+- xcorr: post landing
+- tilt for thinning?
 
 #######################################
 
@@ -24,23 +18,19 @@ pick up lamella from side:
     - sever at same spot
     - same landing process
 
-working distance update / stage height
-- reset focus and link of every eucentric movement
-
-remove cut step, just back out thee needle after welding # TODO: test
-
-remove white borders around the ui image windows
-
-for better efficiency, change the jcut to be done from the 'bottom' side.
-this means we only need to cut the large trench on the bottom side. 
-can go back to asymmetric trenches, which save a lot of milling time.
-
-stage requires re-homing after a period of time
-change weld platinum to milling weld
+- where to add auto charging discharge
+- (working distance update / stage height) reset focus and link of every eucentric movement
+- remove cut step, just back out thee needle after welding # TODO: test
+- remove white borders around the ui image windows
+- for better efficiency, change the jcut to be done from the 'bottom' side. this means we only need to cut the large trench on the bottom side.  can go back to asymmetric trenches, which save a lot of milling time.
+- stage requires re-homing after a period of time
+- change weld platinum to milling weld TODO: test
 
 
-get initial sample grid and landing grid microscope state
-
+initial calibration window:
+- get initial smaple grid and landing grid state
+- get x-beam shift
+- home stage
 
 thinning tilts: 
 13 deg
