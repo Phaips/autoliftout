@@ -25,12 +25,17 @@ pick up lamella from side:
 - for better efficiency, change the jcut to be done from the 'bottom' side. this means we only need to cut the large trench on the bottom side.  can go back to asymmetric trenches, which save a lot of milling time.
 - stage requires re-homing after a period of time
 - change weld platinum to milling weld TODO: test
-
+- automatic eucntric correction
 
 initial calibration window:
 - get initial smaple grid and landing grid state
 - get x-beam shift
 - home stage
+- take images at different currents?
+
+
+
+
 
 thinning tilts: 
 13 deg

@@ -610,23 +610,7 @@ def reset_needle(
     settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
-    det = fibsem_ui_windows.detect_features(
-        microscope=microscope,
-        settings=settings,
-        ref_image=ref_ib,
-        features=[
-            DetectionFeature(DetectionType.NeedleTip, None),
-            DetectionFeature(DetectionType.ImageCentre, None),
-        ],
-        validate=True,
-    )
-
-    movement.move_needle_relative_with_corrected_movement(
-        microscope=microscope,
-        dx=det.distance_metres.x,
-        dy=-det.distance_metres.y,
-        beam_type=BeamType.ION,
-    )
+    calibration.align_needle_to_eucentric_position(microscope, settings, lamella, validate=False)
 
     # TODO: validate this movement
 

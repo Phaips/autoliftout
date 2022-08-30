@@ -18,7 +18,7 @@ flatten_landing:
   cleaning_cross_section: 1.0
   depth: 1.0e-05
   height: 2.5e-05
-  milling_current: 7.6e-09
+  milling_current: 2.8e-08
   scan_direction: LeftToRight
   width: 2.0e-06
 initial_position:
@@ -50,14 +50,14 @@ jcut:
   width: 2.0e-05
 lamella:
   cleaning_cross_section: 0.0
-  lamella_height: 1.0e-05
+  lamella_height: 1.4999999999999999e-05
   lamella_width: 2.5e-05
   milling_current: 2.8e-08
   milling_depth: 1.0e-05
   offset: 2.0e-06
   protocol_stages:
   - cleaning_cross_section: 0.0
-    lamella_height: 1.0e-05
+    lamella_height: 1.4999999999999999e-05
     lamella_width: 2.5e-05
     milling_current: 2.8e-08
     milling_depth: 1.0e-05
@@ -69,14 +69,14 @@ lamella:
     size_ratio: 1.0
     trench_height: 1.0e-05
   - cleaning_cross_section: 0.0
-    lamella_height: 1.0e-05
+    lamella_height: 1.4999999999999999e-05
     lamella_width: 2.5e-05
     milling_current: 7.6e-09
     milling_depth: 1.0e-05
     offset: 0.0
     rotation: 0.0
     scan_direction: TopToBottom
-    side_offset: 8.e-6
+    side_offset: 8.0e-06
     side_width: 5.0e-07
     size_ratio: 1.0
     trench_height: 2.4999999999999998e-06
@@ -97,7 +97,7 @@ platinum:
   whole_grid:
     hfw: 3.0e-05
     length: 7.0e-06
-    time: 20.0
+    time: 30.0
 polish_lamella:
   dwell_time: 2.0e-07
   hfw: 5.0e-05

@@ -37,6 +37,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.settings = settings
         self.milling_pattern = milling_pattern_type
 
+        # TODO: selectable milling pattern drop down?
+
         self.wp = None  # plotting widget
         self.USER_UPDATE = True
 

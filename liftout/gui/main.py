@@ -18,9 +18,6 @@ from PyQt5.QtWidgets import QGroupBox, QInputDialog
 
 matplotlib.use("Agg")
 
-# TODO:
-# add utils for movement, needle calibration, 
-
 class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self):
         super(AutoLiftoutMainWindow, self).__init__()
