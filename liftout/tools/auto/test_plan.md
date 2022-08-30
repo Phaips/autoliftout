@@ -34,9 +34,6 @@ initial calibration window:
 - take images at different currents?
 
 
-
-
-
 thinning tilts: 
 13 deg
 #########################################################

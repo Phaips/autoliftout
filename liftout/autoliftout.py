@@ -447,7 +447,6 @@ def land_lamella(
         det = fibsem_ui_windows.detect_features(
             microscope=microscope,
             settings=settings,
-            lamella=lamella,
             ref_image=ref_ib,
             features=[
                 DetectionFeature(DetectionType.LamellaEdge, None),
@@ -610,7 +609,7 @@ def reset_needle(
     settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
-    calibration.align_needle_to_eucentric_position(microscope, settings, lamella, validate=False)
+    calibration.align_needle_to_eucentric_position(microscope, settings, lamella.base_path, validate=False)
 
     # TODO: validate this movement
 
@@ -625,7 +624,7 @@ def reset_needle(
     #################################################################################################
 
     # reset the "eucentric position" for the needle, centre needle in both views
-    calibration.align_needle_to_eucentric_position(microscope, settings, lamella, validate=True)
+    calibration.align_needle_to_eucentric_position(microscope, settings, lamella.base_path, validate=True)
 
     # take reference images
     settings.image.label = f"ref_reset"
