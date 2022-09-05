@@ -66,6 +66,42 @@ class Sample:
         State: {self.state}
         Lamella: {len(self.positions)}
         """
+    
+    def __to_dataframe__(self) -> pd.DataFrame:
+
+        lamella_list = []
+        lamella: Lamella
+        for lamella in self.positions.values():
+
+            # lamella
+            lamella_dict = {
+                "number": lamella._number,
+                "petname": lamella._petname,
+                # "path": lamella.path,
+                "lamella.x": lamella.lamella_state.absolute_position.x,
+                "lamella.y": lamella.lamella_state.absolute_position.y,
+                "lamella.z": lamella.lamella_state.absolute_position.z,
+                "lamella.r": lamella.lamella_state.absolute_position.r,
+                "lamella.t": lamella.lamella_state.absolute_position.t,
+                "lamella.coordinate_system": lamella.lamella_state.absolute_position.coordinate_system,
+                "landing.x": lamella.landing_state.absolute_position.x,
+                "landing.y": lamella.landing_state.absolute_position.y,
+                "landing.z": lamella.landing_state.absolute_position.z,
+                "landing.r": lamella.landing_state.absolute_position.r,
+                "landing.t": lamella.landing_state.absolute_position.t,
+                "landing.coordinate_system": lamella.landing_state.absolute_position.coordinate_system,
+                "landing_selected": lamella.landing_selected,
+                "current_stage": lamella.current_state.stage.name,
+                "last_timestamp": lamella.current_state.microscope_state.timestamp,
+                "history: ": len(lamella.history),
+            }
+
+            lamella_list.append(lamella_dict)
+
+        df = pd.DataFrame.from_dict(lamella_list)
+
+        return df
+
 
 
 def load_sample(fname: Path) -> Sample:
@@ -183,16 +219,16 @@ class Lamella:
 
         return lamella
 
-# convert to  method
-def get_reference_images(lamella: Lamella, label: str) -> ReferenceImages:
-    reference_images = ReferenceImages(
-        low_res_eb=lamella.load_reference_image(f"{label}_low_res_eb"),
-        high_res_eb=lamella.load_reference_image(f"{label}_high_res_eb"),
-        low_res_ib=lamella.load_reference_image(f"{label}_low_res_ib"),
-        high_res_ib=lamella.load_reference_image(f"{label}_high_res_ib"),
-    )
+    # convert to method
+    def get_reference_images(self, label: str) -> ReferenceImages:
+        reference_images = ReferenceImages(
+            low_res_eb=self.load_reference_image(f"{label}_low_res_eb"),
+            high_res_eb=self.load_reference_image(f"{label}_high_res_eb"),
+            low_res_ib=self.load_reference_image(f"{label}_low_res_ib"),
+            high_res_ib=self.load_reference_image(f"{label}_high_res_ib"),
+        )
 
-    return reference_images
+        return reference_images
 
 
 
@@ -275,37 +311,4 @@ def load_experiment(path: Path) -> Sample:
     return load_sample(fname=sample_fname)
 
 
-def sample_to_dataframe(sample: Sample) -> pd.DataFrame:
 
-    lamella_list = []
-    lamella: Lamella
-    for lamella in sample.positions.values():
-
-        # lamella
-        lamella_dict = {
-            "number": lamella._number,
-            "petname": lamella._petname,
-            # "path": lamella.path,
-            "lamella.x": lamella.lamella_state.absolute_position.x,
-            "lamella.y": lamella.lamella_state.absolute_position.y,
-            "lamella.z": lamella.lamella_state.absolute_position.z,
-            "lamella.r": lamella.lamella_state.absolute_position.r,
-            "lamella.t": lamella.lamella_state.absolute_position.t,
-            "lamella.coordinate_system": lamella.lamella_state.absolute_position.coordinate_system,
-            "landing.x": lamella.landing_state.absolute_position.x,
-            "landing.y": lamella.landing_state.absolute_position.y,
-            "landing.z": lamella.landing_state.absolute_position.z,
-            "landing.r": lamella.landing_state.absolute_position.r,
-            "landing.t": lamella.landing_state.absolute_position.t,
-            "landing.coordinate_system": lamella.landing_state.absolute_position.coordinate_system,
-            "landing_selected": lamella.landing_selected,
-            "current_stage": lamella.current_state.stage.name,
-            "last_timestamp": lamella.current_state.microscope_state.timestamp,
-            "history: ": len(lamella.history),
-        }
-
-        lamella_list.append(lamella_dict)
-
-    df = pd.DataFrame.from_dict(lamella_list)
-
-    return df

@@ -24,8 +24,7 @@ from fibsem.ui import windows as fibsem_ui_windows
 from liftout import actions, patterning
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
-from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample,
-                            get_reference_images)
+from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample)
 from liftout.structures import ReferenceHFW
 
 # autoliftout workflow functions
@@ -43,6 +42,7 @@ def mill_lamella_trench(
 
     # Take an ion beam image at the *milling current*
     settings.image.hfw = ReferenceHFW.Super.value
+    settings.image.save = False
 
     ######
 
@@ -74,6 +74,7 @@ def mill_lamella_jcut(
 
     # bookkeeping
     settings.image.save_path = lamella.path
+    settings.image.save = False
 
     # reference images of milled trenches
     hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
@@ -197,7 +198,7 @@ def liftout_lamella(
     # get ready to do liftout by moving to liftout angle (flat to eb)
     actions.move_to_liftout_angle(microscope, settings)
 
-    reference_images = get_reference_images(lamella, "ref_jcut")
+    reference_images = lamella.get_reference_images("ref_jcut")
 
     settings.image.beam_type = BeamType.ELECTRON
     settings.image.save = False
@@ -667,7 +668,7 @@ def thin_lamella(
     actions.move_to_thinning_angle(microscope=microscope, protocol=settings.protocol)
 
     # load the reference images
-    reference_images = get_reference_images(lamella, label="ref_landing_lamella")
+    reference_images = lamella.get_reference_images(label="ref_landing_lamella")
 
     # TODO: test
     alignment.correct_stage_drift(
@@ -741,7 +742,7 @@ def polish_lamella(
     settings.image.save_path = lamella.path
 
     # # restore state from thinning stage
-    reference_images = get_reference_images(lamella, "ref_thin_lamella")
+    reference_images = lamella.get_reference_images(label="ref_thin_lamella")
 
     # TODO: Test, probs only needs 1 step
     # alignment.correct_stage_drift(

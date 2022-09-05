@@ -8,6 +8,7 @@ from torchvision import transforms
 import fibsem.detection.utils as det_utils
 from pathlib import Path
 from liftout.model import models
+import os
 
 class DetectionModel:
     """Detection Model Class 
