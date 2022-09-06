@@ -10,7 +10,7 @@ from fibsem import utils as fibsem_utils
 from fibsem.constants import METRE_TO_MILLIMETRE
 from liftout.config import config
 from liftout.patterning import MillingPattern
-from liftout.sample import Lamella, Sample, create_experiment, load_sample
+from liftout.sample import Lamella, Sample, create_experiment
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
@@ -178,7 +178,6 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
 def play_audio_alert(freq: int = 1000, duration: int = 500) -> None:
     winsound.Beep(freq, duration)
 
-
 def load_configuration_from_ui(parent=None) -> dict:
 
     # load config
@@ -200,8 +199,6 @@ def load_configuration_from_ui(parent=None) -> dict:
     protocol = fibsem_utils.load_protocol(config_filename)
     
     return protocol
-
-
 
 def setup_experiment_sample_ui(parent_ui):
     """Setup the experiment sample by either creating or loading a sample"""
@@ -235,7 +232,6 @@ def setup_experiment_sample_ui(parent_ui):
 
     return sample
 
-
 def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
 
     # load_experiment
@@ -248,10 +244,9 @@ def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
         experiment_path = default_experiment_path
 
     sample_fname = os.path.join(experiment_path, "sample.yaml")
-    sample = load_sample(sample_fname)
+    sample = Sample.load(sample_fname)
 
     return sample
-
 
 def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
     # create_new_experiment
@@ -268,9 +263,6 @@ def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
     sample = create_experiment(experiment_name=experiment_name, path=None)
 
     return sample
-
-
-
 
 def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: list, parent_ui=None):
 

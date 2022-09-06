@@ -103,28 +103,28 @@ class Sample:
         return df
 
 
+    @staticmethod
+    def load(fname: Path) -> 'Sample':
+        """Load a sample from disk."""
 
-def load_sample(fname: Path) -> Sample:
-    """Load a sample from disk."""
+        # read and open existing yaml file
+        if os.path.exists(fname):
+            with open(fname, "r") as f:
+                sample_dict = yaml.safe_load(f)
+        else:
+            raise FileNotFoundError(f"No file with name {fname} found.")
 
-    # read and open existing yaml file
-    if os.path.exists(fname):
-        with open(fname, "r") as f:
-            sample_dict = yaml.safe_load(f)
-    else:
-        raise FileNotFoundError(f"No file with name {fname} found.")
+        # create sample
+        path = os.path.dirname(sample_dict["path"])
+        name = sample_dict["name"]
+        sample = Sample(path=path, name=name)
 
-    # create sample
-    path = os.path.dirname(sample_dict["path"])
-    name = sample_dict["name"]
-    sample = Sample(path=path, name=name)
+        # load lamella from dict
+        for lamella_dict in sample_dict["positions"]:
+            lamella = Lamella.__from_dict__(path=sample.path, lamella_dict=lamella_dict)
+            sample.positions[lamella._number] = lamella
 
-    # load lamella from dict
-    for lamella_dict in sample_dict["positions"]:
-        lamella = Lamella.__from_dict__(path=sample.path, lamella_dict=lamella_dict)
-        sample.positions[lamella._number] = lamella
-
-    return sample
+        return sample
 
 # TODO: move to fibsem?
 class Lamella:
@@ -308,7 +308,7 @@ def load_experiment(path: Path) -> Sample:
     if not os.path.exists(sample_fname):
         raise ValueError(f"No sample file found for this path: {path}")
 
-    return load_sample(fname=sample_fname)
+    return Sample.load(fname=sample_fname)
 
 
 
