@@ -181,7 +181,7 @@ def full_setup():
     """Quick setup for microscope, settings,  image_settings, sample and lamella"""
     import os
 
-    from liftout.sample import Lamella, Sample
+    from liftout.structures import Lamella, Sample
 
     microscope, settings = quick_setup()
 

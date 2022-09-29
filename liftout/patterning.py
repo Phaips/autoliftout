@@ -63,7 +63,7 @@ def mill_trench_patterns(
 
     return [lower_pattern, upper_pattern]
 
-# "horseshoe" terminology https://www.researchgate.net/publication/351737991_A_Modular_Platform_for_Streamlining_Automated_Cryo-FIB_Workflows#pf14
+# ref: "horseshoe" terminology https://www.researchgate.net/publication/351737991_A_Modular_Platform_for_Streamlining_Automated_Cryo-FIB_Workflows#pf14
 def mill_horseshoe_pattern(
     microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()
 ) -> list[CleaningCrossSectionPattern]:

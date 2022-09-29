@@ -10,7 +10,7 @@ from fibsem import utils as fibsem_utils
 from fibsem.constants import METRE_TO_MILLIMETRE
 from liftout.config import config
 from liftout.patterning import MillingPattern
-from liftout.sample import Lamella, Sample, create_experiment
+from liftout.structures import Lamella, Sample, create_experiment
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap

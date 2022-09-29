@@ -24,7 +24,7 @@ from fibsem.ui import windows as fibsem_ui_windows
 from liftout import actions, patterning
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
-from liftout.sample import (AutoLiftoutStage, Lamella, ReferenceImages, Sample)
+from liftout.structures import (AutoLiftoutStage, Lamella, ReferenceImages, Sample)
 from liftout.structures import ReferenceHFW
 
 # autoliftout workflow functions
@@ -1286,6 +1286,8 @@ def run_setup_autoliftout(
 
     return sample
 
+
+###TODO: MOVE TO FIBSEM 
 
 def validate_needle_insertion(
     microscope: SdbMicroscopeClient, needle_stage_height_limit: float = 3.7e-3

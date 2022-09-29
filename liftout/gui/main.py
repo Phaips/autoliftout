@@ -12,7 +12,7 @@ from liftout import autoliftout, utils
 from liftout.config import config
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import main as gui_main
-from liftout.sample import AutoLiftoutStage, Lamella, Sample
+from liftout.structures import AutoLiftoutStage, Lamella, Sample
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QGroupBox, QInputDialog
 

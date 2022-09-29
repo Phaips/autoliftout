@@ -3,9 +3,9 @@ import os
 import liftout
 from liftout.patterning import MillingPattern
 
-base_path = os.path.dirname(liftout.__file__)
-config_path = os.path.join(base_path, "config")
-protocol_path = os.path.join(base_path, "protocol", "protocol.yaml")
+BASE_PATH = os.path.dirname(liftout.__file__)
+config_path = os.path.join(BASE_PATH, "config")
+protocol_path = os.path.join(BASE_PATH, "protocol", "protocol.yaml")
 
 
 # MILLING UI

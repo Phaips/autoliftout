@@ -159,3 +159,12 @@ weld:
   rotation: 0.0
   scan_direction: LeftToRight
   width: 3.0e-06
+options:
+  auto: # auto, or manual
+    trench: False
+    jcut: False
+    liftout: False
+    landing: False
+    reset: False
+    thin: False
+    polish: False
