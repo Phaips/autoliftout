@@ -1,3 +1,4 @@
+name: autoliftout
 cut:
   cleaning_cross_section: 0.0
   depth: 2.5e-05
@@ -160,7 +161,7 @@ weld:
   scan_direction: LeftToRight
   width: 3.0e-06
 options:
-  auto: # auto, or manual
+  auto: # auto, or manual mode
     trench: False
     jcut: False
     liftout: False
@@ -168,3 +169,6 @@ options:
     reset: False
     thin: False
     polish: False
+  batch_mode: True
+  confirm_advance: True
+  joining_method: None

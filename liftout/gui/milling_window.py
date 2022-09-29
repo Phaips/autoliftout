@@ -27,6 +27,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         milling_pattern_type: patterning.MillingPattern,
         point: Point = Point(),
         parent = None,
+        auto_continue: bool = False
     ):
         super(GUIMillingWindow, self).__init__(parent=parent)
         self.setupUi(self)
@@ -111,9 +112,8 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
         self.USER_UPDATED_PROTOCOL = False # flag to determine if user has updated the protocol
 
-
-        self.AUTO_CONTINUE = False
-        if self.AUTO_CONTINUE:
+        self.auto_continue = auto_continue
+        if self.auto_continue:
             self.run_milling_button_pressed() # automatically continue
 
     def setup_milling_image(self):
@@ -402,6 +402,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
         self.finalise_milling()
 
     def finalise_milling(self):
+
+        if self.auto_continue:
+            self.close()
+
         # ask user if the milling succeeded
         response = fibsem_ui.message_box_ui(
             title="Milling Confirmation", text="Do you want to redo milling?"
@@ -440,7 +444,10 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
 
 def main():
 
-    microscope, settings = utils.quick_setup()
+    microscope, settings = fibsem_utils.setup_session(
+            config_path = config.config_path,
+            protocol_path = config.protocol_path
+    )
 
     import os
 
@@ -455,8 +462,9 @@ def main():
     autoliftout.open_milling_window(
         microscope=microscope,
         settings=settings,
-        milling_pattern=MillingPattern.Weld,
-        point=Point(0, 0)
+        milling_pattern=MillingPattern.Trench,
+        point=Point(0, 0),
+        auto_continue = True
     )
     sys.exit(app.exec_())
 

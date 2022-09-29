@@ -41,7 +41,9 @@ class AutoLiftoutOptions:
         )
         return options
 
-
+class AutoLiftoutMode(Enum):
+    Manual = 1
+    Auto = 2 
 
 class AutoLiftoutStage(Enum):
     Initialisation = -1
@@ -55,8 +57,7 @@ class AutoLiftoutStage(Enum):
     Polishing = 7
     Finished = 8
     Failure = 99
-
-
+    
 class Sample:
     def __init__(self, path: Path = None, name: str = "default") -> None:
 

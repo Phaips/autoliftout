@@ -323,12 +323,12 @@ def create_milling_patterns(
         )
 
     if milling_pattern_type == MillingPattern.Thin:
-        patterns = mill_trench_patterns(
+        patterns = milling._draw_trench_patterns(
             microscope=microscope, protocol=milling_protocol, point=point
         )
 
     if milling_pattern_type == MillingPattern.Polish:
-        patterns = mill_trench_patterns(
+        patterns = milling._draw_trench_patterns(
             microscope=microscope, protocol=milling_protocol, point=point
         )
 

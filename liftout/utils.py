@@ -9,7 +9,7 @@ from fibsem.utils import configure_logging
 def make_logging_directory(path: Path = None, name="run"):
     if path is None:
         from liftout.config import config
-        path = os.path.join(config.base_path, "log")
+        path = os.path.join(config.BASE_PATH, "log")
     directory = os.path.join(path, name)
     os.makedirs(directory, exist_ok=True)
     return directory

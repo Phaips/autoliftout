@@ -188,7 +188,7 @@ def load_configuration_from_ui(parent=None) -> dict:
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent,
         "Load Configuration",
-        config.base_path,
+        config.BASE_PATH,
         "Yaml Files (*.yml, *.yaml)",
         options=options,
     )
@@ -203,7 +203,7 @@ def load_configuration_from_ui(parent=None) -> dict:
 def setup_experiment_sample_ui(parent_ui):
     """Setup the experiment sample by either creating or loading a sample"""
 
-    default_experiment_path = os.path.join(config.base_path, "log")
+    default_experiment_path = os.path.join(config.BASE_PATH, "log")
     default_experiment_name = "default_experiment"
 
     response = fibsem_ui.message_box_ui(
@@ -270,7 +270,7 @@ def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: 
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent_ui,
         "Select Protocol File",
-        config.base_path,
+        config.BASE_PATH,
         "Yaml Files (*.yml, *.yaml)",
         options=options,
     )

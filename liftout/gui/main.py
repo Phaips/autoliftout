@@ -27,6 +27,7 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             config_path = config.config_path,
             protocol_path = config.protocol_path
         )
+        # NB cant use setup session, because log dir cant be loaded until later...very silly
 
         # setup ui
         self.setupUi(self)

@@ -25,7 +25,7 @@ from liftout import actions, patterning
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
 from liftout.structures import (AutoLiftoutStage, Lamella, ReferenceImages, Sample)
-from liftout.structures import ReferenceHFW
+from liftout.structures import ReferenceHFW, AutoLiftoutMode
 
 # autoliftout workflow functions
 
@@ -35,6 +35,7 @@ def mill_lamella_trench(
 ):
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["trench"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
 
     # move to lamella position
@@ -52,6 +53,7 @@ def mill_lamella_trench(
         settings=settings,
         milling_pattern=MillingPattern.Trench,
         point=Point(0, 0),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # discharge check
@@ -73,6 +75,7 @@ def mill_lamella_jcut(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["jcut"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -108,12 +111,13 @@ def mill_lamella_jcut(
     )
 
     # confirm
-    fibsem_ui_windows.ask_user_movement(
-        microscope,
-        settings,
-        msg_type="eucentric",
-        msg="Confirm lamella is centred in Ion Beam",
-    )
+    if mode is AutoLiftoutMode.Manual:
+        fibsem_ui_windows.ask_user_movement(
+            microscope,
+            settings,
+            msg_type="eucentric",
+            msg="Confirm lamella is centred in Ion Beam",
+        )
 
     # take reference, pre-tilting
     settings.image.beam_type = BeamType.ION
@@ -147,6 +151,7 @@ def mill_lamella_jcut(
         settings=settings,
         milling_pattern=MillingPattern.JCut,
         point=Point(0, 0),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # take reference images of the jcut (tilted)
@@ -189,6 +194,7 @@ def liftout_lamella(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["liftout"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
 
     # convenience
@@ -208,12 +214,13 @@ def liftout_lamella(
     )
 
     # confirm
-    fibsem_ui_windows.ask_user_movement(
-        microscope,
-        settings,
-        msg_type="eucentric",
-        msg="Confirm lamella is centred in Ion Beam",
-    )
+    if mode is AutoLiftoutMode.Manual:
+        fibsem_ui_windows.ask_user_movement(
+            microscope,
+            settings,
+            msg_type="eucentric",
+            msg="Confirm lamella is centred in Ion Beam",
+        )
 
     # reference images for needle location
     settings.image.save = True
@@ -222,25 +229,29 @@ def liftout_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # land needle on lamella
-    lamella = land_needle_on_milled_lamella(microscope, settings, lamella)
+    lamella = land_needle_on_milled_lamella(microscope, settings, lamella, mode=mode)
 
-    # mill weld
-    open_milling_window(
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=MillingPattern.Weld,
-        point=Point(),
-    )
+    # TODO: joining options: none, weld, platinum
+    if settings.protocol["options"]["joining_method"] == "weld":
+        # mill weld
+        open_milling_window(
+            microscope=microscope,
+            settings=settings,
+            milling_pattern=MillingPattern.Weld,
+            point=Point(),
+            auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        )
+    if settings.protocol["options"]["joining_method"] == "platinum":
+        # sputter platinum
+        fibsem_utils.sputter_platinum(
+            microscope,
+            settings.protocol["platinum"],
+            whole_grid=False,
+            default_application_file=settings.system.application_file,
+        )
 
-    # sputter platinum
-    # fibsem_utils.sputter_platinum(
-    #     microscope,
-    #     settings.protocol["platinum"],
-    #     whole_grid=False,
-    #     default_application_file=settings.system.application_file,
-    # )
     logging.info(
-        f"{lamella.current_state.stage.name}: lamella to needle welding complete."
+        f"{lamella.current_state.stage.name}: lamella to needle joining complete."
     )
 
     settings.image.save = True
@@ -256,6 +267,7 @@ def liftout_lamella(
         point=Point(
             x=settings.protocol["lamella"]["lamella_width"] / 2, y=0
         ),  # half the lamella width
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # take reference images
@@ -291,7 +303,8 @@ def liftout_lamella(
 
 
 def land_needle_on_milled_lamella(
-    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella, 
+    mode: AutoLiftoutMode = AutoLiftoutMode.Manual
 ) -> Lamella:
 
     # bookkeeping
@@ -313,6 +326,15 @@ def land_needle_on_milled_lamella(
     settings.image.save = True
     settings.image.label = f"needle_liftout_start_position"
     acquire.take_reference_images(microscope, settings.image)
+
+    if mode is AutoLiftoutMode.Manual:
+        # check with user? # TODO: confusing wording
+        response = fibsem_ui_windows.ask_user_interaction(
+            microscope,
+            msg="""Confirm the needle is in the trench, to the left of the lamella edge. 
+            \nIf not, please move manually then press yes to continue.""",
+            beam_type=BeamType.ION,
+        )
 
     # take image
 
@@ -357,11 +379,14 @@ def land_needle_on_milled_lamella(
             f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}, MEAN BRIGHTNESS: {MEAN_BRIGHTNESS}"
         )
 
-        if brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR:
+        above_brightness_threshold = (brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR)
+
+        if above_brightness_threshold or mode is AutoLiftoutMode.Manual:
+
             # needle has landed...
             logging.info("THRESHOLD REACHED STOPPPING")
 
-            # check with user?
+            # check with user? # TODO: confusing wording
             response = fibsem_ui_windows.ask_user_interaction(
                 microscope,
                 msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
@@ -396,6 +421,7 @@ def land_lamella(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["landing"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -409,9 +435,10 @@ def land_lamella(
     calibration.auto_link_stage(microscope)
 
     # confirm eucentricity
-    fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric"
-    )
+    if mode is AutoLiftoutMode.Manual:
+        fibsem_ui_windows.ask_user_movement(
+            microscope, settings, msg_type="eucentric"
+        )
 
     logging.info(
         f"{lamella.current_state.stage.name}: initial landing calibration complete."
@@ -436,6 +463,7 @@ def land_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # repeat final movement until user confirms landing
+    VALIDATE = (mode is AutoLiftoutMode.Manual)
     response = False
     while response is False:
         #### X-MOVE
@@ -453,7 +481,7 @@ def land_lamella(
                 DetectionFeature(DetectionType.LamellaEdge, None),
                 DetectionFeature(DetectionType.LandingPost, None),
             ],
-            validate=True,
+            validate=VALIDATE,
         )
 
         movement.move_needle_relative_with_corrected_movement(
@@ -472,11 +500,14 @@ def land_lamella(
             microscope=microscope, image_settings=settings.image
         )
 
-        response = fibsem_ui_windows.ask_user_interaction(
-            microscope,
-            msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement",
-            beam_type=BeamType.ION,
-        )
+        if mode is AutoLiftoutMode.Manual:
+            response = fibsem_ui_windows.ask_user_interaction(
+                microscope,
+                msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement",
+                beam_type=BeamType.ION,
+            )
+        else:
+            response = True
 
     #################################################################################################
 
@@ -487,6 +518,7 @@ def land_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Weld,
         point=Point(),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # final reference images
@@ -515,7 +547,7 @@ def land_lamella(
 
     # back out needle from lamella , no cut required?
 
-    for i in range(5):
+    for i in range(10):
 
         # move needle back
         movement.move_needle_relative_with_corrected_movement(
@@ -576,6 +608,7 @@ def reset_needle(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["reset"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
 
     # convienence
@@ -620,6 +653,7 @@ def reset_needle(
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
         point=Point(),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     #################################################################################################
@@ -654,6 +688,7 @@ def thin_lamella(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["thin"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
 
     # move to the initial landing coordinates
@@ -716,6 +751,7 @@ def thin_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Thin,
         point=Point(),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # # take reference images
@@ -739,6 +775,7 @@ def polish_lamella(
 ) -> Lamella:
 
     # bookkeeping
+    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["polish"]) else AutoLiftoutMode.Manual
     settings.image.save_path = lamella.path
 
     # # restore state from thinning stage
@@ -803,6 +840,7 @@ def polish_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Polish,
         point=Point(),
+        auto_continue=bool(mode is AutoLiftoutMode.Auto)
     )
 
     # take reference images (ultra, super, high)
@@ -827,8 +865,8 @@ def run_autoliftout_workflow(
     parent_ui=None,
 ) -> Sample:
 
-    HIGH_THROUGHPUT = True
-    CONFIRM_WORKFLOW_ADVANCE = True
+    BATCH_MODE = bool(settings.protocol["options"]["batch_mode"])
+    CONFIRM_WORKFLOW_ADVANCE = bool(settings.protocol["options"]["confirm_advance"])
 
     # autoliftout_workflow
     autoliftout_stages = {
@@ -845,10 +883,9 @@ def run_autoliftout_workflow(
     logging.info(f"AutoLiftout Workflow started for {len(sample.positions)} lamellae.")
     settings.image.save = False
     settings.image.label = f"{fibsem_utils.current_timestamp()}"
-        
 
-    # high throughput workflow
-    if HIGH_THROUGHPUT:
+    # batch mode workflow
+    if BATCH_MODE:
         for terminal_stage in [
             AutoLiftoutStage.MillTrench,
             AutoLiftoutStage.MillJCut,
@@ -1343,6 +1380,7 @@ def open_milling_window(
     milling_pattern: patterning.MillingPattern,
     point: Point = Point(),
     parent=None,
+    auto_continue: bool = False
 ):
     """Open the Milling Window ready for milling
 
@@ -1357,7 +1395,10 @@ def open_milling_window(
         milling_pattern_type=milling_pattern,
         point = point,
         parent=parent,
+        auto_continue = auto_continue
     )
-
-    milling_window.show()
-    milling_window.exec_()
+    
+    # show and pause, if not auto continuing
+    if not auto_continue:
+        milling_window.show()
+        milling_window.exec_()
