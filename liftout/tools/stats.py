@@ -1,24 +1,17 @@
-from audioop import avg
-import streamlit as st
-
-
-
-from liftout.structures import AutoLiftoutState, Lamella, Sample, load_experiment
-from autoscript_sdb_microscope_client.structures import AdornedImage
-
-import pandas as pd
-from copy import deepcopy
-
-
-import liftout
 import glob
 import os
+from copy import deepcopy
 
-
-from liftout.tools.data import calculate_statistics_dataframe, AutoLiftoutStatistics, create_history_dataframe
+import liftout
+import pandas as pd
 import plotly.express as px
-
-
+import streamlit as st
+from autoscript_sdb_microscope_client.structures import AdornedImage
+from liftout.structures import (AutoLiftoutState, Lamella, Sample,
+                                load_experiment)
+from liftout.tools.data import (AutoLiftoutStatistics,
+                                calculate_statistics_dataframe,
+                                create_history_dataframe)
 
 BASE_PATH = os.path.dirname(liftout.__file__)
 LOG_PATH = os.path.join(BASE_PATH, "log")

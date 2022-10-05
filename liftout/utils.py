@@ -44,7 +44,6 @@ def take_reference_images_and_plot(microscope, image_settings: ImageSettings):
 
     eb_image, ib_image = acquire.take_reference_images(microscope, image_settings)
     plot_two_images(eb_image, ib_image)
-    pprint(f"Stage Position: {microscope.specimen.stage.current_position}")
 
     return eb_image, ib_image
 
@@ -154,6 +153,7 @@ def _validate_model_weights_file(filename):
 
 
 ### SETUP
+# TODO: remove in favour of setup_session
 def quick_setup():
     """Quick setup for microscope, settings, and image_settings"""
 

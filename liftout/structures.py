@@ -319,7 +319,7 @@ class AutoLiftoutState(FibsemState):
 def create_experiment(experiment_name: str, path: Path = None):
 
     # create unique experiment name
-    exp_name = f"{experiment_name}_{fibsem_utils.current_timestamp()}"
+    exp_name = f"{experiment_name}-{fibsem_utils.current_timestamp()}"
 
     # create sample data struture
     sample = Sample(path=path, name=exp_name)
