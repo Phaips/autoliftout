@@ -43,12 +43,13 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
 
             if "click" in func:
                 split_msg = msg.split(" ")
+                click_type = "Movement" # TODO: add milling support
                 if len(split_msg) == 7:
                     beam_type = split_msg[2].split(".")[-1]
                     pos_x = float(split_msg[5].replace(",", ""))
                     pos_y = float(split_msg[6].replace(")", ""))
 
-                    click_d = {"beam_type": beam_type, "x": pos_x, "y": pos_y}
+                    click_d = {"beam_type": beam_type, "type": click_type, "x": pos_x, "y": pos_y}
                     click_info.append(deepcopy(click_d))
 
             if "move_stage" in func:
