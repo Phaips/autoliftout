@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from copy import deepcopy
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
@@ -967,7 +968,7 @@ def end_of_stage_update(
     lamella.current_state.end_timestamp = datetime.timestamp(datetime.now())
 
     # write history
-    lamella.history.append(lamella.current_state)
+    lamella.history.append(deepcopy(lamella.current_state))
 
     # update and save sample
     sample = update_sample_lamella_data(sample, lamella)
@@ -1175,7 +1176,7 @@ def select_landing_positions(
 
 def update_sample_lamella_data(sample: Sample, lamella: Lamella) -> Sample:
 
-    sample.positions[lamella._number] = lamella
+    sample.positions[lamella._number] = deepcopy(lamella)
     sample.save()
     return sample
 
