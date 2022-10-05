@@ -103,9 +103,11 @@ class Sample:
 
             # lamella
             lamella_dict = {
+                "experiment_name": self.name,
+                "experiment_path": self.path,
                 "number": lamella._number,
                 "petname": lamella._petname,
-                # "path": lamella.path,
+                "path": lamella.path,
                 "lamella.x": lamella.lamella_state.absolute_position.x,
                 "lamella.y": lamella.lamella_state.absolute_position.y,
                 "lamella.z": lamella.lamella_state.absolute_position.z,
