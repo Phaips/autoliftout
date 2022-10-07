@@ -894,6 +894,9 @@ def run_autoliftout_workflow(
             lamella: Lamella
             for lamella in sample.positions.values():
 
+                if lamella.is_failure:
+                    continue # skip failures
+
                 while lamella.current_state.stage.value < terminal_stage.value:
 
                     next_stage = AutoLiftoutStage(lamella.current_state.stage.value + 1)
@@ -918,8 +921,11 @@ def run_autoliftout_workflow(
     lamella: Lamella
     for lamella in sample.positions.values():
 
-        while lamella.current_state.stage.value < AutoLiftoutStage.Reset.value:
+        if lamella.is_failure:
+            continue # skip failures
 
+        while lamella.current_state.stage.value < AutoLiftoutStage.Reset.value:
+            
             next_stage = AutoLiftoutStage(lamella.current_state.stage.value + 1)
             if CONFIRM_WORKFLOW_ADVANCE:
                 msg = (

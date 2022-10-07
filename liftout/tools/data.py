@@ -31,46 +31,48 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
 
             if line == "":
                 continue
-            msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
-            func = line.split("—")[-2].strip()
+            try:
+                msg = line.split("—")[-1].strip()  # should just be the message # TODO: need to check the delimeter character...
+                func = line.split("—")[-2].strip()
 
-            if "gamma" in func:
-                beam_type, diff, gamma = msg.split("|")[-3:]
-                beam_type = beam_type.strip()
-                if beam_type in ["Electron", "Ion", "Photon"]:
-                    gamma_d = {"beam_type": beam_type, "diff": float(diff), "gamma": float(gamma)}
-                    gamma_info.append(deepcopy(gamma_d))
+                if "gamma" in func:
+                    beam_type, diff, gamma = msg.split("|")[-3:]
+                    beam_type = beam_type.strip()
+                    if beam_type in ["Electron", "Ion", "Photon"]:
+                        gamma_d = {"beam_type": beam_type, "diff": float(diff), "gamma": float(gamma)}
+                        gamma_info.append(deepcopy(gamma_d))
 
-            if "click" in func:
-                split_msg = msg.split(" ")
-                click_type = "Movement" # TODO: add milling support
-                if len(split_msg) == 7:
-                    beam_type = split_msg[2].split(".")[-1]
-                    pos_x = float(split_msg[5].replace(",", ""))
-                    pos_y = float(split_msg[6].replace(")", ""))
+                if "click" in func:
+                    split_msg = msg.split(" ")
+                    click_type = "Movement" # TODO: add milling support
+                    if len(split_msg) == 7:
+                        beam_type = split_msg[2].split(".")[-1]
+                        pos_x = float(split_msg[5].replace(",", ""))
+                        pos_y = float(split_msg[6].replace(")", ""))
 
-                    click_d = {"beam_type": beam_type, "type": click_type, "x": pos_x, "y": pos_y}
-                    click_info.append(deepcopy(click_d))
+                        click_d = {"beam_type": beam_type, "type": click_type, "x": pos_x, "y": pos_y}
+                        click_info.append(deepcopy(click_d))
 
-            if "move_stage" in func:
-                if "move_stage_relative" in func:
-                    # TODO: add beam here
-                    beam_type = "ION"
-                    mode = "Stable"
-                    split_msg = [char.split("=") for char in msg.split(" ")[-3:]]
-                    x, y, z = [m[1].replace(",", "") for m in split_msg]
-                    z = z.replace(")", "")
-                
-                if "move_stage_eucentric" in func:
-                    # TODO: add beam here
-                    beam_type = "ION"
-                    mode = "Eucentric"
-                    z = msg.split(" ")[-1].split("=")[-1].replace(")", "")
-                    x, y = 0 , 0
+                if "move_stage" in func:
+                    if "move_stage_relative" in func:
+                        # TODO: add beam here
+                        beam_type = "ION"
+                        mode = "Stable"
+                        split_msg = [char.split("=") for char in msg.split(" ")[-3:]]
+                        x, y, z = [m[1].replace(",", "") for m in split_msg]
+                        z = z.replace(")", "")
                     
-                move_d = {"beam_type": beam_type, "mode": mode, "x": float(x), "y": float(y), "z": float(z)}
-                move_info.append(deepcopy(move_d))
-
+                    if "move_stage_eucentric" in func:
+                        # TODO: add beam here
+                        beam_type = "ION"
+                        mode = "Eucentric"
+                        z = msg.split(" ")[-1].split("=")[-1].replace(")", "")
+                        x, y = 0 , 0
+                        
+                    move_d = {"beam_type": beam_type, "mode": mode, "x": float(x), "y": float(y), "z": float(z)}
+                    move_info.append(deepcopy(move_d))
+            except:
+                pass
 
             # gamma
             # clicks

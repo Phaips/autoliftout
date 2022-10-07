@@ -177,6 +177,7 @@ class Lamella:
         self.landing_state: MicroscopeState = MicroscopeState()
 
         self.landing_selected: bool = False
+        self.is_failure: bool = False
 
         self.current_state: AutoLiftoutState = AutoLiftoutState()
 
@@ -202,6 +203,7 @@ class Lamella:
             "base_path": self.base_path,
             "path": self.path,
             "landing_selected": self.landing_selected,
+            "is_failure": self.is_failure,
             "lamella_state": self.lamella_state.__to_dict__(),
             "landing_state": self.landing_state.__to_dict__(),
             "current_state": self.current_state.__to_dict__(),
@@ -238,6 +240,7 @@ class Lamella:
         lamella.lamella_state = MicroscopeState.__from_dict__(lamella_dict["lamella_state"])
         lamella.landing_state = MicroscopeState.__from_dict__(lamella_dict["landing_state"])
         lamella.landing_selected = bool(lamella_dict["landing_selected"])
+        lamella.is_failure = bool(lamella_dict.get("is_failure", False))
 
         # load current state
         lamella.current_state = AutoLiftoutState.__from_dict__(lamella_dict["current_state"])

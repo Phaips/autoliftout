@@ -140,6 +140,7 @@ def plot_crosscorrelation(ref_image, new_image, dx, dy, xcorr):
     plt.show()
 
 
+
 ### VALIDATION
 
 def _validate_model_weights_file(filename):
@@ -194,3 +195,5 @@ def full_setup():
     sample.save()
 
     return microscope, settings, sample, lamella
+
+

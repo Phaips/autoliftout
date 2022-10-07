@@ -17,7 +17,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QGridLayout, QLabel
 
 from fibsem.ui import utils as fibsem_ui
-
+import numpy as np
 
 ###################
 def draw_grid_layout(sample: Sample):
@@ -227,8 +227,6 @@ def setup_experiment_sample_ui(parent_ui):
 
         # update the ui
         parent_ui.label_experiment_name.setText(f"Experiment: {sample.name}")
-        parent_ui.statusBar.showMessage(f"Experiment {sample.name} loaded.")
-        parent_ui.statusBar.repaint()
 
     return sample
 
@@ -299,3 +297,76 @@ def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: 
     logging.info(f"Updated protocol: {config_filename}")
     # TODO: i dont think this updates the current protocol? need to refresh in that case
 
+
+
+
+
+def create_overview_image(sample: Sample) -> np.ndarray:
+
+    import scipy.ndimage as ndi
+
+    PAD_PX = 10
+    BASE_SHAPE = None
+
+    vstack = None
+    for i, lamella in enumerate(sample.positions.values()):
+
+        hstack = None
+        for fname in config.DISPLAY_REFERENCE_FNAMES:
+            
+            path = os.path.join(lamella.path, f"{fname}.tif")
+
+            if os.path.exists(path):
+                image = lamella.load_reference_image(fname).thumbnail
+            else:
+                image = np.zeros(shape=BASE_SHAPE)
+
+            if BASE_SHAPE is None:
+                BASE_SHAPE = image.data.shape
+
+            image = np.pad(image.data, pad_width=PAD_PX)
+
+
+            if hstack is None:
+                hstack = image
+            else:
+                hstack = np.hstack([hstack, image])
+
+
+        hstack = np.pad(hstack, pad_width=PAD_PX)
+        if vstack is None:
+            vstack = hstack
+        else:
+            vstack = np.vstack([vstack, hstack])
+        
+    vstack = vstack.astype(np.uint8)
+    overview_image = ndi.median_filter(vstack, size=3)
+
+    return overview_image
+
+
+
+
+
+def get_completion_stats(sample: Sample) -> tuple:
+    """Get the current completetion stats for lifout"""    
+    from liftout.structures import AutoLiftoutStage
+    n_stages = AutoLiftoutStage.Polishing.value # init and failure dont count
+
+    lam: Lamella
+    active_lam = 0
+    completed_stages = 0
+    for lam in sample.positions.values():
+
+        # dont count failure
+        if lam.is_failure or lam.current_state.stage.value == 99:
+            continue
+        
+        active_lam += 1
+        completed_stages += lam.current_state.stage.value
+
+    total_stages = n_stages * active_lam
+    perc_complete = completed_stages / total_stages
+
+
+    return n_stages, active_lam, completed_stages, total_stages, perc_complete
