@@ -29,7 +29,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.viewer = viewer
 
         # load experiment
-        self.sample: Sample = self.setup_experiment()
+        self.setup_experiment()
 
         # connect to microscope session
         # self.microscope, self.settings = fibsem_utils.setup_session(
@@ -77,12 +77,15 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info("Setup Connections")
 
+        # actions
+        self.actionLoad_Protocol.triggered.connect(self.load_protocol_from_file)
+        self.actionLoad_Experiment.triggered.connect(self.load_experiment_utility)
+
         # buttons
         self.pushButton_setup_autoliftout.clicked.connect(self.run_setup_autoliftout)
         self.pushButton_run_autoliftout.clicked.connect(self.run_autoliftout)
         self.pushButton_run_polishing.clicked.connect(self.run_autoliftout_thinning)
         self.pushButton_test_button.clicked.connect(self.testing_function)
-
 
         # widgets
         if self.sample.positions:
@@ -94,8 +97,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
         logging.info(f"Test button pressed")
 
-
-    def setup_experiment(self) -> Sample:
+    def setup_experiment(self) -> None:
 
         # TODO: add a select folder option for new experiment
         try:
@@ -105,12 +107,23 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             notifications.show_info(message=f"Unable to setup sample: {e}")
             sample = None
 
-        return sample
+        self.sample = sample
 
+    def load_experiment_utility(self):
+
+        self.setup_experiment()
+        self.update_ui()
 
     def update_lamella_ui(self):
 
         logging.info(f"Updating Lamella UI")
+
+        # # update if the sample changes
+        # self.comboBox_lamella_select.clear()
+        # if self.sample.positions:
+        #     self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
+        # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
+
 
         lamella = self.get_current_selected_lamella()
         self.checkBox_lamella_mark_failure.setChecked(lamella.is_failure)
@@ -147,12 +160,9 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 # TODO: run info      
 # TODO: add is_failure to workflow checks  
 
-
-
-
     def update_ui(self):
 
-        
+        self.update_lamella_ui()
 
         # update run info
         # n_stages / n_total
