@@ -23,7 +23,7 @@ st.title("AutoLiftout Companion")
 #################### EXPERIMENT SECTION ####################
 
 # select experiment
-paths = glob.glob(os.path.join(LOG_PATH, "*dm-em*/"))
+paths = glob.glob(os.path.join(LOG_PATH, "*default*10-14*/"))
 EXPERIMENT_PATH = st.selectbox(label="Experiment Path ", options=paths)
 sample = load_experiment(EXPERIMENT_PATH)
 

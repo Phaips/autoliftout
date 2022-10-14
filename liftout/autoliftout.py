@@ -7,10 +7,14 @@ from copy import deepcopy
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
-    CoordinateSystem, ManipulatorCoordinateSystem)
-from autoscript_sdb_microscope_client.structures import (MoveSettings,
-                                                         Rectangle,
-                                                         StagePosition)
+    CoordinateSystem,
+    ManipulatorCoordinateSystem,
+)
+from autoscript_sdb_microscope_client.structures import (
+    MoveSettings,
+    Rectangle,
+    StagePosition,
+)
 from fibsem import acquire, alignment, calibration, movement
 from fibsem import utils as fibsem_utils
 from fibsem import validation
@@ -18,14 +22,13 @@ from fibsem.acquire import BeamType
 from fibsem.detection.detection import DetectionFeature, DetectionType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
-from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
-                               Point)
+from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Point
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout import actions, patterning
 from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
-from liftout.structures import (AutoLiftoutStage, Lamella, ReferenceImages, Sample)
+from liftout.structures import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 from liftout.structures import ReferenceHFW, AutoLiftoutMode
 
 # autoliftout workflow functions
@@ -36,7 +39,11 @@ def mill_lamella_trench(
 ):
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["trench"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["trench"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
 
     # move to lamella position
@@ -54,7 +61,7 @@ def mill_lamella_trench(
         settings=settings,
         milling_pattern=MillingPattern.Trench,
         point=Point(0, 0),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # discharge check
@@ -76,7 +83,11 @@ def mill_lamella_jcut(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["jcut"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["jcut"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -152,7 +163,7 @@ def mill_lamella_jcut(
         settings=settings,
         milling_pattern=MillingPattern.JCut,
         point=Point(0, 0),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # take reference images of the jcut (tilted)
@@ -195,7 +206,11 @@ def liftout_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["liftout"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["liftout"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
 
     # convenience
@@ -240,7 +255,7 @@ def liftout_lamella(
             settings=settings,
             milling_pattern=MillingPattern.Weld,
             point=Point(),
-            auto_continue=bool(mode is AutoLiftoutMode.Auto)
+            auto_continue=bool(mode is AutoLiftoutMode.Auto),
         )
     if settings.protocol["options"]["joining_method"] == "platinum":
         # sputter platinum
@@ -268,7 +283,7 @@ def liftout_lamella(
         point=Point(
             x=settings.protocol["lamella"]["lamella_width"] / 2, y=0
         ),  # half the lamella width
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # take reference images
@@ -304,8 +319,10 @@ def liftout_lamella(
 
 
 def land_needle_on_milled_lamella(
-    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella, 
-    mode: AutoLiftoutMode = AutoLiftoutMode.Manual
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    lamella: Lamella,
+    mode: AutoLiftoutMode = AutoLiftoutMode.Manual,
 ) -> Lamella:
 
     # bookkeeping
@@ -317,7 +334,9 @@ def land_needle_on_milled_lamella(
     )
 
     # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(
+        lamella.base_path
+    )
 
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope, insert_position)
@@ -380,7 +399,7 @@ def land_needle_on_milled_lamella(
             f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}, MEAN BRIGHTNESS: {MEAN_BRIGHTNESS}"
         )
 
-        above_brightness_threshold = (brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR)
+        above_brightness_threshold = brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR
 
         if above_brightness_threshold or mode is AutoLiftoutMode.Manual:
 
@@ -422,7 +441,11 @@ def land_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["landing"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["landing"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -437,9 +460,7 @@ def land_lamella(
 
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
-        fibsem_ui_windows.ask_user_movement(
-            microscope, settings, msg_type="eucentric"
-        )
+        fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
 
     logging.info(
         f"{lamella.current_state.stage.name}: initial landing calibration complete."
@@ -451,7 +472,9 @@ def land_lamella(
     )
 
     # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(
+        lamella.base_path
+    )
 
     actions.move_needle_to_landing_position(microscope, insert_position)
     # TODO: move lower than eucentric to make sure landing
@@ -464,7 +487,7 @@ def land_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # repeat final movement until user confirms landing
-    VALIDATE = (mode is AutoLiftoutMode.Manual)
+    VALIDATE = mode is AutoLiftoutMode.Manual
     response = False
     while response is False:
         #### X-MOVE
@@ -519,7 +542,7 @@ def land_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Weld,
         point=Point(),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # final reference images
@@ -552,15 +575,11 @@ def land_lamella(
 
         # move needle back
         movement.move_needle_relative_with_corrected_movement(
-            microscope=microscope,
-            dx=-1e-6,
-            dy=0,
-            beam_type=BeamType.ION,
+            microscope=microscope, dx=-1e-6, dy=0, beam_type=BeamType.ION,
         )
 
-        # take image 
+        # take image
         acquire.new_image(microscope, settings.image)
-
 
     # TODO: if this works, remove references to "cut"
     # TODO: if this works, can probably remove the slow removal below too...
@@ -609,7 +628,11 @@ def reset_needle(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["reset"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["reset"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
 
     # convienence
@@ -625,7 +648,9 @@ def reset_needle(
     )
 
     # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(lamella.base_path)
+    insert_position = fibsem_utils.get_updated_needle_insertion_position(
+        lamella.base_path
+    )
 
     # move needle in
     actions.move_needle_to_reset_position(microscope, insert_position)
@@ -644,7 +669,9 @@ def reset_needle(
     settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
-    calibration.align_needle_to_eucentric_position(microscope, settings, lamella.base_path, validate=False)
+    calibration.align_needle_to_eucentric_position(
+        microscope, settings, lamella.base_path, validate=False
+    )
 
     # TODO: validate this movement
 
@@ -654,13 +681,15 @@ def reset_needle(
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
         point=Point(),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     #################################################################################################
 
     # reset the "eucentric position" for the needle, centre needle in both views
-    calibration.align_needle_to_eucentric_position(microscope, settings, lamella.base_path, validate=True)
+    calibration.align_needle_to_eucentric_position(
+        microscope, settings, lamella.base_path, validate=True
+    )
 
     # take reference images
     settings.image.label = f"ref_reset"
@@ -683,21 +712,23 @@ def reset_needle(
     return lamella
 
 
-
 def thin_lamella(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella,
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["thin"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["thin"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
 
     # move to the initial landing coordinates
     calibration.set_microscope_state(microscope, lamella.landing_state)
 
     # ensure_eucentricity # TODO: Maybe remove, not required?
-    fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric")
+    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
 
     # rotate_and_tilt_to_thinning_angle
     settings.image.hfw = ReferenceHFW.High.value
@@ -752,7 +783,7 @@ def thin_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Thin,
         point=Point(),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # # take reference images
@@ -776,7 +807,11 @@ def polish_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode.Auto if bool(settings.protocol["options"]["auto"]["polish"]) else AutoLiftoutMode.Manual
+    mode = (
+        AutoLiftoutMode.Auto
+        if bool(settings.protocol["options"]["auto"]["polish"])
+        else AutoLiftoutMode.Manual
+    )
     settings.image.save_path = lamella.path
 
     # # restore state from thinning stage
@@ -841,7 +876,7 @@ def polish_lamella(
         settings=settings,
         milling_pattern=MillingPattern.Polish,
         point=Point(),
-        auto_continue=bool(mode is AutoLiftoutMode.Auto)
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
     # take reference images (ultra, super, high)
@@ -863,7 +898,6 @@ def run_autoliftout_workflow(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     sample: Sample,
-    parent_ui=None,
 ) -> Sample:
 
     BATCH_MODE = bool(settings.protocol["options"]["batch_mode"])
@@ -895,7 +929,7 @@ def run_autoliftout_workflow(
             for lamella in sample.positions.values():
 
                 if lamella.is_failure:
-                    continue # skip failures
+                    continue  # skip failures
 
                 while lamella.current_state.stage.value < terminal_stage.value:
 
@@ -906,7 +940,7 @@ def run_autoliftout_workflow(
 
                     # reset to the previous state
                     lamella = start_of_stage_update(
-                        microscope, lamella, next_stage=next_stage, parent_ui=parent_ui
+                        microscope, lamella, next_stage=next_stage
                     )
 
                     # run the next workflow stage
@@ -915,17 +949,17 @@ def run_autoliftout_workflow(
                     )
 
                     # advance workflow
-                    sample = end_of_stage_update(microscope, sample, lamella, parent_ui)
+                    sample = end_of_stage_update(microscope, sample, lamella)
 
     # standard workflow
     lamella: Lamella
     for lamella in sample.positions.values():
 
         if lamella.is_failure:
-            continue # skip failures
+            continue  # skip failures
 
         while lamella.current_state.stage.value < AutoLiftoutStage.Reset.value:
-            
+
             next_stage = AutoLiftoutStage(lamella.current_state.stage.value + 1)
             if CONFIRM_WORKFLOW_ADVANCE:
                 msg = (
@@ -944,7 +978,7 @@ def run_autoliftout_workflow(
 
                 # reset to the previous state
                 lamella = start_of_stage_update(
-                    microscope, lamella, next_stage=next_stage, parent_ui=parent_ui
+                    microscope, lamella, next_stage=next_stage
                 )
 
                 # run the next workflow stage
@@ -953,9 +987,7 @@ def run_autoliftout_workflow(
                 )
 
                 # advance workflow
-                sample = end_of_stage_update(
-                    microscope, sample, lamella, parent_ui=parent_ui
-                )
+                sample = end_of_stage_update(microscope, sample, lamella)
             else:
                 break  # go to the next sample
 
@@ -963,7 +995,7 @@ def run_autoliftout_workflow(
 
 
 def end_of_stage_update(
-    microscope: SdbMicroscopeClient, sample: Sample, lamella: Lamella, parent_ui=None
+    microscope: SdbMicroscopeClient, sample: Sample, lamella: Lamella
 ) -> Sample:
     """Save the current microscope state configuration to disk, and log that the stage has been completed."""
 
@@ -979,20 +1011,13 @@ def end_of_stage_update(
     # update and save sample
     sample = update_sample_lamella_data(sample, lamella)
 
-    # update ui
-    if parent_ui:
-        parent_ui.update_scroll_ui()
-
     logging.info(f"{lamella._petname} | {lamella.current_state.stage} | FINISHED")
 
     return sample
 
 
 def start_of_stage_update(
-    microscope: SdbMicroscopeClient,
-    lamella: Lamella,
-    next_stage: AutoLiftoutStage,
-    parent_ui=None,
+    microscope: SdbMicroscopeClient, lamella: Lamella, next_stage: AutoLiftoutStage,
 ) -> Lamella:
     """Check the last completed stage and reload the microscope state if required. Log that the stage has started."""
     last_completed_stage = lamella.current_state.stage
@@ -1012,10 +1037,6 @@ def start_of_stage_update(
     lamella.current_state.start_timestamp = datetime.timestamp(datetime.now())
     logging.info(f"{lamella._petname} | {lamella.current_state.stage} | STARTED")
 
-    # update ui
-    if parent_ui:
-        parent_ui.update_status(lamella=lamella)
-
     return lamella
 
 
@@ -1023,7 +1044,6 @@ def run_thinning_workflow(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     sample: Sample,
-    parent_ui=None,
 ) -> Sample:
 
     # thinning
@@ -1034,12 +1054,11 @@ def run_thinning_workflow(
             lamella = start_of_stage_update(
                 microscope,
                 lamella,
-                next_stage=AutoLiftoutStage.Thinning,
-                parent_ui=parent_ui,
+                next_stage=AutoLiftoutStage.Thinning
             )
             thin_lamella(microscope, settings, lamella)
             sample = end_of_stage_update(
-                microscope, sample, lamella, parent_ui=parent_ui
+                microscope, sample, lamella
             )
 
     # polish
@@ -1049,12 +1068,11 @@ def run_thinning_workflow(
             lamella = start_of_stage_update(
                 microscope,
                 lamella,
-                next_stage=AutoLiftoutStage.Polishing,
-                parent_ui=parent_ui,
+                next_stage=AutoLiftoutStage.Polishing
             )
             polish_lamella(microscope, settings, lamella)
             sample = end_of_stage_update(
-                microscope, sample, lamella, parent_ui=parent_ui
+                microscope, sample, lamella
             )
 
     # finish the experiment
@@ -1062,7 +1080,7 @@ def run_thinning_workflow(
         if lamella.current_state.stage == AutoLiftoutStage.Polishing:
             lamella.current_state.stage = AutoLiftoutStage.Finished
             sample = end_of_stage_update(
-                microscope, sample, lamella, parent_ui=parent_ui
+                microscope, sample, lamella
             )
 
     return sample
@@ -1162,9 +1180,7 @@ def select_landing_positions(
     settings.image.save = False
 
     settings.image.hfw = ReferenceHFW.Low.value
-    fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric"
-    )
+    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
     ####################################
 
     # select corresponding sample landing positions
@@ -1229,10 +1245,7 @@ def select_landing_sample_positions(
 
 
 def select_lamella_positions(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    sample: Sample,
-    parent_ui=None,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ):
 
     select_another = get_current_lamella(microscope, sample)
@@ -1254,21 +1267,17 @@ def select_lamella_positions(
         # state variable
         eucentric_calibration = True
 
-        # update ui
-        if parent_ui:
-            parent_ui.update_scroll_ui()
-
     # select landing positions
     select_landing_positions(microscope, settings, sample)
 
     # finish setup
-    finish_setup_autoliftout(microscope, sample, parent_ui)
+    finish_setup_autoliftout(microscope, sample)
 
     return sample
 
 
 def finish_setup_autoliftout(
-    microscope: SdbMicroscopeClient, sample: Sample, parent_ui=None
+    microscope: SdbMicroscopeClient, sample: Sample,
 ):
     """Finish the setup stage for autolifout/autolamella"""
 
@@ -1279,17 +1288,9 @@ def finish_setup_autoliftout(
     logging.info(f"Path: {sample.path}")
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | FINISHED")
 
-    if parent_ui:
-        parent_ui.update_scroll_ui()
-        parent_ui.pushButton_autoliftout.setEnabled(True)
-        parent_ui.pushButton_thinning.setEnabled(True)
-
 
 def run_setup_autoliftout(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    sample: Sample,
-    parent_ui=None,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ) -> Sample:
 
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | STARTED")
@@ -1307,9 +1308,7 @@ def run_setup_autoliftout(
     acquire.new_image(microscope, settings.image)
 
     # sputter platinum to protect grid and prevent charging...
-    sputter_platinum_on_whole_sample_grid(
-        microscope, settings, settings.protocol
-    )
+    sputter_platinum_on_whole_sample_grid(microscope, settings, settings.protocol)
 
     # reference images
     settings.image.label = "grid_Pt"
@@ -1326,12 +1325,13 @@ def run_setup_autoliftout(
         )
 
     # select the lamella and landing positions
-    sample = select_lamella_positions(microscope, settings, sample, parent_ui)
+    sample = select_lamella_positions(microscope, settings, sample)
 
     return sample
 
 
-###TODO: MOVE TO FIBSEM 
+###TODO: MOVE TO FIBSEM
+
 
 def validate_needle_insertion(
     microscope: SdbMicroscopeClient, needle_stage_height_limit: float = 3.7e-3
@@ -1355,10 +1355,9 @@ def validate_needle_insertion(
             microscope, needle_stage_height_limit
         )
 
+
 def sputter_platinum_on_whole_sample_grid(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    protocol: dict,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, protocol: dict,
 ) -> None:
     """Move to the sample grid and sputter platinum over the whole grid"""
 
@@ -1387,7 +1386,7 @@ def open_milling_window(
     milling_pattern: patterning.MillingPattern,
     point: Point = Point(),
     parent=None,
-    auto_continue: bool = False
+    auto_continue: bool = False,
 ):
     """Open the Milling Window ready for milling
 
@@ -1400,11 +1399,11 @@ def open_milling_window(
         microscope=microscope,
         settings=settings,
         milling_pattern_type=milling_pattern,
-        point = point,
+        point=point,
         parent=parent,
-        auto_continue = auto_continue
+        auto_continue=auto_continue,
     )
-    
+
     # show and pause, if not auto continuing
     if not auto_continue:
         milling_window.show()

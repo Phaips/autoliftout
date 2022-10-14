@@ -27,7 +27,9 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setupUi(self)
 
         self.viewer = viewer
-
+        self.viewer.window._qt_viewer.dockLayerList.setVisible(False)
+        self.viewer.window._qt_viewer.dockLayerControls.setVisible(False)
+        
         # load experiment
         self.setup_experiment()
 
@@ -124,6 +126,9 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         #     self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
         # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
 
+        # no lamella selected
+        if not self.sample.positions:
+            return
 
         lamella = self.get_current_selected_lamella()
         self.checkBox_lamella_mark_failure.setChecked(lamella.is_failure)
@@ -131,6 +136,11 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         # info
         fail_string = "(Active)" if lamella.is_failure is False else "(Failure)" 
         self.label_lamella_status.setText(f"Stage: {lamella.current_state.stage.name} {fail_string}")
+
+        # update run info
+        n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
+        self.label_general_info.setText(f"{c_stages}/{t_stages} Stages Complete ({perc*100:.2f}%)")        
+    
 
     def mark_lamella_failure(self):
         
@@ -155,24 +165,14 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
 # TODO: fix logging issue so loading exp doesnt have to be the first thing
 # TODO: move validate to a button or on setup start rather than program start
-# TODO: load protocol
 # TODO: load experiment
-# TODO: run info      
-# TODO: add is_failure to workflow checks  
+# TODO: connect utilities (sputter plat, needle calibration)
+# add fibsem ui to dock as well? just put util stuff in there??
 
     def update_ui(self):
 
         self.update_lamella_ui()
 
-        # update run info
-        # n_stages / n_total
-        # next stage..? how to calc?
-
-        n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
-
-        self.label_general_info.setText(f"{c_stages}/{t_stages} Stages Complete ({perc*100:.2f}%)")
-        
-    
         # enable autoliftout buttons
         LIFTOUT_ENABLED = bool(self.sample.positions)
         self.pushButton_run_autoliftout.setEnabled(LIFTOUT_ENABLED)
@@ -182,9 +182,12 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # TODO: stage labels, lamella labels
         # update main display
-        overview_image = ui_utils.create_overview_image(self.sample)
-        self.viewer.layers.clear()
-        self.viewer.add_image(overview_image, name="AutoLiftout")
+        try:
+            overview_image = ui_utils.create_overview_image(self.sample)
+            self.viewer.layers.clear()
+            self.viewer.add_image(overview_image, name="AutoLiftout")
+        except:
+            pass
 
     def load_protocol_from_file(self):
         # TODO: add protocol file name to ui?
@@ -196,60 +199,66 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             notifications.show_info(f"Unable to load selected protocol: {e}")
 
 
+    def run_sputter_platinum_utility(self):
+        """Run the sputter platinum utility"""
+
+        # sputter
+        autoliftout.sputter_platinum_on_whole_sample_grid(
+            self.microscope, self.settings, self.settings.protocol
+        )
+
+    def run_needle_calibration_utility(self):
+        calibration.auto_needle_calibration(self.microscope, self.settings)
 
     ########################## AUTOLIFTOUT ##########################
 
+    # TODO: add back the ui updates
     def run_setup_autoliftout(self):
         """Run the autoliftout setup workflow."""
-        logging.info(f"Run setup autoliftout")
-        # self.sample = autoliftout.run_setup_autoliftout(
-        #     microscope=self.microscope,
-        #     settings=self.settings,
-        #     sample=self.sample,
-        #     parent_ui=self,
-        # )
-
+        self.sample = autoliftout.run_setup_autoliftout(
+            microscope=self.microscope,
+            settings=self.settings,
+            sample=self.sample,
+        )
+        self.update_ui()
 
     def run_autoliftout(self):
         """Run the autoliftout main workflow."""
-        logging.info(f"Run autoliftout")
-
-        # self.sample = autoliftout.run_autoliftout_workflow(
-        #     microscope=self.microscope,
-        #     settings=self.settings,
-        #     sample=self.sample,
-        #     parent_ui=self,
-        # )
-
+        self.sample = autoliftout.run_autoliftout_workflow(
+            microscope=self.microscope,
+            settings=self.settings,
+            sample=self.sample,
+        )
+        self.update_ui()
 
     def run_autoliftout_thinning(self):
         "Run the autoliftout thinning workflow."
         logging.info(f"Run setup autoliftout")
-        # self.sample = autoliftout.run_thinning_workflow(
-        #     microscope=self.microscope,
-        #     settings=self.settings,
-        #     sample=self.sample,
-        #     parent_ui=self,
-        # )
+        self.sample = autoliftout.run_thinning_workflow(
+            microscope=self.microscope,
+            settings=self.settings,
+            sample=self.sample,
+        )
+        self.update_ui()
 
     # ########################## UTILS ##########################
 
+    def disconnect(self):
+        logging.info("Running cleanup/teardown")
+        if self.microscope:
+            self.microscope.disconnect()
 
-# TODO
-# TODO
-
+    def closeEvent(self, event):
+        self.disconnect()
+        event.accept()
 
 
 def main():
     """Launch the `autoliftout` main application window."""
-    app = QtWidgets.QApplication([])
     viewer = napari.Viewer()
     autoliftout_ui = AutoLiftoutUI(viewer=viewer)
     viewer.window.add_dock_widget(autoliftout_ui, area="right", add_vertical_stretch=False)
-
-    app.aboutToQuit.connect(autoliftout_ui.disconnect)  # cleanup & teardown
-    sys.exit(app.exec_())
-
+    napari.run()
 
 if __name__ == "__main__":
     main()
