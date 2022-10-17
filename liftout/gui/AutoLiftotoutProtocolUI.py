@@ -33,9 +33,10 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         print("setup connections")
 
         # options
-        self.comboBox_options_joining_method.addItems(["None", "Weld", "Platinum"])
+        self.comboBox_options_liftout_joining_method.addItems(["None", "Weld", "Platinum"])
         self.comboBox_options_contact_direction.addItems(["Horizontal", "Vertical"])
         self.comboBox_options_landing_surface.addItems(["Half-Moon Grid"])
+        self.comboBox_options_landing_joining_method.addItems(["None", "Weld", "Platinum"])
         
         # automation
         modes = [mode.name for mode in AutoLiftoutMode]
@@ -62,9 +63,10 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         protocol["options"] = {
             "batch_mode": self.checkBox_options_batch_mode.isChecked(),
             "confirm_advance": self.checkBox_options_confirm_next_stage.isChecked(),
-            "joining_method": self.comboBox_options_joining_method.currentText(),
-            "contact_direction": self.comboBox_options_contact_direction.currentText(),
+            "liftout_joining_method": self.comboBox_options_liftout_joining_method.currentText(),
+            "liftout_contact_direction": self.comboBox_options_contact_direction.currentText(),
             "landing_surface": self.comboBox_options_landing_surface.currentText(),
+            "landing_joining_method": self.comboBox_options_landing_joining_method.currentText(),
             "auto": {
                 "trench": self.comboBox_auto_mill_trench.currentText(),
                 "jcut": self.comboBox_auto_mill_jcut.currentText(),
