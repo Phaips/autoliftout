@@ -23,7 +23,7 @@ st.title("AutoLiftout Companion")
 #################### EXPERIMENT SECTION ####################
 
 # select experiment
-paths = glob.glob(os.path.join(LOG_PATH, "*default*10-14*/"))
+paths = glob.glob(os.path.join(LOG_PATH, "*dm-embryo*/"))
 EXPERIMENT_PATH = st.selectbox(label="Experiment Path ", options=paths)
 sample = load_experiment(EXPERIMENT_PATH)
 
@@ -59,11 +59,11 @@ st.markdown("---")
 
 # plots TODO
 fig_gamma = px.histogram(stats.gamma, x="gamma", color="beam_type", nbins=30, title="Gamma Distribution")
-fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
+# fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
 
 cols = st.columns(2)
 cols[0].plotly_chart(fig_gamma)
-cols[1].plotly_chart(fig_clicks)
+# cols[1].plotly_chart(fig_clicks)
 
 # stats.move["size_z"] = abs(stats.move["z"] * 1e6).astype(int)
 # fig = px.scatter(stats.move, x="x", y="y", size="size_z", color="beam_type", symbol="mode")

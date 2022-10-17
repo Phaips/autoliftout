@@ -333,13 +333,8 @@ def land_needle_on_milled_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(
-        lamella.base_path
-    )
-
     # insert the needle for liftout
-    actions.move_needle_to_liftout_position(microscope, insert_position)
+    actions.move_needle_to_liftout_position(microscope)
 
     # # # reference images
     settings.image.hfw = ReferenceHFW.High.value
@@ -471,12 +466,7 @@ def land_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(
-        lamella.base_path
-    )
-
-    actions.move_needle_to_landing_position(microscope, insert_position)
+    actions.move_needle_to_landing_position(microscope)
     # TODO: move lower than eucentric to make sure landing
 
     # needle starting position
@@ -560,17 +550,7 @@ def land_lamella(
     settings.image.save = True
     settings.image.label = "landing_lamella_pre_cut"
 
-    # # TODO: can eliminate this if the lamella lands in the centre... just manually calc it
-    # # cut off needle
-    # open_milling_window(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     milling_pattern=MillingPattern.Cut,
-    #     point=Point(),
-    # )
-
     # back out needle from lamella , no cut required?
-
     for i in range(10):
 
         # move needle back
@@ -647,13 +627,8 @@ def reset_needle(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    # get updated needle insertion position
-    insert_position = fibsem_utils.get_updated_needle_insertion_position(
-        lamella.base_path
-    )
-
     # move needle in
-    actions.move_needle_to_reset_position(microscope, insert_position)
+    actions.move_needle_to_reset_position(microscope)
 
     # explicitly set the coordinate system
     microscope.specimen.manipulator.set_default_coordinate_system(

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
-    <height>917</height>
+    <width>423</width>
+    <height>485</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -186,7 +186,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>440</width>
+     <width>423</width>
      <height>21</height>
     </rect>
    </property>
@@ -197,7 +197,16 @@
     <addaction name="actionLoad_Experiment"/>
     <addaction name="actionLoad_Protocol"/>
    </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionSputter_Platinum"/>
+    <addaction name="actionSharpen_Needle"/>
+    <addaction name="actionCalibrate_Needle"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_Experiment">
@@ -208,6 +217,21 @@
   <action name="actionLoad_Protocol">
    <property name="text">
     <string>Load Protocol</string>
+   </property>
+  </action>
+  <action name="actionSputter_Platinum">
+   <property name="text">
+    <string>Sputter Platinum</string>
+   </property>
+  </action>
+  <action name="actionSharpen_Needle">
+   <property name="text">
+    <string>Sharpen Needle</string>
+   </property>
+  </action>
+  <action name="actionCalibrate_Needle">
+   <property name="text">
+    <string>Calibrate Needle</string>
    </property>
   </action>
  </widget>

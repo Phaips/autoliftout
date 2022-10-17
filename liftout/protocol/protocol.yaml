@@ -28,7 +28,7 @@ initial_position:
     x: 0.00276265
     y: 0.0039354
     z: 0.031379
-  landing_tilt_angle: 40.0
+  landing_tilt_angle: 13
   relative_beam_shift_x: 3.5e-06
   sample_grid:
     coordinate_system: Raw

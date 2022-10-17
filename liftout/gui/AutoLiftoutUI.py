@@ -82,6 +82,9 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         # actions
         self.actionLoad_Protocol.triggered.connect(self.load_protocol_from_file)
         self.actionLoad_Experiment.triggered.connect(self.load_experiment_utility)
+        self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
+        self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
+        self.actionCalibrate_Needle.triggered.connect(self.run_needle_calibration_utility)
 
         # buttons
         self.pushButton_setup_autoliftout.clicked.connect(self.run_setup_autoliftout)
@@ -209,6 +212,16 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_needle_calibration_utility(self):
         calibration.auto_needle_calibration(self.microscope, self.settings)
+
+    def run_sharpen_needle_utility(self):
+        """Run the sharpen needle utility, e.g. reset stage"""
+        # TODO: fix this so it doesnt rely on lamella...
+        self.settings.image.save = False
+        autoliftout.reset_needle(
+            self.microscope,
+            self.settings,
+            Lamella(self.sample.path, 999),
+        )
 
     ########################## AUTOLIFTOUT ##########################
 
