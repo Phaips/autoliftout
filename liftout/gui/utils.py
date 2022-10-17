@@ -1,6 +1,6 @@
 import logging
 import os
-import winsound
+
 from pathlib import Path
 
 import scipy.ndimage as ndi
@@ -176,6 +176,7 @@ def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
     )
 
 def play_audio_alert(freq: int = 1000, duration: int = 500) -> None:
+    import winsound
     winsound.Beep(freq, duration)
 
 def load_configuration_from_ui(parent=None) -> dict:
