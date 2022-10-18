@@ -63,7 +63,7 @@ def move_to_landing_angle(
     )
 
     # landing angle
-    landing_tilt_angle = np.deg2rad(settings.system.stage.tilt_flat_to_ion + settings.protocol["initial_position"]["landing_tilt_angle"])
+    landing_tilt_angle = np.deg2rad(settings.protocol["initial_position"]["landing_tilt_angle"])
     landing_rotation_angle = np.deg2rad(settings.system.stage.rotation_flat_to_ion)
     landing_position = StagePosition(r=landing_rotation_angle, t=landing_tilt_angle)
     movement.safe_absolute_stage_movement(microscope, landing_position)

@@ -224,6 +224,7 @@ def liftout_lamella(
 
     settings.image.beam_type = BeamType.ELECTRON
     settings.image.save = False
+    settings.image.label = "liftout_begin"
     new_image = acquire.new_image(microscope, settings.image)
     alignment.align_using_reference_images(
         microscope, settings, reference_images.high_res_ib, new_image
@@ -551,7 +552,7 @@ def land_lamella(
     settings.image.label = "landing_lamella_pre_cut"
 
     # back out needle from lamella , no cut required?
-    for i in range(10):
+    for i in range(5):
 
         # move needle back
         movement.move_needle_relative_with_corrected_movement(
@@ -645,7 +646,7 @@ def reset_needle(
 
     # TODO: move needle to the centre, because it has been cut off...
     calibration.align_needle_to_eucentric_position(
-        microscope, settings, lamella.base_path, validate=False
+        microscope, settings, validate=False
     )
 
     # TODO: validate this movement
@@ -663,7 +664,7 @@ def reset_needle(
 
     # reset the "eucentric position" for the needle, centre needle in both views
     calibration.align_needle_to_eucentric_position(
-        microscope, settings, lamella.base_path, validate=True
+        microscope, settings, validate=True
     )
 
     # take reference images
