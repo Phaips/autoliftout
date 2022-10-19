@@ -162,13 +162,17 @@ weld:
   width: 3.0e-06
 options:
   auto: # auto, or manual mode
-    trench: False
-    jcut: False
-    liftout: False
-    landing: False
-    reset: False
-    thin: False
-    polish: False
+    trench: Manual
+    jcut: Manual
+    liftout: Manual
+    landing: Manual
+    reset: Manual
+    thin: Manual
+    polish: Manual
   batch_mode: True
   confirm_advance: True
   joining_method: None
+  liftout_contact_direction: Horizontal
+  liftout_joining_method: None
+  landing_surface: Half-Moon Grid
+  landing_joining_method: Weld
