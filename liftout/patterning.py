@@ -8,8 +8,9 @@ from autoscript_sdb_microscope_client._dynamic_object_proxies import (
     RectanglePattern,
     CleaningCrossSectionPattern,
 )
+
 from fibsem import milling, validation
-from fibsem.structures import Point, MicroscopeSettings
+from fibsem.structures import Point, MicroscopeSettings, MillingSettings
 
 
 class MillingPattern(Enum):
@@ -110,9 +111,18 @@ def mill_horseshoe_pattern(
     return [lower_pattern, upper_pattern, side_pattern]
 
 def spot_weld_pattern(microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()) -> list[RectanglePattern]:
-
-
+    # ref: spotweld terminology https://www.researchgate.net/publication/351737991_A_Modular_Platform_for_Streamlining_Automated_Cryo-FIB_Workflows#pf14
     
+    n_patterns = protocol["number"]
+    mill_settings = MillingSettings.__from_dict__(protocol)
+    mill_settings.centre_x = point.x
+    mill_settings.centre_y = point.y -(n_patterns - 1) * (protocol["offset"] + protocol["height"]) / 2
+
+    patterns = []
+    for i in range(n_patterns):
+        pattern = milling._draw_rectangle_pattern_v2(microscope, mill_settings)
+        patterns.append(pattern)    
+        mill_settings.centre_y += protocol["offset"] + protocol["height"]
 
     return patterns
 
