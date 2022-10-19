@@ -14,10 +14,30 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_pattern">
+   <item row="7" column="0">
+    <widget class="QPushButton" name="pushButton_run_milling">
      <property name="text">
-      <string>Pattern</string>
+      <string>Run Milling</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <layout class="QGridLayout" name="gridLayout_2"/>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_milling_stage">
+     <property name="text">
+      <string>Milling Stage</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QComboBox" name="comboBox_milling_current"/>
+   </item>
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_milling_current">
+     <property name="text">
+      <string>Milling Current (nA)</string>
      </property>
     </widget>
    </item>
@@ -34,21 +54,15 @@
      </property>
     </spacer>
    </item>
-   <item row="7" column="0">
-    <widget class="QPushButton" name="pushButton_run_milling">
-     <property name="text">
-      <string>Run Milling</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QComboBox" name="comboBox_select_pattern"/>
-   </item>
-   <item row="4" column="0" colspan="2">
-    <layout class="QGridLayout" name="gridLayout_2"/>
-   </item>
    <item row="0" column="0" colspan="2">
     <widget class="QLabel" name="label_title">
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="text">
       <string>Milling</string>
      </property>
@@ -61,32 +75,44 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_pattern">
+     <property name="text">
+      <string>Pattern</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="0">
     <widget class="QLabel" name="label_parameters_header">
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="text">
       <string>Milling Parameters</string>
      </property>
     </widget>
    </item>
+   <item row="1" column="1">
+    <widget class="QComboBox" name="comboBox_select_pattern"/>
+   </item>
    <item row="3" column="1">
     <widget class="QComboBox" name="comboBox_milling_stage"/>
    </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_milling_stage">
-     <property name="text">
-      <string>Milling Stage</string>
+   <item row="8" column="0" colspan="2">
+    <spacer name="verticalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
      </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_milling_current">
-     <property name="text">
-      <string>Milling Current (nA)</string>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
      </property>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <widget class="QComboBox" name="comboBox_milling_current"/>
+    </spacer>
    </item>
   </layout>
  </widget>

@@ -109,6 +109,13 @@ def mill_horseshoe_pattern(
 
     return [lower_pattern, upper_pattern, side_pattern]
 
+def spot_weld_pattern(microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()) -> list[RectanglePattern]:
+
+
+    
+
+    return patterns
+
 
 def jcut_milling_patterns(
     microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()
