@@ -1,18 +1,12 @@
 import logging
-import sys
 from pprint import pprint
 
 
-import matplotlib
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
 from fibsem import calibration
-from liftout import autoliftout, utils
 from liftout.config import config
-from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import AutoLiftoutProtocolUI 
-from liftout.structures import AutoLiftoutStage, Lamella, Sample
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import  QtWidgets
 
 from liftout.structures import AutoLiftoutMode
 
@@ -59,11 +53,10 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
 
     def update_protocol_from_ui(self):
         
-        protocol = {}
 
         # TODO: milling?
 
-        protocol["options"] = {
+        self.protocol["options"] = {
             "batch_mode": self.checkBox_options_batch_mode.isChecked(),
             "confirm_advance": self.checkBox_options_confirm_next_stage.isChecked(),
             "liftout_joining_method": self.comboBox_options_liftout_joining_method.currentText(),
@@ -84,18 +77,17 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         from pprint import pprint
         print("update protocol")
 
-        pprint(protocol)
+        pprint(self.protocol)
 
         # TODO: save to file, update or overwrite?
         # TODO: need the rest of the protocol, how to represent
 
 
     def update_ui_from_protocol(self, protocol: dict):
-        # TODO: load protocol
 
-        pprint(protocol)
+        self.protocol = protocol
 
-        options = protocol["options"]
+        options = self.protocol["options"]
         
         # options
         self.checkBox_options_batch_mode.setChecked(bool(options["batch_mode"]))
@@ -114,6 +106,9 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         self.comboBox_auto_thinning.setCurrentText(options["auto"]["thin"].upper())
         self.comboBox_auto_polishing.setCurrentText(options["auto"]["polish"].upper())
 
+
+        # TODO: platinum
+        # TODO: initial positions
 
 
 def main():

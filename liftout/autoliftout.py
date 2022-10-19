@@ -39,11 +39,7 @@ def mill_lamella_trench(
 ):
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["trench"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["trench"].upper()]
     settings.image.save_path = lamella.path
 
     # move to lamella position
@@ -83,11 +79,7 @@ def mill_lamella_jcut(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["jcut"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["jcut"].upper()]
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -217,11 +209,7 @@ def liftout_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["liftout"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["liftout"].upper()]
     settings.image.save_path = lamella.path
 
     # convenience
@@ -448,11 +436,7 @@ def land_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["landing"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["landing"].upper()]
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -620,11 +604,7 @@ def reset_needle(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["reset"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["reset"].upper()]
     settings.image.save_path = lamella.path
 
     # convienence
@@ -704,11 +684,7 @@ def thin_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["thin"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["thin"].upper()]
     settings.image.save_path = lamella.path
 
     # move to the initial landing coordinates
@@ -794,11 +770,7 @@ def polish_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = (
-        AutoLiftoutMode.Auto
-        if bool(settings.protocol["options"]["auto"]["polish"])
-        else AutoLiftoutMode.Manual
-    )
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["polish"].upper()]
     settings.image.save_path = lamella.path
 
     # # restore state from thinning stage
