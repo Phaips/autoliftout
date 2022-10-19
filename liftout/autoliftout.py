@@ -91,10 +91,21 @@ def mill_lamella_jcut(
     settings.image.save_path = lamella.path
     settings.image.save = False
 
+    # align to ref_trench
+    reference_images = lamella.get_reference_images("ref_trench")
+    alignment.correct_stage_drift(
+        microscope,
+        settings,
+        reference_images,
+        alignment=(BeamType.ION, BeamType.ELECTRON),
+        rotate=True,
+        use_ref_mask=True,
+    )
+
     # reference images of milled trenches
     hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
     reference_images = acquire.take_set_of_reference_images(
-        microscope, settings.image, hfws=hfws, label="ref_trench"
+        microscope, settings.image, hfws=hfws, label="ref_trench_jcut"
     )
 
     # move flat to electron beam
