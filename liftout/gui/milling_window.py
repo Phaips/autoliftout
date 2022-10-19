@@ -246,7 +246,7 @@ class GUIMillingWindow(milling_gui.Ui_Dialog, QtWidgets.QDialog):
                 (self.xclick, self.yclick), self.adorned_image
             )
 
-            logging.info(f"MILLING: p=({self.xclick}, {self.yclick})  c=({self.center_x:.2e}, {self.center_y:.2e}) ")
+            logging.info(f"Milling, {BeamType.ION}, p=({self.xclick}, {self.yclick})  c=({self.center_x:.2e}, {self.center_y:.2e}) ")
             self.update_display()
 
     def setup_milling_patterns(self):

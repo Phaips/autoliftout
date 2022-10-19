@@ -1,5 +1,6 @@
 from unicodedata import name
 from venv import create
+from cv2 import split
 import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass
@@ -41,16 +42,19 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     if beam_type in ["Electron", "Ion", "Photon"]:
                         gamma_d = {"beam_type": beam_type, "diff": float(diff), "gamma": float(gamma)}
                         gamma_info.append(deepcopy(gamma_d))
-
+                
                 if "click" in func:
                     split_msg = msg.split(" ")
-                    click_type = "Movement" # TODO: add milling support
+                    if len(split_msg) == 6: # old version needs beam_type
+                        import random
+                        split_msg.insert(1, random.choice(["BeamType.ELECTRON", "BeamType.ION"]))
                     if len(split_msg) == 7:
-                        beam_type = split_msg[2].split(".")[-1]
-                        pos_x = float(split_msg[5].replace(",", ""))
+                        click_type = split_msg[0].replace(":", "")
+                        beam_type = split_msg[1].split(".")[-1]
+                        pos_x = float(split_msg[5].split("(")[-1].replace(",", ""))
                         pos_y = float(split_msg[6].replace(")", ""))
-
                         click_d = {"beam_type": beam_type, "type": click_type, "x": pos_x, "y": pos_y}
+                        
                         click_info.append(deepcopy(click_d))
 
                 if "move_stage" in func:
