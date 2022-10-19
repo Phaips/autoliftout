@@ -176,3 +176,4 @@ options:
   liftout_joining_method: None
   landing_surface: Half-Moon Grid
   landing_joining_method: Weld
+  landing_removal_method: None # Cut or None

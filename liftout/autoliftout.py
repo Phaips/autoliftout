@@ -39,7 +39,7 @@ def mill_lamella_trench(
 ):
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["trench"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["trench"].capitalize()]
     settings.image.save_path = lamella.path
 
     # move to lamella position
@@ -79,7 +79,7 @@ def mill_lamella_jcut(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["jcut"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["jcut"].capitalize()]
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -209,7 +209,7 @@ def liftout_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["liftout"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["liftout"].capitalize()]
     settings.image.save_path = lamella.path
 
     # convenience
@@ -248,7 +248,7 @@ def liftout_lamella(
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella, mode=mode)
 
     # TODO: joining options: none, weld, platinum
-    if settings.protocol["options"]["joining_method"] == "weld":
+    if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
         # mill weld
         open_milling_window(
             microscope=microscope,
@@ -257,7 +257,7 @@ def liftout_lamella(
             point=Point(),
             auto_continue=bool(mode is AutoLiftoutMode.Auto),
         )
-    if settings.protocol["options"]["joining_method"] == "platinum":
+    if settings.protocol["options"]["liftout_joining_method"].capitalize() == "platinum":
         # sputter platinum
         fibsem_utils.sputter_platinum(
             microscope,
@@ -436,7 +436,7 @@ def land_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["landing"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["landing"].capitalize()]
     settings.image.save_path = lamella.path
     settings.image.save = False
 
@@ -604,7 +604,7 @@ def reset_needle(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["reset"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["reset"].capitalize()]
     settings.image.save_path = lamella.path
 
     # convienence
@@ -684,7 +684,7 @@ def thin_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["thin"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["thin"].capitalize()]
     settings.image.save_path = lamella.path
 
     # move to the initial landing coordinates
@@ -770,7 +770,7 @@ def polish_lamella(
 ) -> Lamella:
 
     # bookkeeping
-    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["polish"].upper()]
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["polish"].capitalize()]
     settings.image.save_path = lamella.path
 
     # # restore state from thinning stage
