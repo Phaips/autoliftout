@@ -14,12 +14,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(359, 293)
+        Dialog.resize(359, 324)
+        Dialog.setMaximumSize(QtCore.QSize(16777215, 400))
         self.gridLayout = QtWidgets.QGridLayout(Dialog)
         self.gridLayout.setObjectName("gridLayout")
-        self.pushButton_save = QtWidgets.QPushButton(Dialog)
-        self.pushButton_save.setObjectName("pushButton_save")
-        self.gridLayout.addWidget(self.pushButton_save, 2, 0, 1, 1)
         self.pushButton_exit = QtWidgets.QPushButton(Dialog)
         self.pushButton_exit.setObjectName("pushButton_exit")
         self.gridLayout.addWidget(self.pushButton_exit, 2, 1, 1, 1)
@@ -121,6 +119,11 @@ class Ui_Dialog(object):
         self.label_title.setFont(font)
         self.label_title.setObjectName("label_title")
         self.gridLayout.addWidget(self.label_title, 0, 0, 1, 2)
+        self.pushButton_save = QtWidgets.QPushButton(Dialog)
+        self.pushButton_save.setObjectName("pushButton_save")
+        self.gridLayout.addWidget(self.pushButton_save, 2, 0, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 3, 0, 1, 2)
 
         self.retranslateUi(Dialog)
         self.tabWidget.setCurrentIndex(0)
@@ -129,7 +132,6 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.pushButton_save.setText(_translate("Dialog", "Save"))
         self.pushButton_exit.setText(_translate("Dialog", "Exit"))
         self.label_options_liftout_joining_method.setText(_translate("Dialog", "Liftout Joining Method"))
         self.label_options_landing_surface.setText(_translate("Dialog", "Landing Surface"))
@@ -148,3 +150,4 @@ class Ui_Dialog(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_automation), _translate("Dialog", "Automation"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_milling), _translate("Dialog", "Milling"))
         self.label_title.setText(_translate("Dialog", "AutoLiftout Protocol"))
+        self.pushButton_save.setText(_translate("Dialog", "Save"))
