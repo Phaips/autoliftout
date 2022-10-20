@@ -11,7 +11,8 @@ from fibsem import calibration
 from liftout import autoliftout, utils
 from liftout.config import config
 from liftout.gui import utils as ui_utils
-from liftout.gui.qtdesigner_files import AutoLiftoutUI 
+from liftout.gui.qtdesigner_files import AutoLiftoutUI
+from liftout.patterning import MillingPattern 
 from liftout.structures import AutoLiftoutStage, Lamella, Sample
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -101,6 +102,11 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         
     def testing_function(self):
         logging.info(f"Test button pressed")
+
+
+        autoliftout.open_milling_window_v2(self.microscope, self.settings, MillingPattern.Trench)
+
+
 
     def setup_experiment(self) -> None:
 

@@ -5,16 +5,14 @@ from pprint import pprint
 import napari
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from autoscript_sdb_microscope_client.structures import AdornedImage
-from torch import autocast
-from fibsem import calibration, constants, acquire, conversions, milling
+from fibsem import constants, acquire, conversions, milling, movement
 from fibsem import utils as fibsem_utils
 from fibsem.structures import MicroscopeSettings, BeamType, Point, MillingSettings
-from liftout import autoliftout, patterning, utils
+from liftout import  patterning, utils
 from liftout.gui.qtdesigner_files import MillingUI
 from liftout.patterning import MillingPattern
 from napari.utils import notifications, progress
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QLabel
 from fibsem.ui import utils as fibsem_ui
 import liftout.gui.utils as ui_utils
@@ -24,8 +22,6 @@ import scipy.ndimage as ndi
 from liftout.config import config
 import time
 
-# TODO: connect parameter changes
-
 class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
@@ -34,6 +30,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         settings: MicroscopeSettings,
         milling_pattern: MillingPattern = MillingPattern.Trench,
         point: Point = None,
+        change_pattern: bool = False,
         auto_continue: bool = False
     ):
         super(MillingUI, self).__init__()
@@ -49,8 +46,10 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.viewer.window._qt_viewer.dockLayerControls.setVisible(False)
 
         self.milling_pattern = milling_pattern
+        self.coords = (point.y, point.x) if point is not None else None
         self.auto_continue = auto_continue
         self.USER_UPDATED_PROTOCOL = False # TODO: implement this
+        self.CHANGE_PATTERN_ENABLED = change_pattern
 
         self.setup_ui()
         self.setup_connections()
@@ -79,6 +78,11 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # buttons
         self.pushButton_run_milling.clicked.connect(self.run_milling)
         self.pushButton_exit_milling.clicked.connect(self.exit_milling)
+        
+        # instructions
+        self.label_message.setText(f"Double-click to move the pattern, adjust parameters to change pattern dimensions. Press Run Milling to start milling.")
+        self.comboBox_select_pattern.setEnabled(self.CHANGE_PATTERN_ENABLED)
+       
 
     def setup_ui(self):
         
@@ -94,35 +98,63 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         )  # append callback
         self.viewer.layers.selection.active = self.image_layer
 
+    def continue_button_pressed(self):
+
+        logging.info(f"continue button pressed")
+
     def _double_click(self, layer, event):
 
-        coords = layer.world_to_data(event.position)
+        self.coords = layer.world_to_data(event.position)
 
         image_shape = self.image.data.shape
 
-        if (coords[0] > 0 and coords[0] < image_shape[0]) and (
-            coords[1] > 0 and coords[1] < image_shape[1]
+        if (self.coords[0] > 0 and self.coords[0] < image_shape[0]) and (
+            self.coords[1] > 0 and self.coords[1] < image_shape[1]
         ):
-            logging.info(f"click inside image: {coords[0]:.2f}, {coords[1]:.2f}")
+            logging.info(f"click inside image: {self.coords[0]:.2f}, {self.coords[1]:.2f}")
+
         else:
             napari.utils.notifications.show_info(
                 f"Clicked outside image dimensions. Please click inside the image."
             )
             return
 
-        self.update_milling_pattern(coords)
+        # for trenches, move the stage, not the pattern 
+        # (trench should always be in centre of image)
+        if self.milling_pattern is MillingPattern.Trench:
+            dx, dy = conversions.pixel_to_realspace_coordinate(
+                (self.coords[1], self.coords[0]), self.image
+            )
 
-    def update_milling_pattern(self, coords: tuple = None):
+            movement.move_stage_relative_with_corrected_movement(
+                microscope=self.microscope,
+                settings=self.settings,
+                dx=dx,
+                dy=dy,
+                beam_type=BeamType.ION,
+            )
+
+            # update image
+            self.setup_ui()   
+            self.coords = None
+
+        self.update_milling_pattern()
+
+    def update_milling_pattern(self):
 
         logging.info(f"update milling pattern")
 
         # get image coordinate
-        if coords is None:
-            coords = np.asarray(self.image.data.shape) // 2
+        if self.coords is None:
+            self.coords = np.asarray(self.image.data.shape) // 2
         pixelsize = self.image.metadata.binary_result.pixel_size.x
         self.center_x, self.center_y = conversions.pixel_to_realspace_coordinate(
-                (coords[1], coords[0]), self.image
+                (self.coords[1], self.coords[0]), self.image
             )
+        logging.info(f"Milling, {BeamType.ION}, {self.milling_pattern.name}, p=({self.coords[1]}, {self.coords[0]})  c=({self.center_x:.2e}, {self.center_y:.2e}) ")
+
+
+        # TODO: should this be in a try block?
 
         # draw patterns in microscope
         self.microscope.patterning.clear_patterns()
@@ -140,6 +172,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # draw patterns in napari
 
         # TODO: clear all shape layers...add a legend to the view?
+        # TODO: show / hide patterns
         if "Stage 1" in self.viewer.layers:
             self.viewer.layers.remove(self.viewer.layers["Stage 1"])
         if "Stage 2" in self.viewer.layers:
@@ -163,7 +196,19 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
                 opacity=0.5
             )
 
+        self.update_estimated_time(all_patterns)
+
         self.viewer.layers.selection.active = self.image_layer
+
+    def update_estimated_time(self, patterns: list):
+
+        # TODO: is calculated for current current, not desired milling current
+        milling_time_seconds = milling.estimate_milling_time_in_seconds(patterns) 
+
+        logging.info(f"milling time: {milling_time_seconds}")
+        time_str = fibsem_utils._format_time_seconds(milling_time_seconds)
+        self.label_milling_time.setText(f"Estimated Time: {time_str}")
+
 
     def update_milling_stages(self):
 
@@ -199,6 +244,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
     # TODO: support for other element types
     # TODO: pattern rotation
     # TODO: milling time
+    # TODO: disable editting
 
     def setup_milling_parameters_ui(self):
 
@@ -259,45 +305,51 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # clear state
         self.microscope.imaging.set_active_view(BeamType.ION.value)
         self.microscope.imaging.set_active_device(BeamType.ION.value)  # set ion beam view
-        # for stage_name, stage_settings in self.milling_stages.items():
+        for stage_name, stage_settings in self.milling_stages.items():
 
-        #     logging.info(f"Stage {stage_name}: {stage_settings}")
+            logging.info(f"Stage {stage_name}: {stage_settings}")
 
-        #     # redraw patterns, and run milling
-        #     self.microscope.patterning.clear_patterns()
-        #     self.patterns = patterning.create_milling_patterns(
-        #         self.microscope,
-        #         stage_settings,
-        #         self.milling_pattern,
-        #         Point(self.center_x, self.center_y),
-        #     )
-        #     milling.run_milling(
-        #         microscope=self.microscope,
-        #         milling_current=stage_settings["milling_current"],
-        #         asynch=True,
-        #     )
+            # redraw patterns, and run milling
+            self.microscope.patterning.clear_patterns()
+            self.patterns = patterning.create_milling_patterns(
+                self.microscope,
+                stage_settings,
+                self.milling_pattern,
+                Point(self.center_x, self.center_y),
+            )
+            milling.run_milling(
+                microscope=self.microscope,
+                milling_current=stage_settings["milling_current"],
+                asynch=True,
+            )
 
-        #     # update progress bar
-        #     time.sleep(3)  # wait for milling to start
-        #     elapsed_time = 0
-        #     progressbar = napari.utils.progress()
+            # update progress bar
+            time.sleep(3)  # wait for milling to start
+            elapsed_time = 0
 
-        #     self.milling_time_seconds = 600 # TODO: update
+            milling_time_seconds = milling.estimate_milling_time_in_seconds([self.patterns])
+            logging.info(f"milling time: {milling_time_seconds}")
+            progressbar = napari.utils.progress(milling_time_seconds)
 
-        #     while self.microscope.patterning.state == "Running":
+            # TODO: thread https://forum.image.sc/t/napari-progress-bar-modification-on-the-fly/62496/7
+            while self.microscope.patterning.state == "Running":
 
-        #         elapsed_time += 1
-        #         prog_val = int(elapsed_time / self.milling_time_seconds * 100)
-        #         progressbar.update(prog_val)
-        #         time.sleep(1)
-        #     logging.info(f"Milling finished: {self.microscope.patterning.state}")
-        #     progressbar.close()
+                elapsed_time += 1
+                prog_val = int(elapsed_time)
+                progressbar.update(prog_val)
+                time.sleep(1)
 
-        # # reset to imaging mode
-        # milling.finish_milling(
-        #     microscope=self.microscope,
-        #     imaging_current=self.settings.default.imaging_current,
-        # )
+            logging.info(f"Milling finished: {self.microscope.patterning.state}")
+            progressbar.clear()
+            progressbar.close()
+
+        # reset to imaging mode
+        milling.finish_milling(
+            microscope=self.microscope,
+            imaging_current=self.settings.default.imaging_current,
+        )
+
+        napari.utils.notifications.show_info(f"Milling Complete.")
 
         # update image
         self.setup_ui()
@@ -359,6 +411,8 @@ def convert_pattern_to_napari_rect(pattern, image: np.ndarray, pixelsize: float)
     cx = int(icx + (pattern.center_x / pixelsize))
     cy = int(icy - (pattern.center_y / pixelsize))
 
+    # TODO: add rotation
+
     xmin, xmax = cx-w/2, cx+w/2
     ymin, ymax = cy-h/2, cy+h/2
 
@@ -410,7 +464,9 @@ def main():
     viewer = napari.Viewer()
     milling_ui = MillingUI(viewer=viewer, 
             microscope=microscope, settings=settings, 
-            milling_pattern=milling_pattern, 
+            milling_pattern=milling_pattern,
+            point=None,
+            change_pattern=False,
             auto_continue=auto_continue)
     viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
     napari.run()

@@ -465,6 +465,19 @@ def land_lamella(
 
     calibration.auto_link_stage(microscope)
 
+    # TODO: align to ref
+    reference_images = lamella.get_reference_images("ref_landing")
+
+    settings.image.beam_type = BeamType.ELECTRON
+    settings.image.save = True
+    settings.image.label = "landing_align"
+    new_image = acquire.new_image(microscope, settings.image)
+    alignment.align_using_reference_images(
+        microscope, settings, reference_images.high_res_ib, new_image
+    )
+
+    # eucentric
+
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
@@ -477,6 +490,8 @@ def land_lamella(
     validate_needle_insertion(
         microscope, settings.system.stage.needle_stage_height_limit
     )
+
+    ############################## REPEAT FROM HERE ##############################
 
     actions.move_needle_to_landing_position(microscope)
     # TODO: move lower than eucentric to make sure landing
@@ -521,7 +536,7 @@ def land_lamella(
         settings.image.hfw = ReferenceHFW.Super.value
         settings.image.beam_type = BeamType.ELECTRON
         settings.image.save = True
-        settings.image.label = f"landing_lamella_final_weld_highres"
+        settings.image.label = f"landing_lamella_contact"
         acquire.take_reference_images(
             microscope=microscope, image_settings=settings.image
         )
@@ -555,40 +570,38 @@ def land_lamella(
 
     #################################################################################################
 
-    ###################################### CUT_OFF_NEEDLE ######################################
+    ###################################### REMOVE NEEDLE ######################################
 
     settings.image.hfw = ReferenceHFW.Super.value
     settings.image.beam_type = BeamType.ION
     settings.image.save = True
-    settings.image.label = "landing_lamella_pre_cut"
-
+    settings.image.label = "landing_lamella_needle_removal"
+    
+    logging.info(
+        f"{lamella.current_state.stage.name}: removing needle from lamella"
+    )
     # back out needle from lamella , no cut required?
-    for i in range(5):
+    for i in range(10):
 
         # move needle back
         movement.move_needle_relative_with_corrected_movement(
             microscope=microscope, dx=-1e-6, dy=0, beam_type=BeamType.ION,
         )
 
-        # take image
-        acquire.new_image(microscope, settings.image)
-
-    # TODO: if this works, remove references to "cut"
-    # TODO: if this works, can probably remove the slow removal below too...
-
-    ################################### REMOVE_NEEDLE ##########################################
+        # # take image
+        # acquire.new_image(microscope, settings.image)
 
     # reference images
     acquire.take_set_of_reference_images(
         microscope=microscope,
         image_settings=settings.image,
         hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
-        label="landing_lamella_post_cut",
+        label="landing_lamella_needle_removal",
     )
 
-    logging.info(
-        f"{lamella.current_state.stage.name}: removing needle from landing post"
-    )
+    ###################################### REPEAT TO HERE ######################################
+
+
     # move needle out of trench slowly at first
     for i in range(3):
         z_move_out_from_post = movement.z_corrected_needle_movement(
@@ -1395,3 +1408,23 @@ def open_milling_window(
     if not auto_continue:
         milling_window.show()
         milling_window.exec_()
+
+import napari
+from liftout.gui.MillingUI import MillingUI
+
+def open_milling_window_v2(    
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    milling_pattern: patterning.MillingPattern,
+    point: Point = None,
+    parent=None,
+    auto_continue: bool = False):
+
+    viewer = napari.Viewer()
+    milling_ui = MillingUI(viewer=viewer, 
+            microscope=microscope, settings=settings, 
+            milling_pattern=milling_pattern,
+            point = point,
+            auto_continue=auto_continue)
+    viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
+    napari.run(max_loop_level=2)
