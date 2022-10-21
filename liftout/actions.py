@@ -184,7 +184,7 @@ def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
     dx: float = -5.0e-6, # horizontal shift between beams
-    dy: float = 0.0e-6,
+    dy: float = -2.0e-6,
     dz: float = 0.0e-6,
     relative_horizontal_beam_shift: float = 0.0e-6 
 ) -> None:
