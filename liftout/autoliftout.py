@@ -1428,4 +1428,4 @@ def open_milling_window_v2(
     viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
     
     milling_ui.exec_()
-    napari.run(max_loop_level=2)
+    # napari.run(max_loop_level=2)
