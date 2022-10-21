@@ -31,6 +31,10 @@ from liftout.patterning import MillingPattern
 from liftout.structures import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 from liftout.structures import ReferenceHFW, AutoLiftoutMode
 
+
+import napari
+from liftout.gui.MillingUI import MillingUI
+
 # autoliftout workflow functions
 
 # functional mill trench
@@ -52,13 +56,15 @@ def mill_lamella_trench(
     ######
 
     # mill_trenches
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
-        point=Point(0, 0),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
+
+
 
     # discharge check
     calibration.auto_discharge_beam(microscope, settings.image)
@@ -89,9 +95,10 @@ def mill_lamella_jcut(
         microscope,
         settings,
         reference_images,
-        alignment=(BeamType.ION, BeamType.ELECTRON),
-        rotate=True,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=False,
         use_ref_mask=True,
+        xcorr_limit = (100, 100)
     )
 
     # reference images of milled trenches
@@ -103,6 +110,8 @@ def mill_lamella_jcut(
     # move flat to electron beam
     movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
+    calibration.auto_discharge_beam(microscope, settings.image)
+
     # correct drift using reference images..
     alignment.correct_stage_drift(
         microscope,
@@ -111,6 +120,7 @@ def mill_lamella_jcut(
         alignment=(BeamType.ION, BeamType.ELECTRON),
         rotate=True,
         use_ref_mask=True,
+        xcorr_limit=(250, 250)
     )
 
     # adjust for relative shift between beams
@@ -161,11 +171,11 @@ def mill_lamella_jcut(
     ## MILL_JCUT
     # now we are at the angle for jcut, perform jcut
     settings.image.hfw = ReferenceHFW.Super.value
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
-        point=Point(0, 0),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -223,7 +233,7 @@ def liftout_lamella(
 
     settings.image.beam_type = BeamType.ELECTRON
     settings.image.save = False
-    settings.image.label = "liftout_begin"
+    settings.image.label = "liftout_align"
     new_image = acquire.new_image(microscope, settings.image)
     alignment.align_using_reference_images(
         microscope, settings, reference_images.high_res_ib, new_image
@@ -241,23 +251,23 @@ def liftout_lamella(
     # reference images for needle location
     settings.image.save = True
     settings.image.hfw = ReferenceHFW.High.value
-    settings.image.label = f"ref_needle_liftout"
+    settings.image.label = f"ref_liftout_needle"
     acquire.take_reference_images(microscope, settings.image)
 
     # land needle on lamella
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella, mode=mode)
 
-    # TODO: joining options: none, weld, platinum
+    # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
         # mill weld
-        open_milling_window(
+        open_milling_window_v2(
             microscope=microscope,
             settings=settings,
             milling_pattern=MillingPattern.Weld,
-            point=Point(),
+            point=None,
             auto_continue=bool(mode is AutoLiftoutMode.Auto),
         )
-    if settings.protocol["options"]["liftout_joining_method"].capitalize() == "platinum":
+    if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Platinum":
         # sputter platinum
         fibsem_utils.sputter_platinum(
             microscope,
@@ -271,20 +281,18 @@ def liftout_lamella(
     )
 
     settings.image.save = True
-    settings.image.hfw = settings.protocol["platinum"]["weld"]["hfw"]
-    settings.image.label = f"needle_landed_Pt_sputter"
+    settings.image.hfw = ReferenceHFW.High.value
+    settings.image.label = f"liftout_needle_contact"
     acquire.take_reference_images(microscope, settings.image)
 
     # jcut sever pattern
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
-        point=Point(
-            x=settings.protocol["lamella"]["lamella_width"] / 2, y=0
-        ),  # half the lamella width
+        point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2, y=0), # half the lamella width , #TODO: recalc this for + side trench
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    )
+    ) 
 
     # take reference images
     settings.image.save = True
@@ -384,7 +392,7 @@ def land_needle_on_milled_lamella(
         )
 
         # calculate brightness
-        settings.image.label = f"bright_{fibsem_utils.current_timestamp()}"
+        settings.image.label = f"liftout_contact_brightness_{iteration_count}"
         ib_image = acquire.new_image(
             microscope, settings.image, reduced_area=reduced_area
         )
@@ -399,7 +407,8 @@ def land_needle_on_milled_lamella(
         if above_brightness_threshold or mode is AutoLiftoutMode.Manual:
 
             # needle has landed...
-            logging.info("THRESHOLD REACHED STOPPPING")
+            if above_brightness_threshold:
+                logging.info("THRESHOLD REACHED STOPPPING")
 
             # check with user? # TODO: confusing wording
             response = fibsem_ui_windows.ask_user_interaction(
@@ -460,7 +469,7 @@ def land_lamella(
         microscope, settings, reference_images.high_res_ib, new_image
     )
 
-    # eucentric
+    # eucentric correction # TODO:
 
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
@@ -475,7 +484,49 @@ def land_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    ############################## REPEAT FROM HERE ##############################
+    response = False
+    while response is False:
+
+        # land the lamella on the post
+        land_lamella_on_post(microscope, settings, lamella, mode)
+
+        # confirm with user
+        if mode is AutoLiftoutMode.Manual:
+            response = fibsem_ui_windows.ask_user_interaction(
+                microscope,
+                msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the landing procedure.",
+                beam_type=BeamType.ION,
+            )
+        else:
+            response = True
+
+    # move needle out of trench slowly at first
+    for i in range(3):
+        z_move_out_from_post = movement.z_corrected_needle_movement(
+            10e-6, stage.current_position.t
+        )
+        needle.relative_move(z_move_out_from_post)
+        logging.info(
+            f"{lamella.current_state.stage.name}: moving needle out: {z_move_out_from_post} ({i + 1}/3)"
+        )
+        time.sleep(1)
+
+    # move needle to park position
+    movement.retract_needle(microscope)
+    logging.info(f"{lamella.current_state.stage.name}: needle retracted.")
+
+    # reference images
+    acquire.take_set_of_reference_images(
+        microscope=microscope,
+        image_settings=settings.image,
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
+        label="ref_landing_lamella",
+    )
+
+    return lamella
+
+
+def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella, mode: AutoLiftoutMode): 
 
     actions.move_needle_to_landing_position(microscope)
     # TODO: move lower than eucentric to make sure landing
@@ -528,7 +579,7 @@ def land_lamella(
         if mode is AutoLiftoutMode.Manual:
             response = fibsem_ui_windows.ask_user_interaction(
                 microscope,
-                msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the final movement",
+                msg="Has the lamella made contact with the post? \nPress Yes to continue, or No to redo the final movement",
                 beam_type=BeamType.ION,
             )
         else:
@@ -538,11 +589,11 @@ def land_lamella(
 
     ############################## WELD TO LANDING POST #############################################
 
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
-        point=Point(),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -583,33 +634,7 @@ def land_lamella(
         label="landing_lamella_needle_removal",
     )
 
-    ###################################### REPEAT TO HERE ######################################
-
-
-    # move needle out of trench slowly at first
-    for i in range(3):
-        z_move_out_from_post = movement.z_corrected_needle_movement(
-            10e-6, stage.current_position.t
-        )
-        needle.relative_move(z_move_out_from_post)
-        logging.info(
-            f"{lamella.current_state.stage.name}: moving needle out: {z_move_out_from_post} ({i + 1}/3)"
-        )
-        time.sleep(1)
-
-    # move needle to park position
-    movement.retract_needle(microscope)
-    logging.info(f"{lamella.current_state.stage.name}: needle retracted.")
-
-    # reference images
-    acquire.take_set_of_reference_images(
-        microscope=microscope,
-        image_settings=settings.image,
-        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
-        label="ref_landing_lamella",
-    )
-
-    return lamella
+    return
 
 
 def reset_needle(
@@ -656,11 +681,11 @@ def reset_needle(
     # TODO: validate this movement
 
     # create sharpening patterns
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
-        point=Point(),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -754,11 +779,11 @@ def thin_lamella(
     settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
 
     # mill thin_lamella
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Thin,
-        point=Point(),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -843,11 +868,11 @@ def polish_lamella(
     settings.image.dwell_time = settings.protocol["polish_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["polish_lamella"]["hfw"]
 
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Polish,
-        point=Point(),
+        point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -1196,11 +1221,11 @@ def select_landing_sample_positions(
     settings.image.beam_type = BeamType.ION
     settings.image.save = False
 
-    open_milling_window(
+    open_milling_window_v2(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Flatten,
-        point=Point(),
+        point=None,
     )
 
     # take reference images
@@ -1381,22 +1406,24 @@ def open_milling_window(
         milling_window.show()
         milling_window.exec_()
 
-import napari
-from liftout.gui.MillingUI import MillingUI
 
 def open_milling_window_v2(    
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
     point: Point = None,
-    parent=None,
+    change_pattern: bool = False,
     auto_continue: bool = False):
 
     viewer = napari.Viewer()
-    milling_ui = MillingUI(viewer=viewer, 
+    milling_ui = MillingUI(
+            viewer=viewer, 
             microscope=microscope, settings=settings, 
             milling_pattern=milling_pattern,
             point = point,
+            change_pattern=change_pattern,
             auto_continue=auto_continue)
     viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
+    
+    milling_ui.exec_()
     napari.run(max_loop_level=2)

@@ -309,6 +309,9 @@ def create_milling_patterns(
 ) -> list:
     """Redraw the milling patterns with updated milling protocol"""
 
+    if point is None:
+        point = Point(0.0, 0.0)
+
     if milling_pattern_type == MillingPattern.Trench:
         patterns = mill_horseshoe_pattern(
             microscope=microscope, protocol=milling_protocol, point=point

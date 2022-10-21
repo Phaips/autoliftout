@@ -54,9 +54,10 @@ def crosscorrelate_and_plot(
     new_image,
     rotate: bool = False,
     lp: int = 128,
-    hp: int = 6,
+    hp: int = 8,
     sigma: int = 6,
     ref_mask: np.ndarray = None,
+    xcorr_limit: int = None
 ):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -76,6 +77,7 @@ def crosscorrelate_and_plot(
         sigma=sigma,
         use_rect_mask=True,
         ref_mask=ref_mask,
+        xcorr_limit=xcorr_limit
     )
 
     pixelsize = ref_image.metadata.binary_result.pixel_size.x
@@ -88,8 +90,11 @@ def crosscorrelate_and_plot(
 
     mid = Point(shift.shape[1] // 2, shift.shape[0] // 2)
 
+    if ref_mask is None:
+        ref_mask = np.ones_like(ref_image.data)
+
     fig, ax = plt.subplots(1, 4, figsize=(30, 30))
-    ax[0].imshow(ref_image.data, cmap="gray")
+    ax[0].imshow(ref_image.data * ref_mask , cmap="gray")
     ax[0].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
     ax[0].set_title(f"Reference (rotate={rotate})")
     ax[1].imshow(new_image.data, cmap="gray")
