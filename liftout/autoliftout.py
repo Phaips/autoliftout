@@ -110,8 +110,6 @@ def mill_lamella_jcut(
     # move flat to electron beam
     movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
-    calibration.auto_discharge_beam(microscope, settings.image)
-
     # correct drift using reference images..
     alignment.correct_stage_drift(
         microscope,
@@ -134,6 +132,8 @@ def mill_lamella_jcut(
         dy=0,
         beam_type=BeamType.ELECTRON,
     )
+
+    alignment.auto_eucentric_correction(microscope, settings.image)
 
     # confirm
     if mode is AutoLiftoutMode.Manual:
@@ -230,13 +230,14 @@ def liftout_lamella(
     actions.move_to_liftout_angle(microscope, settings)
 
     reference_images = lamella.get_reference_images("ref_jcut")
-
-    settings.image.beam_type = BeamType.ELECTRON
-    settings.image.save = False
-    settings.image.label = "liftout_align"
-    new_image = acquire.new_image(microscope, settings.image)
-    alignment.align_using_reference_images(
-        microscope, settings, reference_images.high_res_ib, new_image
+    alignment.correct_stage_drift(
+        microscope,
+        settings,
+        reference_images,
+        alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
+        rotate=False,
+        use_ref_mask=True,
+        xcorr_limit = (100, 100)
     )
 
     # confirm
@@ -455,21 +456,22 @@ def land_lamella(
 
     # move to landing coordinate
     calibration.set_microscope_state(microscope, lamella.landing_state)
-
     calibration.auto_link_stage(microscope)
 
     # TODO: align to ref
     reference_images = lamella.get_reference_images("ref_landing")
-
-    settings.image.beam_type = BeamType.ELECTRON
-    settings.image.save = True
-    settings.image.label = "landing_align"
-    new_image = acquire.new_image(microscope, settings.image)
-    alignment.align_using_reference_images(
-        microscope, settings, reference_images.high_res_ib, new_image
+    alignment.correct_stage_drift(
+        microscope,
+        settings,
+        reference_images,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=False,
+        use_ref_mask=True,
+        xcorr_limit = (100, 100)
     )
 
     # eucentric correction # TODO:
+    alignment.auto_eucentric_correction(microscope, settings.image)
 
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:

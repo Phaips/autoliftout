@@ -221,7 +221,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
     def run_needle_calibration_utility(self):
-        calibration.auto_needle_calibration(self.microscope, self.settings, validate=True)
+        calibration.auto_needle_calibration(self.microscope, self.settings, validate=False)
 
     def run_sharpen_needle_utility(self):
         """Run the sharpen needle utility, e.g. reset stage"""
