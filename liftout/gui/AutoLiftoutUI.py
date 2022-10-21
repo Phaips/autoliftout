@@ -78,8 +78,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_connections(self):
 
-        logging.info("Setup Connections")
-
         # actions
         self.actionLoad_Protocol.triggered.connect(self.load_protocol_from_file)
         self.actionLoad_Experiment.triggered.connect(self.load_experiment_utility)
@@ -98,15 +96,13 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
         self.comboBox_lamella_select.currentTextChanged.connect(self.update_lamella_ui)
         self.checkBox_lamella_mark_failure.toggled.connect(self.mark_lamella_failure)
+        self.checkBox_lamella_landing_selected.toggled.connect(self.mark_lamella_landing)
 
         
     def testing_function(self):
         logging.info(f"Test button pressed")
 
-
         autoliftout.open_milling_window_v2(self.microscope, self.settings, MillingPattern.Trench)
-
-
 
     def setup_experiment(self) -> None:
 
@@ -141,6 +137,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         lamella = self.get_current_selected_lamella()
         self.checkBox_lamella_mark_failure.setChecked(lamella.is_failure)
+        self.checkBox_lamella_landing_selected.setChecked(lamella.landing_selected)
 
         # info
         fail_string = "(Active)" if lamella.is_failure is False else "(Failure)" 
@@ -150,6 +147,15 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
         self.label_general_info.setText(f"{c_stages}/{t_stages} Stages Complete ({perc*100:.2f}%)")        
     
+    def mark_lamella_landing(self):
+        
+        lamella = self.get_current_selected_lamella()
+        lamella.landing_selected = bool(self.checkBox_lamella_landing_selected.isChecked())
+        self.sample = autoliftout.update_sample_lamella_data(
+                self.sample, lamella
+            )
+
+        self.update_lamella_ui()
 
     def mark_lamella_failure(self):
         
@@ -158,7 +164,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.sample = autoliftout.update_sample_lamella_data(
                 self.sample, lamella
             )
-        logging.info(f"Marked {lamella._petname} as Failure")
 
         self.update_lamella_ui()
 
@@ -167,7 +172,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         lamella_petname = self.comboBox_lamella_select.currentText()
         lamella_idx = int(lamella_petname.split("-")[0])
 
-        # mark sample as failure
         lamella: Lamella = self.sample.positions[lamella_idx]
 
         return lamella
@@ -217,7 +221,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
     def run_needle_calibration_utility(self):
-        calibration.auto_needle_calibration(self.microscope, self.settings)
+        calibration.auto_needle_calibration(self.microscope, self.settings, validate=True)
 
     def run_sharpen_needle_utility(self):
         """Run the sharpen needle utility, e.g. reset stage"""
@@ -231,7 +235,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     ########################## AUTOLIFTOUT ##########################
 
-    # TODO: add back the ui updates
+    # TODO: add back the incremental ui updates
     def run_setup_autoliftout(self):
         """Run the autoliftout setup workflow."""
         self.sample = autoliftout.run_setup_autoliftout(
@@ -273,7 +277,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
 
 def main():
-    """Launch the `autoliftout` main application window."""
+    """Launch autoliftout ui"""
     viewer = napari.Viewer()
     autoliftout_ui = AutoLiftoutUI(viewer=viewer)
     viewer.window.add_dock_widget(autoliftout_ui, area="right", add_vertical_stretch=False)
