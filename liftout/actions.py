@@ -174,7 +174,7 @@ def move_sample_stage_out(
 
     # TODO: probably good enought to just move down a fair bit.
     # TODO: make these dynamically set based on initial_position
-    # TODO: magic number
+    # TODO: MAGIC_NUMBER
     logging.info(f"move sample grid out to {sample_stage_out}")
     movement.safe_absolute_stage_movement(microscope, sample_stage_out)
     logging.info(f"move sample stage out complete.")
@@ -184,8 +184,8 @@ def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
     dx: float = -5.0e-6, # horizontal shift between beams
-    dy: float = -2.0e-6,
-    dz: float = 0.0e-6,
+    dy: float = 0.0e-6,
+    dz: float = -2.5e-6,
     relative_horizontal_beam_shift: float = 0.0e-6 
 ) -> None:
     """Insert the needle to just above the eucentric point, ready for liftout.
@@ -206,7 +206,7 @@ def move_needle_to_landing_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
     dx: float = -30.0e-6,
-    dy: float = -5.0e-6,
+    dy: float = 0.0e-6,
     dz: float = 0.0e-6,
 ) -> None:
     """Insert the needle to just above, and left of the eucentric point, ready for landing.
