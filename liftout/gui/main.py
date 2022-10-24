@@ -98,7 +98,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def setup_experiment(self) -> Sample:
 
-        # TODO: add a select folder option for new experiment
 
         try:
             sample: Sample = ui_utils.setup_experiment_sample_ui(parent_ui=self)
@@ -122,7 +121,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
     def set_lamella_failed(self):
         """Mark the indicated sample position as failed."""
 
-        # TODO: redo this better..
         # think it is currently broken
         if self.sample:
 
@@ -151,7 +149,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
                 self.update_scroll_ui()
 
     def load_protocol_from_file(self):
-        # TODO: add protocol file name to ui?
 
         # reload the protocol from file
         try:
@@ -167,7 +164,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_sharpen_needle_utility(self):
         """Run the sharpen needle utility, e.g. reset stage"""
-        # TODO: fix this so it doesnt rely on lamella...
         self.settings.image.save = False
         autoliftout.reset_needle(
             self.microscope,
@@ -209,7 +205,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
         self, ip_address: str = "10.0.0.1"
     ) -> SdbMicroscopeClient:
 
-        # TODO: add a ui indicator, as this can take a little while
         microscope = fibsem_utils.connect_to_microscope(ip_address=ip_address)
 
         if microscope is None:
@@ -254,7 +249,6 @@ class AutoLiftoutMainWindow(gui_main.Ui_MainWindow, QtWidgets.QMainWindow):
             self.actionMovement.triggered.connect(self.run_movement_utility)
             self.actionNeedle_Calibration.triggered.connect(self.run_needle_calibration_utility)
 
-        # TODO: TO BE REMOVED
         self.pushButton_test_popup.clicked.connect(lambda: self.testing_function())
 
         logging.info("UI | setup connections finished")

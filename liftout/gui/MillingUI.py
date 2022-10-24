@@ -49,7 +49,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.milling_pattern = milling_pattern
         self.point = point
         self.auto_continue = auto_continue
-        self.USER_UPDATED_PROTOCOL = False  # TODO: implement this
+        self.USER_UPDATED_PROTOCOL = False 
         self.CHANGE_PATTERN_ENABLED = change_pattern
 
         self.setup_ui()
