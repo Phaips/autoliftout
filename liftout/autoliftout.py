@@ -354,10 +354,8 @@ def land_needle_on_milled_lamella(
     if mode is AutoLiftoutMode.Manual:
         # check with user? # TODO: confusing wording
         response = fibsem_ui_windows.ask_user_interaction(
-            microscope,
             msg="""Confirm the needle is in the trench, to the left of the lamella edge. 
-            \nIf not, please move manually then press yes to continue.""",
-            beam_type=BeamType.ION,
+            \nIf not, please move manually then press yes to continue."""
         )
 
     # take image
@@ -413,9 +411,7 @@ def land_needle_on_milled_lamella(
 
             # check with user? # TODO: confusing wording
             response = fibsem_ui_windows.ask_user_interaction(
-                microscope,
-                msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement",
-                beam_type=BeamType.ION,
+                msg="Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement"
             )
 
             if response:
@@ -495,9 +491,7 @@ def land_lamella(
         # confirm with user
         if mode is AutoLiftoutMode.Manual:
             response = fibsem_ui_windows.ask_user_interaction(
-                microscope,
-                msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the landing procedure.",
-                beam_type=BeamType.ION,
+                msg="Has the lamella landed on the post? \nPress Yes to continue, or No to redo the landing procedure."
             )
         else:
             response = True
@@ -580,9 +574,7 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
 
         if mode is AutoLiftoutMode.Manual:
             response = fibsem_ui_windows.ask_user_interaction(
-                microscope,
                 msg="Has the lamella made contact with the post? \nPress Yes to continue, or No to redo the final movement",
-                beam_type=BeamType.ION,
             )
         else:
             response = True
@@ -964,9 +956,7 @@ def run_autoliftout_workflow(
                 msg = (
                     f"""Continue Lamella {(lamella._petname)} from {next_stage.name}?"""
                 )
-                response = fibsem_ui_windows.ask_user_interaction(
-                    microscope, msg=msg, beam_type=BeamType.ION,
-                )
+                response = fibsem_ui_windows.ask_user_interaction(msg=msg)
             else:
                 response = True
 
@@ -1089,10 +1079,8 @@ def get_current_lamella(microscope: SdbMicroscopeClient, sample: Sample,) -> boo
 
     if sample.positions:
         select_another_lamella = fibsem_ui_windows.ask_user_interaction(
-            microscope,
             msg=f"Do you want to select another lamella?\n"
             f"{len(sample.positions)} currentlly selected.",
-            beam_type=BeamType.ELECTRON,
         )
 
     else:
@@ -1318,9 +1306,7 @@ def run_setup_autoliftout(
 
     if ret is False:
         fibsem_ui_windows.ask_user_interaction(
-            microscope,
-            msg="The AutoFocus routine has failed, please correct the focus manually.",
-            beam_type=BeamType.ELECTRON,
+            msg="The AutoFocus routine has failed, please correct the focus manually."
         )
 
     # select the lamella and landing positions
@@ -1343,11 +1329,9 @@ def validate_needle_insertion(
 
     while ret is False:
         fibsem_ui_windows.ask_user_interaction(
-            microscope,
             msg=f"""The system has identified the distance between the sample and the pole piece is less than {needle_stage_height_limit * 1000}mm. "
             "The needle will contact the sample, and it is unsafe to insert the needle. "
             "\nPlease manually refocus and link the stage, then press OK to continue. """,
-            beam_type=BeamType.ELECTRON,
         )
 
         ret = validation.validate_stage_height_for_needle_insertion(
@@ -1362,9 +1346,8 @@ def sputter_platinum_on_whole_sample_grid(
 
     # Whole-grid platinum deposition
     response = fibsem_ui_windows.ask_user_interaction(
-        microscope=microscope,
         msg="Do you want to sputter the whole \nsample grid with platinum?",
-        beam_type=BeamType.ELECTRON,
+        image = acquire.last_image(microscope, BeamType.ELECTRON).data
     )
 
     if response:
