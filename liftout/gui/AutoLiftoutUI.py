@@ -36,7 +36,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # connect to microscope session
         # self.microscope, self.settings = fibsem_utils.setup_session(
-        #     log_path = self.sample.path,
+        #     session_path = self.sample.path,
         #     config_path = config.config_path,
         #     protocol_path = config.protocol_path
         # )
@@ -102,7 +102,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
         logging.info(f"Test button pressed")
 
-        autoliftout.open_milling_window_v2(self.microscope, self.settings, MillingPattern.Trench)
+        autoliftout.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
 
     def setup_experiment(self) -> None:
 
@@ -256,7 +256,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def run_autoliftout_thinning(self):
         "Run the autoliftout thinning workflow."
-        logging.info(f"Run setup autoliftout")
         self.sample = autoliftout.run_thinning_workflow(
             microscope=self.microscope,
             settings=self.settings,

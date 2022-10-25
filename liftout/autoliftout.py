@@ -26,7 +26,6 @@ from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Poi
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout import actions, patterning
-from liftout.gui.milling_window import GUIMillingWindow
 from liftout.patterning import MillingPattern
 from liftout.structures import AutoLiftoutStage, Lamella, ReferenceImages, Sample
 from liftout.structures import ReferenceHFW, AutoLiftoutMode
@@ -56,7 +55,7 @@ def mill_lamella_trench(
     ######
 
     # mill_trenches
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
@@ -171,7 +170,7 @@ def mill_lamella_jcut(
     ## MILL_JCUT
     # now we are at the angle for jcut, perform jcut
     settings.image.hfw = ReferenceHFW.Super.value
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
@@ -261,7 +260,7 @@ def liftout_lamella(
     # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
         # mill weld
-        open_milling_window_v2(
+        milling_ui(
             microscope=microscope,
             settings=settings,
             milling_pattern=MillingPattern.Weld,
@@ -287,7 +286,7 @@ def liftout_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     # jcut sever pattern
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
@@ -583,7 +582,7 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
 
     ############################## WELD TO LANDING POST #############################################
 
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
@@ -675,7 +674,7 @@ def reset_needle(
     # TODO: validate this movement
 
     # create sharpening patterns
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
@@ -773,7 +772,7 @@ def thin_lamella(
     settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
 
     # mill thin_lamella
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Thin,
@@ -862,7 +861,7 @@ def polish_lamella(
     settings.image.dwell_time = settings.protocol["polish_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["polish_lamella"]["hfw"]
 
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Polish,
@@ -1211,7 +1210,7 @@ def select_landing_sample_positions(
     settings.image.beam_type = BeamType.ION
     settings.image.save = False
 
-    open_milling_window_v2(
+    milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Flatten,
@@ -1362,37 +1361,7 @@ def sputter_platinum_on_whole_sample_grid(
     return
 
 
-def open_milling_window(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    milling_pattern: patterning.MillingPattern,
-    point: Point = Point(),
-    parent=None,
-    auto_continue: bool = False,
-):
-    """Open the Milling Window ready for milling
-
-    Args:
-        milling_pattern (MillingPattern): The type of milling pattern
-        x (float, optional): the initial pattern offset (x-direction). Defaults to 0.0.
-        y (float, optional): the initial pattenr offset (y-direction). Defaults to 0.0.
-    """
-    milling_window = GUIMillingWindow(
-        microscope=microscope,
-        settings=settings,
-        milling_pattern_type=milling_pattern,
-        point=point,
-        parent=parent,
-        auto_continue=auto_continue,
-    )
-
-    # show and pause, if not auto continuing
-    if not auto_continue:
-        milling_window.show()
-        milling_window.exec_()
-
-
-def open_milling_window_v2(    
+def milling_ui(    
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
@@ -1408,7 +1377,12 @@ def open_milling_window_v2(
             point = point,
             change_pattern=change_pattern,
             auto_continue=auto_continue)
+    
     viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
     
-    milling_ui.exec_()
+    if auto_continue:
+        milling_ui.run_milling()
+    else:
+        milling_ui.exec_()
+    
     # napari.run(max_loop_level=2)

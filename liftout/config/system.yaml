@@ -12,7 +12,7 @@ system:
     detector_mode: SecondaryElectrons
   electron:
     voltage: 2000
-    current: 1.0e-12
+    current: 50.0e-12
     eucentric_height: 4.0e-3
     detector_type: ETD
     detector_mode: SecondaryElectrons

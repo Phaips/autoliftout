@@ -383,6 +383,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
 
         if self.auto_continue:
             self.close()
+            return
 
         # ask user if the milling succeeded
         response = fibsem_ui.message_box_ui(
@@ -417,8 +418,8 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self.microscope.patterning.clear_patterns()
-        self.viewer.window.close()
         event.accept()
+        self.viewer.window.close()
 
 
 def convert_pattern_to_napari_rect(
@@ -483,21 +484,16 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.JCut
-    auto_continue = False
+    milling_pattern = MillingPattern.Weld
+    point = None
+    change_pattern = True
+    auto_continue = True
 
-    viewer = napari.Viewer()
-    milling_ui = MillingUI(
-        viewer=viewer,
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=milling_pattern,
-        point=Point(10e-6, 10e-6),
-        change_pattern=False,
-        auto_continue=auto_continue,
-    )
-    viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
-    napari.run()
+
+    from liftout.autoliftout import milling_ui
+
+    milling_ui(microscope, settings, milling_pattern, point = point, change_pattern = change_pattern, auto_continue=auto_continue)
+
 
 
 if __name__ == "__main__":
