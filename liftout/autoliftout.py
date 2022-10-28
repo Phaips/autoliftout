@@ -19,7 +19,7 @@ from fibsem import acquire, alignment, calibration, movement
 from fibsem import utils as fibsem_utils
 from fibsem import validation
 from fibsem.acquire import BeamType
-from fibsem.detection.detection import DetectionFeature, DetectionType
+from fibsem.detection.detection import Feature, FeatureType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
 from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Point
@@ -549,8 +549,8 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             settings=settings,
             ref_image=ref_ib,
             features=[
-                DetectionFeature(DetectionType.LamellaEdge, None),
-                DetectionFeature(DetectionType.LandingPost, None),
+                Feature(FeatureType.LamellaEdge, None),
+                Feature(FeatureType.LandingPost, None),
             ],
             validate=VALIDATE,
         )
