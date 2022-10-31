@@ -1,7 +1,0 @@
-torch
-torchvision
-matplotlib
-pandas
-segmentation-models-pytorch
-pip
-streamlit
