@@ -344,7 +344,45 @@ def land_needle_on_milled_lamella(
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope)
 
-    # # # reference images
+    # align needle to side of lamella
+    settings.image.beam_type = BeamType.ELECTRON
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings
+        features=[
+            Feature(FeatureType.NeedleTip),
+            Feature(FeatureType.LamellaCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        dx=0,
+        dy=det.distance.y,
+        beam_type=BeamType.ELECTRON,
+    )
+
+    settings.image.beam_type = BeamType.ION
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings
+        features=[
+            Feature(FeatureType.NeedleTip),
+            Feature(FeatureType.LamellaLeftEdge),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
+    movement.move_needle_relative_with_corrected_movement(
+        microscope=microscope,
+        dx=det.distance_metres.x,
+        dy=det.distance_metres.y,
+        beam_type=BeamType.ION,
+    )
+
+
+    #reference images
     settings.image.hfw = ReferenceHFW.High.value
     settings.image.save = True
     settings.image.label = f"needle_liftout_start_position"
@@ -366,7 +404,7 @@ def land_needle_on_milled_lamella(
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
     settings.image.gamma.enabled = False
-    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)
+    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1) # TODO: improve contact detection
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
     previous_brightness = image_utils.measure_brightness(ib_image)
 
@@ -383,7 +421,7 @@ def land_needle_on_milled_lamella(
             ManipulatorCoordinateSystem.STAGE
         )
 
-        dx = 1.0e-6
+        dx = 0.5e-6
         dy = 0.0e-6
         movement.move_needle_relative_with_corrected_movement(
             microscope, dx=dx, dy=dy, beam_type=BeamType.ION
@@ -453,7 +491,7 @@ def land_lamella(
     calibration.set_microscope_state(microscope, lamella.landing_state)
     calibration.auto_link_stage(microscope)
 
-    # TODO: align to ref
+    # align to ref
     reference_images = lamella.get_reference_images("ref_landing")
     alignment.correct_stage_drift(
         microscope,
@@ -549,8 +587,8 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             settings=settings,
             ref_image=ref_ib,
             features=[
-                Feature(FeatureType.LamellaEdge, None),
-                Feature(FeatureType.LandingPost, None),
+                Feature(FeatureType.LamellaRightEdge),
+                Feature(FeatureType.LandingPost),
             ],
             validate=VALIDATE,
         )
