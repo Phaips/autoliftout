@@ -177,3 +177,8 @@ weld:
   rotation: 0.0
   scan_direction: RightToLeft
   width: 3.0e-06
+ml:
+  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model.pt
+  encoder: resnet18
+  num_classes: 3
+  cuda: False 
