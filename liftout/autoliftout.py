@@ -15,7 +15,7 @@ from autoscript_sdb_microscope_client.structures import (
     Rectangle,
     StagePosition,
 )
-from fibsem import acquire, alignment, calibration, movement
+from fibsem import acquire, alignment, calibration, movement, detection
 from fibsem import utils as fibsem_utils
 from fibsem import validation
 from fibsem.acquire import BeamType
@@ -259,6 +259,9 @@ def liftout_lamella(
 
     # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
+        
+        # TODO: get left lamella edge to weld
+         
         # mill weld
         milling_ui(
             microscope=microscope,
@@ -351,17 +354,21 @@ def land_needle_on_milled_lamella(
         settings=settings
         features=[
             Feature(FeatureType.NeedleTip),
-            Feature(FeatureType.LamellaCentre),
+            Feature(FeatureType.LamellaLeftEdge),
         ],
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
+    
+    # TODO: probs needs to be a bit to the left of this?
+    detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type)
 
-    movement.move_needle_relative_with_corrected_movement(
-        microscope=microscope,
-        dx=0,
-        dy=det.distance.y,
-        beam_type=BeamType.ELECTRON,
-    )
+
+    # movement.move_needle_relative_with_corrected_movement(
+    #     microscope=microscope,
+    #     dx=0,
+    #     dy=det.distance.y,
+    #     beam_type=BeamType.ELECTRON,
+    # )
 
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
@@ -373,13 +380,16 @@ def land_needle_on_milled_lamella(
         ],
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
+    detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_x=False)
 
-    movement.move_needle_relative_with_corrected_movement(
-        microscope=microscope,
-        dx=det.distance_metres.x,
-        dy=det.distance_metres.y,
-        beam_type=BeamType.ION,
-    )
+
+
+    # movement.move_needle_relative_with_corrected_movement(
+    #     microscope=microscope,
+    #     dx=det.distance_metres.x,
+    #     dy=det.distance_metres.y,
+    #     beam_type=BeamType.ION,
+    # )
 
 
     #reference images
@@ -574,13 +584,14 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
     # repeat final movement until user confirms landing
     VALIDATE = mode is AutoLiftoutMode.Manual
     response = False
+    i = 0
     while response is False:
+
         #### X-MOVE
         settings.image.hfw = ReferenceHFW.Super.value
         settings.image.beam_type = BeamType.ION
         settings.image.save = True
-        settings.image.label = f"landing_needle"
-        # ref_eb, ref_ib = acquire.take_reference_images(microscope, settings.image)
+        settings.image.label = f"landing_needle_pre_move_{i}"
 
         det = fibsem_ui_windows.detect_features_v2(
             microscope=microscope,
@@ -592,18 +603,20 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             validate=VALIDATE,
         )
 
-        movement.move_needle_relative_with_corrected_movement(
-            microscope=microscope,
-            dx=det.distance_metres.x,
-            dy=0,
-            beam_type=BeamType.ION,
-        )
+        detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_y=False)
+
+        # movement.move_needle_relative_with_corrected_movement(
+        #     microscope=microscope,
+        #     dx=det.distance_metres.x,
+        #     dy=0,
+        #     beam_type=BeamType.ION,
+        # )
 
         # final reference images
         settings.image.hfw = ReferenceHFW.Super.value
         settings.image.beam_type = BeamType.ELECTRON
         settings.image.save = True
-        settings.image.label = f"landing_lamella_contact"
+        settings.image.label = f"landing_lamella_contact_{i}"
         acquire.take_reference_images(
             microscope=microscope, image_settings=settings.image
         )
@@ -614,11 +627,15 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             )
         else:
             response = True
+        
+        # increment count
+        i += 1
 
     #################################################################################################
 
     ############################## WELD TO LANDING POST #############################################
 
+    # TODO: get right lamella edge to weld
     milling_ui(
         microscope=microscope,
         settings=settings,
