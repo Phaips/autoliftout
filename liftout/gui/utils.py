@@ -100,6 +100,9 @@ def load_experiment_ui(parent, default_experiment_path: Path) -> Sample:
     experiment_path = QtWidgets.QFileDialog.getExistingDirectory(
         parent, "Choose Log Folder to Load", directory=default_experiment_path
     )
+    # from fibsem.ui import utils as ui_utils
+    # experiment_path = ui_utils.get_existing_directory(parent=parent, caption="Choose Log Folder to Load", directory=default_experiment_path)
+
     # if the user doesnt select a folder, start a new experiment
     # nb. should we include a check for invalid folders here too?
     if experiment_path == "":
@@ -128,7 +131,6 @@ def create_experiment_ui(parent, default_experiment_name: str) -> Sample:
 
 def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: list, parent_ui=None):
 
-    options = QtWidgets.QFileDialog.Options()
     config_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
         parent_ui,
         "Select Protocol File",
@@ -136,6 +138,10 @@ def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: 
         "Yaml Files (*.yml, *.yaml)",
         options=options,
     )
+    # from fibsem.ui import utils as ui_utils
+    # config_filename, _ = ui_utils.open_existing_file_ui(parent = parent_ui, 
+    #     caption = "Select Protocol File", directory = config.BASE_PATH, 
+    #     filter_ext:="Yaml Files (*.yml, *.yaml)")  
 
     if config_filename == "":
         raise ValueError("No protocol file was selected.")

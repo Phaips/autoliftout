@@ -580,12 +580,11 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
         settings.image.beam_type = BeamType.ION
         settings.image.save = True
         settings.image.label = f"landing_needle"
-        ref_eb, ref_ib = acquire.take_reference_images(microscope, settings.image)
+        # ref_eb, ref_ib = acquire.take_reference_images(microscope, settings.image)
 
-        det = fibsem_ui_windows.detect_features(
+        det = fibsem_ui_windows.detect_features_v2(
             microscope=microscope,
             settings=settings,
-            ref_image=ref_ib,
             features=[
                 Feature(FeatureType.LamellaRightEdge),
                 Feature(FeatureType.LandingPost),
