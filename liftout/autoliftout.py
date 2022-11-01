@@ -15,7 +15,8 @@ from autoscript_sdb_microscope_client.structures import (
     Rectangle,
     StagePosition,
 )
-from fibsem import acquire, alignment, calibration, movement, detection
+from fibsem import acquire, alignment, calibration, movement
+from fibsem.detection import detection
 from fibsem import utils as fibsem_utils
 from fibsem import validation
 from fibsem.acquire import BeamType
@@ -351,7 +352,7 @@ def land_needle_on_milled_lamella(
     settings.image.beam_type = BeamType.ELECTRON
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
-        settings=settings
+        settings=settings,
         features=[
             Feature(FeatureType.NeedleTip),
             Feature(FeatureType.LamellaLeftEdge),
@@ -363,17 +364,10 @@ def land_needle_on_milled_lamella(
     detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type)
 
 
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     dx=0,
-    #     dy=det.distance.y,
-    #     beam_type=BeamType.ELECTRON,
-    # )
-
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
-        settings=settings
+        settings=settings,
         features=[
             Feature(FeatureType.NeedleTip),
             Feature(FeatureType.LamellaLeftEdge),
@@ -381,16 +375,6 @@ def land_needle_on_milled_lamella(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
     detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_x=False)
-
-
-
-    # movement.move_needle_relative_with_corrected_movement(
-    #     microscope=microscope,
-    #     dx=det.distance_metres.x,
-    #     dy=det.distance_metres.y,
-    #     beam_type=BeamType.ION,
-    # )
-
 
     #reference images
     settings.image.hfw = ReferenceHFW.High.value
@@ -605,13 +589,6 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
 
         detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_y=False)
 
-        # movement.move_needle_relative_with_corrected_movement(
-        #     microscope=microscope,
-        #     dx=det.distance_metres.x,
-        #     dy=0,
-        #     beam_type=BeamType.ION,
-        # )
-
         # final reference images
         settings.image.hfw = ReferenceHFW.Super.value
         settings.image.beam_type = BeamType.ELECTRON
@@ -659,6 +636,18 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
     settings.image.save = True
     settings.image.label = "landing_lamella_needle_removal"
     
+
+    # optional? makes it not repeatable
+    # TODO: detect lamella left edge to cut
+    milling_ui(
+        microscope=microscope,
+        settings=settings,
+        milling_pattern=MillingPattern.Cut,
+        point=None,
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
+    )
+
+
     logging.info(
         f"{lamella.current_state.stage.name}: removing needle from lamella"
     )

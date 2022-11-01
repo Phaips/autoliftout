@@ -136,7 +136,6 @@ def update_milling_protocol_ui(milling_pattern: MillingPattern, milling_stages: 
         "Select Protocol File",
         config.BASE_PATH,
         "Yaml Files (*.yml, *.yaml)",
-        options=options,
     )
     # from fibsem.ui import utils as ui_utils
     # config_filename, _ = ui_utils.open_existing_file_ui(parent = parent_ui, 
