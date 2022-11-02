@@ -484,10 +484,10 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.Weld
+    milling_pattern = MillingPattern.Trench
     point = None
     change_pattern = True
-    auto_continue = True
+    auto_continue = False
 
 
     from liftout.autoliftout import milling_ui

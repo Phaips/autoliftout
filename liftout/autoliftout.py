@@ -587,7 +587,7 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             validate=VALIDATE,
         )
 
-        detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_y=False)
+        detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type)
 
         # final reference images
         settings.image.hfw = ReferenceHFW.Super.value

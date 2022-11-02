@@ -106,7 +106,7 @@ def mill_horseshoe_pattern(
         height=lamella_height,
         depth=milling_depth,
     )
-    side_pattern.scan_direction = "RightToLeft"
+    side_pattern.scan_direction = "TopToBottom"
 
     return [lower_pattern, upper_pattern, side_pattern]
 
