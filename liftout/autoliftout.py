@@ -133,8 +133,19 @@ def mill_lamella_jcut(
         beam_type=BeamType.ELECTRON,
     )
 
-    alignment.auto_eucentric_correction(microscope, settings.image)
 
+    # align eucentric with reference images # FLAG_TEST
+    reference_images = lamella.get_reference_images("ref_trench")
+    alignment.correct_stage_drift(
+        microscope, settings, reference_images, 
+        alignment=(BeamType.ELECTRON, BeamType.ION),
+        rotate =True,
+        use_ref_mask=True,
+        xcorr_limit = (250, 250),
+        constrain_vertical =True
+    )
+
+    # alignment.auto_eucentric_correction(microscope, settings.image)
     # confirm
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(
