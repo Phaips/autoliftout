@@ -141,49 +141,54 @@ def jcut_milling_patterns(
         list[RectanglePattern]: jcut milling patterns
     """
 
-    jcut_lhs_height = protocol["lhs_height"]
+    # jcut_lhs_height = protocol["lhs_height"]
     jcut_rhs_height = protocol["rhs_height"]
     jcut_lamella_height = protocol["lamella_height"]
     jcut_width = protocol["width"]
     jcut_trench_thickness = protocol["trench_width"]
-    jcut_lhs_trench_thickness = protocol["lhs_trench_width"]
-    jcut_lhs_offset = protocol["lhs_offset"]
+    # jcut_lhs_trench_thickness = protocol["lhs_trench_width"]
+    # jcut_lhs_offset = protocol["lhs_offset"]
     jcut_milling_depth = protocol["depth"]
+    jcut_h_offset = protocol["h_offset"]
+
+    jcut_half_width = (jcut_width - jcut_trench_thickness / 2)
+    jcut_half_height = jcut_lamella_height / 2
 
     # top_jcut
-    jcut_top = microscope.patterning.create_rectangle(
-        center_x=point.x,
+    jcut_top = microscope.patterning.create_cleaning_cross_section(
+        center_x=point.x + jcut_width / 2 - jcut_h_offset,
         center_y=point.y + jcut_lamella_height,
         width=jcut_width,
         height=jcut_trench_thickness,
         depth=jcut_milling_depth,
     )
 
-    jcut_half_width = (jcut_width - jcut_trench_thickness) / 2
-    jcut_half_height = jcut_lamella_height / 2
+    jcut_top.scan_direction = "TopToBottom"
 
     # lhs_jcut
-    jcut_lhs = microscope.patterning.create_rectangle(
-        center_x=point.x - jcut_half_width - jcut_lhs_offset,
-        center_y=point.y + jcut_half_height - (jcut_lhs_height / 2 - jcut_half_height),
-        width=jcut_lhs_trench_thickness,
-        height=jcut_lhs_height,
-        depth=jcut_milling_depth,
-    )  # depth
+    # jcut_lhs = microscope.patterning.create_rectangle(
+    #     center_x=point.x - jcut_half_width - jcut_lhs_offset,
+    #     center_y=point.y + jcut_half_height - (jcut_lhs_height / 2 - jcut_half_height),
+    #     width=jcut_lhs_trench_thickness,
+    #     height=jcut_lhs_height,
+    #     depth=jcut_milling_depth,
+    # )  # depth
 
     # rhs jcut
-    jcut_rhs = microscope.patterning.create_rectangle(
-        center_x=point.x + jcut_half_width,
+    jcut_rhs = microscope.patterning.create_cleaning_cross_section(
+        center_x=point.x + jcut_half_width - jcut_h_offset,
         center_y=point.y + jcut_half_height - (jcut_rhs_height / 2 - jcut_half_height),
         width=jcut_trench_thickness,
         height=jcut_rhs_height,
         depth=jcut_milling_depth,
     )
 
+    jcut_rhs.scan_direction = "TopToBottom"
+
     # use parallel mode for jcut
     # microscope.patterning.mode = "Parallel"
 
-    return [jcut_top, jcut_lhs, jcut_rhs]
+    return [jcut_top, jcut_rhs]
 
 def calculate_sharpen_needle_pattern(
     protocol: dict, point: Point = Point()

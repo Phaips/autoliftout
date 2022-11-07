@@ -39,15 +39,16 @@ jcut:
   depth: 3.0e-06
   jcut_angle: 6.0
   lamella_height: 1.0e-05
-  lhs_height: 1.4999999999999999e-05
-  lhs_offset: 0.0
-  lhs_trench_width: 1.0e-06
+  # lhs_height: 1.4999999999999999e-05
+  # lhs_offset: 0.0
+  # lhs_trench_width: 1.0e-06
   milling_current: 7.6e-09
   rhs_height: 6.0e-06
   rotation: 0.0
   scan_direction: TopToBottom
   trench_width: 1.0e-06
   width: 2.0e-05
+  h_offset: 4.0e-6
 lamella:
   cleaning_cross_section: 0.0
   lamella_height: 9.999999999999999e-06
@@ -95,7 +96,7 @@ options:
     polish: Manual
     reset: Manual
     thin: Manual
-    trench: Auto
+    trench: Manual
   batch_mode: 1.0
   confirm_advance: 1.0
   joining_method: None
@@ -178,7 +179,7 @@ weld:
   scan_direction: RightToLeft
   width: 3.0e-06
 ml:
-  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model.pt
+  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model2.pt
   encoder: resnet18
   num_classes: 3
   cuda: False 

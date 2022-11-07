@@ -125,11 +125,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         logging.info(f"Updating Lamella UI")
 
-        # # update if the sample changes
-        # self.comboBox_lamella_select.clear()
-        # if self.sample.positions:
-        #     self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
-        # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
 
         # no lamella selected
         if not self.sample.positions:
@@ -221,7 +216,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         )
 
     def run_needle_calibration_utility(self):
-        calibration.auto_needle_calibration(self.microscope, self.settings, validate=False)
+        calibration.auto_needle_calibration(self.microscope, self.settings, validate=True)
 
     def run_sharpen_needle_utility(self):
         """Run the sharpen needle utility, e.g. reset stage"""
@@ -243,6 +238,18 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             settings=self.settings,
             sample=self.sample,
         )
+
+        # add lamellas to combobox
+        if self.sample.positions:
+            self.comboBox_lamella_select.clear()
+            try:
+                self.comboBox_lamella_select.currentTextChanged.disconnect()
+            except:
+                pass
+            self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
+            self.comboBox_lamella_select.currentTextChanged.connect(self.update_lamella_ui)
+        # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
+
         self.update_ui()
 
     def run_autoliftout(self):
