@@ -27,7 +27,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     click_info = []
     move_info = []
 
-    current_lamella = None
+    current_lamella = None # TODO: these arnt tracked properly
     current_stage = None
 
     with open(fname, encoding="cp1252") as f:
@@ -46,7 +46,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                 if "| STARTED" in msg:
                     current_lamella = msg.split("|")[0].strip()
                     current_stage = msg.split("|")[1].strip().split(".")[-1].strip()
-                    print(current_lamella, current_stage)
+                    # print(current_lamella, current_stage)
                 # if "01-" in current_lamella:
                 #     print(msg)
 
@@ -58,8 +58,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                             "beam_type": beam_type,
                             "diff": float(diff),
                             "gamma": float(gamma),
-                            "lamella": deepcopy(current_lamella),
-                            "stage": deepcopy(current_stage),
+                            "lamella": current_lamella,
+                            "stage": current_stage,
                         }
                         gamma_info.append(deepcopy(gamma_d))
                         
@@ -75,8 +75,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "type": click_type,
                         "x": float(pos_x),
                         "y": float(pos_y),
-                        "lamella": deepcopy(current_lamella),
-                        "stage": deepcopy(current_stage)
+                        "lamella": current_lamella,
+                        "stage": current_stage
                     }
 
                     click_info.append(deepcopy(click_d))
@@ -103,8 +103,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "x": float(x),
                         "y": float(y),
                         "z": float(z),
-                        "lamella": deepcopy(current_lamella),
-                        "stage": deepcopy(current_stage)
+                        "lamella": current_lamella,
+                        "stage": current_stage
                     }
                     move_info.append(deepcopy(move_d))
             except Exception as e:
