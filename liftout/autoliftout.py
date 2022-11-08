@@ -65,8 +65,9 @@ def mill_lamella_trench(
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
-    # discharge check
-    calibration.auto_discharge_beam(microscope, settings.image)
+    # charge neutralisation
+    settings.image.beam_type = BeamType.ELECTRON
+    calibration.auto_charge_neutralisation(microscope, settings.image)
 
     logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | REF_TRENCH")
 
@@ -118,7 +119,8 @@ def mill_lamella_jcut(
     logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_ROTATE")
 
     # correct drift using reference images..
-    calibration.auto_discharge_beam(microscope, settings.image)
+    settings.image.beam_type = BeamType.ELECTRON
+    calibration.auto_charge_neutralisation(microscope, settings.image)
     alignment.correct_stage_drift(
         microscope,
         settings,

@@ -4,7 +4,6 @@ from pprint import pprint
 
 import fibsem.ui.utils as fibsem_ui_utils
 import fibsem.ui.windows as fibsem_ui_windows
-import matplotlib
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from fibsem import utils as fibsem_utils
 from fibsem import calibration
