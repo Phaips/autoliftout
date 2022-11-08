@@ -293,13 +293,21 @@ def liftout_lamella(
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
         
         # TODO: get left lamella edge to weld
-         
+        det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaLeftEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
         # mill weld
         milling_ui(
             microscope=microscope,
             settings=settings,
             milling_pattern=MillingPattern.Weld,
-            point=None,
+            point=det.features[0].feature_m,
             auto_continue=bool(mode is AutoLiftoutMode.Auto),
         )
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Platinum":
@@ -321,12 +329,27 @@ def liftout_lamella(
     acquire.take_reference_images(microscope, settings.image)
 
     logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_SEVER_LAMELLA")
+
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaRightEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
+    point = det.features[0].feature_m
+    point.x += 2e-6 # move 2um to the right of the lamella edge
+
     # jcut sever pattern
     milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
-        point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2, y=0), # half the lamella width , #TODO: recalc this for + side trench
+        # point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2, y=0), # half the lamella width , #TODO: recalc this for + side trench
+        point=point,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     ) 
 
@@ -655,11 +678,21 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
 
     # TODO: get right lamella edge to weld
     logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_WELD_TO_POST")
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaRightEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
     milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
-        point=None,
+        point=det.features[0].feature_m,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -682,11 +715,22 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
     # optional? makes it not repeatable
     # TODO: detect lamella left edge to cut
     logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_CUT_NEEDLE")
+    
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaLeftEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
     milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Cut,
-        point=None,
+        point=det.features[0].feature_m,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
