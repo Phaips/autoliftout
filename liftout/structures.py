@@ -25,22 +25,6 @@ class ReferenceHFW(Enum):
     Super: float = 80.0e-6
     Ultra: float = 50.0e-6
 
-@dataclass
-class AutoLiftoutOptions:
-    high_throughput: bool = True
-    piescope: bool = False
-    autolamella: bool = False
-
-    @staticmethod  # TODO: add test
-    def __from_dict__(settings: dict) -> "AutoLiftoutOptions":
-
-        options = AutoLiftoutOptions(
-            high_throughput=settings["high_throughput"],
-            piescope=settings["piescope_enabled"],
-            autolamella=settings["autolamella"],
-        )
-        return options
-
 class AutoLiftoutMode(Enum):
     Manual = 1
     Auto = 2 
@@ -58,7 +42,7 @@ class AutoLiftoutStage(Enum):
     Finished = 8
     Failure = 99
     
-class Sample:
+class Sample: # TODO: rename to Experiment , and generalise to be used for other experiments
     def __init__(self, path: Path = None, name: str = "default") -> None:
 
         self.name: str = name

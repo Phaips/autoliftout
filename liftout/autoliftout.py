@@ -1,9 +1,10 @@
 import logging
 import time
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
-from copy import deepcopy
+import napari
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
@@ -16,10 +17,9 @@ from autoscript_sdb_microscope_client.structures import (
     StagePosition,
 )
 from fibsem import acquire, alignment, calibration, movement
-from fibsem.detection import detection
 from fibsem import utils as fibsem_utils
 from fibsem import validation
-from fibsem.acquire import BeamType
+from fibsem.detection import detection
 from fibsem.detection.detection import Feature, FeatureType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
@@ -27,13 +27,16 @@ from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Poi
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout import actions, patterning
-from liftout.patterning import MillingPattern
-from liftout.structures import AutoLiftoutStage, Lamella, ReferenceImages, Sample
-from liftout.structures import ReferenceHFW, AutoLiftoutMode
-
-
-import napari
 from liftout.gui.MillingUI import MillingUI
+from liftout.patterning import MillingPattern
+from liftout.structures import (
+    AutoLiftoutMode,
+    AutoLiftoutStage,
+    Lamella,
+    ReferenceHFW,
+    ReferenceImages,
+    Sample,
+)
 
 # autoliftout workflow functions
 
@@ -47,14 +50,16 @@ def mill_lamella_trench(
     settings.image.save_path = lamella.path
 
     # move to lamella position
-    calibration.set_microscope_state(microscope, lamella.lamella_state)
+    calibration.set_microscope_state(microscope, lamella.lamella_state) # TODO: remove, this is redundant we are already here at setup? check
 
     # Take an ion beam image at the *milling current*
     settings.image.hfw = ReferenceHFW.Super.value
     settings.image.save = False
 
     ######
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | MILL_TRENCH")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | MILL_TRENCH"
+    )
 
     # mill_trenches
     milling_ui(
@@ -69,7 +74,9 @@ def mill_lamella_trench(
     settings.image.beam_type = BeamType.ELECTRON
     calibration.auto_charge_neutralisation(microscope, settings.image)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | REF_TRENCH")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | REF_TRENCH"
+    )
 
     acquire.take_set_of_reference_images(
         microscope=microscope,
@@ -91,7 +98,9 @@ def mill_lamella_jcut(
     settings.image.save_path = lamella.path
     settings.image.save = False
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH"
+    )
 
     # align to ref_trench
     reference_images = lamella.get_reference_images("ref_trench")
@@ -102,9 +111,8 @@ def mill_lamella_jcut(
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
         use_ref_mask=True,
-        xcorr_limit = (100, 100),
-        constrain_vertical=False
-
+        xcorr_limit=(100, 100),
+        constrain_vertical=False,
     )
 
     # reference images of milled trenches
@@ -116,7 +124,9 @@ def mill_lamella_jcut(
     # move flat to electron beam
     movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_ROTATE")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_ROTATE"
+    )
 
     # correct drift using reference images..
     settings.image.beam_type = BeamType.ELECTRON
@@ -128,7 +138,7 @@ def mill_lamella_jcut(
         alignment=(BeamType.ION, BeamType.ELECTRON),
         rotate=True,
         use_ref_mask=True,
-        xcorr_limit=(250, 250)
+        xcorr_limit=(250, 250),
     )
 
     # adjust for relative shift between beams
@@ -144,11 +154,13 @@ def mill_lamella_jcut(
     )
 
     # align eucentric with reference images # FLAG_TEST
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_EUCENTRIC")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_EUCENTRIC"
+    )
 
     # reference_images = lamella.get_reference_images("ref_trench")
     # alignment.correct_stage_drift(
-    #     microscope, settings, reference_images, 
+    #     microscope, settings, reference_images,
     #     alignment=(BeamType.ELECTRON, BeamType.ION),
     #     rotate =True,
     #     use_ref_mask=True,
@@ -178,7 +190,9 @@ def mill_lamella_jcut(
     )
 
     # mask ref, cosine stretch
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_TILT")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_TILT"
+    )
 
     new_ib = acquire.new_image(microscope, settings.image)
     mask = masks.create_lamella_mask(
@@ -215,7 +229,9 @@ def mill_lamella_jcut(
     # realign
 
     # TODO: create helper for this aligned tilt correction
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_FLAT")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_FLAT"
+    )
 
     # mask ref, cosine stretch
     settings.image.hfw = ReferenceHFW.Super.value
@@ -232,7 +248,7 @@ def mill_lamella_jcut(
     )
 
     # take reference images of the jcut
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | REF_JCUT")
+    logging.info(f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | REF_JCUT")
 
     hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
     reference_images = acquire.take_set_of_reference_images(
@@ -257,7 +273,9 @@ def liftout_lamella(
     # get ready to do liftout by moving to liftout angle (flat to eb)
     actions.move_to_liftout_angle(microscope, settings)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT"
+    )
 
     reference_images = lamella.get_reference_images("ref_jcut")
     alignment.correct_stage_drift(
@@ -267,7 +285,7 @@ def liftout_lamella(
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
         rotate=False,
         use_ref_mask=True,
-        xcorr_limit = (100, 100)
+        xcorr_limit=(100, 100),
     )
 
     # confirm
@@ -288,20 +306,22 @@ def liftout_lamella(
     # land needle on lamella
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella, mode=mode)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_JOIN_LAMELLA")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_JOIN_LAMELLA"
+    )
     # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
-        
+
         # TODO: get left lamella edge to weld
         det = fibsem_ui_windows.detect_features_v2(
-        microscope=microscope,
-        settings=settings,
-        features=[
-            Feature(FeatureType.LamellaLeftEdge),
-            Feature(FeatureType.ImageCentre),
-        ],
-        validate=bool(mode is AutoLiftoutMode.Manual),
-    )
+            microscope=microscope,
+            settings=settings,
+            features=[
+                Feature(FeatureType.LamellaLeftEdge),
+                Feature(FeatureType.ImageCentre),
+            ],
+            validate=bool(mode is AutoLiftoutMode.Manual),
+        )
         # mill weld
         milling_ui(
             microscope=microscope,
@@ -310,7 +330,10 @@ def liftout_lamella(
             point=det.features[0].feature_m,
             auto_continue=bool(mode is AutoLiftoutMode.Auto),
         )
-    if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Platinum":
+    if (
+        settings.protocol["options"]["liftout_joining_method"].capitalize()
+        == "Platinum"
+    ):
         # sputter platinum
         fibsem_utils.sputter_platinum(
             microscope,
@@ -328,7 +351,9 @@ def liftout_lamella(
     settings.image.label = f"liftout_needle_contact"
     acquire.take_reference_images(microscope, settings.image)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_SEVER_LAMELLA")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_SEVER_LAMELLA"
+    )
 
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
@@ -341,7 +366,7 @@ def liftout_lamella(
     )
 
     point = det.features[0].feature_m
-    point.x += 2e-6 # move 2um to the right of the lamella edge
+    point.x += 2e-6  # move 2um to the right of the lamella edge
 
     # jcut sever pattern
     milling_ui(
@@ -351,7 +376,7 @@ def liftout_lamella(
         # point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2, y=0), # half the lamella width , #TODO: recalc this for + side trench
         point=point,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    ) 
+    )
 
     # take reference images
     settings.image.save = True
@@ -400,13 +425,17 @@ def land_needle_on_milled_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | INSERT_NEEDLE")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | INSERT_NEEDLE"
+    )
 
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope)
 
     # align needle to side of lamella
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_EB_DETECTION")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_EB_DETECTION"
+    )
 
     settings.image.beam_type = BeamType.ELECTRON
     det = fibsem_ui_windows.detect_features_v2(
@@ -418,11 +447,15 @@ def land_needle_on_milled_lamella(
         ],
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
-    
-    # TODO: probs needs to be a bit to the left of this?
-    detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_IB_DETECTION")
+    # TODO: probs needs to be a bit to the left of this?
+    detection.move_based_on_detection(
+        microscope, settings, det, beam_type=settings.image.beam_type
+    )
+
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_IB_DETECTION"
+    )
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
@@ -433,9 +466,11 @@ def land_needle_on_milled_lamella(
         ],
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
-    detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type, move_x=False)
+    detection.move_based_on_detection(
+        microscope, settings, det, beam_type=settings.image.beam_type, move_x=False
+    )
 
-    #reference images
+    # reference images
     settings.image.hfw = ReferenceHFW.High.value
     settings.image.save = True
     settings.image.label = f"needle_liftout_start_position"
@@ -457,7 +492,7 @@ def land_needle_on_milled_lamella(
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
     settings.image.gamma.enabled = False
-    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1) # TODO: improve contact detection
+    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)  # TODO: improve contact detection
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
     previous_brightness = image_utils.measure_brightness(ib_image)
 
@@ -467,7 +502,9 @@ def land_needle_on_milled_lamella(
     iteration_count = 0
     MAX_ITERATIONS = 10
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_CONTACT_DETECTION")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_CONTACT_DETECTION"
+    )
 
     while True:
 
@@ -547,7 +584,9 @@ def land_lamella(
     calibration.auto_link_stage(microscope)
 
     # align to ref
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_LANDING")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_LANDING"
+    )
     reference_images = lamella.get_reference_images("ref_landing")
     alignment.correct_stage_drift(
         microscope,
@@ -556,7 +595,7 @@ def land_lamella(
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
         use_ref_mask=True,
-        xcorr_limit = (100, 100)
+        xcorr_limit=(100, 100),
     )
 
     # eucentric correction # TODO:
@@ -575,7 +614,9 @@ def land_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_ON_POST")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_ON_POST"
+    )
     response = False
     while response is False:
 
@@ -616,7 +657,12 @@ def land_lamella(
     return lamella
 
 
-def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella, mode: AutoLiftoutMode): 
+def land_lamella_on_post(
+    microscope: SdbMicroscopeClient,
+    settings: MicroscopeSettings,
+    lamella: Lamella,
+    mode: AutoLiftoutMode,
+):
 
     actions.move_needle_to_landing_position(microscope)
     # TODO: move lower than eucentric to make sure landing
@@ -640,7 +686,9 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
         settings.image.save = True
         settings.image.label = f"landing_needle_pre_move_{i}"
 
-        logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_IB_DETECTION")
+        logging.info(
+            f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_IB_DETECTION"
+        )
         det = fibsem_ui_windows.detect_features_v2(
             microscope=microscope,
             settings=settings,
@@ -651,7 +699,9 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             validate=VALIDATE,
         )
 
-        detection.move_based_on_detection(microscope, settings, det, beam_type=settings.image.beam_type)
+        detection.move_based_on_detection(
+            microscope, settings, det, beam_type=settings.image.beam_type
+        )
 
         # final reference images
         settings.image.hfw = ReferenceHFW.Super.value
@@ -668,7 +718,7 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
             )
         else:
             response = True
-        
+
         # increment count
         i += 1
 
@@ -677,7 +727,9 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
     ############################## WELD TO LANDING POST #############################################
 
     # TODO: get right lamella edge to weld
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_WELD_TO_POST")
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_WELD_TO_POST"
+    )
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
         settings=settings,
@@ -710,12 +762,13 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
     settings.image.beam_type = BeamType.ION
     settings.image.save = True
     settings.image.label = "landing_lamella_needle_removal"
-    
 
     # optional? makes it not repeatable
     # TODO: detect lamella left edge to cut
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_CUT_NEEDLE")
-    
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_CUT_NEEDLE"
+    )
+
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
         settings=settings,
@@ -734,10 +787,7 @@ def land_lamella_on_post(microscope: SdbMicroscopeClient, settings: MicroscopeSe
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
-
-    logging.info(
-        f"{lamella.current_state.stage.name}: removing needle from lamella"
-    )
+    logging.info(f"{lamella.current_state.stage.name}: removing needle from lamella")
     # back out needle from lamella , no cut required?
     for i in range(10):
 
@@ -797,9 +847,7 @@ def reset_needle(
     settings.image.beam_type = BeamType.ION
 
     # TODO: move needle to the centre, because it has been cut off...
-    calibration.align_needle_to_eucentric_position(
-        microscope, settings, validate=False
-    )
+    calibration.align_needle_to_eucentric_position(microscope, settings, validate=False)
 
     # TODO: validate this movement
 
@@ -815,9 +863,7 @@ def reset_needle(
     #################################################################################################
 
     # reset the "eucentric position" for the needle, centre needle in both views
-    calibration.align_needle_to_eucentric_position(
-        microscope, settings, validate=True
-    )
+    calibration.align_needle_to_eucentric_position(microscope, settings, validate=True)
 
     # take reference images
     settings.image.label = f"ref_reset"
@@ -1015,9 +1061,7 @@ def polish_lamella(
 
 
 def run_autoliftout_workflow(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    sample: Sample,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ) -> Sample:
 
     BATCH_MODE = bool(settings.protocol["options"]["batch_mode"])
@@ -1129,7 +1173,7 @@ def end_of_stage_update(
     # update and save sample
     sample = update_sample_lamella_data(sample, lamella)
 
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage} | FINISHED")
+    logging.info(f"STATUS | {lamella._petname} | {lamella.current_state.stage} | FINISHED")
 
     return sample
 
@@ -1153,15 +1197,13 @@ def start_of_stage_update(
     # set current state information
     lamella.current_state.stage = next_stage
     lamella.current_state.start_timestamp = datetime.timestamp(datetime.now())
-    logging.info(f"{lamella._petname} | {lamella.current_state.stage} | STARTED")
+    logging.info(f"STATUS | {lamella._petname} | {lamella.current_state.stage} | STARTED")
 
     return lamella
 
 
 def run_thinning_workflow(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    sample: Sample,
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ) -> Sample:
 
     # thinning
@@ -1170,36 +1212,26 @@ def run_thinning_workflow(
 
         if lamella.current_state.stage == AutoLiftoutStage.Reset:
             lamella = start_of_stage_update(
-                microscope,
-                lamella,
-                next_stage=AutoLiftoutStage.Thinning
+                microscope, lamella, next_stage=AutoLiftoutStage.Thinning
             )
             thin_lamella(microscope, settings, lamella)
-            sample = end_of_stage_update(
-                microscope, sample, lamella
-            )
+            sample = end_of_stage_update(microscope, sample, lamella)
 
     # polish
     for lamella in sample.positions.values():
 
         if lamella.current_state.stage == AutoLiftoutStage.Thinning:
             lamella = start_of_stage_update(
-                microscope,
-                lamella,
-                next_stage=AutoLiftoutStage.Polishing
+                microscope, lamella, next_stage=AutoLiftoutStage.Polishing
             )
             polish_lamella(microscope, settings, lamella)
-            sample = end_of_stage_update(
-                microscope, sample, lamella
-            )
+            sample = end_of_stage_update(microscope, sample, lamella)
 
     # finish the experiment
     for lamella in sample.positions.values():
         if lamella.current_state.stage == AutoLiftoutStage.Polishing:
             lamella.current_state.stage = AutoLiftoutStage.Finished
-            sample = end_of_stage_update(
-                microscope, sample, lamella
-            )
+            sample = end_of_stage_update(microscope, sample, lamella)
 
     return sample
 
@@ -1476,7 +1508,7 @@ def sputter_platinum_on_whole_sample_grid(
     # Whole-grid platinum deposition
     response = fibsem_ui_windows.ask_user_interaction(
         msg="Do you want to sputter the whole \nsample grid with platinum?",
-        image = acquire.last_image(microscope, BeamType.ELECTRON).data
+        image=acquire.last_image(microscope, BeamType.ELECTRON).data,
     )
 
     if response:
@@ -1491,28 +1523,31 @@ def sputter_platinum_on_whole_sample_grid(
     return
 
 
-def milling_ui(    
+def milling_ui(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     milling_pattern: patterning.MillingPattern,
     point: Point = None,
     change_pattern: bool = False,
-    auto_continue: bool = False):
+    auto_continue: bool = False,
+):
 
     viewer = napari.Viewer()
     milling_ui = MillingUI(
-            viewer=viewer, 
-            microscope=microscope, settings=settings, 
-            milling_pattern=milling_pattern,
-            point = point,
-            change_pattern=change_pattern,
-            auto_continue=auto_continue)
-    
+        viewer=viewer,
+        microscope=microscope,
+        settings=settings,
+        milling_pattern=milling_pattern,
+        point=point,
+        change_pattern=change_pattern,
+        auto_continue=auto_continue,
+    )
+
     viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
-    
+
     if auto_continue:
         milling_ui.run_milling()
     else:
         milling_ui.exec_()
-    
+
     # napari.run(max_loop_level=2)

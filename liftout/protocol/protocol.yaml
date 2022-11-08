@@ -99,7 +99,6 @@ options:
     trench: Manual
   batch_mode: 1.0
   confirm_advance: 1.0
-  joining_method: None
   landing_joining_method: Weld
   landing_removal_method: None
   landing_surface: Half-Moon Grid
