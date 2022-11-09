@@ -274,6 +274,9 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
                 spinBox_value = QtWidgets.QDoubleSpinBox()
                 spinBox_value.setValue(v)
                 spinBox_value.valueChanged.connect(self.update_milling_settings_from_ui)
+                
+                if k == "rotation":
+                    spinBox_value.setRange(-360, 360)
 
                 self.gridLayout_2.addWidget(label, i, 0)
                 self.gridLayout_2.addWidget(spinBox_value, i, 1)
@@ -433,13 +436,25 @@ def convert_pattern_to_napari_rect(
     cx = int(icx + (pattern.center_x / pixelsize))
     cy = int(icy - (pattern.center_y / pixelsize))
 
-    # TODO: add rotation
+    r = -pattern.rotation #
 
-    xmin, xmax = cx - w / 2, cx + w / 2
-    ymin, ymax = cy - h / 2, cy + h / 2
+    xmin, xmax = - w / 2, w / 2
+    ymin, ymax = - h / 2, h / 2
+
+    px0 = cx + (xmin * np.cos(r) - ymin * np.sin(r))
+    py0 = cy + (xmin * np.sin(r) + ymin * np.cos(r))
+
+    px1 = cx + (xmax * np.cos(r) - ymin * np.sin(r))
+    py1 = cy + (xmax * np.sin(r) + ymin * np.cos(r))
+
+    px2 = cx + (xmax * np.cos(r) - ymax * np.sin(r))
+    py2 = cy + (xmax * np.sin(r) + ymax * np.cos(r))
+
+    px3 = cx + (xmin * np.cos(r) - ymax * np.sin(r))
+    py3 = cy + (xmin * np.sin(r) + ymax * np.cos(r))
 
     # napari shape format
-    shape = [[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]]
+    shape = [[py0, px0], [py1, px1], [py2, px2], [py3, px3]]
 
     return shape
 
@@ -482,7 +497,7 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.Trench
+    milling_pattern = MillingPattern.Cut
     point = None
     change_pattern = True
     auto_continue = False
