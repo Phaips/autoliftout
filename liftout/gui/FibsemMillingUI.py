@@ -18,11 +18,6 @@ from liftout.patterning import MillingPattern
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QLabel
 
-# TODO: support for other element types
-# TODO: pattern rotation
-# TODO: disable editting
-
-
 class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
@@ -159,58 +154,58 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.update_milling_pattern()
 
     def update_milling_pattern(self):
+        
+        try:
+            # draw patterns in microscope
+            self.microscope.patterning.clear_patterns()
+            all_patterns = []
+            for stage_name, stage_settings in self.milling_stages.items():
 
-        logging.info(f"update milling pattern")
-
-        # TODO: should this be in a try block?
-
-        # draw patterns in microscope
-        self.microscope.patterning.clear_patterns()
-        all_patterns = []
-        for stage_name, stage_settings in self.milling_stages.items():
-
-            patterns = patterning.create_milling_patterns(
-                self.microscope,
-                stage_settings,
-                self.milling_pattern,
-                self.point,
-            )
-            all_patterns.append(patterns)  # 2D
-
-        # draw patterns in napari
-
-        # TODO: clear all shape layers...add a legend to the view?
-        # TODO: show / hide patterns
-        if "Stage 1" in self.viewer.layers:
-            self.viewer.layers.remove(self.viewer.layers["Stage 1"])
-        if "Stage 2" in self.viewer.layers:
-            self.viewer.layers.remove(self.viewer.layers["Stage 2"])
-
-        pixelsize = self.image.metadata.binary_result.pixel_size.x
-
-        for i, stage in enumerate(all_patterns, 1):
-            shape_patterns = []
-            for pattern in stage:
-                shape = convert_pattern_to_napari_rect(
-                    pattern, self.image.data, pixelsize
+                patterns = patterning.create_milling_patterns(
+                    self.microscope,
+                    stage_settings,
+                    self.milling_pattern,
+                    self.point,
                 )
-                shape_patterns.append(shape)
+                all_patterns.append(patterns)  # 2D
 
-            # draw shapes
-            colour = "yellow" if i == 1 else "cyan"
-            self.viewer.add_shapes(
-                shape_patterns,
-                name=f"Stage {i}",
-                shape_type="rectangle",
-                edge_width=0.5,
-                edge_color=colour,
-                face_color=colour,
-                opacity=0.5,
+            # draw patterns in napari
+
+            if "Stage 1" in self.viewer.layers:
+                self.viewer.layers.remove(self.viewer.layers["Stage 1"])
+            if "Stage 2" in self.viewer.layers:
+                self.viewer.layers.remove(self.viewer.layers["Stage 2"])
+
+            pixelsize = self.image.metadata.binary_result.pixel_size.x
+
+            for i, stage in enumerate(all_patterns, 1):
+                shape_patterns = []
+                for pattern in stage:
+                    shape = convert_pattern_to_napari_rect(
+                        pattern, self.image.data, pixelsize
+                    )
+                    shape_patterns.append(shape)
+
+                # draw shapes
+                colour = "yellow" if i == 1 else "cyan"
+                self.viewer.add_shapes(
+                    shape_patterns,
+                    name=f"Stage {i}",
+                    shape_type="rectangle",
+                    edge_width=0.5,
+                    edge_color=colour,
+                    face_color=colour,
+                    opacity=0.5,
+                )
+
+            self.update_estimated_time(all_patterns)
+
+            self.viewer.layers.selection.active = self.image_layer
+        
+        except Exception as e:
+            napari.utils.notifications.show_info(
+                f"Error: {e}"
             )
-
-        self.update_estimated_time(all_patterns)
-
-        self.viewer.layers.selection.active = self.image_layer
 
     def update_estimated_time(self, patterns: list):
 
@@ -368,7 +363,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
             microscope=self.microscope,
             imaging_current=self.settings.default.imaging_current,
         )
-
         napari.utils.notifications.show_info(f"Milling Complete.")
 
         # update image
@@ -463,6 +457,8 @@ def convert_napari_rect_to_mill_settings(
 
     # get centre of image
     cy_mid, cx_mid = image.data.shape[0] // 2, image.shape[1] // 2
+
+    # TODO: account for rotation, different shape types
 
     # get rect dimensions in px
     ymin, xmin = arr[0]
