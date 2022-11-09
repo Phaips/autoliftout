@@ -214,7 +214,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
 
     def update_estimated_time(self, patterns: list):
 
-        # TODO: is calculated for current current, not desired milling current
         milling_time_seconds = milling.estimate_milling_time_in_seconds(patterns)
         time_str = fibsem_utils._format_time_seconds(milling_time_seconds)
         self.label_milling_time.setText(f"Estimated Time: {time_str}")
@@ -327,8 +326,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
             BeamType.ION.value
         )  # set ion beam view
         for stage_name, stage_settings in self.milling_stages.items():
-
-            logging.info(f"Stage {stage_name}: {stage_settings}")
 
             # redraw patterns, and run milling
             self.microscope.patterning.clear_patterns()
