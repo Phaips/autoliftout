@@ -139,8 +139,9 @@ def jcut_milling_patterns(
 
     Returns:
         list[RectanglePattern]: jcut milling patterns
-    """
-
+    """ 
+    # TODO: rename jcut to undercut
+    
     # jcut_lhs_height = protocol["lhs_height"]
     jcut_rhs_height = protocol["rhs_height"]
     jcut_lamella_height = protocol["lamella_height"]
