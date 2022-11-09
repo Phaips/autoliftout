@@ -312,7 +312,7 @@ def liftout_lamella(
     # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
 
-        # TODO: get left lamella edge to weld
+        settings.image.beam_type = BeamType.ION
         det = fibsem_ui_windows.detect_features_v2(
             microscope=microscope,
             settings=settings,
@@ -355,6 +355,7 @@ def liftout_lamella(
         f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_SEVER_LAMELLA"
     )
 
+    settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
         settings=settings,
@@ -381,7 +382,7 @@ def liftout_lamella(
     # take reference images
     settings.image.save = True
     settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.label = f"jcut_sever"
+    settings.image.label = f"ref_jcut_sever"
     acquire.take_reference_images(microscope, settings.image)
 
     # Raise needle 30um from trench
@@ -394,7 +395,7 @@ def liftout_lamella(
         )
         needle.relative_move(z_move_out_from_trench)
         settings.image.label = f"liftout_trench_{i}"
-        acquire.take_reference_images(microscope, settings.image)
+        acquire.take_reference_images(microscope, settings.image) # TODO: remove
         logging.info(
             f"{lamella.current_state.stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1}/3)"
         )
@@ -448,7 +449,7 @@ def land_needle_on_milled_lamella(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
 
-    # TODO: probs needs to be a bit to the left of this?
+    det.distance[0].x -= 2.5e-6  # move 2.5um to the left of the lamella edge
     detection.move_based_on_detection(
         microscope, settings, det, beam_type=settings.image.beam_type
     )
@@ -492,7 +493,7 @@ def land_needle_on_milled_lamella(
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
     settings.image.gamma.enabled = False
-    reduced_area = Rectangle(0.4, 0.45, 0.2, 0.1)  # TODO: improve contact detection
+    reduced_area = Rectangle(0.3, 0.3, 0.3, 0.3)  # TODO: improve contact detection
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
     previous_brightness = image_utils.measure_brightness(ib_image)
 
@@ -726,10 +727,11 @@ def land_lamella_on_post(
 
     ############################## WELD TO LANDING POST #############################################
 
-    # TODO: get right lamella edge to weld
     logging.info(
         f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_WELD_TO_POST"
     )
+
+    settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
         settings=settings,
@@ -764,7 +766,6 @@ def land_lamella_on_post(
     settings.image.label = "landing_lamella_needle_removal"
 
     # optional? makes it not repeatable
-    # TODO: detect lamella left edge to cut
     logging.info(
         f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_CUT_NEEDLE"
     )
