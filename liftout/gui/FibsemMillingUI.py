@@ -65,8 +65,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
 
     def setup_connections(self):
 
-        logging.info("setup connections")
-
         # combobox
         self.comboBox_select_pattern.addItems(
             pattern.name for pattern in MillingPattern
@@ -109,10 +107,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         )  # append callback
         self.viewer.layers.selection.active = self.image_layer
 
-    def continue_button_pressed(self):
-
-        logging.info(f"continue button pressed")
-
     def _double_click(self, layer, event):
 
         coords = layer.world_to_data(event.position)
@@ -135,15 +129,15 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # for trenches, move the stage, not the pattern
         # (trench should always be in centre of image)
         if self.milling_pattern is MillingPattern.Trench:
-            dx, dy = conversions.pixel_to_realspace_coordinate(
-                (coords[1], coords[0]), self.image
-            )
+
+            point = conversions.image_to_microscope_image_coordinates(Point(x=coords[1], y=coords[0]), 
+                    self.image.data, self.image.metadata.binary_result.pixel_size.x)  
 
             movement.move_stage_relative_with_corrected_movement(
                 microscope=self.microscope,
                 settings=self.settings,
-                dx=dx,
-                dy=dy,
+                dx=point.x,
+                dy=point.y,
                 beam_type=BeamType.ION,
             )
 
@@ -154,10 +148,10 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # get image coordinate
         if coords is None:
             coords = np.asarray(self.image.data.shape) // 2
-        x, y = conversions.pixel_to_realspace_coordinate(
-            (coords[1], coords[0]), self.image
-        )
-        self.point = Point(x=x, y=y)
+
+        self.point = conversions.image_to_microscope_image_coordinates(Point(x=coords[1], y=coords[0]), 
+            self.image.data, self.image.metadata.binary_result.pixel_size.x)  
+
         logging.info(
             f"Milling, {BeamType.ION}, {self.milling_pattern.name}, p=({coords[1]:.2f}, {coords[0]:.2f})  c=({self.point.x:.2e}, {self.point.y:.2e}) "
         )
@@ -222,8 +216,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
 
         # TODO: is calculated for current current, not desired milling current
         milling_time_seconds = milling.estimate_milling_time_in_seconds(patterns)
-
-        logging.info(f"milling time: {milling_time_seconds}")
         time_str = fibsem_utils._format_time_seconds(milling_time_seconds)
         self.label_milling_time.setText(f"Estimated Time: {time_str}")
 
@@ -490,7 +482,7 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.Thin
+    milling_pattern = MillingPattern.Trench
     point = None
     change_pattern = True
     auto_continue = False
