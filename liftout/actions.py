@@ -236,26 +236,28 @@ def move_needle_to_reset_position(microscope: SdbMicroscopeClient, position: Man
     # move to eucentric
     movement.move_needle_to_position_offset(microscope, position)
 
-# TODO: use safe_absolute_stage_movement instead
 def move_to_thinning_angle(
     microscope: SdbMicroscopeClient, protocol: dict
 ) -> StagePosition:
     """Rotate and tilt the stage to the thinning angle, assumes from the landing position"""
-    stage = microscope.specimen.stage
+    # stage = microscope.specimen.stage
 
     # tilt to zero for safety
-    stage_settings = MoveSettings(rotate_compucentric=True)
-    stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
+    # stage_settings = MoveSettings(rotate_compucentric=True)
+    # stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
     # thinning position
     thinning_rotation_angle = np.deg2rad(protocol["thin_lamella"]["rotation_angle"])
     thinning_tilt_angle = np.deg2rad(protocol["thin_lamella"]["tilt_angle"])
 
-    # rotate to thinning angle
-    logging.info(f"rotate to thinning angle: {thinning_rotation_angle}")
-    stage.absolute_move(StagePosition(r=thinning_rotation_angle), stage_settings)
+    stage_position = StagePosition(r=thinning_rotation_angle, t=thinning_tilt_angle)
+    movement.safe_absolute_stage_movement(microscope, stage_position)
 
-    # tilt to thinning angle
-    logging.info(f"tilt to thinning angle: {thinning_tilt_angle}")
-    stage.absolute_move(StagePosition(t=thinning_tilt_angle), stage_settings)
+    # # rotate to thinning angle
+    # logging.info(f"rotate to thinning angle: {thinning_rotation_angle}")
+    # stage.absolute_move(StagePosition(r=thinning_rotation_angle), stage_settings)
+
+    # # tilt to thinning angle
+    # logging.info(f"tilt to thinning angle: {thinning_tilt_angle}")
+    # stage.absolute_move(StagePosition(t=thinning_tilt_angle), stage_settings)
 

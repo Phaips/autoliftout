@@ -38,6 +38,11 @@ from liftout.structures import (
     Sample,
 )
 
+def log_status_message(lamella: Lamella, step: str):
+    logging.info(
+        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | {step}"
+    )
+
 # autoliftout workflow functions
 
 # functional mill trench
@@ -57,9 +62,7 @@ def mill_lamella_trench(
     settings.image.save = False
 
     ######
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | MILL_TRENCH"
-    )
+    log_status_message(lamella, "MILL_TRENCH")
 
     # mill_trenches
     milling_ui(
@@ -74,9 +77,8 @@ def mill_lamella_trench(
     settings.image.beam_type = BeamType.ELECTRON
     calibration.auto_charge_neutralisation(microscope, settings.image)
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | REF_TRENCH"
-    )
+    log_status_message(lamella, "REF_TRENCH")
+
 
     acquire.take_set_of_reference_images(
         microscope=microscope,
@@ -98,9 +100,7 @@ def mill_lamella_jcut(
     settings.image.save_path = lamella.path
     settings.image.save = False
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH"
-    )
+    log_status_message(lamella, "ALIGN_REF_TRENCH")
 
     # align to ref_trench
     reference_images = lamella.get_reference_images("ref_trench")
@@ -124,9 +124,7 @@ def mill_lamella_jcut(
     # move flat to electron beam
     movement.move_flat_to_beam(microscope, settings, beam_type=BeamType.ELECTRON)
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_ROTATE"
-    )
+    log_status_message(lamella, "ALIGN_REF_TRENCH_ROTATE")
 
     # correct drift using reference images..
     settings.image.beam_type = BeamType.ELECTRON
@@ -153,10 +151,8 @@ def mill_lamella_jcut(
         beam_type=BeamType.ELECTRON,
     )
 
-    # align eucentric with reference images # FLAG_TEST
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_TRENCH_EUCENTRIC"
-    )
+    # align eucentric with reference images #   FLAG_TEST
+    log_status_message(lamella, "ALIGN_REF_TRENCH_EUCENTRIC")
 
     # reference_images = lamella.get_reference_images("ref_trench")
     # alignment.correct_stage_drift(
@@ -190,9 +186,7 @@ def mill_lamella_jcut(
     )
 
     # mask ref, cosine stretch
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_TILT"
-    )
+    log_status_message(lamella, "ALIGN_REF_JCUT_TILT")
 
     new_ib = acquire.new_image(microscope, settings.image)
     mask = masks.create_lamella_mask(
@@ -229,9 +223,7 @@ def mill_lamella_jcut(
     # realign
 
     # TODO: create helper for this aligned tilt correction
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT_FLAT"
-    )
+    log_status_message(lamella, "ALIGN_REF_JCUT_FLAT")
 
     # mask ref, cosine stretch
     settings.image.hfw = ReferenceHFW.Super.value
@@ -273,9 +265,7 @@ def liftout_lamella(
     # get ready to do liftout by moving to liftout angle (flat to eb)
     actions.move_to_liftout_angle(microscope, settings)
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_JCUT"
-    )
+    log_status_message(lamella, "ALIGN_REF_JCUT")
 
     reference_images = lamella.get_reference_images("ref_jcut")
     alignment.correct_stage_drift(
@@ -306,9 +296,8 @@ def liftout_lamella(
     # land needle on lamella
     lamella = land_needle_on_milled_lamella(microscope, settings, lamella, mode=mode)
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_JOIN_LAMELLA"
-    )
+    log_status_message(lamella, "NEEDLE_JOIN_LAMELLA")
+
     # joining options
     if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
 
@@ -351,9 +340,7 @@ def liftout_lamella(
     settings.image.label = f"liftout_needle_contact"
     acquire.take_reference_images(microscope, settings.image)
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_SEVER_LAMELLA"
-    )
+    log_status_message(lamella, "NEEDLE_SEVER_LAMELLA")
 
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
@@ -426,17 +413,13 @@ def land_needle_on_milled_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | INSERT_NEEDLE"
-    )
+    log_status_message(lamella, " INSERT_NEEDLE")
 
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope)
 
     # align needle to side of lamella
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_EB_DETECTION"
-    )
+    log_status_message(lamella, " NEEDLE_EB_DETECTION")
 
     settings.image.beam_type = BeamType.ELECTRON
     det = fibsem_ui_windows.detect_features_v2(
@@ -454,9 +437,8 @@ def land_needle_on_milled_lamella(
         microscope, settings, det, beam_type=settings.image.beam_type
     )
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_IB_DETECTION"
-    )
+    log_status_message(lamella, "NEEDLE_IB_DETECTION")
+     
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
@@ -503,9 +485,7 @@ def land_needle_on_milled_lamella(
     iteration_count = 0
     MAX_ITERATIONS = 10
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | NEEDLE_CONTACT_DETECTION"
-    )
+    log_status_message(lamella, "NEEDLE_CONTACT_DETECTION")
 
     while True:
 
@@ -582,12 +562,10 @@ def land_lamella(
 
     # move to landing coordinate
     calibration.set_microscope_state(microscope, lamella.landing_state)
-    calibration.auto_link_stage(microscope)
+
 
     # align to ref
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | ALIGN_REF_LANDING"
-    )
+    log_status_message(lamella, "ALIGN_REF_LANDING")
     reference_images = lamella.get_reference_images("ref_landing")
     alignment.correct_stage_drift(
         microscope,
@@ -600,24 +578,19 @@ def land_lamella(
     )
 
     # eucentric correction # TODO:
-    alignment.auto_eucentric_correction(microscope, settings.image)
+    # alignment.auto_eucentric_correction(microscope, settings.image)
 
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
 
-    logging.info(
-        f"{lamella.current_state.stage.name}: initial landing calibration complete."
-    )
 
     ############################## LAND_LAMELLA ##############################
     validate_needle_insertion(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_ON_POST"
-    )
+    log_status_message(lamella, "LAND_LAMELLA_ON_POST")
     response = False
     while response is False:
 
@@ -632,7 +605,8 @@ def land_lamella(
         else:
             response = True
 
-    # move needle out of trench slowly at first
+    log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
+    # move needle out of trench slowly at first (QUERY: is this required?)
     for i in range(3):
         z_move_out_from_post = movement.z_corrected_needle_movement(
             10e-6, stage.current_position.t
@@ -645,7 +619,6 @@ def land_lamella(
 
     # move needle to park position
     movement.retract_needle(microscope)
-    logging.info(f"{lamella.current_state.stage.name}: needle retracted.")
 
     # reference images
     acquire.take_set_of_reference_images(
@@ -727,9 +700,7 @@ def land_lamella_on_post(
 
     ############################## WELD TO LANDING POST #############################################
 
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_WELD_TO_POST"
-    )
+    log_status_message(lamella, "LAND_LAMELLA_WELD_TO_POST")
 
     settings.image.beam_type = BeamType.ION
     det = fibsem_ui_windows.detect_features_v2(
@@ -766,9 +737,7 @@ def land_lamella_on_post(
     settings.image.label = "landing_lamella_needle_removal"
 
     # optional? makes it not repeatable
-    logging.info(
-        f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_CUT_NEEDLE"
-    )
+    log_status_message(lamella, " LAND_LAMELLA_CUT_NEEDLE")
 
     det = fibsem_ui_windows.detect_features_v2(
         microscope=microscope,
@@ -818,6 +787,15 @@ def reset_needle(
     # bookkeeping
     mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["reset"].capitalize()]
     settings.image.save_path = lamella.path
+
+    # optionally skip reset
+    if mode is AutoLiftoutMode.Manual:
+        response = fibsem_ui_windows.ask_user_interaction(
+            msg="Do you want to complete reset? \nPress Yes to continue, or No to skip",
+        )
+
+        if response is False:
+            return lamella
 
     # convienence
     stage = microscope.specimen.stage
@@ -898,8 +876,7 @@ def thin_lamella(
     # move to the initial landing coordinates
     calibration.set_microscope_state(microscope, lamella.landing_state)
 
-    # ensure_eucentricity # TODO: Maybe remove, not required?
-    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
+    log_status_message(lamella, "THIN_LAMELLA_MOVEMENT")
 
     # rotate_and_tilt_to_thinning_angle
     settings.image.hfw = ReferenceHFW.High.value
@@ -908,45 +885,55 @@ def thin_lamella(
     # load the reference images
     reference_images = lamella.get_reference_images(label="ref_landing_lamella")
 
-    # TODO: test
+    # TODO: test    
+    log_status_message(lamella, "THIN_LAMELLA_ALIGN")
+
     alignment.correct_stage_drift(
         microscope,
         settings,
         reference_images=reference_images,
-        alignment=(BeamType.ION, BeamType.ELECTRON),
+        alignment=(BeamType.ION, BeamType.ION),
         rotate=True,
         use_ref_mask=False,
+        xcorr_limit = (250, 250)
     )
 
     # ensure_eucentricity at thinning angle
-    # confirm
-    fibsem_ui_windows.ask_user_movement(
-        microscope,
-        settings,
-        msg_type="eucentric",
-        msg="Confirm lamella is centred in Ion Beam",
-    )
+    if mode is AutoLiftoutMode.Manual:
+        
+        # confirm
+        fibsem_ui_windows.ask_user_movement(
+            microscope,
+            settings,
+            msg_type="eucentric",
+            msg="Confirm lamella right edge is centred in Ion Beam",
+        ) 
+        # TODO: add tilt correction here...
+        # TODO: add beam shift too?
 
     # lamella images
-    settings.image.hfw = ReferenceHFW.Medium.value
-    settings.image.save = True
-    settings.image.label = f"thin_lamella_high_res"
-    acquire.take_reference_images(microscope, settings.image)
-
-    settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.save = False
-    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="alignment")
-
-    # take reference images
-    settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.save = True
-    settings.image.label = f"thin_drift_correction_highres"
-    acquire.take_reference_images(microscope, settings.image)
+    reference_images = acquire.take_set_of_reference_images(
+        microscope,
+        settings.image,
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
+        label="ref_thin_lamella_start",
+    )
 
     # thin_lamella (align and mill)
     settings.image.resolution = settings.protocol["thin_lamella"]["resolution"]
     settings.image.dwell_time = settings.protocol["thin_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
+
+    log_status_message(lamella, "THIN_LAMELLA_MILL")
+
+    # QUERY: add a fiducial here?
+    milling_ui(
+        microscope=microscope,
+        settings=settings,
+        milling_pattern=MillingPattern.Fiducial,
+        point=None,
+        auto_continue=bool(mode is AutoLiftoutMode.Auto),
+    )
 
     # mill thin_lamella
     milling_ui(
@@ -956,6 +943,8 @@ def thin_lamella(
         point=None,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
+
+    log_status_message(lamella, "REF_THIN_LAMELLA")
 
     # # take reference images
     reference_images = acquire.take_set_of_reference_images(
@@ -985,59 +974,42 @@ def polish_lamella(
     reference_images = lamella.get_reference_images(label="ref_thin_lamella")
 
     # TODO: Test, probs only needs 1 step
-    # alignment.correct_stage_drift(
-    #     microscope,
-    #     settings,
-    #     reference_images=reference_images,
-    #     alignment=(BeamType.ION, BeamType.ION),
-    #     rotate=Fa;,
-    # )
+    log_status_message(lamella, "POLISH_LAMELLA_ALIGN")
 
-    settings.image = fibsem_utils.match_image_settings(
-        reference_images.high_res_ib, settings.image, BeamType.ION
-    )
-
-    # settings.image.beam_type = BeamType.ION
-    settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.save = True
-    settings.image.label = "restore_from_thin_lamella"
-    new_ib = acquire.new_image(microscope, settings.image)
-    alignment.align_using_reference_images(
+    alignment.correct_stage_drift(
         microscope,
         settings,
-        ref_image=reference_images.high_res_ib,
-        new_image=new_ib,
-        ref_mask=None,
+        reference_images=reference_images,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=False,
+        xcorr_limit = (100, 100)
     )
 
     # confirm
-    fibsem_ui_windows.ask_user_movement(
-        microscope,
-        settings,
-        msg_type="eucentric",
-        msg="Confirm lamella is centred in Ion Beam",
-    )
+    if mode is AutoLiftoutMode.Manual:
+        fibsem_ui_windows.ask_user_movement(
+            microscope,
+            settings,
+            msg_type="eucentric",
+            msg="Confirm lamella right edge is centred in Ion Beam",
+        )
 
     # realign lamella to image centre
-    settings.image.hfw = ReferenceHFW.High.value
+    reference_images = acquire.take_set_of_reference_images(
+        microscope, settings.image,  [ReferenceHFW.High.value, ReferenceHFW.Super.value], "ref_polish_lamella_start"
+    )
+
+    settings.image.hfw = ReferenceHFW.Ultra.value
     settings.image.save = True
-    settings.image.label = f"polish_drift_correction_highres"
-    acquire.take_reference_images(microscope, settings.image)
-
-    settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.save = False
-
-    # confirm
-    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="alignment")
-
-    # # take reference images
-    acquire.take_reference_images(microscope, settings.image)
+    settings.image.label = f"ref_polish_lamella_ultra_res"
+    acquire.take_reference_images(microscope=microscope, image_settings=settings.image)
 
     # polish (align and mill)
     settings.image.resolution = settings.protocol["polish_lamella"]["resolution"]
     settings.image.dwell_time = settings.protocol["polish_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["polish_lamella"]["hfw"]
 
+    log_status_message(lamella, "POLISH_LAMELLA_MILL")
     milling_ui(
         microscope=microscope,
         settings=settings,
@@ -1046,11 +1018,10 @@ def polish_lamella(
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
+    log_status_message(lamella, "POLISH_LAMELLA_REF")
     # take reference images (ultra, super, high)
-
-    hfws = [ReferenceHFW.High.value, ReferenceHFW.Super.value]
     reference_images = acquire.take_set_of_reference_images(
-        microscope, settings.image, hfws, "ref_thin_lamella"
+        microscope, settings.image,  [ReferenceHFW.High.value, ReferenceHFW.Super.value], "ref_polish_lamella"
     )
 
     settings.image.hfw = ReferenceHFW.Ultra.value
