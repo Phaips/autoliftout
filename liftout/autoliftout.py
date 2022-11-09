@@ -39,7 +39,7 @@ from liftout.structures import (
 )
 
 def log_status_message(lamella: Lamella, step: str):
-    logging.info(
+    logging.debug(
         f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | {step}"
     )
 
@@ -240,7 +240,7 @@ def mill_lamella_jcut(
     )
 
     # take reference images of the jcut
-    logging.info(f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | REF_JCUT")
+    log_status_message(lamella, "REF_JCUT")
 
     hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
     reference_images = acquire.take_set_of_reference_images(

@@ -111,9 +111,7 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         if (coords[0] > 0 and coords[0] < image_shape[0]) and (
             coords[1] > 0 and coords[1] < image_shape[1]
         ):
-            logging.info(
-                f"click inside image: {coords[0]:.2f}, {coords[1]:.2f}"
-            )
+            pass
 
         else:
             napari.utils.notifications.show_info(
@@ -147,7 +145,7 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.point = conversions.image_to_microscope_image_coordinates(Point(x=coords[1], y=coords[0]), 
             self.image.data, self.image.metadata.binary_result.pixel_size.x)  
 
-        logging.info(
+        logging.debug(
             f"Milling, {BeamType.ION}, {self.milling_pattern.name}, p=({coords[1]:.2f}, {coords[0]:.2f})  c=({self.point.x:.2e}, {self.point.y:.2e}) "
         )
 
@@ -214,8 +212,6 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.label_milling_time.setText(f"Estimated Time: {time_str}")
 
     def update_milling_stages(self):
-
-        logging.info("update_milling_stages")
 
         self.milling_pattern = MillingPattern[
             self.comboBox_select_pattern.currentText()
