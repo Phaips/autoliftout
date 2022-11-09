@@ -23,7 +23,7 @@ st.title("AutoLiftout Companion")
 #################### EXPERIMENT SECTION ####################
 
 # select experiment
-paths = glob.glob(os.path.join(LOG_PATH, "*dm-*/"))
+paths = glob.glob(os.path.join(LOG_PATH, "*dry-*/"))
 EXPERIMENT_PATH = st.selectbox(label="Experiment Path ", options=paths)
 sample = load_experiment(EXPERIMENT_PATH)
 
@@ -35,6 +35,7 @@ df = stats.sample
 n_lamella = len(df["petname"])
 n_images =  len(glob.glob(os.path.join(EXPERIMENT_PATH, "**/**.tif"), recursive=True))
 n_clicks = len(stats.click)
+n_ml = len(stats.ml)
 
 df_gamma_mean = stats.gamma.groupby(by="beam_type").mean()
 df_gamma_mean.reset_index(inplace=True)
@@ -48,6 +49,7 @@ cols = st.columns(5)
 cols[0].metric("Lamella", n_lamella)
 cols[1].metric("Images", n_images)
 cols[2].metric("Clicks", n_clicks)
+cols[3].metric("Bad Detections", n_ml)
 
 st.markdown("---")
 
@@ -59,12 +61,14 @@ st.markdown("---")
 
 # plots TODO
 fig_gamma = px.histogram(stats.gamma, x="gamma", color="beam_type", nbins=30, title="Gamma Distribution")
-fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
 
 cols = st.columns(2)
 cols[0].plotly_chart(fig_gamma)
-cols[1].plotly_chart(fig_clicks)
-
+try:
+    fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
+    cols[1].plotly_chart(fig_clicks)
+except:
+    st.write("No Click available.")
 # stats.move["size_z"] = abs(stats.move["z"] * 1e6).astype(int)
 # fig = px.scatter(stats.move, x="x", y="y", size="size_z", color="beam_type", symbol="mode")
 # fig = px.scatter_3d(stats.move, x="x", y="y", z="z", color="beam_type", symbol="mode")
@@ -78,6 +82,14 @@ cols = st.columns(2)
 cols[0].plotly_chart(fig_lamella)
 cols[1].plotly_chart(fig_landing)
 
+try:
+    # ml plots
+    st.subheader("ML Data")
+    fig_ml = px.bar(stats.ml, x="feature", title="Incorrect Detection", color="stage", barmode="group")
+
+    st.plotly_chart(fig_ml)
+except:
+    st.write("No ML Data available.")
 
 # history, duration
 st.markdown("""---""")

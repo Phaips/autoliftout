@@ -1,6 +1,4 @@
-from unicodedata import name
-from venv import create
-from cv2 import split
+
 import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass
@@ -14,6 +12,7 @@ class AutoLiftoutStatistics:
     gamma: pd.DataFrame
     click: pd.DataFrame
     move: pd.DataFrame
+    ml: pd.DataFrame
     sample: pd.DataFrame
     history: pd.DataFrame
     image: pd.DataFrame = None
@@ -26,9 +25,11 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     gamma_info = []
     click_info = []
     move_info = []
+    ml_info = []
 
-    current_lamella = None # TODO: these arnt tracked properly
+    current_lamella = None 
     current_stage = None
+    current_step = None
 
     with open(fname, encoding="cp1252") as f:
         # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
@@ -43,12 +44,10 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                 ].strip()  # should just be the message # TODO: need to check the delimeter character...
                 func = line.split("—")[-2].strip()
 
-                if "| STARTED" in msg:
-                    current_lamella = msg.split("|")[0].strip()
-                    current_stage = msg.split("|")[1].strip().split(".")[-1].strip()
-                    # print(current_lamella, current_stage)
-                # if "01-" in current_lamella:
-                #     print(msg)
+                if "log_status_message" in func:
+                    current_lamella = msg.split("|")[1].strip()
+                    current_stage = msg.split("|")[2].strip().split(".")[-1].strip()
+                    current_step = msg.split("|")[3].strip()
 
                 if "gamma" in func:
                     beam_type, diff, gamma = msg.split("|")[-3:]
@@ -60,10 +59,11 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                             "gamma": float(gamma),
                             "lamella": current_lamella,
                             "stage": current_stage,
+                            "step": current_step,
                         }
                         gamma_info.append(deepcopy(gamma_d))
-                        
-                if "click" in func:
+                                                
+                if "double_click" in func:
                     split_msg = msg.split("|")
                     click_type = split_msg[0].split(":")[-1].strip()
                     beam_type = split_msg[-1].split(".")[-1]
@@ -76,14 +76,25 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "x": float(pos_x),
                         "y": float(pos_y),
                         "lamella": current_lamella,
-                        "stage": current_stage
+                        "stage": current_stage,
+                        "step": current_step,
                     }
-
                     click_info.append(deepcopy(click_d))
+
+                if "on_click" in func:
+                    # ml
+                    if "Feature" == msg.split("|")[0].strip():
+                        feature_type = msg.split("|")[1].split(".")[-1].strip()
+                        ml_d = {
+                            "feature": feature_type,
+                            "lamella": current_lamella,
+                            "stage": current_stage,
+                            "step": current_step,
+                        }
+                        ml_info.append(deepcopy(ml_d))
 
                 if "move_stage" in func:
                     if "move_stage_relative" in func:
-                        # TODO: add beam here
                         beam_type = "ION"
                         mode = "Stable"
                         split_msg = [char.split("=") for char in msg.split(" ")[-3:]]
@@ -104,7 +115,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "y": float(y),
                         "z": float(z),
                         "lamella": current_lamella,
-                        "stage": current_stage
+                        "stage": current_stage,
+                        "step": current_step,
                     }
                     move_info.append(deepcopy(move_d))
             except Exception as e:
@@ -126,6 +138,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
         gamma=pd.DataFrame.from_dict(gamma_info),
         click=pd.DataFrame.from_dict(click_info),
         move=pd.DataFrame.from_dict(move_info),
+        ml=pd.DataFrame.from_dict(ml_info),
         sample=df_sample,
         history=df_history,
         name=sample.name,
