@@ -127,7 +127,7 @@ polish_lamella:
   resolution: 3072x2048
   rotation_angle: 50.0
   size_ratio: 1.0
-  tilt_angle: 12.0
+  tilt_angle: 20.0
   tilt_offset: 1.0
   trench_height: 2.0e-07
 sever:
@@ -167,7 +167,7 @@ thin_lamella:
   resolution: 3072x2048
   rotation_angle: 50.0
   size_ratio: 1.0
-  tilt_angle: 12.0
+  tilt_angle: 20.0
   trench_height: 2.0e-06
 weld:
   cleaning_cross_section: 0.0

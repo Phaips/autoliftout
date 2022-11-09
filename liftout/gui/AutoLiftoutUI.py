@@ -1,27 +1,23 @@
 import logging
-import sys
 from pprint import pprint
 
-import fibsem.ui.utils as fibsem_ui_utils
 import fibsem.ui.windows as fibsem_ui_windows
-from autoscript_sdb_microscope_client import SdbMicroscopeClient
-from fibsem import utils as fibsem_utils
+import napari
 from fibsem import calibration
-from liftout import autoliftout, utils
+from fibsem import utils as fibsem_utils
+from napari.utils import notifications
+from PyQt5 import QtWidgets
+
+from liftout import autoliftout
 from liftout.config import config
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import AutoLiftoutUI
-from liftout.patterning import MillingPattern 
 from liftout.structures import AutoLiftoutStage, Lamella, Sample
-from PyQt5 import QtCore, QtGui, QtWidgets
 
-import napari 
-from napari.utils import notifications
 
 class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, viewer: napari.Viewer=None):
         super(AutoLiftoutUI, self).__init__()
-
 
         # setup ui
         self.setupUi(self)
@@ -101,6 +97,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
         logging.info(f"Test button pressed")
 
+        from liftout.patterning import MillingPattern 
         autoliftout.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
 
     def setup_experiment(self) -> None:

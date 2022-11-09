@@ -432,7 +432,7 @@ def land_needle_on_milled_lamella(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
 
-    det.distance[0].x -= 2.5e-6  # move 2.5um to the left of the lamella edge
+    det.distance.x -= 2.5e-6  # move 2.5um to the left of the lamella edge
     detection.move_based_on_detection(
         microscope, settings, det, beam_type=settings.image.beam_type
     )
@@ -475,7 +475,7 @@ def land_needle_on_milled_lamella(
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
     settings.image.gamma.enabled = False
-    reduced_area = Rectangle(0.3, 0.3, 0.3, 0.3)  # TODO: improve contact detection
+    reduced_area = Rectangle(0.25, 0.25, 0.5, 0.5)  # TODO: improve contact detection
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
     previous_brightness = image_utils.measure_brightness(ib_image)
 
