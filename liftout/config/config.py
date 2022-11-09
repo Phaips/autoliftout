@@ -72,6 +72,6 @@ DISPLAY_REFERENCE_FNAMES = [
     "ref_liftout_ib",
     "ref_landing_lamella_high_res_ib",
     "ref_reset_high_res_ib",
-    "ref_thin_lamella_post_superres_ib",
-    "ref_polish_lamella_post_superres_ib",
+    "ref_thin_lamella_super_res_ib",
+    "ref_polish_lamella_ultra_res_ib",
 ]
