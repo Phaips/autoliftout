@@ -55,6 +55,12 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         self.setup_ui()
         self.setup_connections()
 
+        milling.setup_milling(
+            microscope = self.microscope,
+            application_file = self.settings.system.application_file,
+            hfw=self.settings.image.hfw
+        )
+
         self.update_milling_stages()
 
     def setup_connections(self):
