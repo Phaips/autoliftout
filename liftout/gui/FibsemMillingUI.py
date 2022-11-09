@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QLabel
 # TODO: disable editting
 
 
-class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
+class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
     def __init__(
         self,
         viewer: napari.Viewer,
@@ -34,7 +34,7 @@ class MillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         change_pattern: bool = False,
         auto_continue: bool = False,
     ):
-        super(MillingUI, self).__init__()
+        super(FibsemMillingUI, self).__init__()
 
         # setup ui
         self.setupUi(self)
@@ -490,7 +490,7 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.JCut
+    milling_pattern = MillingPattern.Thin
     point = None
     change_pattern = True
     auto_continue = False

@@ -28,42 +28,6 @@ class MillingPattern(Enum):
 
 ############################## PATTERNS ##############################
 
-
-def mill_trench_patterns(
-    microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()
-) -> list[CleaningCrossSectionPattern]:
-    """Calculate the trench milling patterns"""
-
-    lamella_width = protocol["lamella_width"]
-    lamella_height = protocol["lamella_height"]
-    trench_height = protocol["trench_height"]
-    upper_trench_height = trench_height / max(protocol["size_ratio"], 1.0)
-    offset = protocol["offset"]
-    milling_depth = protocol["milling_depth"]
-
-    centre_upper_y = point.y + (lamella_height / 2 + upper_trench_height / 2 + offset)
-    centre_lower_y = point.y - (lamella_height / 2 + trench_height / 2 + offset)
-
-    lower_pattern = microscope.patterning.create_cleaning_cross_section(
-        point.x,
-        centre_lower_y,
-        lamella_width,
-        trench_height,
-        milling_depth,
-    )
-    lower_pattern.scan_direction = "BottomToTop"
-
-    upper_pattern = microscope.patterning.create_cleaning_cross_section(
-        point.x,
-        centre_upper_y,
-        lamella_width,
-        upper_trench_height,
-        milling_depth,
-    )
-    upper_pattern.scan_direction = "TopToBottom"
-
-    return [lower_pattern, upper_pattern]
-
 # ref: "horseshoe" terminology https://www.researchgate.net/publication/351737991_A_Modular_Platform_for_Streamlining_Automated_Cryo-FIB_Workflows#pf14
 def mill_horseshoe_pattern(
     microscope: SdbMicroscopeClient, protocol: dict, point: Point = Point()

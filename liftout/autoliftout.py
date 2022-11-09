@@ -27,7 +27,7 @@ from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Poi
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout import actions, patterning
-from liftout.gui.MillingUI import MillingUI
+from liftout.gui.FibsemMillingUI import FibsemMillingUI
 from liftout.patterning import MillingPattern
 from liftout.structures import (
     AutoLiftoutMode,
@@ -1505,7 +1505,7 @@ def milling_ui(
 ):
 
     viewer = napari.Viewer()
-    milling_ui = MillingUI(
+    milling_ui = FibsemMillingUI(
         viewer=viewer,
         microscope=microscope,
         settings=settings,
