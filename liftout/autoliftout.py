@@ -164,7 +164,7 @@ def mill_lamella_jcut(
     #     constrain_vertical =True
     # )
 
-    alignment.auto_eucentric_correction(microscope, settings.image)
+    alignment.auto_eucentric_correction(microscope, settings, settings.image)
     # confirm
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(
