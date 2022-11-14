@@ -84,8 +84,6 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                 if "on_click" in func:
                     split_msg = msg.split("|")
                     if "DectectedFeature" == split_msg[0].split(" ")[0].strip():
-                        print(split_msg)
-
                         # click_type = split_msg[0].split(":")[-1].strip()
                         click_type = "DetectedFeature"
                         # beam_type = split_msg[-1].split(".")[-1]
@@ -93,7 +91,6 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         pos = split_msg[-1].strip().split(", ")
                         pos_x = pos[0]
                         pos_y = pos[1]
-                        # print(pos_x, pos_y)
                         click_d = {
                             "beam_type": beam_type,
                             "type": click_type,
