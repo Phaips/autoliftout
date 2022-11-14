@@ -31,12 +31,28 @@ stats = calculate_statistics_dataframe(EXPERIMENT_PATH)
 
 df = stats.sample
 
-
 # experiment metrics
 n_lamella = len(df["petname"])
 n_images =  len(glob.glob(os.path.join(EXPERIMENT_PATH, "**/**.tif"), recursive=True))
 n_clicks = len(stats.click)
 n_ml = len(stats.ml)
+
+ml_group = stats.ml.groupby("correct").count()
+ml_group = ml_group.reset_index()
+
+# get number of correct = True
+n_ml_correct = ml_group[ml_group["correct"] == 'True']["feature"].values[0]
+print(n_ml_correct)
+
+# get number of correct = False
+n_ml_incorrect = ml_group[ml_group["correct"] == "False"]["feature"].values[0]
+
+# number of correct / total
+ml_accuracy = n_ml_correct / n_ml
+
+# st write ml_accuracy
+# st.write(f"ML Accuracy: {ml_accuracy:.2f}")
+
 
 df_gamma_mean = stats.gamma.groupby(by="beam_type").mean()
 df_gamma_mean.reset_index(inplace=True)
@@ -50,7 +66,7 @@ cols = st.columns(5)
 cols[0].metric("Lamella", n_lamella)
 cols[1].metric("Images", n_images)
 cols[2].metric("Clicks", n_clicks)
-cols[3].metric("Bad Detections", n_ml)
+cols[3].metric("Detections", ml_accuracy)
 
 st.markdown("---")
 
