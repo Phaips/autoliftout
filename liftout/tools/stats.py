@@ -37,17 +37,12 @@ n_images =  len(glob.glob(os.path.join(EXPERIMENT_PATH, "**/**.tif"), recursive=
 n_clicks = len(stats.click)
 n_ml = len(stats.ml)
 
+
+# ml accuracy
 ml_group = stats.ml.groupby("correct").count()
 ml_group = ml_group.reset_index()
-
-# get number of correct = True
 n_ml_correct = ml_group[ml_group["correct"] == 'True']["feature"].values[0]
-print(n_ml_correct)
-
-# get number of correct = False
 n_ml_incorrect = ml_group[ml_group["correct"] == "False"]["feature"].values[0]
-
-# number of correct / total
 ml_accuracy = n_ml_correct / n_ml
 
 # st write ml_accuracy
