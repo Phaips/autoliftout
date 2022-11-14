@@ -32,8 +32,6 @@ stats = calculate_statistics_dataframe(EXPERIMENT_PATH)
 df = stats.sample
 
 
-
-
 # experiment metrics
 n_lamella = len(df["petname"])
 n_images =  len(glob.glob(os.path.join(EXPERIMENT_PATH, "**/**.tif"), recursive=True))
@@ -62,6 +60,7 @@ st.markdown("---")
 # cols[2].metric("Gamma (Ion)", f"{ib_gamma:.3f}")
 
 
+
 # plots TODO
 fig_gamma = px.histogram(stats.gamma, x="gamma", color="beam_type", nbins=30, title="Gamma Distribution")
 
@@ -75,6 +74,23 @@ except:
 # stats.move["size_z"] = abs(stats.move["z"] * 1e6).astype(int)
 # fig = px.scatter(stats.move, x="x", y="y", size="size_z", color="beam_type", symbol="mode")
 # fig = px.scatter_3d(stats.move, x="x", y="y", z="z", color="beam_type", symbol="mode")
+
+
+
+##### Clicking
+
+# TODO: add det to this stat, type of click
+
+st.write(stats.click)
+fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
+fig_clicks_stage = px.bar(stats.click, x="type", color="stage", title="Clicks per Stage", barmode="group")
+
+cols = st.columns(2)
+cols[0].plotly_chart(fig_clicks)
+cols[1].plotly_chart(fig_clicks_stage)
+
+
+
 
 # positions plots
 st.subheader("Position Data")

@@ -81,8 +81,32 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     }
                     click_info.append(deepcopy(click_d))
 
-                # if "on_click" in func:
-                #     # ml
+                if "on_click" in func:
+                    split_msg = msg.split("|")
+                    if "DectectedFeature" == split_msg[0].split(" ")[0].strip():
+                        print(split_msg)
+
+                        # click_type = split_msg[0].split(":")[-1].strip()
+                        click_type = "DetectedFeature"
+                        # beam_type = split_msg[-1].split(".")[-1]
+                        beam_type = "ELECTRON"
+                        pos = split_msg[-1].strip().split(", ")
+                        pos_x = pos[0]
+                        pos_y = pos[1]
+                        # print(pos_x, pos_y)
+                        click_d = {
+                            "beam_type": beam_type,
+                            "type": click_type,
+                            "x": float(pos_x),
+                            "y": float(pos_y),
+                            "lamella": current_lamella,
+                            "stage": current_stage,
+                            "step": current_step,
+                        }
+                        click_info.append(deepcopy(click_d))
+
+
+                # ml
                 if "Feature" == msg.split("|")[0].strip():
                     # print(msg)
                     feature_type = msg.split("|")[1].split(".")[-1].strip()
