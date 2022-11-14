@@ -23,13 +23,16 @@ st.title("AutoLiftout Companion")
 #################### EXPERIMENT SECTION ####################
 
 # select experiment
-paths = glob.glob(os.path.join(LOG_PATH, "*dry-*/"))
+paths = glob.glob(os.path.join(LOG_PATH, "*Dm-*/"))
 EXPERIMENT_PATH = st.selectbox(label="Experiment Path ", options=paths)
 sample = load_experiment(EXPERIMENT_PATH)
 
 stats = calculate_statistics_dataframe(EXPERIMENT_PATH)
 
 df = stats.sample
+
+
+
 
 # experiment metrics
 n_lamella = len(df["petname"])
@@ -85,9 +88,12 @@ cols[1].plotly_chart(fig_landing)
 try:
     # ml plots
     st.subheader("ML Data")
-    fig_ml = px.bar(stats.ml, x="feature", title="Incorrect Detection", color="stage", barmode="group")
+    fig_ml = px.bar(stats.ml, x="feature", title="Detections", color="stage", barmode="group")
+    fig_ml2 = px.bar(stats.ml, x="feature", title="Accuracy", color="correct", barmode="group")
 
-    st.plotly_chart(fig_ml)
+    cols = st.columns(2)
+    cols[0].plotly_chart(fig_ml)
+    cols[1].plotly_chart(fig_ml2)
 except:
     st.write("No ML Data available.")
 

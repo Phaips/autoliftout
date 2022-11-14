@@ -81,17 +81,20 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     }
                     click_info.append(deepcopy(click_d))
 
-                if "on_click" in func:
-                    # ml
-                    if "Feature" == msg.split("|")[0].strip():
-                        feature_type = msg.split("|")[1].split(".")[-1].strip()
-                        ml_d = {
-                            "feature": feature_type,
-                            "lamella": current_lamella,
-                            "stage": current_stage,
-                            "step": current_step,
-                        }
-                        ml_info.append(deepcopy(ml_d))
+                # if "on_click" in func:
+                #     # ml
+                if "Feature" == msg.split("|")[0].strip():
+                    # print(msg)
+                    feature_type = msg.split("|")[1].split(".")[-1].strip()
+                    correct = msg.split("|")[2].strip()
+                    ml_d = {
+                        "feature": feature_type,
+                        "correct": correct,
+                        "lamella": current_lamella,
+                        "stage": current_stage,
+                        "step": current_step,
+                    }
+                    ml_info.append(deepcopy(ml_d))
 
                 if "move_stage" in func:
                     if "move_stage_relative" in func:

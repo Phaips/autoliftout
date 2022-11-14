@@ -432,7 +432,7 @@ def land_needle_on_milled_lamella(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
 
-    det.distance.x -= 2.5e-6  # move 2.5um to the left of the lamella edge
+    det.distance.x -= 1e-6  # move 1um to the left of the lamella edge
     detection.move_based_on_detection(
         microscope, settings, det, beam_type=settings.image.beam_type
     )
