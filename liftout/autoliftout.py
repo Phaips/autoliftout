@@ -128,6 +128,7 @@ def mill_lamella_jcut(
 
     # correct drift using reference images..
     settings.image.beam_type = BeamType.ELECTRON
+    settings.image.hfw = ReferenceHFW.Low.value
     calibration.auto_charge_neutralisation(microscope, settings.image)
     alignment.correct_stage_drift(
         microscope,
@@ -137,6 +138,7 @@ def mill_lamella_jcut(
         rotate=True,
         use_ref_mask=True,
         xcorr_limit=(250, 250),
+        constrain_vertical=False,
     )
 
     # adjust for relative shift between beams
@@ -413,13 +415,13 @@ def land_needle_on_milled_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
-    log_status_message(lamella, " INSERT_NEEDLE")
+    log_status_message(lamella, "INSERT_NEEDLE")
 
     # insert the needle for liftout
     actions.move_needle_to_liftout_position(microscope)
 
     # align needle to side of lamella
-    log_status_message(lamella, " NEEDLE_EB_DETECTION")
+    log_status_message(lamella, "NEEDLE_EB_DETECTION")
 
     settings.image.beam_type = BeamType.ELECTRON
     det = fibsem_ui_windows.detect_features_v2(
@@ -1061,6 +1063,10 @@ def run_autoliftout_workflow(
             AutoLiftoutStage.MillTrench,
             AutoLiftoutStage.MillJCut,
         ]:
+            # autohome stage
+            if terminal_stage is AutoLiftoutStage.MillJCut:
+                calibration.auto_home_and_link_v2(microscope)
+
             lamella: Lamella
             for lamella in sample.positions.values():
 

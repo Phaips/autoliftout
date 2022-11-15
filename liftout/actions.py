@@ -183,9 +183,9 @@ def move_sample_stage_out(
 def move_needle_to_liftout_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
-    dx: float = -5.0e-6,
+    dx: float = -15.0e-6,
     dy: float = 0.0e-6,
-    dz: float = -10.0e-6,
+    dz: float = 10.0e-6,
 ) -> None:
     """Insert the needle to just above the eucentric point, ready for liftout.
 
