@@ -158,6 +158,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     df_sample = sample.__to_dataframe__()
     df_history = create_history_dataframe(sample)
 
+
     return AutoLiftoutStatistics(
         gamma=pd.DataFrame.from_dict(gamma_info),
         click=pd.DataFrame.from_dict(click_info),
