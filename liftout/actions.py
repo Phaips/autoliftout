@@ -137,7 +137,7 @@ def move_to_landing_grid(
         x=float(protocol["initial_position"]["landing_grid"]["x"]),
         y=float(protocol["initial_position"]["landing_grid"]["y"]),
         z=float(protocol["initial_position"]["landing_grid"]["z"]),
-        r=np.deg2rad(settings.system.stage.rotation_flat_to_electron),
+        r=np.deg2rad(settings.system.stage.rotation_flat_to_electron), # TODO: fix to ib position
         coordinate_system=protocol["initial_position"]["landing_grid"][
             "coordinate_system"
         ],
@@ -240,11 +240,6 @@ def move_to_thinning_angle(
     microscope: SdbMicroscopeClient, protocol: dict
 ) -> StagePosition:
     """Rotate and tilt the stage to the thinning angle, assumes from the landing position"""
-    # stage = microscope.specimen.stage
-
-    # tilt to zero for safety
-    # stage_settings = MoveSettings(rotate_compucentric=True)
-    # stage.absolute_move(StagePosition(t=np.deg2rad(0)), stage_settings)
 
     # thinning position
     thinning_rotation_angle = np.deg2rad(protocol["thin_lamella"]["rotation_angle"])
@@ -252,12 +247,4 @@ def move_to_thinning_angle(
 
     stage_position = StagePosition(r=thinning_rotation_angle, t=thinning_tilt_angle)
     movement.safe_absolute_stage_movement(microscope, stage_position)
-
-    # # rotate to thinning angle
-    # logging.info(f"rotate to thinning angle: {thinning_rotation_angle}")
-    # stage.absolute_move(StagePosition(r=thinning_rotation_angle), stage_settings)
-
-    # # tilt to thinning angle
-    # logging.info(f"tilt to thinning angle: {thinning_tilt_angle}")
-    # stage.absolute_move(StagePosition(t=thinning_tilt_angle), stage_settings)
 

@@ -172,7 +172,6 @@ def mill_lamella_jcut(
         fibsem_ui_windows.ask_user_movement(
             microscope,
             settings,
-            msg_type="eucentric",
             msg="Confirm lamella is centred in Ion Beam",
         )
 
@@ -285,7 +284,6 @@ def liftout_lamella(
         fibsem_ui_windows.ask_user_movement(
             microscope,
             settings,
-            msg_type="eucentric",
             msg="Confirm lamella is centred in Ion Beam",
         )
 
@@ -584,7 +582,7 @@ def land_lamella(
 
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
-        fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
+        fibsem_ui_windows.ask_user_movement(microscope, settings)
 
 
     ############################## LAND_LAMELLA ##############################
@@ -907,7 +905,6 @@ def thin_lamella(
         fibsem_ui_windows.ask_user_movement(
             microscope,
             settings,
-            msg_type="eucentric",
             msg="Confirm lamella right edge is centred in Ion Beam",
         ) 
         # TODO: add tilt correction here...
@@ -992,7 +989,6 @@ def polish_lamella(
         fibsem_ui_windows.ask_user_movement(
             microscope,
             settings,
-            msg_type="eucentric",
             msg="Confirm lamella right edge is centred in Ion Beam",
         )
 
@@ -1239,7 +1235,7 @@ def user_select_feature(
     settings.image.hfw = ReferenceHFW.High.value
     settings.image.save = False
     fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg_type="eucentric", msg=msg,
+        microscope, settings, msg=msg,
     )
 
     return calibration.get_current_microscope_state(microscope)
@@ -1265,10 +1261,11 @@ def select_initial_lamella_positions(
         actions.move_to_sample_grid(
             microscope, settings=settings, protocol=settings.protocol
         )
-        movement.move_flat_to_beam(microscope, settings, BeamType.ELECTRON)
-        calibration.auto_link_stage(microscope)
-        fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
+        # TODO: remove the alignment at EB, just do it at IB
+        # movement.move_flat_to_beam(microscope, settings, BeamType.ELECTRON)
+        # calibration.auto_link_stage(microscope)
         actions.move_to_trenching_angle(microscope, settings=settings)
+        fibsem_ui_windows.ask_user_movement(microscope, settings)
 
     # save lamella coordinates
     lamella.lamella_state = user_select_feature(
@@ -1306,7 +1303,7 @@ def select_landing_positions(
     settings.image.save = False
 
     settings.image.hfw = ReferenceHFW.Low.value
-    fibsem_ui_windows.ask_user_movement(microscope, settings, msg_type="eucentric")
+    # fibsem_ui_windows.ask_user_movement(microscope, settings) # TODO: remove this?
     ####################################
 
     # select corresponding sample landing positions
