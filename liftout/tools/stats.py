@@ -45,9 +45,6 @@ n_ml_correct = ml_group[ml_group["correct"] == 'True']["feature"].values[0]
 n_ml_incorrect = ml_group[ml_group["correct"] == "False"]["feature"].values[0]
 ml_accuracy = n_ml_correct / n_ml
 
-# st write ml_accuracy
-# st.write(f"ML Accuracy: {ml_accuracy:.2f}")
-
 
 df_gamma_mean = stats.gamma.groupby(by="beam_type").mean()
 df_gamma_mean.reset_index(inplace=True)
@@ -61,7 +58,7 @@ cols = st.columns(5)
 cols[0].metric("Lamella", n_lamella)
 cols[1].metric("Images", n_images)
 cols[2].metric("Clicks", n_clicks)
-cols[3].metric("Detections", ml_accuracy)
+cols[3].metric("Detections", f"{ml_accuracy:.2f}")
 
 st.markdown("---")
 
@@ -70,18 +67,17 @@ st.markdown("---")
 # cols[1].metric("Gamma (Electron)", f"{eb_gamma:.3f}")
 # cols[2].metric("Gamma (Ion)", f"{ib_gamma:.3f}")
 
-
+st.subheader("Imaging")
 
 # plots TODO
 fig_gamma = px.histogram(stats.gamma, x="gamma", color="beam_type", nbins=30, title="Gamma Distribution")
+fig_image_stage = px.bar(stats.gamma, x="stage", color="beam_type", title="Image Distribution", barmode="group")
 
 cols = st.columns(2)
-cols[0].plotly_chart(fig_gamma)
-try:
-    fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
-    cols[1].plotly_chart(fig_clicks)
-except:
-    st.write("No Click available.")
+cols[0].plotly_chart(fig_image_stage)
+cols[1].plotly_chart(fig_gamma)
+
+# st.write(stats.gamma)
 # stats.move["size_z"] = abs(stats.move["z"] * 1e6).astype(int)
 # fig = px.scatter(stats.move, x="x", y="y", size="size_z", color="beam_type", symbol="mode")
 # fig = px.scatter_3d(stats.move, x="x", y="y", z="z", color="beam_type", symbol="mode")
@@ -89,10 +85,8 @@ except:
 
 
 ##### Clicking
+st.subheader("Clicking")
 
-# TODO: add det to this stat, type of click
-
-st.write(stats.click)
 fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
 fig_clicks_stage = px.bar(stats.click, x="type", color="stage", title="Clicks per Stage", barmode="group")
 

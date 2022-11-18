@@ -28,7 +28,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     ml_info = []
 
     current_lamella = None 
-    current_stage = None
+    current_stage = "Setup"
     current_step = None
 
     with open(fname, encoding="cp1252") as f:
@@ -87,7 +87,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         # click_type = split_msg[0].split(":")[-1].strip()
                         click_type = "DetectedFeature"
                         # beam_type = split_msg[-1].split(".")[-1]
-                        beam_type = "ELECTRON"
+                        beam_type = "ELECTRON" # TODO: need to fix this
                         pos = split_msg[-1].strip().split(", ")
                         pos_x = pos[0]
                         pos_y = pos[1]

@@ -535,6 +535,11 @@ def land_needle_on_milled_lamella(
         if iteration_count >= MAX_ITERATIONS:
             break
 
+    # move needle up in z to prevent bottoming out
+    dz = 0.5e-6
+    movement.move_needle_relative_with_corrected_movement(
+            microscope, dx=0, dy=dz, beam_type=BeamType.ION
+        )
     settings.image.gamma.enabled = True
 
     acquire.take_set_of_reference_images(
