@@ -480,7 +480,7 @@ def land_needle_on_milled_lamella(
     previous_brightness = image_utils.measure_brightness(ib_image)
 
     brightness_history = [previous_brightness]
-    MEAN_BRIGHTNESS = np.mean(brightness_history)
+    mean_brightness = np.mean(brightness_history)
 
     iteration_count = 0
     MAX_ITERATIONS = 10
@@ -508,10 +508,10 @@ def land_needle_on_milled_lamella(
         brightness = image_utils.measure_brightness(ib_image)
 
         logging.info(
-            f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}, MEAN BRIGHTNESS: {MEAN_BRIGHTNESS}"
+            f"iter: {iteration_count}: brightness: {brightness}, prevs: {previous_brightness}, MEAN BRIGHTNESS: {mean_brightness}"
         )
 
-        above_brightness_threshold = brightness > MEAN_BRIGHTNESS * BRIGHTNESS_FACTOR
+        above_brightness_threshold = brightness > mean_brightness * BRIGHTNESS_FACTOR
 
         if above_brightness_threshold or mode is AutoLiftoutMode.Manual:
 
@@ -529,7 +529,7 @@ def land_needle_on_milled_lamella(
 
         previous_brightness = brightness
         brightness_history.append(brightness)
-        MEAN_BRIGHTNESS = np.mean(brightness_history)
+        mean_brightness = np.mean(brightness_history)
 
         iteration_count += 1
         if iteration_count >= MAX_ITERATIONS:
