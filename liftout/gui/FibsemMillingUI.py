@@ -357,7 +357,7 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
         # reset to imaging mode
         milling.finish_milling(
             microscope=self.microscope,
-            imaging_current=self.settings.default.imaging_current,
+            imaging_current=self.settings.system.ion.current,
         )
         napari.utils.notifications.show_info(f"Milling Complete.")
 
