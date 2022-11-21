@@ -103,7 +103,7 @@ options:
   landing_removal_method: None
   landing_surface: Half-Moon Grid
   liftout_contact_direction: Horizontal
-  liftout_joining_method: None
+  liftout_joining_method: Weld
 platinum:
   application_file: cryo_Pt_dep
   gas: Pt cryo
