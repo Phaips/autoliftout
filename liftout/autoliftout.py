@@ -536,7 +536,7 @@ def land_needle_on_milled_lamella(
             break
 
     # move needle up in z to prevent bottoming out
-    dz = 0.5e-6
+    dz = 0.5e-6 # positive is away from sample (up)
     movement.move_needle_relative_with_corrected_movement(
             microscope, dx=0, dy=dz, beam_type=BeamType.ION
         )
