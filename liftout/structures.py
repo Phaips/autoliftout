@@ -37,9 +37,10 @@ class AutoLiftoutStage(Enum):
     Liftout = 3
     Landing = 4
     Reset = 5
-    Thinning = 6
-    Polishing = 7
-    Finished = 8
+    SetupPolish = 6
+    Thinning = 7
+    Polishing = 8
+    Finished = 9
     Failure = 99
     
 class Sample: # TODO: rename to Experiment , and generalise to be used for other experiments

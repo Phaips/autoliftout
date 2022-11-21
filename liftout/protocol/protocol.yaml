@@ -103,7 +103,7 @@ options:
   landing_removal_method: None
   landing_surface: Half-Moon Grid
   liftout_contact_direction: Horizontal
-  liftout_joining_method: None
+  liftout_joining_method: Weld
 platinum:
   application_file: cryo_Pt_dep
   gas: Pt cryo
@@ -178,7 +178,7 @@ weld:
   scan_direction: RightToLeft
   width: 3.0e-06
 ml:
-  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model2.pt
+  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model3.pt
   encoder: resnet18
   num_classes: 3
   cuda: False 

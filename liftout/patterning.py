@@ -328,7 +328,7 @@ def get_milling_protocol_stage_settings(
     for i, stage_protocol in enumerate(milling_protocol_stages):
 
         milling_protocol_stages[i] = validation._validate_milling_protocol(
-            stage_protocol, settings
+            stage_protocol
         )
 
     return milling_protocol_stages

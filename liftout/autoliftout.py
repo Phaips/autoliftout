@@ -870,7 +870,7 @@ def reset_needle(
     return lamella
 
 
-def thin_lamella(
+def setup_polish_lamella(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella,
 ) -> Lamella:
 
@@ -928,6 +928,70 @@ def thin_lamella(
     settings.image.dwell_time = settings.protocol["thin_lamella"]["dwell_time"]
     settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
 
+    log_status_message(lamella, "REF_THIN_LAMELLA_SETUP")
+
+    # # take reference images
+    reference_images = acquire.take_set_of_reference_images(
+        microscope,
+        settings.image,
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
+        label="ref_thin_lamella_setup",
+    )
+
+    settings.image.hfw = ReferenceHFW.Ultra.value
+    settings.image.save = True
+    settings.image.label = f"ref_thin_lamella_setup_ultra_res"
+    acquire.take_reference_images(microscope=microscope, image_settings=settings.image)
+
+    return
+
+
+def thin_lamella(
+    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, lamella: Lamella,
+) -> Lamella:
+
+    # bookkeeping
+    mode = AutoLiftoutMode[settings.protocol["options"]["auto"]["thin"].capitalize()]
+    settings.image.save_path = lamella.path
+
+    # load the reference images
+    reference_images = lamella.get_reference_images(label="ref_thin_lamella")
+   
+    log_status_message(lamella, "THIN_LAMELLA_ALIGN")
+
+    alignment.correct_stage_drift(
+        microscope,
+        settings,
+        reference_images=reference_images,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=True,
+        use_ref_mask=False,
+        xcorr_limit = (100, 100)
+    )
+
+    # ensure_eucentricity at thinning angle
+    if mode is AutoLiftoutMode.Manual:
+        
+        # confirm
+        fibsem_ui_windows.ask_user_movement(
+            microscope,
+            settings,
+            msg="Confirm lamella right edge is centred in Ion Beam",
+        ) 
+
+    # lamella images
+    reference_images = acquire.take_set_of_reference_images(
+        microscope,
+        settings.image,
+        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
+        label="ref_thin_lamella_restore",
+    )
+
+    # thin_lamella (align and mill)
+    settings.image.resolution = settings.protocol["thin_lamella"]["resolution"]
+    settings.image.dwell_time = settings.protocol["thin_lamella"]["dwell_time"]
+    settings.image.hfw = settings.protocol["thin_lamella"]["hfw"]
+
     log_status_message(lamella, "THIN_LAMELLA_MILL")
 
     # QUERY: add a fiducial here?
@@ -960,7 +1024,7 @@ def thin_lamella(
 
     settings.image.hfw = ReferenceHFW.Ultra.value
     settings.image.save = True
-    settings.image.label = f"ref_thin_lamella_super_res"
+    settings.image.label = f"ref_thin_lamella_ultra_res"
     acquire.take_reference_images(microscope=microscope, image_settings=settings.image)
 
     return
@@ -1185,26 +1249,57 @@ def run_thinning_workflow(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ) -> Sample:
 
-    # thinning
-    lamella: Lamella
-    for lamella in sample.positions.values():
 
-        if lamella.current_state.stage == AutoLiftoutStage.Reset:
-            lamella = start_of_stage_update(
-                microscope, lamella, next_stage=AutoLiftoutStage.Thinning
-            )
-            thin_lamella(microscope, settings, lamella)
-            sample = end_of_stage_update(microscope, sample, lamella)
+    autoliftout_polishing_stages = {
+        AutoLiftoutStage.SetupPolish: setup_polish_lamella,
+        AutoLiftoutStage.Thinning: thin_lamella,
+        AutoLiftoutStage.Polishing: polish_lamella,
+    }
 
-    # polish
-    for lamella in sample.positions.values():
+    # lamella: Lamella
+    for next_stage  in [AutoLiftoutStage.SetupPolish, AutoLiftoutStage.Thinning, AutoLiftoutStage.Polishing]:
+        for lamella in sample.positions.values():
+                
+            if lamella.is_failure:
+                continue
 
-        if lamella.current_state.stage == AutoLiftoutStage.Thinning:
-            lamella = start_of_stage_update(
-                microscope, lamella, next_stage=AutoLiftoutStage.Polishing
-            )
-            polish_lamella(microscope, settings, lamella)
-            sample = end_of_stage_update(microscope, sample, lamella)
+            if lamella.current_state.stage.value == next_stage.value - 1:
+                lamella = start_of_stage_update(
+                    microscope, lamella, next_stage=AutoLiftoutStage.Polishing
+                )
+                autoliftout_polishing_stages[next_stage](microscope, settings, lamella)
+                sample = end_of_stage_update(microscope, sample, lamella)
+
+
+    # # polish setup
+    # for lamella in sample.positions.values():
+
+    #     if lamella.current_state.stage == AutoLiftoutStage.Reset:
+    #         lamella = start_of_stage_update(
+    #             microscope, lamella, next_stage=AutoLiftoutStage.SetupPolish
+    #         )
+    #         setup_polish_lamella(microscope, settings, lamella)
+    #         sample = end_of_stage_update(microscope, sample, lamella)
+
+    # # thinning
+    # for lamella in sample.positions.values():
+
+    #     if lamella.current_state.stage == AutoLiftoutStage.SetupPolish:
+    #         lamella = start_of_stage_update(
+    #             microscope, lamella, next_stage=AutoLiftoutStage.Thinning
+    #         )
+    #         thin_lamella(microscope, settings, lamella)
+    #         sample = end_of_stage_update(microscope, sample, lamella)
+
+    # # polish
+    # for lamella in sample.positions.values():
+
+    #     if lamella.current_state.stage == AutoLiftoutStage.Thinning:
+    #         lamella = start_of_stage_update(
+    #             microscope, lamella, next_stage=AutoLiftoutStage.Polishing
+    #         )
+    #         polish_lamella(microscope, settings, lamella)
+    #         sample = end_of_stage_update(microscope, sample, lamella)
 
     # finish the experiment
     for lamella in sample.positions.values():
@@ -1215,7 +1310,7 @@ def run_thinning_workflow(
     return sample
 
 
-def get_current_lamella(microscope: SdbMicroscopeClient, sample: Sample,) -> bool:
+def get_current_lamella(sample: Sample,) -> bool:
 
     if sample.positions:
         select_another_lamella = fibsem_ui_windows.ask_user_interaction(
@@ -1266,9 +1361,6 @@ def select_initial_lamella_positions(
         actions.move_to_sample_grid(
             microscope, settings=settings, protocol=settings.protocol
         )
-        # TODO: remove the alignment at EB, just do it at IB
-        # movement.move_flat_to_beam(microscope, settings, BeamType.ELECTRON)
-        # calibration.auto_link_stage(microscope)
         actions.move_to_trenching_angle(microscope, settings=settings)
         fibsem_ui_windows.ask_user_movement(microscope, settings)
 
@@ -1376,7 +1468,7 @@ def select_lamella_positions(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ):
 
-    select_another = get_current_lamella(microscope, sample)
+    select_another = get_current_lamella(sample)
 
     # allow the user to select additional lamella positions
     eucentric_calibration = False
@@ -1390,7 +1482,7 @@ def select_lamella_positions(
         sample = update_sample_lamella_data(sample, lamella)
 
         # select another?
-        select_another = get_current_lamella(microscope, sample)
+        select_another = get_current_lamella(sample)
 
         # state variable
         eucentric_calibration = True
