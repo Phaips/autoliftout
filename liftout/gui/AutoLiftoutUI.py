@@ -127,6 +127,8 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             return
 
         lamella = self.get_current_selected_lamella()
+        if lamella is None:
+            return
         self.checkBox_lamella_mark_failure.setChecked(lamella.is_failure)
         self.checkBox_lamella_landing_selected.setChecked(lamella.landing_selected)
 
@@ -161,6 +163,10 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def get_current_selected_lamella(self) -> Lamella:
 
         lamella_petname = self.comboBox_lamella_select.currentText()
+        
+        if lamella_petname == "":
+            return None
+
         lamella_idx = int(lamella_petname.split("-")[0])
 
         lamella: Lamella = self.sample.positions[lamella_idx]

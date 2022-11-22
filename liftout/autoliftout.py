@@ -137,7 +137,7 @@ def mill_lamella_jcut(
         alignment=(BeamType.ION, BeamType.ELECTRON),
         rotate=True,
         use_ref_mask=True,
-        xcorr_limit=(250, 250),
+        xcorr_limit=(500, 250),
         constrain_vertical=False,
     )
 
@@ -166,7 +166,7 @@ def mill_lamella_jcut(
     #     constrain_vertical =True
     # )
 
-    alignment.auto_eucentric_correction(microscope, settings, settings.image)
+    # alignment.auto_eucentric_correction(microscope, settings, settings.image)
     # confirm
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(
@@ -354,14 +354,12 @@ def liftout_lamella(
     )
 
     point = det.features[0].feature_m
-    point.x += 2e-6  # move 2um to the right of the lamella edge
 
     # jcut sever pattern
     milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
-        # point=Point(x=settings.protocol["lamella"]["lamella_width"] / 2, y=0), # half the lamella width , #TODO: recalc this for + side trench
         point=point,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
@@ -1265,7 +1263,7 @@ def run_thinning_workflow(
 
             if lamella.current_state.stage.value == next_stage.value - 1:
                 lamella = start_of_stage_update(
-                    microscope, lamella, next_stage=AutoLiftoutStage.Polishing
+                    microscope, lamella, next_stage=next_stage
                 )
                 autoliftout_polishing_stages[next_stage](microscope, settings, lamella)
                 sample = end_of_stage_update(microscope, sample, lamella)
@@ -1345,7 +1343,6 @@ def select_initial_lamella_positions(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     sample: Sample,
-    eucentric_calibration: bool = False,
 ) -> Lamella:
     """Select the initial sample positions for liftout"""
 
@@ -1355,14 +1352,6 @@ def select_initial_lamella_positions(
     else:
         lamella_no = 1
     lamella = Lamella(sample.path, lamella_no)
-
-    # TODO: replace with auto eucentric calibration
-    if eucentric_calibration is False:
-        actions.move_to_sample_grid(
-            microscope, settings=settings, protocol=settings.protocol
-        )
-        actions.move_to_trenching_angle(microscope, settings=settings)
-        fibsem_ui_windows.ask_user_movement(microscope, settings)
 
     # save lamella coordinates
     lamella.lamella_state = user_select_feature(
@@ -1374,7 +1363,7 @@ def select_initial_lamella_positions(
         microscope=microscope,
     )
 
-    settings.image.hfw = ReferenceHFW.Medium.value
+    settings.image.hfw = ReferenceHFW.Low.value
     settings.image.save = True
     settings.image.save_path = lamella.path
 
@@ -1398,9 +1387,6 @@ def select_landing_positions(
     actions.move_to_landing_grid(microscope, settings, settings.protocol)
 
     settings.image.save = False
-
-    settings.image.hfw = ReferenceHFW.Low.value
-    # fibsem_ui_windows.ask_user_movement(microscope, settings) # TODO: remove this?
     ####################################
 
     # select corresponding sample landing positions
@@ -1409,6 +1395,7 @@ def select_landing_positions(
 
         # check if landing position already selected? so it doesnt overwrite
         if lamella.landing_selected is False:
+            settings.image.hfw = ReferenceHFW.Low.value
             lamella = select_landing_sample_positions(microscope, settings, lamella)
 
             sample = update_sample_lamella_data(sample, lamella)
@@ -1470,12 +1457,18 @@ def select_lamella_positions(
 
     select_another = get_current_lamella(sample)
 
+    # iniitial eucentric calibration
+    actions.move_to_sample_grid(
+        microscope, settings=settings, protocol=settings.protocol
+    )
+    actions.move_to_trenching_angle(microscope, settings=settings)
+    fibsem_ui_windows.ask_user_movement(microscope, settings)
+
     # allow the user to select additional lamella positions
-    eucentric_calibration = False
     while select_another:
 
         lamella = select_initial_lamella_positions(
-            microscope, settings, sample, eucentric_calibration
+            microscope, settings, sample
         )
 
         # save lamella data
@@ -1483,9 +1476,6 @@ def select_lamella_positions(
 
         # select another?
         select_another = get_current_lamella(sample)
-
-        # state variable
-        eucentric_calibration = True
 
     # select landing positions
     select_landing_positions(microscope, settings, sample)
@@ -1505,7 +1495,6 @@ def finish_setup_autoliftout(
     microscope.specimen.stage.set_default_coordinate_system(CoordinateSystem.SPECIMEN)
 
     logging.info(f"Selected {len(sample.positions)} lamella for autoliftout.")
-    logging.info(f"Path: {sample.path}")
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | FINISHED")
 
 

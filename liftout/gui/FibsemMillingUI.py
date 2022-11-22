@@ -486,7 +486,8 @@ def main():
     settings = fibsem_utils.load_settings_from_config(
         config_path=config.config_path, protocol_path=config.protocol_path,
     )
-    milling_pattern = MillingPattern.Trench
+    settings.image.hfw = 50e-6
+    milling_pattern = MillingPattern.Polish
     point = None
     change_pattern = True
     auto_continue = False
