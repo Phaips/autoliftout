@@ -206,9 +206,10 @@ def move_needle_to_landing_position(
     position: ManipulatorPosition = None,
     dx: float = -30.0e-6,
     dy: float = 0.0e-6,
-    dz: float = 0.0e-6,
+    dz: float = 15.0e-6,
 ) -> None:
-    """Insert the needle to just above, and left of the eucentric point, ready for landing.
+    """Insert the needle to just above, and left of the eucentric point, ready for land
+    .+ing.
 
     Args:
         microscope (SdbMicroscopeClient): autoscript microscope instance
