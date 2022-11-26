@@ -107,10 +107,9 @@ def mill_lamella_jcut(
     alignment.correct_stage_drift(
         microscope,
         settings,
-        reference_images,
+        reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
-        use_ref_mask=True,
         xcorr_limit=(100, 100),
         constrain_vertical=False,
     )
@@ -133,10 +132,9 @@ def mill_lamella_jcut(
     alignment.correct_stage_drift(
         microscope,
         settings,
-        reference_images,
+        reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ELECTRON),
         rotate=True,
-        use_ref_mask=True,
         xcorr_limit=(500, 250),
         constrain_vertical=False,
     )
@@ -160,8 +158,7 @@ def mill_lamella_jcut(
     # alignment.correct_stage_drift(
     #     microscope, settings, reference_images,
     #     alignment=(BeamType.ELECTRON, BeamType.ION),
-    #     rotate =True,
-    #     use_ref_mask=True,
+    #     rotate = True,
     #     xcorr_limit = (250, 250),
     #     constrain_vertical =True
     # )
@@ -204,11 +201,23 @@ def mill_lamella_jcut(
     ## MILL_JCUT
     # now we are at the angle for jcut, perform jcut
     settings.image.hfw = ReferenceHFW.Super.value
+
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaLeftEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
+
     milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
-        point=None,
+        point=det.features[0].feature_m,
         auto_continue=bool(mode is AutoLiftoutMode.Auto),
     )
 
@@ -272,11 +281,21 @@ def liftout_lamella(
     alignment.correct_stage_drift(
         microscope,
         settings,
-        reference_images,
+        reference_images=reference_images,
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
         rotate=False,
-        use_ref_mask=True,
         xcorr_limit=(100, 100),
+    )
+
+    # eucentric alignment
+    alignment.correct_stage_drift(
+        microscope,
+        settings,
+        reference_images=reference_images,
+        alignment=(BeamType.ION, BeamType.ION),
+        rotate=False,
+        xcorr_limit=(100, 100),
+        constrain_vertical=True
     )
 
     # confirm
@@ -573,10 +592,9 @@ def land_lamella(
     alignment.correct_stage_drift(
         microscope,
         settings,
-        reference_images,
+        reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
-        use_ref_mask=True,
         xcorr_limit=(100, 100),
     )
 
@@ -897,7 +915,6 @@ def setup_polish_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=True,
-        use_ref_mask=False,
         xcorr_limit = (250, 250)
     )
 
@@ -963,7 +980,6 @@ def thin_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=True,
-        use_ref_mask=False,
         xcorr_limit = (100, 100)
     )
 

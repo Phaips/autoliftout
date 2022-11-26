@@ -105,9 +105,10 @@ def crosscorrelate_and_plot(
     ax[2].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
     ax[2].set_title("XCORR")
     ax[3].imshow(shift, cmap="gray")
-    ax[3].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2)
-    ax[3].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2)
+    ax[3].plot(mid.x, mid.y, color="lime", marker="+", ms=50, markeredgewidth=2, label="new_position")
+    ax[3].plot(mid.x - dx_p, mid.y - dy_p, "m+", ms=50, markeredgewidth=2, label="old_position")
     ax[3].set_title("New Image Shifted")
+    ax[3].legend()
     plt.show()
 
     return dx, dy, xcorr
