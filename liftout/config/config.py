@@ -7,6 +7,9 @@ BASE_PATH = os.path.dirname(liftout.__file__)
 config_path = os.path.join(BASE_PATH, "config")
 protocol_path = os.path.join(BASE_PATH, "protocol", "protocol.yaml")
 
+LOG_DATA_PATH = os.path.join(BASE_PATH, "log_data")
+
+os.makedirs(LOG_DATA_PATH, exist_ok=True)
 
 # MILLING UI
 

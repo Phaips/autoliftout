@@ -222,8 +222,8 @@ def move_needle_to_landing_position(
     # insert to park position
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
-    # move to  offset position
-    movement.move_needle_to_position_offset(microscope, position, dx, dy, dz)
+    # move to  offset position #TODO: add this back, but offset from PARK
+    # movement.move_needle_to_position_offset(microscope, position, dx, dy, dz) 
 
     return microscope.specimen.manipulator.current_position
 
