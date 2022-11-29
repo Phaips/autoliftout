@@ -38,16 +38,16 @@ jcut:
   cleaning_cross_section: 0.0
   depth: 3.0e-06
   jcut_angle: 6.0
-  lamella_height: 1.0e-05
+  lamella_height: 6.5e-6
   # lhs_height: 1.4999999999999999e-05
   # lhs_offset: 0.0
   # lhs_trench_width: 1.0e-06
   milling_current: 7.6e-09
-  rhs_height: 6.0e-06
+  rhs_height: 8.0e-06
   rotation: 0.0
   scan_direction: TopToBottom
   trench_width: 1.0e-06
-  width: 2.0e-05
+  width: 2.5e-05
   h_offset: 4.0e-6
 lamella:
   cleaning_cross_section: 0.0
@@ -97,7 +97,7 @@ options:
     reset: Manual
     thin: Manual
     trench: Manual
-  batch_mode: 1.0
+  batch_mode: 0
   confirm_advance: 1.0
   landing_joining_method: Weld
   landing_removal_method: None
@@ -120,7 +120,7 @@ polish_lamella:
   dwell_time: 2.0e-07
   hfw: 5.0e-05
   lamella_height: 500.0e-9
-  lamella_width: 6.0e-06
+  lamella_width: 15.0e-06
   milling_current: 2.0e-11
   milling_depth: 4.0e-07
   offset: 0.0
@@ -154,16 +154,16 @@ thin_lamella:
   dwell_time: 2.0e-07
   hfw: 5.0e-05
   lamella_height: 1.0e-06
-  lamella_width: 10.0e-06
+  lamella_width: 15.0e-06
   milling_current: 2.0e-10
   milling_depth: 4.0e-07
   offset: 1.0e-06
   protocol_stages:
   - offset: 1.0e-06
-    trench_height: 1.5e-06
+    trench_height: 3.0e-06
   - lamella_height: 1.0e-06
     offset: 5.0e-07
-    trench_height: 1.0e-06
+    trench_height: 0.25e-06
   resolution: 3072x2048
   rotation_angle: 49.0
   size_ratio: 1.0

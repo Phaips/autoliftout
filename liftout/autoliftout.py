@@ -115,6 +115,10 @@ def mill_lamella_jcut(
     )
 
     # reference images of milled trenches
+    settings.image.beam_type = BeamType.ELECTRON
+    settings.image.hfw = ReferenceHFW.Medium.value
+    calibration.auto_charge_neutralisation(microscope, settings.image)
+    
     hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
     reference_images = acquire.take_set_of_reference_images(
         microscope, settings.image, hfws=hfws, label="ref_trench_jcut"
@@ -126,17 +130,23 @@ def mill_lamella_jcut(
     log_status_message(lamella, "ALIGN_REF_TRENCH_ROTATE")
 
     # correct drift using reference images..
-    settings.image.beam_type = BeamType.ELECTRON
-    settings.image.hfw = ReferenceHFW.Low.value
-    calibration.auto_charge_neutralisation(microscope, settings.image)
-    alignment.correct_stage_drift(
-        microscope,
-        settings,
-        reference_images=reference_images,
-        alignment=(BeamType.ION, BeamType.ELECTRON),
-        rotate=True,
-        xcorr_limit=(500, 250),
-        constrain_vertical=False,
+
+    # alignment.correct_stage_drift(
+    #     microscope,
+    #     settings,
+    #     reference_images=reference_images,
+    #     alignment=(BeamType.ION, BeamType.ELECTRON),
+    #     rotate=True,
+    #     xcorr_limit=(500, 250),
+    #     constrain_vertical=False,
+    # )
+
+    alignment.eucentric_correct_stage_drift(
+        microscope, 
+        settings, 
+        reference_images, 
+        rotate=True, 
+        xcorr_limit=(250, 250, 512, 512)
     )
 
     # adjust for relative shift between beams
@@ -154,16 +164,6 @@ def mill_lamella_jcut(
     # align eucentric with reference images #   FLAG_TEST
     log_status_message(lamella, "ALIGN_REF_TRENCH_EUCENTRIC")
 
-    # reference_images = lamella.get_reference_images("ref_trench")
-    # alignment.correct_stage_drift(
-    #     microscope, settings, reference_images,
-    #     alignment=(BeamType.ELECTRON, BeamType.ION),
-    #     rotate = True,
-    #     xcorr_limit = (250, 250),
-    #     constrain_vertical =True
-    # )
-
-    # alignment.auto_eucentric_correction(microscope, settings, settings.image)
     # confirm
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(
@@ -598,13 +598,9 @@ def land_lamella(
         xcorr_limit=(100, 100),
     )
 
-    # eucentric correction # TODO:
-    # alignment.auto_eucentric_correction(microscope, settings.image)
-
     # confirm eucentricity
     if mode is AutoLiftoutMode.Manual:
         fibsem_ui_windows.ask_user_movement(microscope, settings)
-
 
     ############################## LAND_LAMELLA ##############################
     validate_needle_insertion(
@@ -658,19 +654,34 @@ def land_lamella_on_post(
     lamella: Lamella,
     mode: AutoLiftoutMode,
 ):
-
+    VALIDATE = mode is AutoLiftoutMode.Manual
     actions.move_needle_to_landing_position(microscope)
-    # TODO: move lower than eucentric to make sure landing
 
     # needle starting position
-    settings.image.hfw = ReferenceHFW.High.value
-    settings.image.beam_type = BeamType.ELECTRON
+    settings.image.hfw = ReferenceHFW.Low.value
+    settings.image.beam_type = BeamType.ION
     settings.image.save = True
     settings.image.label = f"landing_needle_start_position"
     acquire.take_reference_images(microscope, settings.image)
 
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaRightEdge),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=VALIDATE,
+    )
+    det.distance.x -= 30e-6
+    detection.move_based_on_detection(
+        microscope, settings, det, beam_type=settings.image.beam_type
+    )
+
+    settings.image.label = f"landing_needle_ready_position"
+    acquire.take_reference_images(microscope, settings.image)
+
     # repeat final movement until user confirms landing
-    VALIDATE = mode is AutoLiftoutMode.Manual
     response = False
     i = 0
     while response is False:
@@ -787,9 +798,6 @@ def land_lamella_on_post(
             microscope=microscope, dx=-1e-6, dy=0, beam_type=BeamType.ION,
         )
 
-        # # take image
-        # acquire.new_image(microscope, settings.image)
-
     # reference images
     acquire.take_set_of_reference_images(
         microscope=microscope,
@@ -900,7 +908,7 @@ def setup_polish_lamella(
     log_status_message(lamella, "THIN_LAMELLA_MOVEMENT")
 
     # rotate_and_tilt_to_thinning_angle
-    settings.image.hfw = ReferenceHFW.High.value
+    settings.image.hfw = ReferenceHFW.Medium.value
     actions.move_to_thinning_angle(microscope=microscope, protocol=settings.protocol)
 
     # load the reference images
@@ -915,7 +923,7 @@ def setup_polish_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=True,
-        xcorr_limit = (250, 250)
+        xcorr_limit = (512, 250)
     )
 
     # ensure_eucentricity at thinning angle
@@ -970,7 +978,7 @@ def thin_lamella(
     settings.image.save_path = lamella.path
 
     # load the reference images
-    reference_images = lamella.get_reference_images(label="ref_thin_lamella")
+    reference_images = lamella.get_reference_images(label="ref_thin_lamella_setup")
    
     log_status_message(lamella, "THIN_LAMELLA_ALIGN")
 
@@ -1008,14 +1016,14 @@ def thin_lamella(
 
     log_status_message(lamella, "THIN_LAMELLA_MILL")
 
-    # QUERY: add a fiducial here?
-    milling_ui(
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=MillingPattern.Fiducial,
-        point=None,
-        auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    )
+    # # QUERY: add a fiducial here?
+    # milling_ui(
+    #     microscope=microscope,
+    #     settings=settings,
+    #     milling_pattern=MillingPattern.Fiducial,
+    #     point=None,
+    #     auto_continue=bool(mode is AutoLiftoutMode.Auto),
+    # )
 
     # mill thin_lamella
     milling_ui(
@@ -1142,9 +1150,6 @@ def run_autoliftout_workflow(
             AutoLiftoutStage.MillTrench,
             AutoLiftoutStage.MillJCut,
         ]:
-            # autohome stage
-            if terminal_stage is AutoLiftoutStage.MillJCut:
-                calibration.auto_home_and_link_v2(microscope)
 
             lamella: Lamella
             for lamella in sample.positions.values():
@@ -1171,6 +1176,11 @@ def run_autoliftout_workflow(
 
                     # advance workflow
                     sample = end_of_stage_update(microscope, sample, lamella)
+
+    
+    # autohome stage
+    # if terminal_stage is AutoLiftoutStage.MillJCut:
+    # calibration.auto_home_and_link_v2(microscope)
 
     # standard workflow
     lamella: Lamella

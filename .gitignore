@@ -106,3 +106,4 @@ liftout/tools/auto/data/*
 liftout/tools/auto/needle.yaml
 *.code-workspace
 liftout/calibration/*
+liftout/log_data/*
