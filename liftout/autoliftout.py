@@ -449,7 +449,7 @@ def land_needle_on_milled_lamella(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
 
-    det.distance.x -= 1e-6  # move 1um to the left of the lamella edge
+    det.distance.x -= 2e-6  # move 1um to the left of the lamella edge
     detection.move_based_on_detection(
         microscope, settings, det, beam_type=settings.image.beam_type
     )
@@ -1410,7 +1410,9 @@ def select_landing_positions(
 
     ####################################
     # # move to landing grid
-    actions.move_to_landing_grid(microscope, settings, settings.protocol)
+    # actions.move_to_landing_grid(microscope, settings, settings.protocol)
+    landing_state = MicroscopeState.__from_dict__(settings.protocol["landing_state"])
+    actions.move_to_landing_grid_v2(microscope, landing_state)
 
     settings.image.save = False
     ####################################
@@ -1444,6 +1446,7 @@ def select_landing_sample_positions(
 
     # update image path
     settings.image.save_path = lamella.path
+    settings.image.hfw = ReferenceHFW.Low.value
 
     # select landing coordinates
     lamella.landing_state = user_select_feature(
@@ -1484,10 +1487,14 @@ def select_lamella_positions(
     select_another = get_current_lamella(sample)
 
     # iniitial eucentric calibration
-    actions.move_to_sample_grid(
-        microscope, settings=settings, protocol=settings.protocol
-    )
-    actions.move_to_trenching_angle(microscope, settings=settings)
+    # actions.move_to_sample_grid(
+    #     microscope, settings=settings, protocol=settings.protocol
+    # )
+
+    lamella_state = MicroscopeState.__from_dict__(settings.protocol["lamella_state"])
+    actions.move_to_sample_grid_v2(microscope, lamella_state)
+    # actions.move_to_trenching_angle(microscope, settings=settings)
+
     fibsem_ui_windows.ask_user_movement(microscope, settings)
 
     # allow the user to select additional lamella positions
@@ -1531,7 +1538,7 @@ def run_setup_autoliftout(
     logging.info(f"INIT | {AutoLiftoutStage.Setup.name} | STARTED")
 
     # move to the initial sample grid position
-    actions.move_to_sample_grid(microscope, settings, settings.protocol)
+    actions.move_to_sample_grid(microscope, settings, settings.protocol) # TODO: set a state for this
 
     # initial image settings
     settings.image.hfw = ReferenceHFW.Low.value
@@ -1599,7 +1606,7 @@ def sputter_platinum_on_whole_sample_grid(
     )
 
     if response:
-        actions.move_to_sample_grid(microscope, settings, protocol)
+        actions.move_to_sample_grid(microscope, settings, protocol) # TODO: set a state for here??
         fibsem_utils.sputter_platinum(
             microscope=microscope,
             protocol=protocol["platinum"],

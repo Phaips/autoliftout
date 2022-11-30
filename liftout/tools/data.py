@@ -91,7 +91,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         else:
                             beam_type = "None"
                         # beam_type = "ELECTRON" # TODO: need to fix this
-                        print(split_msg)
+                        # print(split_msg)
                         pos = split_msg[-1].strip().split(", ")
                         pos_x = pos[0]
                         pos_y = pos[1]
