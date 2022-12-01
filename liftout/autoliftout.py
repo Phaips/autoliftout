@@ -386,7 +386,7 @@ def liftout_lamella(
     # take reference images
     settings.image.save = True
     settings.image.hfw = ReferenceHFW.Super.value
-    settings.image.label = f"ref_jcut_sever"
+    settings.image.label = f"ref_liftout_sever"
     acquire.take_reference_images(microscope, settings.image)
 
     # Raise needle 30um from trench
@@ -395,7 +395,7 @@ def liftout_lamella(
     )
 
     # move needle back from trench x
-    dx = -1e-6
+    dx = -1.5e-6
     movement.move_needle_relative_with_corrected_movement(
         microscope, dx=dx, dy=0, beam_type=BeamType.ION
     )
@@ -403,10 +403,10 @@ def liftout_lamella(
     for i in range(3):
         z_move_out_from_trench = movement.z_corrected_needle_movement(
             10e-6, stage.current_position.t
-        )
+        ) #TODO: replace this with corrected relative needle move?
         needle.relative_move(z_move_out_from_trench)
         settings.image.label = f"liftout_trench_{i}"
-        acquire.take_reference_images(microscope, settings.image) # TODO: remove
+        acquire.take_reference_images(microscope, settings.image)
         logging.info(
             f"{lamella.current_state.stage.name}: removing needle from trench at {z_move_out_from_trench} ({i + 1}/3)"
         )
