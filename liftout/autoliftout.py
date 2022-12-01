@@ -592,7 +592,6 @@ def land_lamella(
     # move to landing coordinate
     calibration.set_microscope_state(microscope, lamella.landing_state)
 
-
     # align to ref
     log_status_message(lamella, "ALIGN_REF_LANDING")
     reference_images = lamella.get_reference_images("ref_landing")
@@ -614,6 +613,12 @@ def land_lamella(
         microscope, settings.system.stage.needle_stage_height_limit
     )
 
+
+    # landing entry
+    log_status_message(lamella, "LAND_LAMELLA_ENTRY")
+    landing_entry_procedure(microscope, settings, bool(mode is AutoLiftoutMode.Manual))
+    
+    # land lamella on post
     log_status_message(lamella, "LAND_LAMELLA_ON_POST")
     response = False
     while response is False:
@@ -662,31 +667,6 @@ def land_lamella_on_post(
     mode: AutoLiftoutMode,
 ):
     VALIDATE = mode is AutoLiftoutMode.Manual
-    actions.move_needle_to_landing_position(microscope)
-
-    # needle starting position
-    settings.image.hfw = ReferenceHFW.Low.value
-    settings.image.beam_type = BeamType.ION
-    settings.image.save = True
-    settings.image.label = f"landing_needle_start_position"
-    acquire.take_reference_images(microscope, settings.image)
-
-    det = fibsem_ui_windows.detect_features_v2(
-        microscope=microscope,
-        settings=settings,
-        features=[
-            Feature(FeatureType.LamellaRightEdge),
-            Feature(FeatureType.ImageCentre),
-        ],
-        validate=VALIDATE,
-    )
-    det.distance.x -= 30e-6
-    detection.move_based_on_detection(
-        microscope, settings, det, beam_type=settings.image.beam_type
-    )
-
-    settings.image.label = f"landing_needle_ready_position"
-    acquire.take_reference_images(microscope, settings.image)
 
     # repeat final movement until user confirms landing
     response = False
@@ -718,8 +698,8 @@ def land_lamella_on_post(
         )
 
         # final reference images
-        settings.image.hfw = ReferenceHFW.Super.value
-        settings.image.beam_type = BeamType.ELECTRON
+        # settings.image.hfw = ReferenceHFW.Super.value
+        # settings.image.beam_type = BeamType.ELECTRON
         settings.image.save = True
         settings.image.label = f"landing_lamella_contact_{i}"
         acquire.take_reference_images(
@@ -732,6 +712,8 @@ def land_lamella_on_post(
             )
         else:
             response = True
+
+            # TODO: add a check where if the lamella edge and post are close enough, exit the loop
 
         # increment count
         i += 1
@@ -783,23 +765,24 @@ def land_lamella_on_post(
     # optional? makes it not repeatable
     log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
 
-    # det = fibsem_ui_windows.detect_features_v2(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     features=[
-    #         Feature(FeatureType.LamellaLeftEdge),
-    #         Feature(FeatureType.ImageCentre),
-    #     ],
-    #     validate=bool(mode is AutoLiftoutMode.Manual),
-    # )
+    # if settings.protocol["options"]["landing_joining_method"].capitalize() == "Weld":
+        # det = fibsem_ui_windows.detect_features_v2(
+        #     microscope=microscope,
+        #     settings=settings,
+        #     features=[
+        #         Feature(FeatureType.LamellaLeftEdge),
+        #         Feature(FeatureType.ImageCentre),
+        #     ],
+        #     validate=bool(mode is AutoLiftoutMode.Manual),
+        # )
 
-    # milling_ui(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     milling_pattern=MillingPattern.Cut,
-    #     point=det.features[0].feature_m,
-    #     auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    # )
+        # milling_ui(
+        #     microscope=microscope,
+        #     settings=settings,
+        #     milling_pattern=MillingPattern.Cut,
+        #     point=det.features[0].feature_m,
+        #     auto_continue=bool(mode is AutoLiftoutMode.Auto),
+        # )
 
     logging.info(f"{lamella.current_state.stage.name}: removing needle from lamella")
 
@@ -820,6 +803,42 @@ def land_lamella_on_post(
     )
 
     return
+
+def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: MicroscopeSettings, VALIDATE: bool = True):
+    
+    # entry procedure, align vertically to post
+    actions.move_needle_to_landing_position(microscope)
+
+    hfws = [ReferenceHFW.Low, ReferenceHFW.Medium, ReferenceHFW.High]
+    beam_types = [BeamType.ION, BeamType.ELECTRON, BeamType.ION]
+
+    for i, (hfw, beam_type) in enumerate(zip(hfws, beam_types)):
+
+        # needle starting position
+        settings.image.hfw = hfw.value
+        settings.image.beam_type =beam_type
+        settings.image.save = True
+        settings.image.label = f"landing_needle_start_position_{i}"
+        acquire.take_reference_images(microscope, settings.image)
+
+        det = fibsem_ui_windows.detect_features_v2(
+            microscope=microscope,
+            settings=settings,
+            features=[
+                Feature(FeatureType.LamellaRightEdge),
+                Feature(FeatureType.ImageCentre),
+            ],
+            validate=VALIDATE,
+        )
+        det.distance.x -= 30e-6
+        detection.move_based_on_detection(
+            microscope, settings, det, beam_type=settings.image.beam_type
+        )
+
+    settings.image.hfw = ReferenceHFW.Super.value
+    settings.image.label = f"landing_needle_ready_position"
+    acquire.take_reference_images(microscope, settings.image)
+
 
 
 def reset_needle(

@@ -204,9 +204,9 @@ def move_needle_to_liftout_position(
 def move_needle_to_landing_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
-    dx: float = -30.0e-6,
+    dx: float = -150.0e-6,
     dy: float = 0.0e-6,
-    dz: float = 15.0e-6,
+    dz: float = 0.0e-6,
 ) -> None:
     """Insert the needle to just above, and left of the eucentric point, ready for land
     .+ing.
@@ -222,9 +222,11 @@ def move_needle_to_landing_position(
     # insert to park position
     movement.insert_needle(microscope, ManipulatorSavedPosition.PARK)
 
-    # move to  offset position #TODO: add this back, but offset from PARK
-    # movement.move_needle_to_position_offset(microscope, position, dx, dy, dz) 
-
+    # move to  offset position 
+    movement.move_needle_relative_with_corrected_movement(
+            microscope=microscope, dx=dx, dy=dy, beam_type=BeamType.ION,
+        )
+    
     return microscope.specimen.manipulator.current_position
 
 
