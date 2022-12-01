@@ -690,6 +690,7 @@ def land_lamella_on_post(
                 Feature(FeatureType.LandingPost),
             ],
             validate=VALIDATE,
+            mask_radius=512
         )
 
         det.distance.x += 0.5e-6
@@ -829,6 +830,7 @@ def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: Microscop
                 Feature(FeatureType.ImageCentre),
             ],
             validate=VALIDATE,
+            mask_radius = 512
         )
         det.distance.x -= 30e-6
         detection.move_based_on_detection(
