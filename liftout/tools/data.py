@@ -17,6 +17,7 @@ class AutoLiftoutStatistics:
     history: pd.DataFrame
     image: pd.DataFrame = None
     name: str = "name"
+    date: str = None
 
 
 def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
@@ -161,16 +162,42 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     sample = load_experiment(path)
     df_sample = sample.__to_dataframe__()
     df_history = create_history_dataframe(sample)
+    df_gamma=pd.DataFrame.from_dict(gamma_info)
+    df_click=pd.DataFrame.from_dict(click_info)
+    df_move=pd.DataFrame.from_dict(move_info)
+    df_ml=pd.DataFrame.from_dict(ml_info)
+    
+
+    # convert to datetime
+    import datetime
+    date = sample.name.split("-")[-5:]
+    date = datetime.datetime.strptime("-".join(date), "%Y-%m-%d.%I-%M-%S%p")
+
+    # add date and name to all dataframes
+    df_sample["date"] = date
+    df_sample["name"] = sample.name
+    df_history["date"] = date
+    df_history["name"] = sample.name
+    df_gamma["date"] = date
+    df_gamma["name"] = sample.name
+    df_click["date"] = date
+    df_click["name"] = sample.name
+    df_move["date"] = date
+    df_move["name"] = sample.name
+    df_ml["date"] = date
+    df_ml["name"] = sample.name
 
 
     return AutoLiftoutStatistics(
-        gamma=pd.DataFrame.from_dict(gamma_info),
-        click=pd.DataFrame.from_dict(click_info),
-        move=pd.DataFrame.from_dict(move_info),
-        ml=pd.DataFrame.from_dict(ml_info),
+        gamma=df_gamma,
+        click=df_click,
+        move=df_move,
+        ml=df_ml,
         sample=df_sample,
         history=df_history,
         name=sample.name,
+        date= date
+
     )
 
 
