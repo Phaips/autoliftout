@@ -119,38 +119,38 @@ def move_to_landing_grid_v2(microscope: SdbMicroscopeClient, microscope_state: M
     """
     calibration.set_microscope_state(microscope, microscope_state)
 
-def move_to_landing_grid(
-    microscope: SdbMicroscopeClient, settings: MicroscopeSettings, protocol: dict
-) -> StagePosition:
-    """Move stage to landing post grid.
-    Assumes the landing grid is mounted on the right hand side of the holder.
-    Parameters
-    ----------
-    microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
-        The AutoScript microscope object instance.
-    flat_to_sem : bool, optional
-        Whether to keep the landing post grid surface flat to the SEM.
-    """
+# def move_to_landing_grid(
+#     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, protocol: dict
+# ) -> StagePosition:
+#     """Move stage to landing post grid.
+#     Assumes the landing grid is mounted on the right hand side of the holder.
+#     Parameters
+#     ----------
+#     microscope : autoscript_sdb_microscope_client.SdbMicroscopeClient
+#         The AutoScript microscope object instance.
+#     flat_to_sem : bool, optional
+#         Whether to keep the landing post grid surface flat to the SEM.
+#     """
 
-    # move to landing grid initial position
-    landing_grid_position = StagePosition(
-        x=float(protocol["initial_position"]["landing_grid"]["x"]),
-        y=float(protocol["initial_position"]["landing_grid"]["y"]),
-        z=float(protocol["initial_position"]["landing_grid"]["z"]),
-        r=np.deg2rad(settings.system.stage.rotation_flat_to_electron), # TODO: fix to ib position
-        coordinate_system=protocol["initial_position"]["landing_grid"][
-            "coordinate_system"
-        ],
-    )
-    logging.info(f"moving to landing grid {landing_grid_position}")
-    movement.safe_absolute_stage_movement(
-        microscope=microscope, stage_position=landing_grid_position
-    )
+#     # move to landing grid initial position
+#     landing_grid_position = StagePosition(
+#         x=float(protocol["initial_position"]["landing_grid"]["x"]),
+#         y=float(protocol["initial_position"]["landing_grid"]["y"]),
+#         z=float(protocol["initial_position"]["landing_grid"]["z"]),
+#         r=np.deg2rad(settings.system.stage.rotation_flat_to_electron), # TODO: fix to ib position
+#         coordinate_system=protocol["initial_position"]["landing_grid"][
+#             "coordinate_system"
+#         ],
+#     )
+#     logging.info(f"moving to landing grid {landing_grid_position}")
+#     movement.safe_absolute_stage_movement(
+#         microscope=microscope, stage_position=landing_grid_position
+#     )
 
-    # move to landing angle
-    move_to_landing_angle(microscope, settings=settings)
+#     # move to landing angle
+#     move_to_landing_angle(microscope, settings=settings)
 
-    logging.info(f"move to landing grid complete.")
+#     logging.info(f"move to landing grid complete.")
 
 
 def move_sample_stage_out(

@@ -393,6 +393,13 @@ def liftout_lamella(
     logging.info(
         f"{lamella.current_state.stage.name}: start removing needle from trench"
     )
+
+    # move needle back from trench x
+    dx = -1e-6
+    movement.move_needle_relative_with_corrected_movement(
+        microscope, dx=dx, dy=0, beam_type=BeamType.ION
+    )
+
     for i in range(3):
         z_move_out_from_trench = movement.z_corrected_needle_movement(
             10e-6, stage.current_position.t
@@ -687,7 +694,7 @@ def land_lamella_on_post(
     while response is False:
 
         #### X-MOVE
-        settings.image.hfw = ReferenceHFW.Super.value
+        settings.image.hfw = ReferenceHFW.High.value if i == 0 else ReferenceHFW.Super.value
         settings.image.beam_type = BeamType.ION
         settings.image.save = True
         settings.image.label = f"landing_needle_pre_move_{i}"
@@ -705,6 +712,7 @@ def land_lamella_on_post(
             validate=VALIDATE,
         )
 
+        det.distance.x += 0.5e-6
         detection.move_based_on_detection(
             microscope, settings, det, beam_type=settings.image.beam_type
         )
@@ -768,28 +776,33 @@ def land_lamella_on_post(
     settings.image.save = True
     settings.image.label = "landing_lamella_needle_removal"
 
+    # charge neutralisation # discharge to unlock lamella
+    settings.image.beam_type = BeamType.ELECTRON
+    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=20)
+
     # optional? makes it not repeatable
-    log_status_message(lamella, " LAND_LAMELLA_CUT_NEEDLE")
+    log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
 
-    det = fibsem_ui_windows.detect_features_v2(
-        microscope=microscope,
-        settings=settings,
-        features=[
-            Feature(FeatureType.LamellaLeftEdge),
-            Feature(FeatureType.ImageCentre),
-        ],
-        validate=bool(mode is AutoLiftoutMode.Manual),
-    )
+    # det = fibsem_ui_windows.detect_features_v2(
+    #     microscope=microscope,
+    #     settings=settings,
+    #     features=[
+    #         Feature(FeatureType.LamellaLeftEdge),
+    #         Feature(FeatureType.ImageCentre),
+    #     ],
+    #     validate=bool(mode is AutoLiftoutMode.Manual),
+    # )
 
-    milling_ui(
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=MillingPattern.Cut,
-        point=det.features[0].feature_m,
-        auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    )
+    # milling_ui(
+    #     microscope=microscope,
+    #     settings=settings,
+    #     milling_pattern=MillingPattern.Cut,
+    #     point=det.features[0].feature_m,
+    #     auto_continue=bool(mode is AutoLiftoutMode.Auto),
+    # )
 
     logging.info(f"{lamella.current_state.stage.name}: removing needle from lamella")
+
     # back out needle from lamella , no cut required?
     for i in range(10):
 
@@ -1294,40 +1307,10 @@ def run_thinning_workflow(
                 autoliftout_polishing_stages[next_stage](microscope, settings, lamella)
                 sample = end_of_stage_update(microscope, sample, lamella)
 
-
-    # # polish setup
-    # for lamella in sample.positions.values():
-
-    #     if lamella.current_state.stage == AutoLiftoutStage.Reset:
-    #         lamella = start_of_stage_update(
-    #             microscope, lamella, next_stage=AutoLiftoutStage.SetupPolish
-    #         )
-    #         setup_polish_lamella(microscope, settings, lamella)
-    #         sample = end_of_stage_update(microscope, sample, lamella)
-
-    # # thinning
-    # for lamella in sample.positions.values():
-
-    #     if lamella.current_state.stage == AutoLiftoutStage.SetupPolish:
-    #         lamella = start_of_stage_update(
-    #             microscope, lamella, next_stage=AutoLiftoutStage.Thinning
-    #         )
-    #         thin_lamella(microscope, settings, lamella)
-    #         sample = end_of_stage_update(microscope, sample, lamella)
-
-    # # polish
-    # for lamella in sample.positions.values():
-
-    #     if lamella.current_state.stage == AutoLiftoutStage.Thinning:
-    #         lamella = start_of_stage_update(
-    #             microscope, lamella, next_stage=AutoLiftoutStage.Polishing
-    #         )
-    #         polish_lamella(microscope, settings, lamella)
-    #         sample = end_of_stage_update(microscope, sample, lamella)
-
     # finish the experiment
     for lamella in sample.positions.values():
         if lamella.current_state.stage == AutoLiftoutStage.Polishing:
+            logging.info(f"STATUS | {lamella._petname} | {AutoLiftoutStage.Finished} | STARTED")
             lamella.current_state.stage = AutoLiftoutStage.Finished
             sample = end_of_stage_update(microscope, sample, lamella)
 
@@ -1410,7 +1393,6 @@ def select_landing_positions(
 
     ####################################
     # # move to landing grid
-    # actions.move_to_landing_grid(microscope, settings, settings.protocol)
     landing_state = MicroscopeState.__from_dict__(settings.protocol["landing_state"])
     actions.move_to_landing_grid_v2(microscope, landing_state)
 
@@ -1486,14 +1468,8 @@ def select_lamella_positions(
 
     select_another = get_current_lamella(sample)
 
-    # iniitial eucentric calibration
-    # actions.move_to_sample_grid(
-    #     microscope, settings=settings, protocol=settings.protocol
-    # )
-
     lamella_state = MicroscopeState.__from_dict__(settings.protocol["lamella_state"])
     actions.move_to_sample_grid_v2(microscope, lamella_state)
-    # actions.move_to_trenching_angle(microscope, settings=settings)
 
     fibsem_ui_windows.ask_user_movement(microscope, settings)
 
