@@ -119,7 +119,7 @@ def mill_lamella_jcut(
     settings.image.hfw = ReferenceHFW.Medium.value
     calibration.auto_charge_neutralisation(microscope, settings.image)
     
-    hfws = [ReferenceHFW.Medium.value, ReferenceHFW.Super.value]
+    hfws = [ReferenceHFW.Low.value, ReferenceHFW.High.value]
     reference_images = acquire.take_set_of_reference_images(
         microscope, settings.image, hfws=hfws, label="ref_trench_jcut"
     )
@@ -146,7 +146,7 @@ def mill_lamella_jcut(
         settings, 
         reference_images, 
         rotate=True, 
-        xcorr_limit=(250, 250, 512, 512)
+        xcorr_limit=(512, 512, 512, 512)
     )
 
     # adjust for relative shift between beams
@@ -492,6 +492,10 @@ def land_needle_on_milled_lamella(
 
     # take image
 
+    # charge neutralisation  to charge lamella
+    settings.image.beam_type = BeamType.ION
+    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=50)
+
     # measure brightness
     BRIGHTNESS_FACTOR = 1.2
     settings.image.beam_type = BeamType.ION
@@ -499,7 +503,7 @@ def land_needle_on_milled_lamella(
     settings.image.label = f"needle_liftout_land"
     settings.image.save = True
     settings.image.gamma.enabled = False
-    reduced_area = Rectangle(0.25, 0.25, 0.5, 0.5)  # TODO: improve contact detection
+    reduced_area = Rectangle(0.2, 0.2, 0.70, 0.70)  # TODO: improve contact detection
     ib_image = acquire.new_image(microscope, settings.image, reduced_area)
     previous_brightness = image_utils.measure_brightness(ib_image)
 
@@ -653,7 +657,7 @@ def land_lamella(
     acquire.take_set_of_reference_images(
         microscope=microscope,
         image_settings=settings.image,
-        hfws=[ReferenceHFW.High.value, ReferenceHFW.Super.value],
+        hfws=[ReferenceHFW.Medium.value, ReferenceHFW.Super.value],
         label="ref_landing_lamella",
     )
 
@@ -761,7 +765,7 @@ def land_lamella_on_post(
 
     # charge neutralisation # discharge to unlock lamella
     settings.image.beam_type = BeamType.ELECTRON
-    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=20)
+    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=50)
 
     # optional? makes it not repeatable
     log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
@@ -947,8 +951,7 @@ def setup_polish_lamella(
 
     # load the reference images
     reference_images = lamella.get_reference_images(label="ref_landing_lamella")
-
-    # TODO: test    
+ 
     log_status_message(lamella, "THIN_LAMELLA_ALIGN")
 
     alignment.correct_stage_drift(
@@ -957,7 +960,7 @@ def setup_polish_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=True,
-        xcorr_limit = (512, 250)
+        xcorr_limit = (512, 512)
     )
 
     # ensure_eucentricity at thinning angle

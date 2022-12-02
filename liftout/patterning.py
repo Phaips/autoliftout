@@ -141,7 +141,7 @@ def jcut_milling_patterns(
     # rhs jcut
     jcut_rhs = microscope.patterning.create_cleaning_cross_section(
         center_x=point.x + jcut_half_width - jcut_h_offset,
-        center_y=point.y + jcut_half_height - (jcut_rhs_height / 2 - jcut_half_height) - jcut_trench_thickness / 2 ,
+        center_y=point.y + jcut_half_height - (jcut_rhs_height / 2 - jcut_half_height) + jcut_trench_thickness / 2 ,
         width=jcut_trench_thickness,
         height=jcut_rhs_height,
         depth=jcut_milling_depth,

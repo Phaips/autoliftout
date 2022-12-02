@@ -45,7 +45,7 @@ jcut:
   rotation: 0.0
   scan_direction: TopToBottom
   trench_width: 1.5e-06
-  width: 2.5e-05
+  width: 2.7e-05
 lamella:
   cleaning_cross_section: 0.0
   lamella_height: 9.999999999999999e-06
@@ -147,11 +147,11 @@ options:
     trench: Manual
   batch_mode: 0.0
   confirm_advance: 1.0
-  landing_joining_method: None
+  landing_joining_method: Weld
   landing_removal_method: None
   landing_surface: Half-Moon Grid
   liftout_contact_direction: Horizontal
-  liftout_joining_method: Weld
+  liftout_joining_method: None
 platinum:
   application_file: cryo_Pt_dep
   gas: Pt cryo
@@ -185,7 +185,7 @@ sever:
   milling_current: 7.6e-09
   rotation: 0.0
   scan_direction: TopToBottom
-  width: 1.0e-06
+  width: 1.5e-06
 sharpen:
   bias: 2.5e-07
   cleaning_cross_section: 0.0
