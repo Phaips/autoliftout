@@ -32,6 +32,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     current_stage = "Setup"
     current_step = None
 
+    old_feature = None
+
     with open(fname, encoding="cp1252") as f:
         # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
         lines = f.read().splitlines()
@@ -112,6 +114,9 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                 if "Feature" == msg.split("|")[0].strip():
                     # print(msg)
                     feature_type = msg.split("|")[1].split(".")[-1].strip()
+                    if feature_type == old_feature:
+                        print("duplicate feature: ", feature_type)
+                        continue
                     correct = msg.split("|")[2].strip()
                     ml_d = {
                         "feature": feature_type,
@@ -121,6 +126,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "step": current_step,
                     }
                     ml_info.append(deepcopy(ml_d))
+                    old_feature = feature_type
 
                 if "move_stage" in func:
                     if "move_stage_relative" in func:
