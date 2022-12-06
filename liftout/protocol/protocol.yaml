@@ -36,12 +36,12 @@ initial_position:
     z: 0.03095
 jcut:
   cleaning_cross_section: 0.0
-  depth: 3.0e-06
+  depth: 5.0e-06
   h_offset: 4.0e-06
   jcut_angle: 6.0
   lamella_height: 9.0e-06
   milling_current: 7.6e-09
-  rhs_height: 10.5e-06
+  rhs_height: 1.05e-05
   rotation: 0.0
   scan_direction: TopToBottom
   trench_width: 1.5e-06
@@ -132,9 +132,9 @@ landing_state:
   timestamp: 1669685109.759207
 ml:
   cuda: 0.0
-  encoder: resnet18
+  encoder: resnet34
   num_classes: 3.0
-  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model3.pt
+  weights: C:\Users\Admin\Github\fibsem\fibsem\segmentation\models\model4.pt
 name: autoliftout
 options:
   auto:
@@ -165,19 +165,22 @@ platinum:
     length: 7.0e-06
     time: 20.0
 polish_lamella:
+  cleaning_cross_section: false
   dwell_time: 2.0e-07
   hfw: 5.0e-05
   lamella_height: 5.0e-07
-  lamella_width: 1.5e-05
-  milling_current: 2.0e-11
+  lamella_width: 1.7e-05
+  milling_current: 6.0e-11
   milling_depth: 4.0e-07
   offset: 0.0
   resolution: 3072x2048
+  rotation: 0.0
   rotation_angle: 50.0
+  scan_direction: TopToBottom
   size_ratio: 1.0
   tilt_angle: 20.0
   tilt_offset: 1.0
-  trench_height: 2.0e-07
+  trench_height: 6.0e-07
 sever:
   cleaning_cross_section: 1.0
   depth: 3.0e-06
@@ -199,20 +202,20 @@ sharpen:
   tip_angle: 35.0
   width: 2.9999999999999997e-05
 thin_lamella:
-  cleaning_cross_section: false
+  cleaning_cross_section: 0.0
   dwell_time: 2.0e-07
   hfw: 5.0e-05
   lamella_height: 1.0e-06
-  lamella_width: 1.4999999999999999e-05
+  lamella_width: 1.8e-05
   milling_current: 7.4e-10
   milling_depth: 4.0e-07
   offset: 1.0e-06
   protocol_stages:
-  - cleaning_cross_section: false
+  - cleaning_cross_section: 0.0
     dwell_time: 2.0e-07
     hfw: 5.0e-05
     lamella_height: 1.0e-06
-    lamella_width: 1.4999999999999999e-05
+    lamella_width: 1.8e-05
     milling_current: 7.4e-10
     milling_depth: 4.0e-07
     offset: 1.0e-06
@@ -223,11 +226,11 @@ thin_lamella:
     size_ratio: 1.0
     tilt_angle: 20.0
     trench_height: 4.5e-06
-  - cleaning_cross_section: false
+  - cleaning_cross_section: 0.0
     dwell_time: 2.0e-07
     hfw: 5.0e-05
-    lamella_height: 1.0e-06
-    lamella_width: 1.4999999999999999e-05
+    lamella_height: 8.0e-07
+    lamella_width: 1.8e-05
     milling_current: 2.0000000000000003e-10
     milling_depth: 4.0e-07
     offset: 0.0

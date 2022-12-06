@@ -119,7 +119,9 @@ def jcut_milling_patterns(
     jcut_half_height = jcut_lamella_height / 2
 
     # top_jcut
-    jcut_top = microscope.patterning.create_cleaning_cross_section(
+    # jcut_top = microscope.patterning.create_cleaning_cross_section(
+    jcut_top = microscope.patterning.create_rectangle(
+
         center_x=point.x + jcut_width / 2 - jcut_h_offset,
         center_y=point.y + jcut_lamella_height,
         width=jcut_width,
@@ -139,7 +141,8 @@ def jcut_milling_patterns(
     # )  # depth
 
     # rhs jcut
-    jcut_rhs = microscope.patterning.create_cleaning_cross_section(
+    # jcut_rhs = microscope.patterning.create_cleaning_cross_section(
+    jcut_rhs = microscope.patterning.create_rectangle(
         center_x=point.x + jcut_half_width - jcut_h_offset,
         center_y=point.y + jcut_half_height - (jcut_rhs_height / 2 - jcut_half_height) + jcut_trench_thickness / 2 ,
         width=jcut_trench_thickness,

@@ -683,9 +683,8 @@ def land_lamella_on_post(
         settings.image.save = True
         settings.image.label = f"landing_needle_pre_move_{i}"
 
-        logging.info(
-            f"STATUS | {lamella._petname} | {lamella.current_state.stage.name} | LAND_LAMELLA_IB_DETECTION"
-        )
+        log_status_message(lamella, "LAND_LAMELLA_IB_DETECTION")
+
         det = fibsem_ui_windows.detect_features_v2(
             microscope=microscope,
             settings=settings,
@@ -763,9 +762,17 @@ def land_lamella_on_post(
     settings.image.save = True
     settings.image.label = "landing_lamella_needle_removal"
 
+    
     # charge neutralisation # discharge to unlock lamella
-    settings.image.beam_type = BeamType.ELECTRON
-    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=50)
+    response = True
+    n_iter = 50
+    while response:
+        settings.image.beam_type = BeamType.ELECTRON
+        calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=n_iter)
+
+        response = fibsem_ui_windows.ask_user_interaction(
+            msg=f"Repeat charge procedure? iter: {n_iter} \nPress Yes to repeat, or No to continue.",
+        )
 
     # optional? makes it not repeatable
     log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
@@ -796,7 +803,7 @@ def land_lamella_on_post(
 
         # move needle back
         movement.move_needle_relative_with_corrected_movement(
-            microscope=microscope, dx=-1e-6, dy=0, beam_type=BeamType.ION,
+            microscope=microscope, dx=-0.5e-6, dy=0, beam_type=BeamType.ION,
         )
 
     # reference images

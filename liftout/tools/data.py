@@ -33,6 +33,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     current_step = None
 
     old_feature = None
+    old_correct = None
 
     with open(fname, encoding="cp1252") as f:
         # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
@@ -88,11 +89,14 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     split_msg = msg.split("|")
                     if "DectectedFeature" == split_msg[0].split(" ")[0].strip():
                         # click_type = split_msg[0].split(":")[-1].strip()
+                        # print(split_msg)
                         click_type = "DetectedFeature"
                         if "BeamType" in split_msg[-1]:
                             beam_type = split_msg[-1].split(".")[-1]
                         else:
-                            beam_type = "None"
+                            beam_type = split_msg[0].split(" ")[-2].strip()
+                            # print(beam_type)
+
                         # beam_type = "ELECTRON" # TODO: need to fix this
                         # print(split_msg)
                         pos = split_msg[-1].strip().split(", ")
@@ -114,10 +118,10 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                 if "Feature" == msg.split("|")[0].strip():
                     # print(msg)
                     feature_type = msg.split("|")[1].split(".")[-1].strip()
-                    if feature_type == old_feature:
-                        print("duplicate feature: ", feature_type)
-                        continue
                     correct = msg.split("|")[2].strip()
+                    # if feature_type == old_feature and correct == old_correct and correct == False:
+                    #     print("duplicate feature: ", feature_type, msg)
+                    #     continue
                     ml_d = {
                         "feature": feature_type,
                         "correct": correct,
@@ -126,7 +130,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         "step": current_step,
                     }
                     ml_info.append(deepcopy(ml_d))
-                    old_feature = feature_type
+                    # old_feature = feature_type
+                    # old_correct = correct
 
                 if "move_stage" in func:
                     if "move_stage_relative" in func:

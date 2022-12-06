@@ -340,15 +340,17 @@ class FibsemMillingUI(MillingUI.Ui_Dialog, QtWidgets.QDialog):
                 [self.patterns]
             )
             logging.info(f"milling time: {milling_time_seconds}")
-            progressbar = napari.utils.progress(milling_time_seconds)
+            dt = 0.1
+            progressbar = napari.utils.progress(milling_time_seconds*1/dt)
+            progressbar.display(msg=f"Milling: {stage_name}")
 
             # TODO: thread https://forum.image.sc/t/napari-progress-bar-modification-on-the-fly/62496/7
             while self.microscope.patterning.state == "Running":
-
-                elapsed_time += 1
-                prog_val = int(elapsed_time)
-                progressbar.update(prog_val)
-                time.sleep(1)
+                
+                # elapsed_time += dt
+                # prog_val = int(elapsed_time)
+                progressbar.update(1)
+                time.sleep(dt)
 
             logging.info(f"Milling finished: {self.microscope.patterning.state}")
             progressbar.clear()
