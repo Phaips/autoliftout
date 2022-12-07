@@ -202,7 +202,7 @@ sharpen:
   tip_angle: 35.0
   width: 2.9999999999999997e-05
 thin_lamella:
-  cleaning_cross_section: 0.0
+  cleaning_cross_section: 1.0
   dwell_time: 2.0e-07
   hfw: 5.0e-05
   lamella_height: 1.0e-06
@@ -211,7 +211,7 @@ thin_lamella:
   milling_depth: 4.0e-07
   offset: 1.0e-06
   protocol_stages:
-  - cleaning_cross_section: 0.0
+  - cleaning_cross_section: 1.0
     dwell_time: 2.0e-07
     hfw: 5.0e-05
     lamella_height: 1.0e-06
@@ -226,7 +226,7 @@ thin_lamella:
     size_ratio: 1.0
     tilt_angle: 20.0
     trench_height: 4.5e-06
-  - cleaning_cross_section: 0.0
+  - cleaning_cross_section: 1.0
     dwell_time: 2.0e-07
     hfw: 5.0e-05
     lamella_height: 8.0e-07
