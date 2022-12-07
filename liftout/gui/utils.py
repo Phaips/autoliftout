@@ -1,19 +1,17 @@
 import logging
 import os
-
 from pathlib import Path
 
-import scipy.ndimage as ndi
+import numpy as np
 import yaml
-from autoscript_sdb_microscope_client.structures import AdornedImage
 from fibsem import utils as fibsem_utils
-from liftout.config import config
-from liftout.patterning import MillingPattern
-from liftout.structures import Lamella, Sample, create_experiment
+from fibsem.patterning import MillingPattern
+from fibsem.ui import utils as fibsem_ui
 from PyQt5 import QtWidgets
 
-from fibsem.ui import utils as fibsem_ui
-import numpy as np
+from liftout.config import config
+from liftout.structures import Lamella, Sample, create_experiment
+
 
 def update_stage_label(label: QtWidgets.QLabel, lamella: Lamella):
 

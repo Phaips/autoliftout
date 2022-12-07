@@ -26,9 +26,9 @@ from fibsem.imaging import utils as image_utils
 from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Point
 from fibsem.ui import windows as fibsem_ui_windows
 
-from liftout import actions, patterning
-from liftout.gui.FibsemMillingUI import FibsemMillingUI
-from liftout.patterning import MillingPattern
+from liftout import actions
+# from liftout.gui.FibsemMillingUI import FibsemMillingUI
+from fibsem.patterning import MillingPattern
 from liftout.structures import (
     AutoLiftoutMode,
     AutoLiftoutStage,
@@ -65,7 +65,7 @@ def mill_lamella_trench(
     log_status_message(lamella, "MILL_TRENCH")
 
     # mill_trenches
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Trench,
@@ -213,7 +213,7 @@ def mill_lamella_jcut(
     )
 
 
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.JCut,
@@ -331,7 +331,7 @@ def liftout_lamella(
             validate=bool(mode is AutoLiftoutMode.Manual),
         )
         # mill weld
-        milling_ui(
+        fibsem_ui_windows.milling_ui(
             microscope=microscope,
             settings=settings,
             milling_pattern=MillingPattern.Weld,
@@ -375,7 +375,7 @@ def liftout_lamella(
     point = det.features[0].feature_m
 
     # jcut sever pattern
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sever,
@@ -739,7 +739,7 @@ def land_lamella_on_post(
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
 
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Weld,
@@ -788,7 +788,7 @@ def land_lamella_on_post(
         #     validate=bool(mode is AutoLiftoutMode.Manual),
         # )
 
-        # milling_ui(
+        # fibsem_ui_windows.milling_ui(
         #     microscope=microscope,
         #     settings=settings,
         #     milling_pattern=MillingPattern.Cut,
@@ -905,7 +905,7 @@ def reset_needle(
     # TODO: validate this movement
 
     # create sharpening patterns
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Sharpen,
@@ -1061,7 +1061,7 @@ def thin_lamella(
     log_status_message(lamella, "THIN_LAMELLA_MILL")
 
     # # QUERY: add a fiducial here?
-    # milling_ui(
+    # fibsem_ui_windows.milling_ui(
     #     microscope=microscope,
     #     settings=settings,
     #     milling_pattern=MillingPattern.Fiducial,
@@ -1070,7 +1070,7 @@ def thin_lamella(
     # )
 
     # mill thin_lamella
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Thin,
@@ -1143,7 +1143,7 @@ def polish_lamella(
     settings.image.hfw = settings.protocol["polish_lamella"]["hfw"]
 
     log_status_message(lamella, "POLISH_LAMELLA_MILL")
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Polish,
@@ -1473,7 +1473,7 @@ def select_landing_sample_positions(
     settings.image.beam_type = BeamType.ION
     settings.image.save = False
 
-    milling_ui(
+    fibsem_ui_windows.milling_ui(
         microscope=microscope,
         settings=settings,
         milling_pattern=MillingPattern.Flatten,
@@ -1622,33 +1622,3 @@ def sputter_platinum_on_whole_sample_grid(
         )
 
     return
-
-
-def milling_ui(
-    microscope: SdbMicroscopeClient,
-    settings: MicroscopeSettings,
-    milling_pattern: patterning.MillingPattern,
-    point: Point = None,
-    change_pattern: bool = False,
-    auto_continue: bool = False,
-):
-
-    viewer = napari.Viewer()
-    milling_ui = FibsemMillingUI(
-        viewer=viewer,
-        microscope=microscope,
-        settings=settings,
-        milling_pattern=milling_pattern,
-        point=point,
-        change_pattern=change_pattern,
-        auto_continue=auto_continue,
-    )
-
-    viewer.window.add_dock_widget(milling_ui, area="right", add_vertical_stretch=False)
-
-    if auto_continue:
-        milling_ui.run_milling()
-    else:
-        milling_ui.exec_()
-
-    # napari.run(max_loop_level=2)

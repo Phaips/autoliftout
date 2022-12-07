@@ -1,7 +1,6 @@
 import os
 
 import liftout
-from liftout.patterning import MillingPattern
 
 BASE_PATH = os.path.dirname(liftout.__file__)
 config_path = os.path.join(BASE_PATH, "config")
@@ -11,29 +10,7 @@ LOG_DATA_PATH = os.path.join(BASE_PATH, "log_data")
 
 os.makedirs(LOG_DATA_PATH, exist_ok=True)
 
-# MILLING UI
 
-NON_CHANGEABLE_MILLING_PARAMETERS = [
-    "milling_current",
-    "hfw",
-    "jcut_angle",
-    "rotation_angle",
-    "tilt_angle",
-    "tilt_offset",
-    "resolution",
-    "dwell_time",
-    "reduced_area",
-    "scan_direction",
-    "cleaning_cross_section",
-]
-NON_SCALED_MILLING_PARAMETERS = [
-    "size_ratio",
-    "rotation",
-    "tip_angle",
-    "needle_angle",
-    "percentage_roi_height",
-    "percentage_from_lamella_surface",
-]
 
 # # sputtering rates
 # MILLING_SPUTTER_RATE = {
@@ -54,18 +31,7 @@ NON_SCALED_MILLING_PARAMETERS = [
 # # 7.6nA: 3.041e0 um3/s
 
 
-PATTERN_PROTOCOL_MAP = {
-    MillingPattern.Trench: "lamella",
-    MillingPattern.JCut: "jcut",
-    MillingPattern.Sever: "sever",
-    MillingPattern.Weld: "weld",
-    MillingPattern.Cut: "cut",
-    MillingPattern.Sharpen: "sharpen",
-    MillingPattern.Thin: "thin_lamella",
-    MillingPattern.Polish: "polish_lamella",
-    MillingPattern.Flatten: "flatten_landing",
-    MillingPattern.Fiducial: "fiducial",
-}
+
 
 
 DISPLAY_REFERENCE_FNAMES = [
