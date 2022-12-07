@@ -97,8 +97,8 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def testing_function(self):
         logging.info(f"Test button pressed")
 
-        from liftout.patterning import MillingPattern 
-        autoliftout.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
+        from fibsem.patterning import MillingPattern 
+        fibsem_ui_windows.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
 
     def setup_experiment(self) -> None:
 
