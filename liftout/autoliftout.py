@@ -949,17 +949,13 @@ def setup_polish_lamella(
         xcorr_limit = (512, 512)
     )
 
-    # ensure_eucentricity at thinning angle
-    if mode is AutoLiftoutMode.Manual:
-        
-        # confirm
-        fibsem_ui_windows.ask_user_movement(
-            microscope,
-            settings,
-            msg="Confirm lamella right edge is centred in Ion Beam",
-        ) 
-        # TODO: add tilt correction here...
-        # TODO: add beam shift too?
+    # confirm position of polishing
+    fibsem_ui_windows.ask_user_movement(
+        microscope = microscope,
+        settings = settings,
+        msg="Doube click to centre the pattern on the lamella.",
+        pattern = MillingPattern.Thin
+    ) 
 
     # lamella images
     reference_images = acquire.take_set_of_reference_images(
@@ -1352,7 +1348,8 @@ def user_select_feature(
     settings.image.hfw = ReferenceHFW.High.value
     settings.image.save = False
     fibsem_ui_windows.ask_user_movement(
-        microscope, settings, msg=msg,
+        microscope, settings, msg=msg, 
+        pattern=MillingPattern.Trench
     )
 
     return calibration.get_current_microscope_state(microscope)
