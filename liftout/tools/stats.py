@@ -71,7 +71,16 @@ st.subheader("Imaging")
 
 # plots TODO
 fig_gamma = px.histogram(stats.gamma, x="gamma", color="beam_type", nbins=30, title="Gamma Distribution")
-fig_image_stage = px.bar(stats.gamma, x="stage", color="beam_type", title="Image Distribution", barmode="group")
+
+# group stats.gamam by stage, and beam_type
+
+df_image_group = stats.gamma.groupby(by=["stage", "beam_type"]).count()
+df_image_group.reset_index(inplace=True)
+df_image_group = df_image_group.rename({"index": "beam_type"})
+df_image_group = df_image_group.rename({"gamma": "count"}, axis=1)
+
+fig_image_stage = px.bar(df_image_group, x="stage", y="count", color="beam_type", title="Image Distribution", barmode="group")
+# fig_image_stage = px.bar(stats.gamma, x="stage", color="beam_type", title="Image Distribution", barmode="group")
 
 cols = st.columns(2)
 cols[0].plotly_chart(fig_image_stage)
@@ -87,15 +96,26 @@ cols[1].plotly_chart(fig_gamma)
 ##### Clicking
 st.subheader("Clicking")
 
-fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="beam_type", title="Click Distribution")
-fig_clicks_stage = px.bar(stats.click, x="type", color="stage", title="Clicks per Stage", barmode="group")
+fig_clicks = px.scatter(stats.click, x="x", y="y", symbol="type", color="source", title="Click Distribution")
+
+# group stats.click by stage, source and type
+df_click_group = stats.click.groupby(by=["stage", "source", "type"]).count()
+df_click_group.reset_index(inplace=True)
+df_click_group = df_click_group.rename({"index": "beam_type"})
+df_click_group = df_click_group.rename({"x": "count"}, axis=1)
+
+# drop rows except stage, source, type and count
+
+df_click_group = df_click_group[["stage", "source", "type", "count"]]
+
+# drop rows with count =0
+df_click_group = df_click_group[df_click_group["count"] > 0]
+
+fig_clicks_stage = px.bar(df_click_group, x="type", y="count", color="stage", title="Clicks per Stage", barmode="stack", facet_col="source")
 
 cols = st.columns(2)
 cols[0].plotly_chart(fig_clicks)
 cols[1].plotly_chart(fig_clicks_stage)
-
-
-
 
 # positions plots
 st.subheader("Position Data")
@@ -134,10 +154,24 @@ df_group_duration.reset_index(inplace=True)
 df_group_duration = df_group_duration.rename(columns={"index": "stage"})
 
 cols = st.columns(2)
-fig_stage_count = px.bar(df_group_count, y="count", color="stage", title="Stage Count")
-fig_stage_duration = px.bar(df_group_duration, y="duration", color="stage", title="Stage Duration")
+fig_stage_count = px.bar(df_group_count,x="stage", y="count", color="stage", title="Stage Count")
+fig_stage_duration = px.bar(df_group_duration, x="stage",y="duration", color="stage", title="Stage Duration")
 cols[0].plotly_chart(fig_stage_count)
 cols[1].plotly_chart(fig_stage_duration)
+
+
+# group df_stage_history by stage and petname
+df_stage_history_group = df_stage_history.groupby(by=["stage", "petname"]).sum()
+df_stage_history_group.reset_index(inplace=True)
+df_stage_history_group = df_stage_history_group.rename({"index": "stage"})
+df_stage_history_group = df_stage_history_group.rename({"duration": "sum"}, axis=1)
+
+# convert sum to minutes from seconds
+df_stage_history_group["sum"] = df_stage_history_group["sum"] / 60
+
+fig_stage_history = px.bar(df_stage_history_group, x="petname", y="sum", color="stage", title="Stage Duration Variance", barmode="group")
+
+st.plotly_chart(fig_stage_history)
 
 
 #################### INVIDIUAL LAMELLA SECTION ####################

@@ -34,7 +34,7 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
 
     old_feature = None
     old_correct = None
-
+    print("-" * 80)
     with open(fname, encoding="cp1252") as f:
         # Note: need to check the encoding as this is required for em dash (long dash) # TODO: change this delimiter so this isnt required.
         lines = f.read().splitlines()
@@ -68,13 +68,26 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                         gamma_info.append(deepcopy(gamma_d))
                                                 
                 if "double_click" in func:
-                    split_msg = msg.split("|")
-                    click_type = split_msg[0].split(":")[-1].strip()
-                    beam_type = split_msg[-1].split(".")[-1]
-                    pos = split_msg[-2].strip().split(" ")
-                    pos_x = pos[1].replace(",", "")
-                    pos_y = pos[2]
+                    
+                    if "Milling" in msg:
+                        # milling click
+                        split_msg = msg.split(",")
+                        click_source = split_msg[0].strip()
+                        beam_type = split_msg[1].split(".")[-1].strip()
+                        click_type = split_msg[2].strip()                      
+
+                    else:
+                        # movement
+                        split_msg = msg.split("|")
+                        click_type = split_msg[0].split(":")[-1].strip()
+                        beam_type = split_msg[-1].split(".")[-1]
+                        pos = split_msg[-2].strip().split(" ")
+                        pos_x = pos[1].replace(",", "")
+                        pos_y = pos[2]
+                        click_source = "Movement"
+                    
                     click_d = {
+                        "source": click_source,
                         "beam_type": beam_type,
                         "type": click_type,
                         "x": float(pos_x),
@@ -90,19 +103,20 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     if "DectectedFeature" == split_msg[0].split(" ")[0].strip():
                         # click_type = split_msg[0].split(":")[-1].strip()
                         # print(split_msg)
-                        click_type = "DetectedFeature"
+                        click_source = "DetectedFeature"
                         if "BeamType" in split_msg[-1]:
-                            beam_type = split_msg[-1].split(".")[-1]
+                            click_type = split_msg[-1].split(".")[-1]
                         else:
-                            beam_type = split_msg[0].split(" ")[-2].strip()
+                            click_type = split_msg[0].split(" ")[-2].strip()
                             # print(beam_type)
 
-                        # beam_type = "ELECTRON" # TODO: need to fix this
+                        beam_type = "ELECTRON" # TODO: need to fix this
                         # print(split_msg)
                         pos = split_msg[-1].strip().split(", ")
                         pos_x = pos[0]
                         pos_y = pos[1]
                         click_d = {
+                            "source": click_source,
                             "beam_type": beam_type,
                             "type": click_type,
                             "x": float(pos_x),

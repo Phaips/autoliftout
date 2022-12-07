@@ -8,14 +8,10 @@ import napari
 import numpy as np
 from autoscript_sdb_microscope_client import SdbMicroscopeClient
 from autoscript_sdb_microscope_client.enumerations import (
-    CoordinateSystem,
-    ManipulatorCoordinateSystem,
-)
-from autoscript_sdb_microscope_client.structures import (
-    MoveSettings,
-    Rectangle,
-    StagePosition,
-)
+    CoordinateSystem, ManipulatorCoordinateSystem)
+from autoscript_sdb_microscope_client.structures import (MoveSettings,
+                                                         Rectangle,
+                                                         StagePosition)
 from fibsem import acquire, alignment, calibration, movement
 from fibsem import utils as fibsem_utils
 from fibsem import validation
@@ -23,20 +19,15 @@ from fibsem.detection import detection
 from fibsem.detection.detection import Feature, FeatureType
 from fibsem.imaging import masks
 from fibsem.imaging import utils as image_utils
-from fibsem.structures import BeamType, MicroscopeSettings, MicroscopeState, Point
+from fibsem.patterning import MillingPattern
+from fibsem.structures import (BeamType, MicroscopeSettings, MicroscopeState,
+                               Point)
 from fibsem.ui import windows as fibsem_ui_windows
 
 from liftout import actions
-# from liftout.gui.FibsemMillingUI import FibsemMillingUI
-from fibsem.patterning import MillingPattern
-from liftout.structures import (
-    AutoLiftoutMode,
-    AutoLiftoutStage,
-    Lamella,
-    ReferenceHFW,
-    ReferenceImages,
-    Sample,
-)
+from liftout.structures import (AutoLiftoutMode, AutoLiftoutStage, Lamella,
+                                ReferenceHFW, ReferenceImages, Sample)
+
 
 def log_status_message(lamella: Lamella, step: str):
     logging.debug(
@@ -129,18 +120,7 @@ def mill_lamella_jcut(
 
     log_status_message(lamella, "ALIGN_REF_TRENCH_ROTATE")
 
-    # correct drift using reference images..
-
-    # alignment.correct_stage_drift(
-    #     microscope,
-    #     settings,
-    #     reference_images=reference_images,
-    #     alignment=(BeamType.ION, BeamType.ELECTRON),
-    #     rotate=True,
-    #     xcorr_limit=(500, 250),
-    #     constrain_vertical=False,
-    # )
-
+    # align to ref_trench
     alignment.eucentric_correct_stage_drift(
         microscope, 
         settings, 
@@ -211,7 +191,6 @@ def mill_lamella_jcut(
         ],
         validate=bool(mode is AutoLiftoutMode.Manual),
     )
-
 
     fibsem_ui_windows.milling_ui(
         microscope=microscope,
