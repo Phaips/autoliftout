@@ -1035,15 +1035,6 @@ def thin_lamella(
 
     log_status_message(lamella, "THIN_LAMELLA_MILL")
 
-    # # QUERY: add a fiducial here?
-    # fibsem_ui_windows.milling_ui(
-    #     microscope=microscope,
-    #     settings=settings,
-    #     milling_pattern=MillingPattern.Fiducial,
-    #     point=None,
-    #     auto_continue=bool(mode is AutoLiftoutMode.Auto),
-    # )
-
     # mill thin_lamella
     fibsem_ui_windows.milling_ui(
         microscope=microscope,
@@ -1082,7 +1073,6 @@ def polish_lamella(
     # # restore state from thinning stage
     reference_images = lamella.get_reference_images(label="ref_thin_lamella")
 
-    # TODO: Test, probs only needs 1 step
     log_status_message(lamella, "POLISH_LAMELLA_ALIGN")
 
     alignment.correct_stage_drift(
@@ -1099,12 +1089,13 @@ def polish_lamella(
         fibsem_ui_windows.ask_user_movement(
             microscope,
             settings,
-            msg="Confirm lamella right edge is centred in Ion Beam",
+            msg="Please centre the lamella in the Ion Beam",
         )
 
     # realign lamella to image centre
     reference_images = acquire.take_set_of_reference_images(
-        microscope, settings.image,  [ReferenceHFW.High.value, ReferenceHFW.Super.value], "ref_polish_lamella_start"
+        microscope, settings.image,  
+        [ReferenceHFW.High.value, ReferenceHFW.Super.value], "ref_polish_lamella_start"
     )
 
     settings.image.hfw = ReferenceHFW.Ultra.value
@@ -1167,7 +1158,7 @@ def run_autoliftout_workflow(
     if BATCH_MODE:
         for terminal_stage in [
             AutoLiftoutStage.MillTrench,
-            AutoLiftoutStage.MillJCut,
+            # AutoLiftoutStage.MillJCut, # TODO: maybe add this to config?
         ]:
 
             lamella: Lamella
