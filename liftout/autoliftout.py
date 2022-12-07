@@ -800,8 +800,9 @@ def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: Microscop
     # entry procedure, align vertically to post
     actions.move_needle_to_landing_position(microscope)
 
-    hfws = [ReferenceHFW.Low, ReferenceHFW.Medium, ReferenceHFW.High]
-    beam_types = [BeamType.ION, BeamType.ELECTRON, BeamType.ION]
+    hfws = [ReferenceHFW.Low, ReferenceHFW.Medium, ReferenceHFW.High, ReferenceHFW.High]
+    beam_types = [BeamType.ION, BeamType.ELECTRON, BeamType.ION, BeamType.ION]
+    mask_radius = [512, 512, 512, 512]
 
     for i, (hfw, beam_type) in enumerate(zip(hfws, beam_types)):
 
@@ -820,14 +821,14 @@ def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: Microscop
                 Feature(FeatureType.ImageCentre),
             ],
             validate=VALIDATE,
-            mask_radius = 512
+            mask_radius = mask_radius[i],
         )
         det.distance.x -= 30e-6
         detection.move_based_on_detection(
             microscope, settings, det, beam_type=settings.image.beam_type
         )
 
-    settings.image.hfw = ReferenceHFW.Super.value
+    settings.image.hfw = ReferenceHFW.High.value
     settings.image.label = f"landing_needle_ready_position"
     acquire.take_reference_images(microscope, settings.image)
 
