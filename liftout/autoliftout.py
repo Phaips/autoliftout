@@ -802,7 +802,7 @@ def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: Microscop
 
     hfws = [ReferenceHFW.Low, ReferenceHFW.Medium, ReferenceHFW.High, ReferenceHFW.High]
     beam_types = [BeamType.ION, BeamType.ELECTRON, BeamType.ION, BeamType.ION]
-    mask_radius = [512, 512, 512, 512]
+    mask_radius = [400, 512, 512, 512]
 
     for i, (hfw, beam_type) in enumerate(zip(hfws, beam_types)):
 
@@ -818,7 +818,7 @@ def landing_entry_procedure(microscope: SdbMicroscopeClient, settings: Microscop
             settings=settings,
             features=[
                 Feature(FeatureType.LamellaRightEdge),
-                Feature(FeatureType.ImageCentre),
+                Feature(FeatureType.ImageCentre), # TODO: change to landing post
             ],
             validate=VALIDATE,
             mask_radius = mask_radius[i],

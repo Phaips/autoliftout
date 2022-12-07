@@ -204,7 +204,7 @@ def move_needle_to_liftout_position(
 def move_needle_to_landing_position(
     microscope: SdbMicroscopeClient,
     position: ManipulatorPosition = None,
-    dx: float = -150.0e-6,
+    dx: float = -125.0e-6,
     dy: float = 0.0e-6,
     dz: float = 0.0e-6,
 ) -> None:
