@@ -145,7 +145,7 @@ options:
     reset: Manual
     thin: Manual
     trench: Manual
-  batch_mode: 0.0
+  batch_mode: 1.0
   confirm_advance: 1.0
   landing_joining_method: Weld
   landing_removal_method: None

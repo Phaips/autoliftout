@@ -1333,15 +1333,16 @@ def user_select_feature(
     microscope: SdbMicroscopeClient,
     settings: MicroscopeSettings,
     msg: str = "Select the feature.",
+    pattern: MillingPattern = None,
 ) -> MicroscopeState:
     """Get the user to centre the beam on the desired feature"""
 
     # ask user to select feature
-    settings.image.hfw = ReferenceHFW.High.value
+    settings.image.hfw = ReferenceHFW.Low.value
     settings.image.save = False
     fibsem_ui_windows.ask_user_movement(
         microscope, settings, msg=msg, 
-        pattern=MillingPattern.Trench
+        pattern=pattern
     )
 
     return calibration.get_current_microscope_state(microscope)
@@ -1363,7 +1364,7 @@ def select_initial_lamella_positions(
 
     # save lamella coordinates
     lamella.lamella_state = user_select_feature(
-        microscope, settings, msg="Select a lamella position."
+        microscope, settings, msg=f"Select the lamella coordinate for {lamella._petname}.", pattern=MillingPattern.Trench
     )
 
     # save microscope state
@@ -1467,10 +1468,11 @@ def select_lamella_positions(
 
     select_another = get_current_lamella(sample)
 
-    lamella_state = MicroscopeState.__from_dict__(settings.protocol["lamella_state"])
-    actions.move_to_sample_grid_v2(microscope, lamella_state)
+    if select_another:
+        lamella_state = MicroscopeState.__from_dict__(settings.protocol["lamella_state"])
+        actions.move_to_sample_grid_v2(microscope, lamella_state)
 
-    fibsem_ui_windows.ask_user_movement(microscope, settings)
+        fibsem_ui_windows.ask_user_movement(microscope, settings)
 
     # allow the user to select additional lamella positions
     while select_another:
