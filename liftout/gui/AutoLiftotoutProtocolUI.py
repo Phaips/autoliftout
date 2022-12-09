@@ -14,7 +14,7 @@ import napari
 from napari.utils import notifications
 
 class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
-    def __init__(self, viewer: napari.Viewer=None, protocol: dict = None):
+    def __init__(self, protocol: dict = None):
         super(AutoLiftoutProtocolUI, self).__init__()
 
         # setup ui
@@ -74,6 +74,13 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
             }
         }
 
+        self.protocol["ml"] = {
+            "encoder": self.lineEdit_ml_encoder.text(),
+            "weights": self.lineEdit_ml_weights.text(),
+            "cuda": self.checkBox_ml_gpu.isChecked(),
+            "num_classes": int(self.spinBox_ml_num_classes.value()),
+        }
+
         from pprint import pprint
         print("update protocol")
 
@@ -106,6 +113,13 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         self.comboBox_auto_thinning.setCurrentText(options["auto"]["thin"].upper())
         self.comboBox_auto_polishing.setCurrentText(options["auto"]["polish"].upper())
 
+        # ml
+        self.lineEdit_ml_encoder.setText(self.protocol["ml"]["encoder"])
+        self.lineEdit_ml_weights.setText(self.protocol["ml"]["weights"])
+        self.checkBox_ml_gpu.setChecked(self.protocol["ml"]["cuda"])
+        self.spinBox_ml_num_classes.setValue(self.protocol["ml"]["num_classes"])
+
+        # platinum
 
         # TODO: platinum
         # TODO: initial positions
@@ -114,7 +128,7 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
 def main():
     viewer = napari.Viewer()
     protocol = fibsem_utils.load_protocol(config.protocol_path)
-    autoliftout_protocol_ui = AutoLiftoutProtocolUI(viewer=viewer, protocol=protocol)
+    autoliftout_protocol_ui = AutoLiftoutProtocolUI(protocol=protocol)
     viewer.window.add_dock_widget(autoliftout_protocol_ui, area="right", add_vertical_stretch=False)
     napari.run()
 
