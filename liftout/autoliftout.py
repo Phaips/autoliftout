@@ -126,7 +126,7 @@ def mill_lamella_jcut(
         settings, 
         reference_images, 
         rotate=True, 
-        xcorr_limit=(512, 512, 512, 512)
+        xcorr_limit=(512, 512, 512, 100)
     )
 
     # adjust for relative shift between beams
@@ -490,7 +490,7 @@ def land_needle_on_milled_lamella(
     mean_brightness = np.mean(brightness_history)
 
     iteration_count = 0
-    MAX_ITERATIONS = 10
+    MAX_ITERATIONS = 15
 
     log_status_message(lamella, "NEEDLE_CONTACT_DETECTION")
 
@@ -1466,6 +1466,7 @@ def select_lamella_positions(
     microscope: SdbMicroscopeClient, settings: MicroscopeSettings, sample: Sample,
 ):
 
+    settings.image.hfw = ReferenceHFW.Low.value
     select_another = get_current_lamella(sample)
 
     if select_another:
@@ -1518,7 +1519,7 @@ def run_setup_autoliftout(
     actions.move_to_sample_grid(microscope, settings, settings.protocol) # TODO: set a state for this
 
     # initial image settings
-    settings.image.hfw = ReferenceHFW.Low.value
+    settings.image.hfw = ReferenceHFW.Wide.value
     settings.image.beam_type = BeamType.ELECTRON
     settings.image.save = True
     settings.image.save_path = sample.path
