@@ -352,6 +352,7 @@ def liftout_lamella(
     )
 
     point = det.features[0].feature_m
+    point.x += 0.75e-6
 
     # jcut sever pattern
     fibsem_ui_windows.milling_ui(
@@ -473,7 +474,7 @@ def land_needle_on_milled_lamella(
 
     # charge neutralisation  to charge lamella
     settings.image.beam_type = BeamType.ION
-    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=50)
+    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=20)
 
     # measure brightness
     BRIGHTNESS_FACTOR = 1.2
