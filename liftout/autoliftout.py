@@ -263,7 +263,7 @@ def liftout_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ELECTRON, BeamType.ELECTRON),
         rotate=False,
-        xcorr_limit=(100, 100),
+        xcorr_limit=(512, 100),
     )
 
     # eucentric alignment
@@ -273,7 +273,7 @@ def liftout_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
-        xcorr_limit=(100, 100),
+        xcorr_limit=(512, 100),
         constrain_vertical=True
     )
 
@@ -352,7 +352,7 @@ def liftout_lamella(
     )
 
     point = det.features[0].feature_m
-    point.x += 0.75e-6
+    point.x += settings.protocol["jcut"]["trench_width"] / 2 # 0.75e-6
 
     # jcut sever pattern
     fibsem_ui_windows.milling_ui(
@@ -442,20 +442,23 @@ def land_needle_on_milled_lamella(
     )
 
     log_status_message(lamella, "NEEDLE_IB_DETECTION")
-     
-    settings.image.beam_type = BeamType.ION
-    det = fibsem_ui_windows.detect_features_v2(
-        microscope=microscope,
-        settings=settings,
-        features=[
-            Feature(FeatureType.NeedleTip),
-            Feature(FeatureType.LamellaLeftEdge),
-        ],
-        validate=bool(mode is AutoLiftoutMode.Manual),
-    )
-    detection.move_based_on_detection(
-        microscope, settings, det, beam_type=settings.image.beam_type, move_x=False
-    )
+    
+    # need to do vertical movement twice, because needle isnt moving correctly in z 
+    # TODO: remove when needle movement is fixed.
+    for i in range(2):
+        settings.image.beam_type = BeamType.ION
+        det = fibsem_ui_windows.detect_features_v2(
+            microscope=microscope,
+            settings=settings,
+            features=[
+                Feature(FeatureType.NeedleTip),
+                Feature(FeatureType.LamellaLeftEdge),
+            ],
+            validate=bool(mode is AutoLiftoutMode.Manual),
+        )
+        detection.move_based_on_detection(
+            microscope, settings, det, beam_type=settings.image.beam_type, move_x=False
+        )
 
     # reference images
     settings.image.hfw = ReferenceHFW.High.value
@@ -585,7 +588,7 @@ def land_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
-        xcorr_limit=(100, 100),
+        xcorr_limit=(512, 100),
     )
 
     # confirm eucentricity
