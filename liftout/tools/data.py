@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from liftout.structures import Sample, Lamella, AutoLiftoutState, load_experiment
 
+import datetime
 
 @dataclass
 class AutoLiftoutStatistics:
@@ -18,6 +19,7 @@ class AutoLiftoutStatistics:
     image: pd.DataFrame = None
     name: str = "name"
     date: str = None
+    step_duration: pd.DataFrame = None
 
 
 def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
@@ -28,9 +30,14 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     move_info = []
     ml_info = []
 
+    step_duration_info = []
+
     current_lamella = None 
     current_stage = "Setup"
     current_step = None
+
+    end_timestamp = None
+    step_n = 0 
 
     old_feature = None
     old_correct = None
@@ -52,6 +59,14 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     current_lamella = msg.split("|")[1].strip()
                     current_stage = msg.split("|")[2].strip().split(".")[-1].strip()
                     current_step = msg.split("|")[3].strip()
+
+                    # datetime string to timestamp int
+                    ts = line.split("—")[0].split(",")[0].strip()
+                    tsd = datetime.datetime.timestamp(datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S"))
+
+                    step_d = {"lamella": current_lamella, "stage": current_stage, "step": current_step, "timestamp": tsd, "step_n": step_n}
+                    step_duration_info.append(deepcopy(step_d))
+                    step_n += 1
 
                 if "gamma" in func:
                     beam_type, diff, gamma = msg.split("|")[-3:]
@@ -174,7 +189,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
                     }
                     move_info.append(deepcopy(move_d))
             except Exception as e:
-                pass #print(f"EXCEPTION: {msg} {e}")
+                pass
+                # print(f"EXCEPTION: {msg} {e}")
 
             # gamma
             # clicks
@@ -191,10 +207,10 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     df_click=pd.DataFrame.from_dict(click_info)
     df_move=pd.DataFrame.from_dict(move_info)
     df_ml=pd.DataFrame.from_dict(ml_info)
-    
+
+    df_step_duration = pd.DataFrame.from_dict(step_duration_info)    
 
     # convert to datetime
-    import datetime
     date = sample.name.split("-")[-5:]
     date = datetime.datetime.strptime("-".join(date), "%Y-%m-%d.%I-%M-%S%p")
 
@@ -211,6 +227,11 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
     df_move["name"] = sample.name
     df_ml["date"] = date
     df_ml["name"] = sample.name
+    df_step_duration["date"] = date
+    df_step_duration["name"] = sample.name
+
+    df_step_duration["duration"] = df_step_duration["timestamp"].diff() # TODO: fix this duration
+    df_step_duration["duration"] = df_step_duration["duration"].shift(-1)
 
 
     return AutoLiftoutStatistics(
@@ -221,7 +242,8 @@ def calculate_statistics_dataframe(path: Path) -> AutoLiftoutStatistics:
         sample=df_sample,
         history=df_history,
         name=sample.name,
-        date= date
+        date= date,
+        step_duration=df_step_duration
 
     )
 

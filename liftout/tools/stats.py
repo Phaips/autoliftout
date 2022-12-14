@@ -173,6 +173,35 @@ fig_stage_history = px.bar(df_stage_history_group, x="petname", y="sum", color="
 
 st.plotly_chart(fig_stage_history)
 
+####### EXP
+st.subheader("STEP DURATION")
+# st.write(stats.step_duration)
+
+# plot time series
+fig = px.bar(stats.step_duration, x="lamella", y="duration", color="step", title="Step Duration", facet_col="stage")
+
+st.plotly_chart(fig, use_container_width=True)
+
+# plot time series with x= step_n and y = timestamp with step  as hover text
+stats.step_duration.dropna(inplace=True)
+stats.step_duration.duration = stats.step_duration.duration.astype(int)
+
+# convert timestamp to datetime, aus timezone 
+stats.step_duration.timestamp = pd.to_datetime(stats.step_duration.timestamp, unit="s")
+
+# convert timestamp to australian timezone
+stats.step_duration.timestamp = stats.step_duration.timestamp.dt.tz_localize("UTC").dt.tz_convert("Australia/Sydney")
+
+fig = px.scatter(stats.step_duration, x="step_n", y="timestamp", color="stage", symbol="lamella",
+    title="AutoLiftout Timeline", 
+    hover_name="stage", hover_data=["lamella", "step_n", "step"],)
+    # size = "duration", size_max=20)
+
+st.plotly_chart(fig, use_container_width=True)
+
+
+
+
 
 #################### INVIDIUAL LAMELLA SECTION ####################
 st.markdown("""---""")
@@ -210,4 +239,8 @@ cols[0].plotly_chart(fig_duration)
 fname = cols[1].selectbox("Select Image", images_filenames)
 img = AdornedImage.load(os.path.join(LAMELLA_PATH, fname))
 cols[1].image(img.data, caption=os.path.basename(fname))
+
+
+
+
 

@@ -179,6 +179,8 @@ def mill_lamella_jcut(
     )
 
     ## MILL_JCUT
+    log_status_message(lamella, "JCUT_MILL")
+
     # now we are at the angle for jcut, perform jcut
     settings.image.hfw = ReferenceHFW.Super.value
 
@@ -369,11 +371,9 @@ def liftout_lamella(
     settings.image.label = f"ref_liftout_sever"
     acquire.take_reference_images(microscope, settings.image)
 
-    # Raise needle 30um from trench
-    logging.info(
-        f"{lamella.current_state.stage.name}: start removing needle from trench"
-    )
+    log_status_message(lamella, "NEEDLE_TRENCH_REMOVAL")
 
+    # Raise needle 30um from trench
     # move needle back from trench x
     dx = -1.5e-6
     movement.move_needle_relative_with_corrected_movement(
@@ -477,7 +477,7 @@ def land_needle_on_milled_lamella(
 
     # charge neutralisation  to charge lamella
     settings.image.beam_type = BeamType.ION
-    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=20)
+    calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=35) # MAGIC_NUMBER
 
     # measure brightness
     BRIGHTNESS_FACTOR = 1.2
@@ -599,7 +599,6 @@ def land_lamella(
     validate_needle_insertion(
         microscope, settings.system.stage.needle_stage_height_limit
     )
-
 
     # landing entry
     log_status_message(lamella, "LAND_LAMELLA_ENTRY")
@@ -751,7 +750,7 @@ def land_lamella_on_post(
     n_iter = 50
     while response:
         settings.image.beam_type = BeamType.ELECTRON
-        calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=n_iter)
+        calibration.auto_charge_neutralisation(microscope, settings.image, n_iterations=n_iter, save_images=True)
 
         response = fibsem_ui_windows.ask_user_interaction(
             msg=f"Repeat charge procedure? iter: {n_iter} \nPress Yes to repeat, or No to continue.",
@@ -955,6 +954,7 @@ def setup_polish_lamella(
     )
 
     # confirm position of polishing
+    settings.image.hfw = ReferenceHFW.Low.value
     fibsem_ui_windows.ask_user_movement(
         microscope = microscope,
         settings = settings,
