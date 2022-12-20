@@ -79,6 +79,12 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.actionSputter_Platinum.triggered.connect(self.run_sputter_platinum_utility)
         self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
         self.actionCalibrate_Needle.triggered.connect(self.run_needle_calibration_utility)
+        self.actionConnect_to_Microscope.triggered.connect(self.connect_to_microscope_ui)
+        
+
+        # edit
+        self.actionEdit_Protocol.triggered.connect(self.edit_protocol_ui)
+        self.actionEdit_Settings.triggered.connect(self.edit_settings_ui)
 
         # buttons
         self.pushButton_setup_autoliftout.clicked.connect(self.run_setup_autoliftout)
@@ -93,12 +99,11 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.checkBox_lamella_mark_failure.toggled.connect(self.mark_lamella_failure)
         self.checkBox_lamella_landing_selected.toggled.connect(self.mark_lamella_landing)
 
-        
     def testing_function(self):
         logging.info(f"Test button pressed")
 
-        from fibsem.patterning import MillingPattern 
-        fibsem_ui_windows.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
+        # from fibsem.patterning import MillingPattern 
+        # fibsem_ui_windows.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
 
     def setup_experiment(self) -> None:
 
@@ -208,6 +213,14 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         except Exception as e:
             notifications.show_info(f"Unable to load selected protocol: {e}")
 
+    def edit_protocol_ui(self):
+        logging.info(f"Edit Protocol UI")
+
+    def edit_settings_ui(self):
+        logging.info(f"Edit Settings UI")
+
+    def connect_to_microscope_ui(self):
+        logging.info(f"Connect to microscope UI")
 
     def run_sputter_platinum_utility(self):
         """Run the sputter platinum utility"""
