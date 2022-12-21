@@ -100,10 +100,10 @@ liftout/model/eval/*
 liftout/model/data.zip
 liftout/tools/*.png
 liftout/log/*
-liftout/gui/qtdesigner_files/main_backup.ui
 *data.csv
 liftout/tools/auto/data/*
 liftout/tools/auto/needle.yaml
 *.code-workspace
 liftout/calibration/*
 liftout/log_data/*
+liftout/tools/figures/training/*
