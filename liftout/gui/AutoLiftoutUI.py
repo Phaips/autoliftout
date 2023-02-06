@@ -102,7 +102,9 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         lamella: Lamella
         for lamella in self.sample.positions.values():
             fail_str = "(Active)" if lamella.is_failure is False else "(Failure)" 
-            info_str += f"\n{lamella._petname}: \t{lamella.current_state.stage.name} \t\t{fail_str}"
+            stage_name = lamella.current_state.stage.name
+            stage_name += " " * (12-len(stage_name))
+            info_str += f"\n{lamella._petname}: \t{stage_name} \t\t{fail_str}"
 
         # update run info
         n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
@@ -116,7 +118,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         # TODO: add a select folder option for new experiment
         try:
             sample: Sample = ui_utils.setup_experiment_sample_ui(parent_ui=self)
-
+            
         except Exception as e:
             notifications.show_info(message=f"Unable to setup sample: {e}")
             sample = None
@@ -215,6 +217,10 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         
         if self.sample is None:
             return
+
+        # update the ui info
+        self.label_experiment_name.setText(f"Experiment: {self.sample.name}")
+        self.label_protocol_name.setText(f"Protocol: {self.settings.protocol['name']}")
 
         self.update_lamella_ui()
 

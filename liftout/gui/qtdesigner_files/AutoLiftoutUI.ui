@@ -30,7 +30,7 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="9" column="0">
+       <item row="10" column="0">
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
           <number>0</number>
@@ -40,28 +40,48 @@
            <string>General</string>
           </attribute>
           <layout class="QGridLayout" name="gridLayout_3">
-           <item row="3" column="0">
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_protocol_name">
+             <property name="text">
+              <string>Protocol</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
             <widget class="QPushButton" name="pushButton_test_button">
              <property name="text">
               <string>Test Button</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
+           <item row="7" column="0">
+            <spacer name="verticalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="3" column="0">
             <widget class="QPushButton" name="pushButton_run_autoliftout">
              <property name="text">
               <string>Run AutoLiftout</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="0">
+           <item row="2" column="0">
             <widget class="QPushButton" name="pushButton_setup_autoliftout">
              <property name="text">
               <string>Setup AutoLiftout</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="6" column="0">
             <widget class="QLabel" name="label_general_info">
              <property name="minimumSize">
               <size>
@@ -74,25 +94,19 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
+           <item row="4" column="0">
             <widget class="QPushButton" name="pushButton_run_polishing">
              <property name="text">
               <string>Run Polishing</string>
              </property>
             </widget>
            </item>
-           <item row="5" column="0">
-            <spacer name="verticalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_experiment_name">
+             <property name="text">
+              <string>Experiment</string>
              </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -169,13 +183,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_experiment_name">
-         <property name="text">
-          <string>Experiment</string>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
     </item>
@@ -210,12 +217,12 @@
     <addaction name="actionConnect_to_Microscope"/>
     <addaction name="actionLoad_Experiment"/>
     <addaction name="actionLoad_Protocol"/>
-    <addaction name="actionValidate_Microscope"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
      <string>Tools</string>
     </property>
+    <addaction name="actionValidate_Microscope"/>
     <addaction name="actionSputter_Platinum"/>
     <addaction name="actionSharpen_Needle"/>
     <addaction name="actionCalibrate_Needle"/>

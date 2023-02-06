@@ -85,10 +85,6 @@ def setup_experiment_sample_ui(parent_ui):
 
     logging.info(f"Experiment {sample.name} loaded.")
     logging.info(f"{len(sample.positions)} lamella loaded from {sample.path}")
-    if parent_ui:
-
-        # update the ui
-        parent_ui.label_experiment_name.setText(f"Experiment: {sample.name}")
 
     return sample
 
