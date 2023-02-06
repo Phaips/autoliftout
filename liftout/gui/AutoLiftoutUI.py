@@ -48,8 +48,6 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         # initialise hardware
         # self.microscope = fibsem_utils.connect_to_microscope(ip_address=self.settings.system.ip_address)
 
-        self.MICROSCOPE_CONNECTED: bool = bool(self.microscope)  # offline mode
-
         # setup connections
         self.setup_connections()
 
@@ -92,6 +90,26 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         # from fibsem.patterning import MillingPattern 
         # fibsem_ui_windows.milling_ui(self.microscope, self.settings, MillingPattern.Trench)
+        # self.print_lamella_info()
+
+    def display_lamella_info(self):
+
+        if not self.sample.positions:
+            return
+
+        info_str = "Lamella Info:"
+
+        lamella: Lamella
+        for lamella in self.sample.positions.values():
+            fail_str = "(Active)" if lamella.is_failure is False else "(Failure)" 
+            info_str += f"\n{lamella._petname}: \t{lamella.current_state.stage.name} \t\t{fail_str}"
+
+        # update run info
+        n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
+        info_str += f"\n\n{active_lam} Active Lamella\n{c_stages}/{t_stages} Stages Complete ({perc*100:.2f}%)" 
+
+        self.label_general_info.setText(info_str)
+
 
     def setup_experiment(self) -> None:
 
@@ -108,17 +126,21 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def load_experiment_utility(self):
 
         self.setup_experiment()
+        self.update_lamella_combobox_ui()
         self.update_ui()
 
     def update_lamella_ui(self):
 
         logging.info(f"Updating Lamella UI")
 
-
         # no lamella selected
         if not self.sample.positions:
             return
 
+        # main info display
+        self.display_lamella_info()
+
+        # detailed display
         lamella = self.get_current_selected_lamella()
         if lamella is None:
             return
@@ -129,9 +151,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         fail_string = "(Active)" if lamella.is_failure is False else "(Failure)" 
         self.label_lamella_status.setText(f"Stage: {lamella.current_state.stage.name} {fail_string}")
 
-        # update run info
-        n_stages, active_lam, c_stages, t_stages, perc = ui_utils.get_completion_stats(self.sample)
-        self.label_general_info.setText(f"{c_stages}/{t_stages} Stages Complete ({perc*100:.2f}%)")        
+        
     
     def mark_lamella_landing(self):
         
@@ -168,15 +188,27 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def validate_microscope_ui(self):
         # run validation and show in ui
-        if self.MICROSCOPE_CONNECTED:
-            fibsem_ui_windows.run_validation_ui(
-                microscope=self.microscope,
-                settings=self.settings,
-                log_path=self.sample.log_path,
-            )
+        fibsem_ui_windows.run_validation_ui(
+            microscope=self.microscope,
+            settings=self.settings,
+            log_path=self.sample.log_path,
+        )
 
-# TODO: fix logging issue so loading exp doesnt have to be the first thing
-# TODO: load experiment
+    def update_lamella_combobox_ui(self):
+        # add lamellas to combobox
+        if self.sample.positions:
+            self.comboBox_lamella_select.clear()
+            try:
+                self.comboBox_lamella_select.currentTextChanged.disconnect()
+            except:
+                pass
+            self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
+            self.comboBox_lamella_select.currentTextChanged.connect(self.update_lamella_ui)
+        # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
+
+
+
+# TODO: load experiment after ui loads?
 # add fibsem ui to dock as well? just put util stuff in there??
 
     def update_ui(self):
@@ -257,17 +289,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
             sample=self.sample,
         )
 
-        # add lamellas to combobox
-        if self.sample.positions:
-            self.comboBox_lamella_select.clear()
-            try:
-                self.comboBox_lamella_select.currentTextChanged.disconnect()
-            except:
-                pass
-            self.comboBox_lamella_select.addItems([lamella._petname for lamella in self.sample.positions.values()])
-            self.comboBox_lamella_select.currentTextChanged.connect(self.update_lamella_ui)
-        # TODO: need to update this combobox when sample changes, and disconnect signal to prevent inifite loop
-
+        self.update_lamella_combobox_ui()
         self.update_ui()
 
     def run_autoliftout(self):

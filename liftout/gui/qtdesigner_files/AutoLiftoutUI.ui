@@ -20,7 +20,7 @@
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>300</height>
+        <height>600</height>
        </size>
       </property>
       <property name="frameShape">
@@ -30,27 +30,6 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_experiment_name">
-         <property name="text">
-          <string>Experiment</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_title">
-         <property name="font">
-          <font>
-           <pointsize>16</pointsize>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>AutoLiftout</string>
-         </property>
-        </widget>
-       </item>
        <item row="9" column="0">
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
@@ -68,19 +47,6 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
-            <widget class="QLabel" name="label_general_info">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>50</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Info</string>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="0">
             <widget class="QPushButton" name="pushButton_run_autoliftout">
              <property name="text">
@@ -92,6 +58,19 @@
             <widget class="QPushButton" name="pushButton_setup_autoliftout">
              <property name="text">
               <string>Setup AutoLiftout</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_general_info">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>50</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Info</string>
              </property>
             </widget>
            </item>
@@ -174,6 +153,27 @@
            </item>
           </layout>
          </widget>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_title">
+         <property name="font">
+          <font>
+           <pointsize>16</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>AutoLiftout</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_experiment_name">
+         <property name="text">
+          <string>Experiment</string>
+         </property>
         </widget>
        </item>
       </layout>

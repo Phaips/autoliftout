@@ -38,9 +38,9 @@ DISPLAY_REFERENCE_FNAMES = [
     "ref_lamella_low_res_ib",
     "ref_trench_high_res_ib",
     "ref_jcut_high_res_ib",
-    "ref_liftout_ib",
+    "ref_liftout_sever_ib",
     "ref_landing_lamella_high_res_ib",
     "ref_reset_high_res_ib",
-    "ref_thin_lamella_super_res_ib",
+    "ref_thin_lamella_ultra_res_ib",
     "ref_polish_lamella_ultra_res_ib",
 ]

@@ -218,7 +218,7 @@ def create_overview_image(sample: Sample) -> np.ndarray:
 def get_completion_stats(sample: Sample) -> tuple:
     """Get the current completetion stats for lifout"""    
     from liftout.structures import AutoLiftoutStage
-    n_stages = AutoLiftoutStage.Polishing.value # init and failure dont count
+    n_stages = AutoLiftoutStage.Finished.value # init and failure dont count
 
     lam: Lamella
     active_lam = 0
