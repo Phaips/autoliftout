@@ -1,5 +1,6 @@
 import logging
 from pprint import pprint
+from copy import deepcopy
 
 import fibsem.ui.windows as fibsem_ui_windows
 import napari
@@ -13,7 +14,7 @@ from liftout.config import config
 from liftout.gui import utils as ui_utils
 from liftout.gui.qtdesigner_files import AutoLiftoutUI
 from liftout.structures import AutoLiftoutStage, Lamella, Sample
-
+from liftout.gui.AutoLiftotoutProtocolUI import AutoLiftoutProtocolUI
 
 class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, viewer: napari.Viewer=None):
@@ -30,38 +31,24 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.setup_experiment()
 
         # connect to microscope session
-        # self.microscope, self.settings = fibsem_utils.setup_session(
-        #     session_path = self.sample.path,
-        #     config_path = config.config_path,
-        #     protocol_path = config.protocol_path
-        # )
+        self.microscope, self.settings = fibsem_utils.setup_session(
+            session_path = self.sample.path,
+            config_path = config.config_path,
+            protocol_path = config.protocol_path
+        )
 
         logging.info(f"INIT | {AutoLiftoutStage.Initialisation.name} | STARTED")
 
         # load settings / protocol
-        self.settings = fibsem_utils.load_settings_from_config(
-            config_path = config.config_path,
-            protocol_path = config.protocol_path
-        )
-        # NB cant use setup session, because log dir cant be loaded until later...very silly
-
-
+        # self.settings = fibsem_utils.load_settings_from_config(
+        #     config_path = config.config_path,
+        #     protocol_path = config.protocol_path
+        # )
+        
         # initialise hardware
-        self.microscope = fibsem_utils.connect_to_microscope(ip_address=self.settings.system.ip_address)
+        # self.microscope = fibsem_utils.connect_to_microscope(ip_address=self.settings.system.ip_address)
 
         self.MICROSCOPE_CONNECTED: bool = bool(self.microscope)  # offline mode
-
-        # run validation and show in ui
-        if self.MICROSCOPE_CONNECTED:
-            fibsem_ui_windows.run_validation_ui(
-                microscope=self.microscope,
-                settings=self.settings,
-                log_path=self.sample.log_path,
-            )
-        else:
-            notifications.show_info(
-                f"AutoLiftout is unavailable. Unable to connect to microscope. Please see the console for more information."
-            )
 
         # setup connections
         self.setup_connections()
@@ -80,6 +67,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.actionSharpen_Needle.triggered.connect(self.run_sharpen_needle_utility)
         self.actionCalibrate_Needle.triggered.connect(self.run_needle_calibration_utility)
         self.actionConnect_to_Microscope.triggered.connect(self.connect_to_microscope_ui)
+        self.actionValidate_Microscope.triggered.connect(self.validate_microscope_ui)
         
 
         # edit
@@ -178,13 +166,23 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
         return lamella
 
+    def validate_microscope_ui(self):
+        # run validation and show in ui
+        if self.MICROSCOPE_CONNECTED:
+            fibsem_ui_windows.run_validation_ui(
+                microscope=self.microscope,
+                settings=self.settings,
+                log_path=self.sample.log_path,
+            )
+
 # TODO: fix logging issue so loading exp doesnt have to be the first thing
-# TODO: move validate to a button or on setup start rather than program start
 # TODO: load experiment
-# TODO: connect utilities (sputter plat, needle calibration)
 # add fibsem ui to dock as well? just put util stuff in there??
 
     def update_ui(self):
+        
+        if self.sample is None:
+            return
 
         self.update_lamella_ui()
 
@@ -215,6 +213,11 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
 
     def edit_protocol_ui(self):
         logging.info(f"Edit Protocol UI")
+        autoliftout_protocol_ui = AutoLiftoutProtocolUI(protocol=deepcopy(self.settings.protocol))
+        autoliftout_protocol_ui.exec_()
+
+        if autoliftout_protocol_ui._save_pressed:
+            self.settings.protocol = autoliftout_protocol_ui.protocol
 
     def edit_settings_ui(self):
         logging.info(f"Edit Settings UI")

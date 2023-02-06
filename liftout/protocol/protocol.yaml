@@ -84,6 +84,44 @@ lamella:
   side_width: 8.0e-06
   size_ratio: 1.0
   trench_height: 9.999999999999999e-06
+# lamella:
+#   cleaning_cross_section: 0.0
+#   lamella_height: 9.999999999999999e-06
+#   lamella_width: 3.0e-05
+#   milling_current: 2.8e-08
+#   milling_depth: 1.0e-05
+#   offset: 2.0e-06
+#   protocol_stages:
+#   - cleaning_cross_section: 0.0
+#     lamella_height: 9.999999999999999e-06
+#     lamella_width: 3.0e-05
+#     milling_current: 2.0e-09
+#     milling_depth: 1.5e-6
+#     offset: 2.0e-06
+#     rotation: 0.0
+#     scan_direction: TopToBottom
+#     side_offset: 0.0
+#     side_width: 1.5e-05
+#     size_ratio: 1.0
+#     trench_height: 4.0e-6
+#   - cleaning_cross_section: 0.0
+#     lamella_height: 9.999999999999999e-06
+#     lamella_width: 3.0e-05
+#     milling_current: 2.0e-09
+#     milling_depth: 1.0e-06
+#     offset: 0.0
+#     rotation: 0.0
+#     scan_direction: TopToBottom
+#     side_offset: 1.5e-05
+#     side_width: 5.0e-07
+#     size_ratio: 1.0
+#     trench_height: 2.4999999999999998e-06
+#   rotation: 0.0
+#   scan_direction: TopToBottom
+#   side_offset: 0.0
+#   side_width: 8.0e-06
+#   size_ratio: 1.0
+#   trench_height: 9.999999999999999e-06
 lamella_state:
   absolute_position:
     coordinate_system: Raw

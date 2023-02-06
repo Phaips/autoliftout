@@ -210,6 +210,7 @@
     <addaction name="actionConnect_to_Microscope"/>
     <addaction name="actionLoad_Experiment"/>
     <addaction name="actionLoad_Protocol"/>
+    <addaction name="actionValidate_Microscope"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -269,6 +270,11 @@
   <action name="actionConnect_to_Microscope">
    <property name="text">
     <string>Connect to Microscope</string>
+   </property>
+  </action>
+  <action name="actionValidate_Microscope">
+   <property name="text">
+    <string>Validate Microscope</string>
    </property>
   </action>
  </widget>

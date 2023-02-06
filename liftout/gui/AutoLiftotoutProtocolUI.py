@@ -21,19 +21,19 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
         self.setupUi(self)
 
         self.setup_connections()
+        self._save_pressed = False
+
 
         if protocol is not None:
             self.update_ui_from_protocol(protocol)
 
     def setup_connections(self):
 
-        print("setup connections")
-
         # options
         self.comboBox_options_liftout_joining_method.addItems(["None", "Weld", "Platinum"])
-        self.comboBox_options_contact_direction.addItems(["Horizontal", "Vertical"])
+        self.comboBox_options_contact_direction.addItems(["Horizontal"])  #  "Vertical"
         self.comboBox_options_landing_surface.addItems(["Half-Moon Grid"])
-        self.comboBox_options_landing_joining_method.addItems(["None", "Weld", "Platinum"])
+        self.comboBox_options_landing_joining_method.addItems(["Weld"]) # "None", "Weld", "Platinum"
         
         # automation
         modes = [mode.name for mode in AutoLiftoutMode]
@@ -81,13 +81,9 @@ class AutoLiftoutProtocolUI(AutoLiftoutProtocolUI.Ui_Dialog, QtWidgets.QDialog):
             "num_classes": int(self.spinBox_ml_num_classes.value()),
         }
 
-        from pprint import pprint
-        print("update protocol")
-
-        pprint(self.protocol)
-
-        # TODO: save to file, update or overwrite?
-        # TODO: need the rest of the protocol, how to represent
+        # TODO: add option to save to file.
+        self._save_pressed = True
+        self.close()
 
 
     def update_ui_from_protocol(self, protocol: dict):

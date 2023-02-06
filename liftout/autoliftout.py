@@ -759,7 +759,7 @@ def land_lamella_on_post(
     # optional? makes it not repeatable
     log_status_message(lamella, "LAND_LAMELLA_REMOVE_NEEDLE")
 
-    # if settings.protocol["options"]["landing_joining_method"].capitalize() == "Weld":
+    # if settings.protocol["options"]["liftout_joining_method"].capitalize() == "Weld":
         # det = fibsem_ui_windows.detect_features_v2(
         #     microscope=microscope,
         #     settings=settings,
@@ -1157,6 +1157,7 @@ def run_autoliftout_workflow(
 
     logging.info(f"AutoLiftout Workflow started for {len(sample.positions)} lamellae.")
     settings.image.save = False
+    settings.image.save_path = sample.path
     settings.image.label = f"{fibsem_utils.current_timestamp()}"
 
     # batch mode workflow
