@@ -126,8 +126,30 @@ def mill_lamella_jcut(
         settings, 
         reference_images, 
         rotate=True, 
-        xcorr_limit=(512, 512, 512, 100)
+        xcorr_limit=(512, 512, 512, 256)
     )
+
+    # ML Feature Eucentric Detection
+    settings.image.beam_type = BeamType.ION
+    det = fibsem_ui_windows.detect_features_v2(
+        microscope=microscope,
+        settings=settings,
+        features=[
+            Feature(FeatureType.LamellaCentre),
+            Feature(FeatureType.ImageCentre),
+        ],
+        validate=bool(mode is AutoLiftoutMode.Manual),
+    )
+
+    detection.move_based_on_detection(
+        microscope, 
+        settings, 
+        det, 
+        beam_type=settings.image.beam_type, 
+        move_x=False, eucentric_move=True
+    )
+
+    # TODO: this could be done dynamically with the model detection?
 
     # adjust for relative shift between beams
     RELATIVE_ELECTRON_ION_SHIFT = settings.protocol["initial_position"][
