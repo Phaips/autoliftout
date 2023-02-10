@@ -7,6 +7,10 @@
 
 How to get started using autoliftout
 
+
+### User Guide
+Before starting please read the [User Guide](/UserGuide.md)
+
 ### Installation
 
 Clone this repository:
