@@ -40,7 +40,6 @@ Mill lower, upper and side trenches using high currents. (horsheshoe pattern, se
 | Undercut Position (Low)  | ![UnderCut LowResEB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_eb.png) |  ![Trench LowRes IB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_ib.png)
 |Undercut Position (High)  |![UnderCut HighRes EB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_eb.png) |  ![Trench HighRes IB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_ib.png)
 
-
 ### Liftout
 
 1. Insert the needle, and guide to near the lamella.
@@ -65,7 +64,6 @@ Description |Electron Beam            |  Ion Beam
 4. Removal the needle from the lamella
 5. Retract the needle
 
-
 Description |Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
 | Landing Entry Position 0 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_ib.png)
@@ -76,7 +74,6 @@ Description |Electron Beam            |  Ion Beam
 | Landing Weld Position |![](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![We EB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
 | Landing Removal Position |![Removal EB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
 | Landing Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_ib.png)
-
 
 ### Polishing Setup
 
@@ -97,7 +94,6 @@ Description |Electron Beam            |  Ion Beam
 | Thinning Position (Low)  | ![Thinning LowResEB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_eb.png) |  ![Thinning LowRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_ib.png)
 |Thinning Position (High)  |![Thinning HighRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_eb.png) |  ![Thinning HighRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_ib.png)
 |Thinning Position (Ultra)  |![Thinning UltraRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_eb.png) |  ![Thinning UltraRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_ib.png)
-
 
 ### Polishing
 
@@ -121,6 +117,7 @@ For more background on these methods, please read: AutoLiftout: A manufacturing 
 We flatten the side of the needle to prepare for the maximum surface contact area with the side of the lamella.
 
 TODO: images
+
 ### Landing Surface Preparation
 
 We flatten the side of the landing post to prepare for the maximum surface contact area with the side of the lamella.
@@ -176,16 +173,12 @@ The procedure is still being developed, and understood and is very sensitive to 
 |Electron View|![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_eb.png) |
 |Ion View |![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_ib.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_ib.png) |
 
-
 ### Landing (Dettach)
 
 |Description |Ready| Weld | Removal |
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-|Electron View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_eb.png) |![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) 
-|Ion View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_ib.png) | ![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png) 
-
-
-
+|Electron View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_eb.png) |![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png)
+|Ion View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_ib.png) | ![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
 
 ## Automation
 
@@ -271,3 +264,15 @@ The user can manually edit the protocol.yaml file to change any of the available
 - Variables used for automation can be changed by editing the code.
 - Depending on your application you might need to adjust the cross-correlation masks and filter strengths, or step-sizes, or number of iterations.
 - In a future release these will be separated into an external configuration file for easier editing.
+
+### Analysis Tools
+
+To assist with tuning the program and workflow, we provide a number of analysis tools.
+
+- Statistics: All run statistics are logged, and can be viewed using the following command:
+
+```bash
+streamlit run liftout/tools/stats.py
+```
+
+Aggregrate statistics are also available for multiple datastes using the statistics.ipynb notebook.
