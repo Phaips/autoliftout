@@ -1,57 +1,114 @@
 # User Guide
 
-TODO: add images
 AutoLiftout is an automated liftout program for the preparation of cryo-lamella.
 
 ## The Workflow
 
 The AutoLiftout workflow consists of a number of stages that must be completed sequentially.
 
-Setup:
+### Setup
 
 - The user selects lamella and landing positions.
+
+| Description |Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Lamella Position (Low) |![Lamella Positions EB](/docs/img/01-subtle-bear/png/ref_lamella_low_res_eb.png) |  ![Lamella Positions IB](/docs/img/01-subtle-bear/png/ref_lamella_low_res_ib.png)
+| Lamella Position (High) | ![Lamella Positions EB](/docs/img/01-subtle-bear/png/ref_lamella_high_res_eb.png) |  ![Lamella Positions IB](/docs/img/01-subtle-bear/png/ref_lamella_high_res_ib.png)
+| Landing Position (Low) | ![Landing Positions EB](/docs/img/01-subtle-bear/png/ref_landing_low_res_eb.png) |  ![Landing Positions IB](/docs/img/01-subtle-bear/png/ref_landing_low_res_ib.png)
+| Landing Position (High) | ![Landing Positions EB](/docs/img/01-subtle-bear/png/ref_landing_high_res_eb.png) |  ![Landing Positions IB](/docs/img/01-subtle-bear/png/ref_landing_high_res_ib.png)
+
 - Optionally sputter platinum to protect the sample.
 
-MillTrench:
+### Mill Trench
 
 Mill lower, upper and side trenches using high currents. (horsheshoe pattern, see ref)
 
 - Lower and Upper trenches release lamella from the bulk.
 - Side trench provides access for the needle.
 
-Mill Undercut:
+|Description| Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Trench Position (Low)  | ![Trench LowResEB](/docs/img/01-subtle-bear/png/ref_trench_low_res_eb.png) |  ![Trench LowRes IB](/docs/img/01-subtle-bear/png/ref_trench_low_res_ib.png)
+|Trench Position (High)  |![Trench HighRes EB](/docs/img/01-subtle-bear/png/ref_trench_high_res_eb.png) |  ![Trench HighRes IB](/docs/img/01-subtle-bear/png/ref_trench_high_res_ib.png)
 
-- Mill the underside and part of the other side of the lamella to release from the base of the bulk.
+### Mill Undercut
 
-Liftout:
+- Mill the underside and part of the other side of the lamella to release from the base of the bulk. Undercut is also refered to as the jcut.
 
-1. Insert the needle.
-2. Guide the needle to near the lamella.
-3. Charge the sample with the ion beam
-4. Make contact with the lamella,
-5. Sever the lamella from the bulk.
+|Description| Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Undercut Position (Low)  | ![UnderCut LowResEB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_eb.png) |  ![Trench LowRes IB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_ib.png)
+|Undercut Position (High)  |![UnderCut HighRes EB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_eb.png) |  ![Trench HighRes IB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_ib.png)
+
+
+### Liftout
+
+1. Insert the needle, and guide to near the lamella.
+2. Charge the sample with the ion beam
+3. Make contact with the lamella,
+4. Sever the lamella from the bulk.
 6. Retract the needle
 
-Landing:
+Description |Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Liftout Entry Position |![Entry EB](/docs/img/01-subtle-bear/png/ref_liftout_needle_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/ref_liftout_needle_ib.png)
+| Liftout Ready Position |![Ready EB](/docs/img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |  ![Ready IB](/docs/img/01-subtle-bear/png/needle_liftout_start_position_ib.png)
+| Liftout Contact Position |![Contact EB](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png) |  ![Contact IB](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)
+| Liftout Sever Position |![Sever EB](/docs/img/01-subtle-bear/png/ref_liftout_sever_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/ref_liftout_sever_ib.png)
+| Liftout Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_liftout_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_liftout_ib.png)
 
-1. Insert the needle
-2. Guide the lamella to the post
-3. Weld lamella to the post
-4. Discharge the lamella with the electron beam
+### Landing
+
+1. Insert the needle, and guide the lamella to the post
+2. Weld lamella to the post
+3. Discharge the lamella with the electron beam
+4. Removal the needle from the lamella
 5. Retract the needle
 
-Polishing Setup:
+
+Description |Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Landing Entry Position 0 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_ib.png)
+| Landing Entry Position 1 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_1_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_1_ib.png)
+| Landing Entry Position 2 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_ib.png)
+| Landing Entry Position 3 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_ib.png)
+| Landing Ready Position |![Ready EB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_eb.png) |  ![Ready IB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_ib.png)
+| Landing Weld Position |![](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![We EB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
+| Landing Removal Position |![Removal EB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
+| Landing Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_ib.png)
+
+
+### Polishing Setup
 
 - The user selects the regions of the lamella to polish
 
-Thinning:
+|Description| Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Polish Setup Position (Low)  | ![PolishSetup LowResEB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_eb.png) |  ![PolishSetup LowRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_ib.png)
+|Polish Setup Position (High)  |![PolishSetup HighRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_eb.png) |  ![PolishSetup HighRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_ib.png)
+|Polish Setup Position (Ultra)  |![PolishSetup UltraRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_eb.png) |  ![PolishSetup UltraRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_ib.png)
+
+### Thinning
 
 - Thin the lamella to a lower thickness, using a relatively high current.
 
-Polishing:
+|Description| Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Thinning Position (Low)  | ![Thinning LowResEB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_eb.png) |  ![Thinning LowRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_ib.png)
+|Thinning Position (High)  |![Thinning HighRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_eb.png) |  ![Thinning HighRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_ib.png)
+|Thinning Position (Ultra)  |![Thinning UltraRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_eb.png) |  ![Thinning UltraRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_ib.png)
+
+
+### Polishing
 
 - Polish the lamella to electron transparent thickness.
 - Should be completed immediately prior to transfer to prevent contamination buildup.
+
+|Description| Electron Beam            |  Ion Beam
+:-------------------------:|:-------------------------:|:-------------------------:
+| Polishing Position (Low)  | ![Polish LowResEB](/docs/img/01-subtle-bear/png/ref_polish_lamella_low_res_eb.png) |  ![Polish LowRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_low_res_ib.png)
+|Polishing Position (High)  |![Polish HighRes EB](/docs/img/01-subtle-bear/png/ref_polish_lamella_high_res_eb.png) |  ![Polish HighRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_high_res_ib.png)
+|Polishing Position (Ultra)  |![Polish UltraRes EB](/docs/img/01-subtle-bear/png/ref_polish_lamella_ultra_res_eb.png) |  ![Polish UltraRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_ultra_res_ib.png)
 
 ## Methods
 
@@ -63,9 +120,11 @@ For more background on these methods, please read: AutoLiftout: A manufacturing 
 
 We flatten the side of the needle to prepare for the maximum surface contact area with the side of the lamella.
 
+TODO: images
 ### Landing Surface Preparation
 
 We flatten the side of the landing post to prepare for the maximum surface contact area with the side of the lamella.
+TODO: images
 
 ### Charge Control
 
@@ -74,9 +133,13 @@ Biological samples in cryogenic conditions often have large amounts of charge wh
 - AutoGamma: We automatically apply a digital gamma correction to the image if sufficient mean pixel intensity is determined. Gamma correction shifts the image histogram allowing features to be detected in the image (however it reduces image quality).
 - Charge Neutralisation: To reduce the accumulated charge, we apply a charge neutralisation procedure (e.g. taking a rapid series of electron images to neutralise ion charge after large milling operations). This helps control the charge buildup throughout the process.
 
+TODO: images
+
 ### Big Lamella
 
 To provide better landing stability, we liftout much larger lamella than typical. In conjunction with Manipulator Preparation, Landing Surface Preparation, and Side Pickup we are able to make consistent, right-angled contact with a large surface area between the lamella and the landing post. This provides a more stable base from which to thin the lamella down. The downside of using this method is an increased material waste, and increased thinning time to remove excess material.
+
+TODO: images
 
 ### Side Pickup
 
@@ -93,6 +156,10 @@ In order to determine whether the needle and lamella have made sufficient contac
 - When contact is made between the needle and lamella, there is a significant increase in brightness due to charge disipation. This effect occurs due to the charge build up in the platinum crust being grounded when contact is made with the needle.
 - We detect this change, and stop the needle movement.
 
+Example 01 | Example 02  | Example 03 | Example 04 |
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
+|![Example 01](/docs/img/contact/contact_1.gif)|![Example 02](/docs/img/contact/contact_2.gif)|![Example 03](/docs/img/contact/contact_3.gif)|![Example 04](/docs/img/contact/contact_4.gif)
+
 ### Charge Pickup
 
 We have developed a repeatable procedure for lifting the lamella by only manipulating the charge buildup. This method does not rely on platinum deposition, or welding (redeposition).
@@ -101,6 +168,24 @@ We have developed a repeatable procedure for lifting the lamella by only manipul
 - To dettach: Once the lamella is welded to the landing post, we run the electron beam to disapate the charge, and the needle slides off the lamella.
 
 The procedure is still being developed, and understood and is very sensitive to parameters and different conditions (e.g. the number of images being taken).
+
+### Liftout (Attach)
+
+|Description |Ready|Contact | Sever  |
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
+|Electron View|![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_eb.png) |
+|Ion View |![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_ib.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_ib.png) |
+
+
+### Landing (Dettach)
+
+|Description |Ready| Weld | Removal |
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
+|Electron View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_eb.png) |![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) 
+|Ion View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_ib.png) | ![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png) 
+
+
+
 
 ## Automation
 
@@ -120,6 +205,7 @@ The program uses a fourier cross-correlation to align to reference images.
 
 - This alignment is used when a quality reference image is available, for example alignment after restoring state to account for hardware limitations.
 - In general the alignment will use the stage movement to correct, but a higher precision beam shift alignment will be used for higher precision tasks.
+TODO: images
 
 ### Feature Detection
 
@@ -136,6 +222,8 @@ We provide a user interface to enable the user to run the microscope and autolif
 
 The launch ui is where you will start when you open autoliftout. It allows you to create, and load experiments and protocols, as well as use stand alone tools such as sputtering platinum and settings validation.
 
+TODO: images
+
 Movement
 The movement ui allows the user to double click on the image to move the stage to the desired location. Two movement modes are available; Stable movements will maintain the eucentricty (ensure both beams are focused at the same point), while Eucentric movements will constrain the stage to move vertical to move the stage back to the eucentric point. When moving eucentricly, the user should first centre a feature in the Electron view, and then double click the same feature in the Ion view to correct the eucentricity.
 
@@ -150,6 +238,8 @@ Feature Detection
 An example of supervision is the feature detection interface. While in supervision mode, the program will show the user the detected features, and the movement plan. The user can simply click to correct the detected feature, and change the calculated movements.
 
 Other supervised steps will ask the user to confirm milling operations, and enable the movement interface to correct alignments.
+
+TODO: images
 
 ## Adapting to New Use Cases
 

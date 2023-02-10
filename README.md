@@ -3,8 +3,6 @@
 
 `liftout` is a python package for automated liftout for cryo-lamella preparation.
 
-TODO: install instructions
-
 ## Getting Started
 
 How to get started using autoliftout
