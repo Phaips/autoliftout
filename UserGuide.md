@@ -300,6 +300,7 @@ The following shows the statistics available for the entire run. Statistics for 
 |![Statistics](docs/img/stats/stats_stage_count.png) | ![Statistics](docs/img/stats/stats_stage_duration.png) |
 |![Statistics](docs/img/stats/stats_stage_duration_variance.png) | | |
 
+![Statistics](docs/img/stats/stats_step_duration.png)
 ![Statistics](docs/img/stats/stats_timeline.png) 
 
 
