@@ -207,6 +207,8 @@ The program uses a segmentation model to detect common features in the workflow,
 - These feature positions are used to guide the program decision making. For example, the model is used to guide the needle tip to make contact with the lamella.
 - When supervising the user can correct these feature detections using an integrated user interface. This is discussed in the next section.
 
+![Feature Detection](docs/img/ui/ui_detection_success.png)
+
 ## User Interface
 
 We provide a user interface to enable the user to run the microscope and autoliftout with minimal training.
@@ -215,13 +217,24 @@ We provide a user interface to enable the user to run the microscope and autolif
 
 The launch ui is where you will start when you open autoliftout. It allows you to create, and load experiments and protocols, as well as use stand alone tools such as sputtering platinum and settings validation.
 
-TODO: images
+![Launch UI](docs/img/ui/ui_experiment_progress.png)
 
-Movement
+| Edit Protocol UI | Edit Lamella  |
+:-------------------------:|:-------------------------:
+| ![Edit Protocol](docs/img/ui/ui_edit_protocol.png) |![Options UI](docs/img/ui/ui_lamella_options.png)|
+
+#### Movement
+
 The movement ui allows the user to double click on the image to move the stage to the desired location. Two movement modes are available; Stable movements will maintain the eucentricty (ensure both beams are focused at the same point), while Eucentric movements will constrain the stage to move vertical to move the stage back to the eucentric point. When moving eucentricly, the user should first centre a feature in the Electron view, and then double click the same feature in the Ion view to correct the eucentricity.
 
-Milling
+![Movement UI](docs/img/ui/ui_movement_ui.png)
+
+#### Milling
+
 The milling ui provides control over the pre-defined patterns used in autoliftout. The user can adjust all the parameters of these patterns to suit their needs. These parameters can be saved on the go to the protocol file.
+
+![Milling UI](docs/img/ui/ui_milling_ui.png)
+
 
 ### Supervision Mode
 
@@ -230,9 +243,10 @@ Users can choose to supervise the workflow by enabling it in the protocol. In th
 Feature Detection
 An example of supervision is the feature detection interface. While in supervision mode, the program will show the user the detected features, and the movement plan. The user can simply click to correct the detected feature, and change the calculated movements.
 
+![Feature Detection](docs/img/ui/ui_supervision_det.mp4) TODO: convert to GIF
+
 Other supervised steps will ask the user to confirm milling operations, and enable the movement interface to correct alignments.
 
-TODO: images
 
 ## Adapting to New Use Cases
 
@@ -275,4 +289,18 @@ To assist with tuning the program and workflow, we provide a number of analysis 
 streamlit run liftout/tools/stats.py
 ```
 
-Aggregrate statistics are also available for multiple datastes using the statistics.ipynb notebook.
+The following shows the statistics available for the entire run. Statistics for indivudal lamella are also available. All statistics are available for export as csv for further analysis.
+
+|-|-|-|
+:-------------------------:|:-------------------------:|:-------------------------:|
+|![Statistics](docs/img/stats/stats_imaging_count.png) | ![Statistics](docs/img/stats/stats_imaging_gamma.png) |
+|![Statistics](docs/img/stats/stats_click_distribution.png) | ![Statistics](docs/img/stats/stats_click_per_stage.png) |
+|![Statistics](docs/img/stats/stats_lamella_positions.png) | ![Statistics](docs/img/stats/stats_landing_positions.png) |
+|![Statistics](docs/img/stats/stats_ml_count.png) | ![Statistics](docs/img/stats/stats_ml_accuracy.png) |
+|![Statistics](docs/img/stats/stats_stage_count.png) | ![Statistics](docs/img/stats/stats_stage_duration.png) |
+|![Statistics](docs/img/stats/stats_stage_duration_variance.png) | | |
+
+![Statistics](docs/img/stats/stats_timeline.png) 
+
+
+Aggregrate statistics are also available for multiple datastes using the tools/statistics.ipynb notebook.
