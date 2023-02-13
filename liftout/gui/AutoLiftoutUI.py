@@ -77,6 +77,7 @@ class AutoLiftoutUI(AutoLiftoutUI.Ui_MainWindow, QtWidgets.QMainWindow):
         self.pushButton_run_autoliftout.clicked.connect(self.run_autoliftout)
         self.pushButton_run_polishing.clicked.connect(self.run_autoliftout_thinning)
         self.pushButton_test_button.clicked.connect(self.testing_function)
+        self.pushButton_test_button.setVisible(False)
 
         # widgets
         if self.sample.positions:
