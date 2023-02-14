@@ -19,12 +19,16 @@ LOG_PATH = os.path.join(BASE_PATH, "log")
 LOG_PATH = "/home/patrick/github/autoliftout/liftout/tools/figures/example"
 
 st.set_page_config(layout="wide")
-st.title("AutoLiftout Companion")
+st.title("AutoLiftout Statistics")
 
 #################### EXPERIMENT SECTION ####################
 
 # select experiment
-paths = glob.glob(os.path.join(LOG_PATH, "*dm*/"))
+
+path_cols = st.columns(2)
+LOG_PATH = path_cols[0].text_input("Search Path", LOG_PATH)
+FILTER_STR = path_cols[1].text_input("Filter", "*dm*/")
+paths = glob.glob(os.path.join(LOG_PATH, FILTER_STR))
 EXPERIMENT_PATH = st.selectbox(label="Experiment Path ", options=paths)
 sample = load_experiment(EXPERIMENT_PATH)
 

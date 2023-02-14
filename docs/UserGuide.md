@@ -12,10 +12,10 @@ The AutoLiftout workflow consists of a number of stages that must be completed s
 
 | Description |Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Lamella Position (Low) |![Lamella Positions EB](/docs/img/01-subtle-bear/png/ref_lamella_low_res_eb.png) |  ![Lamella Positions IB](/docs/img/01-subtle-bear/png/ref_lamella_low_res_ib.png)
-| Lamella Position (High) | ![Lamella Positions EB](/docs/img/01-subtle-bear/png/ref_lamella_high_res_eb.png) |  ![Lamella Positions IB](/docs/img/01-subtle-bear/png/ref_lamella_high_res_ib.png)
-| Landing Position (Low) | ![Landing Positions EB](/docs/img/01-subtle-bear/png/ref_landing_low_res_eb.png) |  ![Landing Positions IB](/docs/img/01-subtle-bear/png/ref_landing_low_res_ib.png)
-| Landing Position (High) | ![Landing Positions EB](/docs/img/01-subtle-bear/png/ref_landing_high_res_eb.png) |  ![Landing Positions IB](/docs/img/01-subtle-bear/png/ref_landing_high_res_ib.png)
+| Lamella Position (Low) |![Lamella Positions EB](img/01-subtle-bear/png/ref_lamella_low_res_eb.png) |  ![Lamella Positions IB](img/01-subtle-bear/png/ref_lamella_low_res_ib.png)
+| Lamella Position (High) | ![Lamella Positions EB](img/01-subtle-bear/png/ref_lamella_high_res_eb.png) |  ![Lamella Positions IB](img/01-subtle-bear/png/ref_lamella_high_res_ib.png)
+| Landing Position (Low) | ![Landing Positions EB](img/01-subtle-bear/png/ref_landing_low_res_eb.png) |  ![Landing Positions IB](img/01-subtle-bear/png/ref_landing_low_res_ib.png)
+| Landing Position (High) | ![Landing Positions EB](img/01-subtle-bear/png/ref_landing_high_res_eb.png) |  ![Landing Positions IB](img/01-subtle-bear/png/ref_landing_high_res_ib.png)
 
 - Optionally sputter platinum to protect the sample.
 
@@ -28,8 +28,8 @@ Mill lower, upper and side trenches using high currents. (horsheshoe pattern, se
 
 |Description| Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Trench Position (Low)  | ![Trench LowResEB](/docs/img/01-subtle-bear/png/ref_trench_low_res_eb.png) |  ![Trench LowRes IB](/docs/img/01-subtle-bear/png/ref_trench_low_res_ib.png)
-|Trench Position (High)  |![Trench HighRes EB](/docs/img/01-subtle-bear/png/ref_trench_high_res_eb.png) |  ![Trench HighRes IB](/docs/img/01-subtle-bear/png/ref_trench_high_res_ib.png)
+| Trench Position (Low)  | ![Trench LowResEB](img/01-subtle-bear/png/ref_trench_low_res_eb.png) |  ![Trench LowRes IB](img/01-subtle-bear/png/ref_trench_low_res_ib.png)
+|Trench Position (High)  |![Trench HighRes EB](img/01-subtle-bear/png/ref_trench_high_res_eb.png) |  ![Trench HighRes IB](img/01-subtle-bear/png/ref_trench_high_res_ib.png)
 
 ### Mill Undercut
 
@@ -37,8 +37,8 @@ Mill lower, upper and side trenches using high currents. (horsheshoe pattern, se
 
 |Description| Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Undercut Position (Low)  | ![UnderCut LowResEB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_eb.png) |  ![Trench LowRes IB](/docs/img/01-subtle-bear/png/ref_jcut_low_res_ib.png)
-|Undercut Position (High)  |![UnderCut HighRes EB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_eb.png) |  ![Trench HighRes IB](/docs/img/01-subtle-bear/png/ref_jcut_high_res_ib.png)
+| Undercut Position (Low)  | ![UnderCut LowResEB](img/01-subtle-bear/png/ref_jcut_low_res_eb.png) |  ![Trench LowRes IB](img/01-subtle-bear/png/ref_jcut_low_res_ib.png)
+|Undercut Position (High)  |![UnderCut HighRes EB](img/01-subtle-bear/png/ref_jcut_high_res_eb.png) |  ![Trench HighRes IB](img/01-subtle-bear/png/ref_jcut_high_res_ib.png)
 
 ### Liftout
 
@@ -50,11 +50,11 @@ Mill lower, upper and side trenches using high currents. (horsheshoe pattern, se
 
 Description |Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Liftout Entry Position |![Entry EB](/docs/img/01-subtle-bear/png/ref_liftout_needle_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/ref_liftout_needle_ib.png)
-| Liftout Ready Position |![Ready EB](/docs/img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |  ![Ready IB](/docs/img/01-subtle-bear/png/needle_liftout_start_position_ib.png)
-| Liftout Contact Position |![Contact EB](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png) |  ![Contact IB](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)
-| Liftout Sever Position |![Sever EB](/docs/img/01-subtle-bear/png/ref_liftout_sever_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/ref_liftout_sever_ib.png)
-| Liftout Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_liftout_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_liftout_ib.png)
+| Liftout Entry Position |![Entry EB](img/01-subtle-bear/png/ref_liftout_needle_eb.png) |  ![Entry IB](img/01-subtle-bear/png/ref_liftout_needle_ib.png)
+| Liftout Ready Position |![Ready EB](img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |  ![Ready IB](img/01-subtle-bear/png/needle_liftout_start_position_ib.png)
+| Liftout Contact Position |![Contact EB](img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png) |  ![Contact IB](img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)
+| Liftout Sever Position |![Sever EB](img/01-subtle-bear/png/ref_liftout_sever_eb.png) |  ![Sever IB](img/01-subtle-bear/png/ref_liftout_sever_ib.png)
+| Liftout Retract Position |![Retract EB](img/01-subtle-bear/png/ref_liftout_eb.png) |  ![Retract IB](img/01-subtle-bear/png/ref_liftout_ib.png)
 
 ### Landing
 
@@ -66,14 +66,14 @@ Description |Electron Beam            |  Ion Beam
 
 Description |Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Landing Entry Position 0 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_0_ib.png)
-| Landing Entry Position 1 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_1_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_1_ib.png)
-| Landing Entry Position 2 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_ib.png)
-| Landing Entry Position 3 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_ib.png)
-| Landing Ready Position |![Ready EB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_eb.png) |  ![Ready IB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_ib.png)
-| Landing Weld Position |![Weld EB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![Weld IB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
-| Landing Removal Position |![Removal EB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
-| Landing Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_ib.png)
+| Landing Entry Position 0 |![Entry EB](img/01-subtle-bear/png/landing_needle_start_position_0_eb.png) |  ![Entry IB](img/01-subtle-bear/png/landing_needle_start_position_0_ib.png)
+| Landing Entry Position 1 |![Entry EB](img/01-subtle-bear/png/landing_needle_start_position_1_eb.png) |  ![Entry IB](img/01-subtle-bear/png/landing_needle_start_position_1_ib.png)
+| Landing Entry Position 2 |![Entry EB](img/01-subtle-bear/png/landing_needle_start_position_2_eb.png) |  ![Entry IB](img/01-subtle-bear/png/landing_needle_start_position_2_ib.png)
+| Landing Entry Position 3 |![Entry EB](img/01-subtle-bear/png/landing_needle_start_position_3_eb.png) |  ![Entry IB](img/01-subtle-bear/png/landing_needle_start_position_3_ib.png)
+| Landing Ready Position |![Ready EB](img/01-subtle-bear/png/landing_needle_ready_position_eb.png) |  ![Ready IB](img/01-subtle-bear/png/landing_needle_ready_position_ib.png)
+| Landing Weld Position |![Weld EB](img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![Weld IB](img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
+| Landing Removal Position |![Removal EB](img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) |  ![Sever IB](img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
+| Landing Retract Position |![Retract EB](img/01-subtle-bear/png/ref_landing_lamella_high_res_eb.png) |  ![Retract IB](img/01-subtle-bear/png/ref_landing_lamella_high_res_ib.png)
 
 ### Polishing Setup
 
@@ -81,9 +81,9 @@ Description |Electron Beam            |  Ion Beam
 
 |Description| Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Polish Setup Position (Low)  | ![PolishSetup LowResEB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_eb.png) |  ![PolishSetup LowRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_ib.png)
-|Polish Setup Position (High)  |![PolishSetup HighRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_eb.png) |  ![PolishSetup HighRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_ib.png)
-|Polish Setup Position (Ultra)  |![PolishSetup UltraRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_eb.png) |  ![PolishSetup UltraRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_ib.png)
+| Polish Setup Position (Low)  | ![PolishSetup LowResEB](img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_eb.png) |  ![PolishSetup LowRes IB](img/01-subtle-bear/png/ref_thin_lamella_setup_low_res_ib.png)
+|Polish Setup Position (High)  |![PolishSetup HighRes EB](img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_eb.png) |  ![PolishSetup HighRes IB](img/01-subtle-bear/png/ref_thin_lamella_setup_high_res_ib.png)
+|Polish Setup Position (Ultra)  |![PolishSetup UltraRes EB](img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_eb.png) |  ![PolishSetup UltraRes IB](img/01-subtle-bear/png/ref_thin_lamella_setup_ultra_res_ib.png)
 
 ### Thinning
 
@@ -91,9 +91,9 @@ Description |Electron Beam            |  Ion Beam
 
 |Description| Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Thinning Position (Low)  | ![Thinning LowResEB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_eb.png) |  ![Thinning LowRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_low_res_ib.png)
-|Thinning Position (High)  |![Thinning HighRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_eb.png) |  ![Thinning HighRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_high_res_ib.png)
-|Thinning Position (Ultra)  |![Thinning UltraRes EB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_eb.png) |  ![Thinning UltraRes IB](/docs/img/01-subtle-bear/png/ref_thin_lamella_ultra_res_ib.png)
+| Thinning Position (Low)  | ![Thinning LowResEB](img/01-subtle-bear/png/ref_thin_lamella_low_res_eb.png) |  ![Thinning LowRes IB](img/01-subtle-bear/png/ref_thin_lamella_low_res_ib.png)
+|Thinning Position (High)  |![Thinning HighRes EB](img/01-subtle-bear/png/ref_thin_lamella_high_res_eb.png) |  ![Thinning HighRes IB](img/01-subtle-bear/png/ref_thin_lamella_high_res_ib.png)
+|Thinning Position (Ultra)  |![Thinning UltraRes EB](img/01-subtle-bear/png/ref_thin_lamella_ultra_res_eb.png) |  ![Thinning UltraRes IB](img/01-subtle-bear/png/ref_thin_lamella_ultra_res_ib.png)
 
 ### Polishing
 
@@ -102,9 +102,9 @@ Description |Electron Beam            |  Ion Beam
 
 |Description| Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
-| Polishing Position (Low)  | ![Polish LowResEB](/docs/img/01-subtle-bear/png/ref_polish_lamella_low_res_eb.png) |  ![Polish LowRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_low_res_ib.png)
-|Polishing Position (High)  |![Polish HighRes EB](/docs/img/01-subtle-bear/png/ref_polish_lamella_high_res_eb.png) |  ![Polish HighRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_high_res_ib.png)
-|Polishing Position (Ultra)  |![Polish UltraRes EB](/docs/img/01-subtle-bear/png/ref_polish_lamella_ultra_res_eb.png) |  ![Polish UltraRes IB](/docs/img/01-subtle-bear/png/ref_polish_lamella_ultra_res_ib.png)
+| Polishing Position (Low)  | ![Polish LowResEB](img/01-subtle-bear/png/ref_polish_lamella_low_res_eb.png) |  ![Polish LowRes IB](img/01-subtle-bear/png/ref_polish_lamella_low_res_ib.png)
+|Polishing Position (High)  |![Polish HighRes EB](img/01-subtle-bear/png/ref_polish_lamella_high_res_eb.png) |  ![Polish HighRes IB](img/01-subtle-bear/png/ref_polish_lamella_high_res_ib.png)
+|Polishing Position (Ultra)  |![Polish UltraRes EB](img/01-subtle-bear/png/ref_polish_lamella_ultra_res_eb.png) |  ![Polish UltraRes IB](img/01-subtle-bear/png/ref_polish_lamella_ultra_res_ib.png)
 
 ## Methods
 
@@ -155,7 +155,7 @@ In order to determine whether the needle and lamella have made sufficient contac
 
 Example 01 | Example 02  | Example 03 | Example 04 |
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
-|![Example 01](/docs/img/contact/contact_1.gif)|![Example 02](/docs/img/contact/contact_2.gif)|![Example 03](/docs/img/contact/contact_3.gif)|![Example 04](/docs/img/contact/contact_4.gif)
+|![Example 01](img/contact/contact_1.gif)|![Example 02](img/contact/contact_2.gif)|![Example 03](img/contact/contact_3.gif)|![Example 04](img/contact/contact_4.gif)
 
 ### Charge Pickup
 
@@ -170,15 +170,15 @@ The procedure is still being developed, and understood and is very sensitive to 
 
 |Description |Ready|Contact | Sever  |
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-|Electron View|![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_eb.png) |
-|Ion View |![Ready](/docs/img/01-subtle-bear/png/needle_liftout_start_position_ib.png) |![Contact](/docs/img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)| ![Sever](/docs/img/01-subtle-bear/png/ref_liftout_sever_ib.png) |
+|Electron View|![Ready](img/01-subtle-bear/png/needle_liftout_start_position_eb.png) |![Contact](img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_eb.png)| ![Sever](img/01-subtle-bear/png/ref_liftout_sever_eb.png) |
+|Ion View |![Ready](img/01-subtle-bear/png/needle_liftout_start_position_ib.png) |![Contact](img/01-subtle-bear/png/ref_needle_liftout_landed_high_res_ib.png)| ![Sever](img/01-subtle-bear/png/ref_liftout_sever_ib.png) |
 
 ### Landing (Dettach)
 
 |Description |Ready| Weld | Removal |
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-|Electron View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_eb.png) |![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png)
-|Ion View|![Ready](/docs/img/01-subtle-bear//png/landing_needle_ready_position_ib.png) | ![Weld](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png) | ![Removal](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
+|Electron View|![Ready](img/01-subtle-bear//png/landing_needle_ready_position_eb.png) |![Weld](img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) | ![Removal](img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png)
+|Ion View|![Ready](img/01-subtle-bear//png/landing_needle_ready_position_ib.png) | ![Weld](img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png) | ![Removal](img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
 
 ## Automation
 
@@ -207,7 +207,7 @@ The program uses a segmentation model to detect common features in the workflow,
 - These feature positions are used to guide the program decision making. For example, the model is used to guide the needle tip to make contact with the lamella.
 - When supervising the user can correct these feature detections using an integrated user interface. This is discussed in the next section.
 
-![Feature Detection](docs/img/ui/ui_detection_success.png)
+![Feature Detection](img/ui/ui_detection_success.png)
 
 ## User Interface
 
@@ -217,23 +217,23 @@ We provide a user interface to enable the user to run the microscope and autolif
 
 The launch ui is where you will start when you open autoliftout. It allows you to create, and load experiments and protocols, as well as use stand alone tools such as sputtering platinum and settings validation.
 
-![Launch UI](docs/img/ui/ui_experiment_progress.png)
+![Launch UI](img/ui/ui_experiment_progress.png)
 
 | Edit Protocol UI | Edit Lamella  |
 :-------------------------:|:-------------------------:
-| ![Edit Protocol](docs/img/ui/ui_edit_protocol.png) |![Options UI](docs/img/ui/ui_lamella_options.png)|
+| ![Edit Protocol](img/ui/ui_edit_protocol.png) |![Options UI](img/ui/ui_lamella_options.png)|
 
 #### Movement
 
 The movement ui allows the user to double click on the image to move the stage to the desired location. Two movement modes are available; Stable movements will maintain the eucentricty (ensure both beams are focused at the same point), while Eucentric movements will constrain the stage to move vertical to move the stage back to the eucentric point. When moving eucentricly, the user should first centre a feature in the Electron view, and then double click the same feature in the Ion view to correct the eucentricity.
 
-![Movement UI](docs/img/ui/ui_movement_ui.png)
+![Movement UI](img/ui/ui_movement_ui.png)
 
 #### Milling
 
 The milling ui provides control over the pre-defined patterns used in autoliftout. The user can adjust all the parameters of these patterns to suit their needs. These parameters can be saved on the go to the protocol file.
 
-![Milling UI](docs/img/ui/ui_milling_ui.png)
+![Milling UI](img/ui/ui_milling_ui.png)
 
 
 ### Supervision Mode
@@ -243,7 +243,7 @@ Users can choose to supervise the workflow by enabling it in the protocol. In th
 Feature Detection
 An example of supervision is the feature detection interface. While in supervision mode, the program will show the user the detected features, and the movement plan. The user can simply click to correct the detected feature, and change the calculated movements.
 
-![Feature Detection](docs/img/ui/ui_supervision_det.mp4) TODO: convert to GIF
+![Feature Detection](img/ui/ui_supervision_det.mp4) TODO: convert to GIF
 
 Other supervised steps will ask the user to confirm milling operations, and enable the movement interface to correct alignments.
 
@@ -271,7 +271,16 @@ The user can manually edit the protocol.yaml file to change any of the available
 
 - The provided model can be finetuned for a new dataset (sample, conditions, etc).
 - The most efficient way to collect a new dataset is to run autoliftout in supervised mode using your desired sample/conditions. Whenever the user corrects a feature detection using the interface, the program will automatically flag that image for labelling and save it in a separate directory.
-- The user can then use OpenFIBSEM to label (labelling tool) and finetune the model on the new dataset. For more information on these tools please see the OpenFIBSEM repository.
+- The user can then use [OpenFIBSEM machine learning tools](demarcolab.github.io/fibsem/ml) to label and finetune the model on the new dataset. For more information on these tools please see the OpenFIBSEM repository.
+
+![Supervise](ui/ui_supervision_det.mp4)
+Supervision Mode
+
+![Retrain](img/ui/ui_label_step.png)
+OpenFIBSEM Labelling UI
+
+![Redeploy](img/ui/ui_redeploy_model.png)
+Model Redeploy after Training
 
 ### Automation Tuning
 
@@ -293,15 +302,16 @@ The following shows the statistics available for the entire run. Statistics for 
 
 |-|-|-|
 :-------------------------:|:-------------------------:|:-------------------------:|
-|![Statistics](docs/img/stats/stats_imaging_count.png) | ![Statistics](docs/img/stats/stats_imaging_gamma.png) |
-|![Statistics](docs/img/stats/stats_click_distribution.png) | ![Statistics](docs/img/stats/stats_click_per_stage.png) |
-|![Statistics](docs/img/stats/stats_lamella_positions.png) | ![Statistics](docs/img/stats/stats_landing_positions.png) |
-|![Statistics](docs/img/stats/stats_ml_count.png) | ![Statistics](docs/img/stats/stats_ml_accuracy.png) |
-|![Statistics](docs/img/stats/stats_stage_count.png) | ![Statistics](docs/img/stats/stats_stage_duration.png) |
-|![Statistics](docs/img/stats/stats_stage_duration_variance.png) | | |
+|![Statistics](img/stats/stats_imaging_count.png) | ![Statistics](img/stats/stats_imaging_gamma.png) |
+|![Statistics](img/stats/stats_click_distribution.png) | ![Statistics](img/stats/stats_click_per_stage.png) |
+|![Statistics](img/stats/stats_lamella_positions.png) | ![Statistics](img/stats/stats_landing_positions.png) |
+|![Statistics](img/stats/stats_ml_count.png) | ![Statistics](img/stats/stats_ml_accuracy.png) |
+|![Statistics](img/stats/stats_stage_count.png) | ![Statistics](img/stats/stats_stage_duration.png) |
+|![Statistics](img/stats/stats_stage_duration_variance.png) | | |
 
-![Statistics](docs/img/stats/stats_step_duration.png)
-![Statistics](docs/img/stats/stats_timeline.png) 
+![Statistics](img/stats/stats_step_duration.png)
+
+![Statistics](img/stats/stats_timeline.png)
 
 
 Aggregrate statistics are also available for multiple datastes using the tools/statistics.ipynb notebook.

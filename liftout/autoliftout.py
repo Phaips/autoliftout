@@ -1033,8 +1033,8 @@ def thin_lamella(
         settings,
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
-        rotate=True,
-        xcorr_limit = (100, 100)
+        rotate=False,
+        xcorr_limit = (256, 256),
     )
 
     # ensure_eucentricity at thinning angle
@@ -1108,7 +1108,9 @@ def polish_lamella(
         reference_images=reference_images,
         alignment=(BeamType.ION, BeamType.ION),
         rotate=False,
-        xcorr_limit = (100, 100)
+        xcorr_limit = (256, 256),
+        beam_shift=True,
+
     )
 
     # confirm

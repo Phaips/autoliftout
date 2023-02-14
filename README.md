@@ -7,8 +7,8 @@
 
 How to get started using autoliftout
 
-
 ### User Guide
+
 Before starting please read the [User Guide](/UserGuide.md)
 
 ### Installation
@@ -54,10 +54,12 @@ Preparing the Needle
 - Mill the end of your manipulator so there is a 10um flat surface. TODO: image
 
 Preparing the State
--  Save the lamella and landing states (Raw coordinates) in the protocol.yaml file.
+
+- Save the lamella and landing states (Raw coordinates) in the protocol.yaml file.
 - These are the initial positions for selecting lamella and landing positions.
 
 ### Running the Program
+
 Once you have installed all the dependencies and completed the preparation steps, run:
 
 ```bash
