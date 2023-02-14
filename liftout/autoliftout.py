@@ -129,7 +129,7 @@ def mill_lamella_jcut(
         xcorr_limit=(512, 512, 512, 256)
     )
 
-    # # ML Feature Eucentric Detection
+    # # ML Feature Eucentric Detection: TODO: TEST
     # settings.image.beam_type = BeamType.ION
     # det = fibsem_ui_windows.detect_features_v2(
     #     microscope=microscope,

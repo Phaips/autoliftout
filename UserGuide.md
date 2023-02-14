@@ -71,7 +71,7 @@ Description |Electron Beam            |  Ion Beam
 | Landing Entry Position 2 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_2_ib.png)
 | Landing Entry Position 3 |![Entry EB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_eb.png) |  ![Entry IB](/docs/img/01-subtle-bear/png/landing_needle_start_position_3_ib.png)
 | Landing Ready Position |![Ready EB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_eb.png) |  ![Ready IB](/docs/img/01-subtle-bear/png/landing_needle_ready_position_ib.png)
-| Landing Weld Position |![](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![We EB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
+| Landing Weld Position |![Weld EB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_eb.png) |  ![Weld IB](/docs/img/01-subtle-bear/png/landing_lamella_final_weld_high_res_ib.png)
 | Landing Removal Position |![Removal EB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_eb.png) |  ![Sever IB](/docs/img/01-subtle-bear/png/landing_lamella_needle_removal_high_res_ib.png)
 | Landing Retract Position |![Retract EB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_eb.png) |  ![Retract IB](/docs/img/01-subtle-bear/png/ref_landing_lamella_high_res_ib.png)
 
@@ -289,7 +289,7 @@ To assist with tuning the program and workflow, we provide a number of analysis 
 streamlit run liftout/tools/stats.py
 ```
 
-The following shows the statistics available for the entire run. Statistics for indivudal lamella are also available. All statistics are available for export as csv for further analysis.
+The following shows the statistics available for the entire run. Statistics for indivudal lamella are also available. All statistics are available for export as csv for further analysis. The following stats are from a development run:
 
 |-|-|-|
 :-------------------------:|:-------------------------:|:-------------------------:|

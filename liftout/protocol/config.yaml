@@ -48,3 +48,6 @@ landing_needle_removal_x: 0.5e-6
 # contact
 liftout_brightness_factor: 1.2
 liftout_contact_steps: 15
+
+msg:
+  confirm_needle_entry: "Has the needle landed on the lamella? \nPress Yes to continue, or No to redo the final movement"
