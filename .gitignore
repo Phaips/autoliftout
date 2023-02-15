@@ -86,7 +86,7 @@ liftout/model/data/*
 liftout/model/example/*
 *images.zip
 *sample.yaml
-!*test_image.tif
+!*test_image*.tif
 */tests/*.csv
 liftout/tools/20210823.153535_manual.zip
 !liftout/tests/data/img/*.tif
@@ -98,7 +98,6 @@ liftout/tools/*.html
 liftout/model/wandb/*
 liftout/model/eval/*
 liftout/model/data.zip
-liftout/tools/*.png
 liftout/log/*
 *data.csv
 liftout/tools/auto/data/*

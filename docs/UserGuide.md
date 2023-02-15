@@ -46,7 +46,7 @@ Mill lower, upper and side trenches using high currents. (horsheshoe pattern, se
 2. Charge the sample with the ion beam
 3. Make contact with the lamella,
 4. Sever the lamella from the bulk.
-6. Retract the needle
+5. Retract the needle.
 
 Description |Electron Beam            |  Ion Beam
 :-------------------------:|:-------------------------:|:-------------------------:
@@ -235,7 +235,6 @@ The milling ui provides control over the pre-defined patterns used in autoliftou
 
 ![Milling UI](img/ui/ui_milling_ui.png)
 
-
 ### Supervision Mode
 
 Users can choose to supervise the workflow by enabling it in the protocol. In this mode, the program will automatically perform all the movements and operations, but will pause and ask the user for confirmation before continuing. Supervision can be turned on/off for individual stages.
@@ -246,7 +245,6 @@ An example of supervision is the feature detection interface. While in supervisi
 ![Feature Detection](img/ui/ui_supervision_det.mp4) TODO: convert to GIF
 
 Other supervised steps will ask the user to confirm milling operations, and enable the movement interface to correct alignments.
-
 
 ## Adapting to New Use Cases
 
@@ -312,6 +310,5 @@ The following shows the statistics available for the entire run. Statistics for 
 ![Statistics](img/stats/stats_step_duration.png)
 
 ![Statistics](img/stats/stats_timeline.png)
-
 
 Aggregrate statistics are also available for multiple datastes using the tools/statistics.ipynb notebook.
