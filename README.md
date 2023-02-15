@@ -5,11 +5,13 @@
 
 ## Getting Started
 
-How to get started using autoliftout
+For detailed instructions on getting started, please see the [Getting Started](docs/started.md).
 
 ### User Guide
 
-Before starting please read the [User Guide](/UserGuide.md)
+For detailed instructions on how to use the program, please see the [User Guide](docs/UserGuide.md).
+
+## Quick Start
 
 ### Installation
 

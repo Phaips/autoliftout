@@ -6,24 +6,43 @@ To get started using AutoLiftout, you will need to install the program and prepa
 
 ### Install Dependencies
 
+Please see [OpenFIBSEM](https://github.com/demarcolab/fibsem) for how to install the dependencies.
+
 ### Install AutoLiftout Environment
+
+Clone this repository: 
+
+```
+$ git clone https://github.com/DeMarcoLab/autoliftout.git
+```
+
+Install dependencies and package
+```bash
+$ cd autoliftout
+$ conda env create -f environment.yml
+$ conda activate autoliftout
+$ pip install -e .
+
+```
 
 ## Preparation
 
-Microscope
+We used the following microscope and setup for AutoLiftout:
 
-Sample
--
+- Microscope: ThermoFisher Helios Hydra PFIB
+- Sample: Drosophila Embryo on Carrier
+- Landing Post: Ted Pella Posts (8)
+- Shuttle: 35 Degree Pre-Tilt (Carrier + Autogrid slots)
+- Manipulator: (TODO: needle brand)
 
-Shuttle
 
-- List shuttle
+### Preparing the Manipulator
 
-Manipulator
+Before starting autoliftout, you will need to prepare the manipulator:
 
-- List manipulator
-- List manipulator milling
-- List manipulator calibration
+- Mill the end of your manipulator so there is a 10um flat vertical surface. TODO: image @patrickcleeve2
+- Perform EasyLift Alignment (Needle Calibration)
+
 
 ## Running the Program
 
@@ -36,11 +55,16 @@ autoliftout_ui
 ![new_exp_00](img/ui/ui_new_experiment_00.png)
 
 (@patrickcleeve2 change this flow, it is weird. Should be something like:
-Load -> New Experiment or Load Experiment -> Run Experiment)
+Start -> New Experiment or Load Experiment -> Run Experiment)
 
 2. Enter a name for your experiment (All experiments are saved in autoliftout/liftout/log)
 
 ![new_exp_01](img/ui/ui_new_experiment_01.png)
+
+
+To edit your protocol / settings before you start your experiment, click the Edit->Edit Protocol button. This will open the protocol editor. You can edit the protocol and save it by clicking the "Save" button. You can also load a previously saved protocol by clicking the File->Load Protocol button.
+
+![Edit Protocol](img/ui/ui_edit_protocol.png)
 
 3. You can now start your experiment by clicking the "Setup AutoLiftout" button.
 ![new_exp_02](img/ui/ui_new_experiment_02.png)
@@ -89,7 +113,7 @@ The following stats page will open up in a web browser. Enter the name of the ex
 ![stats](img/stats/stats_ui.png)
 
 
-
+For a more detailed guide of the workflow, see the [User Guide](/docs/UserGuide.md) page.
 
 ## Troubleshooting
 
