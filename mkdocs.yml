@@ -5,6 +5,6 @@ theme:
 
 nav:
   - index.md
-  - started.md
+  - GettingStarted.md
   - UserGuide.md
   - Manufacturing.md

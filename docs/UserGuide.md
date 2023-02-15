@@ -198,7 +198,8 @@ The program uses a fourier cross-correlation to align to reference images.
 
 - This alignment is used when a quality reference image is available, for example alignment after restoring state to account for hardware limitations.
 - In general the alignment will use the stage movement to correct, but a higher precision beam shift alignment will be used for higher precision tasks.
-TODO: images
+
+![Alignment](img/ui/crosscorrelation.png)
 
 ### Feature Detection
 

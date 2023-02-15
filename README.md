@@ -5,7 +5,7 @@
 
 ## Getting Started
 
-For detailed instructions on getting started, please see the [Getting Started](docs/started.md).
+For detailed instructions on getting started, please see the [Getting Started](docs/GettingStarted.md).
 
 ### User Guide
 
